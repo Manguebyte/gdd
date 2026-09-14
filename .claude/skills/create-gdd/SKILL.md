@@ -38,10 +38,43 @@ como `**Em aberto**` no documento em vez de decidir por ele. Só marque algo com
 
 ## Estrutura do documento
 
-Use `reference/template.md` como esqueleto. As seções são um ponto de partida, não uma
-grade fixa — remova/renomeie seções que não fazem sentido para o gênero do jogo (ex.: um
-jogo sem carros não precisa de "Física do Carro"), e adicione seções específicas do jogo
-quando necessário.
+Use `reference/template.md` como esqueleto. As seções da Parte GDD são um ponto de
+partida, não uma grade fixa — remova/renomeie seções que não fazem sentido para o gênero
+do jogo (ex.: um jogo sem carros não precisa de "Física do Carro"), e adicione seções
+específicas do jogo quando necessário.
+
+**A Parte 2 (Guia de Implementação Unity) é obrigatória em todo GDD gerado por esta
+skill** — não é opcional mesmo que o usuário não peça explicitamente. Ver seção própria
+abaixo.
+
+## Guia de Implementação Unity (obrigatório)
+
+Todo `.md` gerado por esta skill precisa terminar com um guia de implementação Unity
+fase-a-fase, no mesmo formato usado em `RallySurvive.md` (Partes 7–13). Use
+`reference/unity_phase_template.md` como esqueleto de cada fase.
+
+Regras de formato (copiadas do padrão já usado no repo):
+
+- Fases numeradas a partir de **Fase 0** (sempre "Setup do Projeto": instalar Unity,
+  criar projeto, estrutura de pastas em `Assets/`, pacotes necessários no Package
+  Manager). A última fase é sempre "Build e Próximos Passos".
+- As fases do meio **não são fixas** — derive-as da mecânica principal e dos sistemas que
+  o usuário descreveu na entrevista (ex.: um jogo de plataforma tem uma fase de
+  movimento/pulo em vez de "Movimento do Carro"; um jogo sem leaderboard não tem fase de
+  Firebase). Não copie as fases do RallySurvive se não fizerem sentido para este jogo.
+- Cada fase é uma seção `# Parte N — Implementação Unity: Fase X (Nome)` com
+  subseções numeradas (`### X.1`, `### X.2`, ...).
+- Inclua trechos de código C# reais e completos quando a fase envolve um script (não
+  pseudocódigo) — nomeie classes/arquivos de forma explícita.
+- Toda fase termina com `### ✅ Checkpoint da Fase X` (lista de verificação objetiva de
+  "como saber que funcionou") e uma linha `Próxima fase: **...**`.
+- Quando fizer sentido, adicione `#### Problemas comuns` com 1-3 armadilhas prováveis e
+  como resolvê-las (troubleshooting real, não genérico).
+- Scripts C# alvo Unity 6 / 2023.x+ (`rb.linearVelocity`); se o jogo puder rodar em 2022
+  LTS, adicione a nota de fallback `rb.velocity` como já é feito no RallySurvive.
+- Se este jogo reusa um sistema já implementado nos outros jogos da franquia (ex.:
+  `ChevronGuide`), não reescreva o script do zero — referencie a fase equivalente em
+  `RallySurvive.md` e descreva só o que muda.
 
 ## Convenções a seguir (herdadas de `CLAUDE.md`)
 

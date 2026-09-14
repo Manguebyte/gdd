@@ -2,6 +2,15 @@
 
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem.
 
+## Índice
+
+1. [Parte 1 — GDD](#parte-1--gdd)
+2. [Parte 2 — Guia de Implementação Unity](#parte-2--guia-de-implementação-unity)
+
+---
+
+# Parte 1 — GDD
+
 ## 1. Visão Geral
 
 - **Gênero:**
@@ -46,6 +55,18 @@
 ## 9. Riscos / Em aberto
 
 - Lista consolidada de tudo que ainda não foi decidido, para facilitar revisão rápida.
+
+---
+
+# Parte 2 — Guia de Implementação Unity
+
+> Guia fase-a-fase para implementar o MVP deste jogo em Unity. Ver
+> `unity_phase_template.md` para o esqueleto de cada fase — número e nome das fases do
+> meio variam por jogo, mas sempre começam em **Fase 0 (Setup do Projeto)** e terminam em
+> **Fase Final (Build e Próximos Passos)**.
+
+<!-- Uma seção "# Parte N — Implementação Unity: Fase X (Nome)" por fase, nessa ordem:
+     Fase 0 Setup -> uma fase por sistema principal (derivado da entrevista) -> Fase Final Build. -->
 
 ---
 *Versão: rascunho inicial — a refinar conforme prototipagem.*
