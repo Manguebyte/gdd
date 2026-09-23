@@ -13,7 +13,11 @@
 
 ## 1. Visão Geral
 
-- **Gênero:**
+- **Gênero:** (ex.: RPG, roguelike, corrida, plataforma, simulação/gerenciamento — ver
+  `reference/dimension_genre_reference.md` para a lista de referência; pode combinar mais
+  de um)
+- **Dimensão:** 2D ou 3D (ver `reference/dimension_genre_reference.md` — muda a base
+  técnica da Parte 2/Guia Unity: template de projeto, Rigidbody2D vs. Rigidbody, etc.)
 - **Plataforma-alvo:**
 - **Câmera/perspectiva:**
 - **Pilar de design:** (a frase que resume a fantasia/sensação central do jogo)

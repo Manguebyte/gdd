@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository nature
 
-This is a **game design document (GDD) repository**, not a code project. It currently contains a single file, `RallySurvive.md`, written in Portuguese. There is no Unity project, no source code, no build system, and no test suite here — the repository's "product" is the design document itself. There are no lint/build/test commands to run.
+This is a **game design document (GDD) repository**, not a code project. It contains standalone GDD files, written in Portuguese, one per game/franchise — currently `RallySurvive.md` (the racing franchise: RallySurvive, Navigation Expert, RaceLegenda, Street Legends) and `StarExpeditionCo.md` (a separate, conceptually unrelated space team-management/idle RPG). There is no Unity project, no source code, no build system, and no test suite here — the repository's "product" is the design documents themselves. There are no lint/build/test commands to run.
+
+Each GDD file is self-contained: its own "Parte 1 — GDD" (or GDD Core) section plus its own Unity implementation guide. Don't assume content from one file applies to another — they are separate games with separate mechanics, only sharing the repo's overall Markdown conventions (see "Conventions when editing this document" below, which apply repo-wide, not just to `RallySurvive.md`).
 
 If future work adds an actual Unity project (scripts, scenes, assets) alongside this GDD, that project's own tooling (Unity Editor, .NET/C# compiler) should be documented separately once it exists — don't assume it exists yet.
 
@@ -15,8 +17,8 @@ If future work adds an actual Unity project (scripts, scenes, assets) alongside 
 1. **Parte 1 — GDD Core**: mechanics, rules, and systems shared by all games (the "base" every variant inherits from).
 2. **Partes 2–5 — Game variants**: RallySurvive, Navigation Expert, RaceLegenda, Street Legends. Each variant document is written as a *diff* against the Core — it only describes what's specific to that game, not a full restatement.
 3. **Parte 6 — Divergence table**: a single table cross-referencing how each variant differs from the Core across track structure, failure rules, player guidance, multiplayer, car customization, etc. This is the fastest place to understand differences between games without reading all four variant sections.
-4. **Partes 7–13 — Unity implementation guide**: a phase-by-phase (Fase 0–6) walkthrough for building RallySurvive in Unity, including actual C# script listings (`CarController.cs`, `ChevronGuide.cs`, `TrackBoundary.cs`, `RaceManager.cs`, `TimerDisplay.cs`, `FirebaseBootstrap.cs`, `LeaderboardService.cs`). Each phase ends with a "✅ Checkpoint" section describing how to verify it worked, and often a "Problemas comuns" (common issues) section.
-5. **Parte 14 — 3D topdown future vision**: describes how the same Core mechanic would port to a 3D topdown camera (raycast-against-ground-plane instead of `ScreenToWorldPoint`, billboarded chevrons, etc.) as a post-launch possibility, not current scope.
+4. **Partes 7–14 — Unity implementation guide**: a phase-by-phase (Fase 0–7) walkthrough for building RallySurvive in Unity, including actual C# script listings (`CarController.cs`, `CarParticles.cs`, `CarTerrainSensor.cs`, `ChevronGuide.cs`, `TrackBoundary.cs`, `PuddleZone.cs`, `RaceManager.cs`, `TimerDisplay.cs`, `FirebaseBootstrap.cs`, `LeaderboardService.cs`, `MainMenuController.cs`). All three launch tracks (Deserto, Floresta, Gelo) are built from the same pipeline: Deserto is documented in full, Floresta/Gelo as diffs (what changes: terrain art, puddle zones, grip value, particle presets, ambient rain) via a Unity Scene Template saved once Deserto is complete (Parte 10 §3.12). Each phase ends with a "✅ Checkpoint" section describing how to verify it worked, and often a "Problemas comuns" (common issues) section.
+5. **Parte 15 — 3D topdown future vision**: describes how the same Core mechanic would port to a 3D topdown camera (raycast-against-ground-plane instead of `ScreenToWorldPoint`, billboarded chevrons, etc.) as a post-launch possibility, not current scope.
 
 ## Core design concept (applies to all four games)
 
