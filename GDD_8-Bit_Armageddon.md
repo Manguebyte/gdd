@@ -84,7 +84,7 @@ O crítico é sorteado a cada disparo com probabilidade Critical Chance.
 
 Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
 
-**Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelos Perks e pelo Planet Core.
+**Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelos Perks e pelo Planet Core.
 
 **Definido (valor inicial, ajustar via Analytics):** os valores das tabelas abaixo.
 
@@ -338,7 +338,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 **Definido: arte da interface.**
 - **Painéis e botões:** metal cinza-escuro, com bordas mais claras e detalhes laranja, na mesma linguagem do Satellite ("equipamento do jogador"). São **9-slice** em células de 32×32, com bordas de 8 px: painel, botão (normal, pressionado e desabilitado) e a faixa da gaveta fechada.
 - **Ícones:** 16 px dentro de células de 32×32, todos numa spritesheet só (13 Stats, 4 abas, Shards, Stardust e troféu).
-- **Fonte:** **m5x7** (Daniel Linssen, CC0), com 7 px de altura, no tamanho 16 do TextMeshPro. Tem todos os acentos do português, mas em maiúsculas eles ficam espremidos, então a UI usa **maiúsculas e minúsculas**, nunca tudo em caixa alta. A fonte não tem "→": o card de Stat usa uma setinha como ícone. O arquivo e a licença estão em `Sprites/8-Bit-Armageddon/Fonts/`.
+- **Fonte:** **m5x7** (Daniel Linssen, CC0), com 7 px de altura, no tamanho 16 do TextMeshPro. Tem todos os acentos do português, mas em maiúsculas eles ficam espremidos, então a UI usa **maiúsculas e minúsculas**, nunca tudo em caixa alta. A fonte não tem "→": o card de Stat usa ">" entre o valor atual e o próximo. O arquivo e a licença estão em `Sprites/8-Bit-Armageddon/Fonts/`.
 - **Retratos e conquistas:** a Core Select usa o **sprite do próprio planeta** girando como retrato de cada Planet Core e Skin. As conquistas usam **um ícone de troféu em 3 estados** (bloqueada, desbloqueada, recompensa coletada), e as que dão um Core ou uma Skin mostram o planeta como recompensa.
 
 **Definido: fluxo de telas.**
@@ -574,8 +574,12 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, fila de spawn, Wave Clear | 5 |
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
 | `Armageddon.Waves` | `WaveDevTools` | Teclas de teste das Waves (só no Editor e em builds de desenvolvimento) | 5 |
-| `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 13 Stats e seus valores na run | 6 |
+| `Armageddon.Economy` | `StatDefinition`, `StatCatalog` | Definição dos 13 Stats e a ordem deles na gaveta | 6 |
+| `Armageddon.Economy` | `RunStats`, `StatModifier` | Nível e valor de cada Stat na run; modificadores de Perks e Planet Core | 6 |
 | `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
+| `Armageddon.Economy` | `RunEconomy` | Cria a economia da run, transforma kills e Wave Clears em Shards e aplica os Stats | 6 |
+| `Armageddon.Economy` | `EconomyDevTools` | Teclas de teste da economia (só no Editor e em builds de desenvolvimento) | 6 |
+| `Armageddon.UI` | `IntegerCanvasScale` | Escala inteira da UI, igual à da Pixel Perfect Camera | 6 |
 | `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
 | `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss e o laser telegrafado | 7 |
 | `Armageddon.Run` | `RunController`, `RunSummary` | Ciclo de vida da run, Revive, fim de run | 8 |
@@ -602,7 +606,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 3 | Satellites, órbita, Target Priority e projéteis | ✅ Escrita |
 | 4 | Inimigos | ✅ Escrita |
 | 5 | Waves | ✅ Escrita |
-| 6 | Stats, Shards, Upgrades e gaveta | A escrever |
+| 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
 | 7 | Mothership | A escrever |
 | 8 | Run: Revive, pausa, Results | A escrever |
 | 9 | Meta-progressão: Stardust, Perks, Planet Cores, Skins, conquistas, recompensa diária | A escrever |
@@ -3906,3 +3910,805 @@ namespace Armageddon.Waves
 - **As setas aparecem no centro da tela:** a **Main Camera** não está com a tag `MainCamera` (o `Camera.main` não a encontra).
 
 Próxima fase: **Fase 6 — Stats, Shards, Upgrades e gaveta**. Ela transforma os inimigos destruídos e os Wave Clears em Shards e cria a gaveta de upgrades com os 13 Stats.
+
+---
+
+### Fase 6 — Stats, Shards, Upgrades e gaveta
+
+> Objetivo desta fase: destruir inimigos e fazer Wave Clear dá **Shards**; a gaveta na parte de baixo da tela mostra o saldo e as 4 abas; tocar numa aba abre os cards dos Stats daquela Track, e tocar num card compra um Upgrade sem pausar o jogo. Cada compra muda o jogo na hora: mais dano, mais alcance (o preenchimento do Quadrant cresce), mais HP. A aba Satellites troca a Target Priority de cada Satellite.
+
+**Conceitos novos:**
+- **Definição × estado:** o `StatDefinition` (asset) diz o que um Stat **é** (base, incremento, teto, custo). O `RunStats` guarda o **nível** de cada Stat nesta run. Os assets nunca mudam durante o jogo; só o estado muda, e ele é descartado no fim da run.
+- **Modificadores:** Perks e Planet Core (Fase 9) não mexem nos níveis: eles entram como **modificadores** (`StatModifier`) que somam e multiplicam o valor. O cálculo fica num lugar só, seguindo a Seção 4.2: `base + incremento × nível`, limitado pelo teto, e depois modificado.
+- **Composição (`RunEconomy`):** um componente cria a economia da run (Stats, carteira e loja), escuta os eventos dos outros sistemas (inimigo destruído, Wave Clear) e empurra os valores novos para quem usa (Satellites e planeta). Os sistemas continuam sem se conhecer.
+- **Canvas pixel-perfect:** a UI é desenhada numa tela de referência de 320×180 e ampliada pelo mesmo fator **inteiro** da Pixel Perfect Camera (6× em 1080p). Assim, a UI tem o mesmo tamanho de pixel que o mundo.
+- **UI por eventos:** os cards não verificam o saldo a cada frame. Eles se atualizam quando a carteira ou o Stat avisam que mudaram (`BalanceChanged`, `StatChanged`).
+
+#### Passo 1 — A definição de um Stat: `StatDefinition`, `StatCatalog`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatDefinition.cs
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // Os 13 Stats da Seção 4.2.
+    public enum StatId
+    {
+        Damage, AttackSpeed, CriticalChance, CriticalFactor, AttackRange, Impetus, OrbitSpeed,
+        Hitpoints, Regeneration, DefenseAbsolute, DefenseRelative,
+        ResourceBonus, ResourcePerWave,
+    }
+
+    public enum StatTrack { Offense, Defense, Utility }
+
+    // Como o valor aparece no card.
+    public enum StatFormat { Number, Percent, PerSecond, Multiplier, Units, DegreesPerSecond, PercentPerUnit }
+
+    // Um Stat (Seção 4.2). Percentuais são guardados como fração: 1,5 p.p. = 0,015; 0,4 %/u = 0,004.
+    [CreateAssetMenu(menuName = "Armageddon/Stat Definition", fileName = "Stat_")]
+    public sealed class StatDefinition : ScriptableObject
+    {
+        public const float CostGrowth = 1.15f;   // custo = baseCost × 1,15^nível
+
+        [SerializeField] private StatId _id;
+        [SerializeField] private StatTrack _track;
+        [SerializeField] private string _displayName;   // a Fase 11 troca por uma chave de Localization
+        [SerializeField] private Sprite _icon;
+        [SerializeField] private float _base;
+        [SerializeField] private float _perLevel;
+        [SerializeField] private float _cap;            // 0 = sem teto
+        [SerializeField] private int _baseCost = 10;
+        [SerializeField] private StatFormat _format;
+
+        public StatId Id => _id;
+        public StatTrack Track => _track;
+        public string DisplayName => _displayName;
+        public Sprite Icon => _icon;
+        public float Base => _base;
+        public float PerLevel => _perLevel;
+        public bool HasCap => _cap > 0f;
+        public float Cap => _cap;
+        public int BaseCost => _baseCost;
+
+        public string Format(float value)
+        {
+            return _format switch
+            {
+                StatFormat.Percent => $"{value * 100f:0.#}%",
+                StatFormat.PerSecond => $"{value:0.##}/s",
+                StatFormat.Multiplier => $"{value:0.#}x",
+                StatFormat.Units => $"{value:0.##}u",
+                StatFormat.DegreesPerSecond => $"{value:0}°/s",
+                StatFormat.PercentPerUnit => $"{value * 100f:0.#}%/u",
+                _ => $"{value:0.#}",
+            };
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatCatalog.cs
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // A lista dos 13 Stats, na ordem em que aparecem na gaveta.
+    [CreateAssetMenu(menuName = "Armageddon/Stat Catalog", fileName = "StatCatalog")]
+    public sealed class StatCatalog : ScriptableObject
+    {
+        [SerializeField] private List<StatDefinition> _stats = new List<StatDefinition>();
+
+        public IReadOnlyList<StatDefinition> Stats => _stats;
+
+        public List<StatDefinition> ForTrack(StatTrack track)
+        {
+            return _stats.FindAll(s => s.Track == track);
+        }
+    }
+}
+```
+
+#### Passo 2 — Os Stats da run: `StatModifier`, `RunStats`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunStats.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // Um ajuste vindo de fora dos Upgrades: Perks "Starting X" e Planet Core (Fase 9).
+    // valor final = (valor dos Upgrades + add) × multiply
+    [Serializable]
+    public struct StatModifier
+    {
+        public StatId stat;
+        public float add;
+        public float multiply;
+
+        public static StatModifier Add(StatId stat, float value) => new StatModifier { stat = stat, add = value, multiply = 1f };
+        public static StatModifier Multiply(StatId stat, float value) => new StatModifier { stat = stat, add = 0f, multiply = value };
+    }
+
+    // Nível e valor de cada Stat durante uma run. Zera a cada run (Seção 4.2: Upgrades valem só até o fim da run).
+    public sealed class RunStats
+    {
+        private readonly Dictionary<StatId, StatDefinition> _definitions = new Dictionary<StatId, StatDefinition>();
+        private readonly Dictionary<StatId, int> _levels = new Dictionary<StatId, int>();
+        private readonly List<StatModifier> _modifiers = new List<StatModifier>();
+
+        public event Action<StatId> StatChanged;
+
+        public RunStats(IEnumerable<StatDefinition> definitions)
+        {
+            foreach (var definition in definitions)
+            {
+                _definitions[definition.Id] = definition;
+                _levels[definition.Id] = 0;
+            }
+        }
+
+        public StatDefinition Definition(StatId id) => _definitions[id];
+        public int Level(StatId id) => _levels[id];
+        public float Value(StatId id) => ValueAtLevel(id, _levels[id]);
+
+        // Seção 4.2: base + incremento × nível, limitado pelo teto, e DEPOIS modificado por Perks e Planet Core.
+        public float ValueAtLevel(StatId id, int level)
+        {
+            var definition = _definitions[id];
+            float value = definition.Base + definition.PerLevel * level;
+            if (definition.HasCap) value = Mathf.Min(value, definition.Cap);
+
+            float add = 0f, multiply = 1f;
+            foreach (var modifier in _modifiers)
+            {
+                if (modifier.stat != id) continue;
+                add += modifier.add;
+                multiply *= modifier.multiply;
+            }
+            return (value + add) * multiply;
+        }
+
+        public bool IsMaxed(StatId id)
+        {
+            var definition = _definitions[id];
+            return definition.HasCap && definition.Base + definition.PerLevel * _levels[id] >= definition.Cap;
+        }
+
+        // Custo do próximo nível: baseCost × 1,15^nível, arredondado para o inteiro mais próximo.
+        public int NextCost(StatId id)
+        {
+            return Mathf.RoundToInt(_definitions[id].BaseCost * Mathf.Pow(StatDefinition.CostGrowth, _levels[id]));
+        }
+
+        internal void IncreaseLevel(StatId id)
+        {
+            _levels[id]++;
+            StatChanged?.Invoke(id);
+        }
+
+        public void AddModifier(StatModifier modifier)
+        {
+            _modifiers.Add(modifier);
+            StatChanged?.Invoke(modifier.stat);
+        }
+    }
+}
+```
+
+#### Passo 3 — Os Shards e a compra: `ShardWallet`, `UpgradeService`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/ShardWallet.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // Saldo de Shards da run. Frações (Swarmer vale 0,5; Resource Bonus multiplica) são acumuladas
+    // e viram Shards inteiros quando somam 1 (Seção 4.4).
+    public sealed class ShardWallet
+    {
+        private float _fraction;
+
+        public int Balance { get; private set; }
+
+        // Todos os Shards ganhos na run, inclusive os já gastos. Base do Stardust no fim da run (Seção 5.1, Fase 9).
+        public float TotalEarned { get; private set; }
+
+        public event Action BalanceChanged;
+
+        public void Add(float amount)
+        {
+            if (amount <= 0f) return;
+            TotalEarned += amount;
+            _fraction += amount;
+            int whole = Mathf.FloorToInt(_fraction + 0.0001f);   // a folga evita perder 1 Shard por erro de ponto flutuante
+            if (whole <= 0) return;
+            _fraction -= whole;
+            Balance += whole;
+            BalanceChanged?.Invoke();
+        }
+
+        public bool TrySpend(int amount)
+        {
+            if (amount > Balance) return false;
+            Balance -= amount;
+            BalanceChanged?.Invoke();
+            return true;
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/UpgradeService.cs
+using System;
+
+namespace Armageddon.Economy
+{
+    // Compra um nível de Stat com Shards. Nunca pausa o jogo (Pilar 1).
+    public sealed class UpgradeService
+    {
+        private readonly RunStats _stats;
+        private readonly ShardWallet _wallet;
+
+        public event Action<StatId, int> Purchased;   // Stat e o nível novo (Analytics na Fase 10, dicas na Fase 13)
+
+        public UpgradeService(RunStats stats, ShardWallet wallet)
+        {
+            _stats = stats;
+            _wallet = wallet;
+        }
+
+        public bool CanPurchase(StatId id) => !_stats.IsMaxed(id) && _wallet.Balance >= _stats.NextCost(id);
+
+        public bool TryPurchase(StatId id)
+        {
+            if (!CanPurchase(id)) return false;
+            _wallet.TrySpend(_stats.NextCost(id));   // o custo é o do nível ATUAL, antes de subir
+            _stats.IncreaseLevel(id);
+            Purchased?.Invoke(id, _stats.Level(id));
+            return true;
+        }
+    }
+}
+```
+
+#### Passo 4 — A economia da run: `RunEconomy`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
+    // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
+    public sealed class RunEconomy : MonoBehaviour
+    {
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private WaveBalance _waveBalance;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private int _startingShards;   // o Perk Starting Shards (Fase 9) soma aqui
+
+        public StatCatalog Catalog => _catalog;
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+        public UpgradeService Upgrades { get; private set; }
+
+        private void Awake()
+        {
+            Stats = new RunStats(_catalog.Stats);
+            Wallet = new ShardWallet();
+            Upgrades = new UpgradeService(Stats, Wallet);
+        }
+
+        private void OnEnable()
+        {
+            Stats.StatChanged += HandleStatChanged;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            Stats.StatChanged -= HandleStatChanged;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        private void Start()
+        {
+            Wallet.Add(_startingShards);
+            ApplyAll();
+        }
+
+        // Perks e Planet Core (Fase 9) chamam isto no começo da run.
+        public void AddModifier(StatModifier modifier)
+        {
+            Stats.AddModifier(modifier);
+        }
+
+        private void HandleStatChanged(StatId id)
+        {
+            ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
+        }
+
+        private void ApplyAll()
+        {
+            _orbit.SetStats(new SatelliteStats
+            {
+                damage = Stats.Value(StatId.Damage),
+                attackSpeed = Stats.Value(StatId.AttackSpeed),
+                criticalChance = Stats.Value(StatId.CriticalChance),
+                criticalFactor = Stats.Value(StatId.CriticalFactor),
+                attackRange = Stats.Value(StatId.AttackRange),
+                impetus = Stats.Value(StatId.Impetus),
+                orbitSpeed = Stats.Value(StatId.OrbitSpeed),
+            });
+
+            _planet.SetMaxHitpoints(Stats.Value(StatId.Hitpoints));
+            _planet.SetRegeneration(Stats.Value(StatId.Regeneration));
+            _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
+        }
+
+        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            Wallet.Add(enemy.Definition.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            float multiplier = 1f + Stats.Value(StatId.ResourcePerWave);
+            foreach (int wave in paidWaves) Wallet.Add(_waveBalance.ClearBonus(wave) * multiplier);
+        }
+    }
+}
+```
+
+> **Por que o `SetStats` recebe um objeto novo?** O `SatelliteOrbit` e o `QuadrantView` leem o `SatelliteStats` a cada frame. Trocar o objeto inteiro de uma vez garante que nenhum dos dois veja um valor pela metade. E, como é só numa compra, não há custo.
+
+#### Passo 5 — A escala da UI: `IntegerCanvasScale`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/IntegerCanvasScale.cs
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Amplia a UI pelo mesmo fator INTEIRO da Pixel Perfect Camera (6× em 1080p): 1 unidade de UI = 1 pixel do jogo.
+    // Os tamanhos da UI neste guia são em pixels da tela de referência de 320×180.
+    [RequireComponent(typeof(CanvasScaler))]
+    public sealed class IntegerCanvasScale : MonoBehaviour
+    {
+        [SerializeField] private int _referenceWidth = 320;
+        [SerializeField] private int _referenceHeight = 180;
+
+        private CanvasScaler _scaler;
+        private int _lastWidth;
+        private int _lastHeight;
+
+        private void Awake()
+        {
+            _scaler = GetComponent<CanvasScaler>();
+            _scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            Apply();
+        }
+
+        private void Update()
+        {
+            if (Screen.width != _lastWidth || Screen.height != _lastHeight) Apply();   // janela redimensionada (Web)
+        }
+
+        private void Apply()
+        {
+            _lastWidth = Screen.width;
+            _lastHeight = Screen.height;
+            _scaler.scaleFactor = Mathf.Max(1, Mathf.Min(_lastWidth / _referenceWidth, _lastHeight / _referenceHeight));
+        }
+    }
+}
+```
+
+#### Passo 6 — Os cards e a gaveta: `StatCard`, `SatellitePanel`, `UpgradeDrawer`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/StatCard.cs
+using Armageddon.Economy;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Um card da gaveta (Seção 6.3): ícone, nome, nível, valor atual > próximo valor, e custo. Tocar compra.
+    public sealed class StatCard : MonoBehaviour
+    {
+        [SerializeField] private Image _icon;
+        [SerializeField] private TMP_Text _name;
+        [SerializeField] private TMP_Text _level;
+        [SerializeField] private TMP_Text _value;
+        [SerializeField] private TMP_Text _cost;
+        [SerializeField] private Button _button;
+
+        private RunEconomy _economy;
+        private StatDefinition _stat;
+
+        private void Awake()
+        {
+            _button.onClick.AddListener(HandleClick);
+        }
+
+        private void OnDestroy()
+        {
+            Unbind();
+        }
+
+        public void Bind(StatDefinition stat, RunEconomy economy)
+        {
+            Unbind();
+            _stat = stat;
+            _economy = economy;
+            _icon.sprite = stat.Icon;
+            _name.text = stat.DisplayName;
+            _economy.Stats.StatChanged += HandleStatChanged;
+            _economy.Wallet.BalanceChanged += Refresh;
+            Refresh();
+        }
+
+        private void Unbind()
+        {
+            if (_economy == null) return;
+            _economy.Stats.StatChanged -= HandleStatChanged;
+            _economy.Wallet.BalanceChanged -= Refresh;
+            _economy = null;
+        }
+
+        private void HandleClick()
+        {
+            _economy.Upgrades.TryPurchase(_stat.Id);
+        }
+
+        private void HandleStatChanged(StatId id)
+        {
+            if (id == _stat.Id) Refresh();
+        }
+
+        private void Refresh()
+        {
+            var stats = _economy.Stats;
+            int level = stats.Level(_stat.Id);
+            float now = stats.Value(_stat.Id);
+            _level.text = $"Lv {level}";
+
+            if (stats.IsMaxed(_stat.Id))
+            {
+                _value.text = _stat.Format(now);
+                _cost.text = "MAX";
+                _button.interactable = false;
+                return;
+            }
+
+            // A fonte não tem "→" (Seção 6.3): o card usa ">".
+            _value.text = $"{_stat.Format(now)} > {_stat.Format(stats.ValueAtLevel(_stat.Id, level + 1))}";
+            _cost.text = stats.NextCost(_stat.Id).ToString();
+            _button.interactable = _economy.Upgrades.CanPurchase(_stat.Id);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/SatellitePanel.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Aba Satellites (Seção 6.3): uma linha por Satellite; tocar troca a Target Priority entre as liberadas.
+    public sealed class SatellitePanel : MonoBehaviour
+    {
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private Button _rowPrefab;
+        [SerializeField] private Transform _rows;
+        // Só Closest vem liberada; os Perks do ramo Arsenal liberam as outras (Fase 9 chama SetUnlockedPriorities).
+        [SerializeField] private List<TargetPriority> _unlocked = new List<TargetPriority> { TargetPriority.Closest };
+
+        private readonly List<Button> _buttons = new List<Button>();
+
+        private void OnEnable()
+        {
+            _orbit.CountChanged += Refresh;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            _orbit.CountChanged -= Refresh;
+        }
+
+        public void SetUnlockedPriorities(IEnumerable<TargetPriority> priorities)
+        {
+            _unlocked = new List<TargetPriority>(priorities);
+            Refresh();
+        }
+
+        public void Refresh()
+        {
+            var satellites = _orbit.Satellites;
+            while (_buttons.Count < satellites.Count)
+            {
+                int index = _buttons.Count;
+                var button = Instantiate(_rowPrefab, _rows);
+                button.onClick.AddListener(() => Cycle(index));
+                _buttons.Add(button);
+            }
+
+            for (int i = 0; i < _buttons.Count; i++)
+            {
+                bool visible = i < satellites.Count;
+                _buttons[i].gameObject.SetActive(visible);
+                if (visible) _buttons[i].GetComponentInChildren<TMP_Text>().text = $"Satellite {i + 1}: {satellites[i].Priority}";
+            }
+        }
+
+        private void Cycle(int index)
+        {
+            var satellite = _orbit.Satellites[index];
+            int current = _unlocked.IndexOf(satellite.Priority);
+            satellite.Priority = _unlocked[(current + 1) % _unlocked.Count];
+            Refresh();
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/UpgradeDrawer.cs
+using System.Collections.Generic;
+using Armageddon.Economy;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // A gaveta de upgrades (Seção 6.3). Fechada: faixa com o saldo e as 4 abas.
+    // Aberta: os cards da Track tocada (ou a aba Satellites), e a câmera desliza. Nunca pausa o jogo.
+    public sealed class UpgradeDrawer : MonoBehaviour
+    {
+        public enum Tab { None = -1, Offense = 0, Defense = 1, Utility = 2, Satellites = 3 }
+
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private CameraRig _camera;
+        [SerializeField] private Button[] _tabButtons = new Button[4];   // na ordem Offense, Defense, Utility, Satellites
+        [SerializeField] private TMP_Text _shardsText;
+        [SerializeField] private GameObject _panel;                      // a parte que abre
+        [SerializeField] private GameObject _cardsView;                  // a rolagem com os cards
+        [SerializeField] private Transform _cardContainer;
+        [SerializeField] private StatCard _cardPrefab;
+        [SerializeField] private SatellitePanel _satellitePanel;
+
+        private readonly List<StatCard> _cards = new List<StatCard>();
+
+        public Tab OpenTab { get; private set; } = Tab.None;
+
+        private void Awake()
+        {
+            for (int i = 0; i < _tabButtons.Length; i++)
+            {
+                var tab = (Tab)i;
+                _tabButtons[i].onClick.AddListener(() => HandleTabClicked(tab));
+            }
+        }
+
+        // Start, e não Awake/OnEnable: a carteira é criada no Awake do RunEconomy, e a câmera no Awake do CameraRig.
+        private void Start()
+        {
+            _economy.Wallet.BalanceChanged += RefreshShards;
+            RefreshShards();
+            SetOpen(Tab.None);
+        }
+
+        private void OnDestroy()
+        {
+            if (_economy != null && _economy.Wallet != null) _economy.Wallet.BalanceChanged -= RefreshShards;
+        }
+
+        private void HandleTabClicked(Tab tab)
+        {
+            SetOpen(OpenTab == tab ? Tab.None : tab);   // tocar na aba aberta fecha a gaveta
+        }
+
+        public void SetOpen(Tab tab)
+        {
+            OpenTab = tab;
+            bool open = tab != Tab.None;
+            bool satellites = tab == Tab.Satellites;
+
+            _panel.SetActive(open);
+            _camera.SetDrawerOpen(open);
+            _cardsView.SetActive(open && !satellites);
+            _satellitePanel.gameObject.SetActive(satellites);
+
+            if (open && !satellites) ShowTrack((StatTrack)(int)tab);
+        }
+
+        private void ShowTrack(StatTrack track)
+        {
+            var stats = _economy.Catalog.ForTrack(track);
+            while (_cards.Count < stats.Count) _cards.Add(Instantiate(_cardPrefab, _cardContainer));
+
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                bool visible = i < stats.Count;
+                _cards[i].gameObject.SetActive(visible);
+                if (visible) _cards[i].Bind(stats[i], _economy);
+            }
+        }
+
+        private void RefreshShards()
+        {
+            _shardsText.text = _economy.Wallet.Balance.ToString();
+        }
+    }
+}
+```
+
+#### Passo 7 — Teclas de teste: `EconomyDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/EconomyDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Combat;
+using Armageddon.UI;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Economy
+{
+    // M = +100 Shards · U = libera as 4 Target Priorities na aba Satellites. Registra as compras no Console.
+    public sealed class EconomyDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private SatellitePanel _satellitePanel;
+
+        private void Start()
+        {
+            _economy.Upgrades.Purchased += HandlePurchased;
+        }
+
+        private void OnDestroy()
+        {
+            if (_economy != null && _economy.Upgrades != null) _economy.Upgrades.Purchased -= HandlePurchased;
+        }
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.mKey.wasPressedThisFrame) _economy.Wallet.Add(100f);
+
+            if (keyboard.uKey.wasPressedThisFrame)
+            {
+                _satellitePanel.SetUnlockedPriorities(new[]
+                {
+                    TargetPriority.Closest, TargetPriority.Weakest, TargetPriority.Strongest, TargetPriority.Farthest,
+                });
+            }
+        }
+
+        private void HandlePurchased(StatId id, int level)
+        {
+            var definition = _economy.Stats.Definition(id);
+            Debug.Log($"[Economy] {id} nível {level}: {definition.Format(_economy.Stats.Value(id))}. Saldo: {_economy.Wallet.Balance}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 8 — Os 13 assets de Stat e o catálogo
+
+Em `Assets/_Project/Data/Stats/`, **Create → Armageddon → Stat Definition**, uma vez para cada linha (valores da Seção 4.2; percentuais como fração). O **Icon** é a célula de `Art/UI/SPR_UI_Icons` indicada (Seção 6.4).
+
+| Asset | Id | Track | Display Name | Base | Per Level | Cap | Base Cost | Format | Icon (célula) |
+|---|---|---|---|---|---|---|---|---|---|
+| `Stat_Damage` | Damage | Offense | Damage | 10 | 3 | 0 | 10 | Number | 0 |
+| `Stat_AttackSpeed` | AttackSpeed | Offense | Attack Speed | 1 | 0.08 | 6 | 12 | PerSecond | 1 |
+| `Stat_CriticalChance` | CriticalChance | Offense | Crit Chance | 0 | 0.015 | 0.8 | 15 | Percent | 2 |
+| `Stat_CriticalFactor` | CriticalFactor | Offense | Crit Factor | 1.5 | 0.1 | 6 | 15 | Multiplier | 3 |
+| `Stat_AttackRange` | AttackRange | Offense | Range | 4 | 0.15 | 8 | 12 | Units | 4 |
+| `Stat_Impetus` | Impetus | Offense | Impetus | 0 | 0.004 | 0.12 | 20 | PercentPerUnit | 5 |
+| `Stat_OrbitSpeed` | OrbitSpeed | Offense | Orbit Speed | 45 | 5 | 180 | 12 | DegreesPerSecond | 6 |
+| `Stat_Hitpoints` | Hitpoints | Defense | Hitpoints | 100 | 25 | 0 | 10 | Number | 7 |
+| `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 15 | PerSecond | 8 |
+| `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 15 | Number | 9 |
+| `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 20 | Percent | 10 |
+| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 20 | Percent | 11 |
+| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 20 | Percent | 12 |
+
+Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome `StatCatalog`, e arraste os 13 assets **nesta ordem** para a lista **Stats**: é a ordem dos cards na gaveta.
+
+#### Passo 9 — Montar a economia na cena
+
+Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`.
+
+> A partir de agora, os Stats do `SatelliteOrbit` e do `PlanetHealth` no Inspector são **sobrescritos** pelo `RunEconomy` quando o Play começa. Para testar valores, compre Upgrades (ou use **M** para ganhar Shards).
+
+#### Passo 10 — Montar a gaveta
+
+Todos os tamanhos e posições abaixo estão em **pixels da tela de referência de 320×180**.
+
+1. **Canvas:** em `[UI]` da cena `Gameplay`, **UI → Canvas**. Nome `HUDCanvas`. **Render Mode** = `Screen Space - Overlay`; **Pixel Perfect** marcado. No **Canvas Scaler**, adicione o componente **Integer Canvas Scale** (ele troca o modo para `Constant Pixel Size` e calcula o fator sozinho). Se não houver um `EventSystem` na cena, crie com **UI → Event System** e, no Inspector dele, clique em **Replace with InputSystemUIInputModule**.
+2. **Gaveta:** dentro do `HUDCanvas`, crie um objeto de UI vazio `UpgradeDrawer`, ancorado embaixo e esticado na horizontal (preset **bottom stretch**), com **Height** `72` (40% de 180) e **Pos Y** `0`. Adicione o componente `UpgradeDrawer`.
+3. **Faixa (Strip):** dentro de `UpgradeDrawer`, uma **UI → Image** `Strip`, ancorada embaixo (bottom stretch), **Height** `20`. **Source Image** = `SPR_UI_DrawerStrip`; **Image Type** = `Tiled`.
+   - Dentro de `Strip`, 4 **UI → Button** (`TabOffense`, `TabDefense`, `TabUtility`, `TabSatellites`) de **24 × 18**, lado a lado a partir da esquerda (X = 2, 28, 54, 80; Y centralizado). Cada botão: **Image** com `SPR_UI_Button` (a célula normal), **Image Type** `Sliced`, **Transition** `Sprite Swap` com a célula "pressionado" em **Pressed Sprite** e "desabilitado" em **Disabled Sprite**. Apague o texto do botão e crie dentro uma **UI → Image** de 16 × 16 com o ícone da aba: células 13, 14, 15 e 16 de `SPR_UI_Icons`.
+   - À direita da faixa: uma **UI → Image** 16 × 16 com o ícone de Shards (célula 17) e, ao lado, um **UI → Text - TextMeshPro** `ShardsText` com a fonte `m5x7 Raster`, tamanho 16, alinhado à esquerda.
+4. **Painel (a parte que abre):** dentro de `UpgradeDrawer`, uma **UI → Image** `Panel`, ancorada em cima (top stretch), **Height** `52`. **Source Image** = `SPR_UI_Panel`; **Image Type** = `Sliced`.
+   - Dentro de `Panel`, uma **UI → Scroll View** `CardsView` que preenche o painel (stretch-stretch, margens de 4). Na `Scroll Rect`: **Horizontal** marcado, **Vertical** desmarcado; apague as barras de rolagem. No objeto `Content`, adicione **Horizontal Layout Group** (**Spacing** `4`, **Child Force Expand** desmarcado) e **Content Size Fitter** (**Horizontal Fit** = `Preferred Size`).
+   - Também dentro de `Panel`, um objeto de UI vazio `SatellitePanel` (stretch-stretch, margens de 4) com **Vertical Layout Group** (**Spacing** `2`) e o componente `SatellitePanel`: **Orbit** = o `SatelliteOrbit`; **Rows** = o próprio `SatellitePanel`.
+5. **Prefab do card (`StatCard`):** uma **UI → Button** de **60 × 44** com **Image** `SPR_UI_Button` (Sliced, Sprite Swap como as abas) e **Layout Element** (**Preferred Width** `60`, **Preferred Height** `44`). Apague o texto padrão e crie dentro:
+   - `Icon`: **UI → Image** 16 × 16 no canto de cima à esquerda (X 4, Y −4).
+   - `Name`: TMP (m5x7, 16) à direita do ícone, em cima.
+   - `Level`: TMP logo abaixo do nome.
+   - `Value`: TMP numa linha inteira no meio.
+   - `Cost`: TMP embaixo, com um ícone de Shards (célula 17) ao lado.
+
+   Adicione o componente `StatCard` e ligue os campos. Arraste para `Prefabs/UI/` e apague da cena.
+6. **Prefab da linha de Satellite:** uma **UI → Button** de **140 × 12** com **Image** `SPR_UI_Button` (Sliced) e um TMP (m5x7, 16) dentro, e **Layout Element** (**Preferred Height** `12`). Arraste para `Prefabs/UI/` como `SatelliteRow` e apague da cena. No `SatellitePanel`, **Row Prefab** = `SatelliteRow`.
+7. **Ligue o `UpgradeDrawer`:** **Economy** = `RunEconomy`; **Camera** = o `CameraRig` da Main Camera; **Tab Buttons** = os 4 botões, na ordem Offense, Defense, Utility, Satellites; **Shards Text** = `ShardsText`; **Panel** = `Panel`; **Cards View** = `CardsView`; **Card Container** = o `Content` da Scroll View; **Card Prefab** = `StatCard`; **Satellite Panel** = `SatellitePanel`.
+8. Em `[Systems]`, crie `EconomyDevTools` com o componente `EconomyDevTools`: **Economy** = `RunEconomy`; **Satellite Panel** = o `SatellitePanel`.
+
+> A tecla **F3** do `DevShortcuts` (Fase 2) continua movendo a câmera sozinha, sem abrir a gaveta. Agora prefira as abas.
+
+#### Passo 11 — Commit
+
+`git add .` e `git commit -m "Phase 6: stats, shards, upgrades, upgrade drawer"`.
+
+**✅ Checkpoint:**
+- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `0`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
+- Dois Swarmers destruídos somam **1** Shard (0,5 cada, acumulado).
+- Tocar em **Offense** abre a gaveta com 7 cards (Damage, Attack Speed…), e o mundo desliza para o planeta ficar no centro da área livre. Tocar de novo em Offense fecha a gaveta.
+- O card de Damage mostra `Lv 0`, `10 > 13` e custo `10`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
+- Comprar Damage: o saldo cai 10, o card vira `Lv 1`, `13 > 16`, custo `12` (10 × 1,15 arredondado), e o Grunt passa a morrer igual, mas o Brute precisa de menos tiros.
+- Comprar **Range** faz o preenchimento do Quadrant **crescer** na hora. **Orbit Speed** faz o Satellite girar mais rápido.
+- Comprar **Hitpoints** com o planeta ferido (**F6** algumas vezes): o máximo **e** o HP atual sobem 25.
+- **Crit Chance** chega a `MAX` quando atinge 80% e deixa de ser comprável.
+- Aba **Satellites**: uma linha `Satellite 1: Closest`. Com **U** (libera as prioridades) e tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest. Com **2**–**4** (Fase 3), aparecem mais linhas.
+- O jogo **nunca pausa** ao abrir a gaveta ou comprar.
+- Em `1920x1080`, a UI tem o mesmo tamanho de pixel que o mundo (6×). Em `1280x720`, os dois ficam em 4×.
+
+**Problemas comuns:**
+- **Tocar nas abas não faz nada:** falta o `EventSystem` na cena, ou ele usa o módulo antigo (`Standalone Input Module`). Troque por `InputSystemUIInputModule`.
+- **`KeyNotFoundException` no `RunStats`:** o `StatCatalog` não tem os 13 Stats, ou dois assets estão com o mesmo **Id**.
+- **Os cards aparecem uns em cima dos outros:** falta o **Horizontal Layout Group** no `Content`, ou o **Layout Element** no prefab do card.
+- **A UI fica gigante ou minúscula:** o `Canvas Scaler` ainda está em `Scale With Screen Size`. O `IntegerCanvasScale` troca o modo no `Awake`; confira se ele está no mesmo objeto que o `Canvas Scaler`.
+- **A UI fica borrada:** o Canvas está sem **Pixel Perfect**, ou algum texto não usa o Font Asset `m5x7 Raster`.
+- **Comprar não muda nada no jogo:** o `RunEconomy` está sem o **Orbit** ou o **Planet** preenchidos, e o Console mostra um `NullReferenceException`.
+- **O valor aparece com vírgula ou com ponto dependendo do computador:** é a cultura do sistema operacional. A Fase 11 (Localization) fixa a formatação por idioma.
+
+Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, cachos de Swarmers e a barra de HP.
