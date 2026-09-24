@@ -567,8 +567,10 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Combat` | `QuadrantView` | Mostra na tela o Quadrant coberto por cada Satellite | 3 |
 | `Armageddon.Combat` | `CombatDevTools`, `TargetDummy` | Teclas e alvos de teste do combate (só no Editor e em builds de desenvolvimento) | 3 |
 | `Armageddon.Enemies` | `EnemyDefinition` | ScriptableObject com os dados de cada inimigo | 4 |
-| `Armageddon.Enemies` | `Enemy`, `EnemyPool` | Inimigo em cena (implementa `ITarget` e entra no `TargetRegistry`) e pooling | 4 |
-| `Armageddon.Enemies` | `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
+| `Armageddon.Enemies` | `Enemy`, `EnemyPool` | Inimigo em cena (implementa `ITarget` e entra no `TargetRegistry`), pooling e os eventos de morte | 4 |
+| `Armageddon.World` | `ExplosionPool` | Explosões (animação "uma vez") reaproveitadas por pooling | 4 |
+| `Armageddon.Enemies` | `EnemyDevTools` | Teclas de teste de inimigos (só no Editor e em builds de desenvolvimento) | 4 |
+| `Armageddon.Enemies` | `IEnemyMovement`, `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
 | `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, Wave Clear | 5 |
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
 | `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 13 Stats e seus valores na run | 6 |
@@ -597,7 +599,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | ✅ Escrita |
 | 2 | Planeta, Quadrants e câmera | ✅ Escrita |
 | 3 | Satellites, órbita, Target Priority e projéteis | ✅ Escrita |
-| 4 | Inimigos | A escrever |
+| 4 | Inimigos | ✅ Escrita |
 | 5 | Waves | A escrever |
 | 6 | Stats, Shards, Upgrades e gaveta | A escrever |
 | 7 | Mothership | A escrever |
@@ -2867,3 +2869,525 @@ namespace Armageddon.Combat
 - **`Missing (Mono Script)` no `CombatDevTools` de um build:** alguém envolveu a classe inteira em `#if`. Só os campos e o `Update` ficam dentro do `#if`, como no código acima.
 
 Próxima fase: **Fase 4 — Inimigos**. Ela cria o `Enemy` (que implementa `ITarget`), os 4 inimigos comuns com os seus movimentos, o pooling e a explosão ao morrer.
+
+---
+
+### Fase 4 — Inimigos
+
+> Objetivo desta fase: os 4 inimigos comuns (Grunt, Scout, Swarmer e Brute) existem como dados, nascem, avançam até o planeta com o seu movimento, causam dano ao tocar e explodem ao morrer para os Satellites. Todos são reaproveitados por pooling. As Waves (quem nasce, quando e onde) entram na Fase 5; aqui os inimigos são criados por teclas de teste.
+
+**Conceitos novos:**
+- **ScriptableObject (`EnemyDefinition`):** um arquivo de dados na pasta do projeto, editado no Inspector, que não pertence a nenhuma cena. Cada inimigo é um asset (`Enemy_Grunt`, `Enemy_Scout`…) com os valores da Seção 4.4. Mudar o HP do Grunt é mudar um número num asset, sem tocar em código.
+- **Um prefab para todos os inimigos comuns:** o `Enemy` não sabe se é um Grunt ou um Brute: ele recebe uma `EnemyDefinition` ao nascer e passa a se comportar como ela. É isso que permite um pool só para os 4 tipos.
+- **Estratégia de movimento (`IEnemyMovement`):** o jeito de andar é um objeto separado que o inimigo usa. Linha reta e zigue-zague são duas implementações da mesma interface; um movimento novo (Seção 9) é só mais uma classe.
+- **Kamikaze:** o inimigo não atira. Ele anda até o planeta e, ao tocar (distância ao centro < raio do planeta, Seção 4.4), causa dano e some **sem dar Shards**.
+- **Eventos de morte:** o `EnemyPool` avisa quando um inimigo foi destruído por um Satellite (`EnemyKilled`) ou quando bateu no planeta (`EnemyReachedPlanet`). Quem se importa escuta: os Shards (Fase 6), as estatísticas da run (Fase 8) e as conquistas (Fase 9). O inimigo não precisa conhecer nenhum desses sistemas.
+
+#### Passo 1 — Movimentos: `IEnemyMovement`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyMovement.cs
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // Todo inimigo avança em linha reta para o centro do planeta. O movimento só decide o desvio LATERAL
+    // (perpendicular à direção do planeta) em função do tempo de vida do inimigo.
+    public interface IEnemyMovement
+    {
+        float LateralOffset(float time);
+    }
+
+    public enum MovementKind { Straight, ZigZag }
+
+    // Grunt, Swarmer e Brute (Seção 4.4). Não guarda estado: uma instância serve para todos.
+    public sealed class StraightMovement : IEnemyMovement
+    {
+        public static readonly StraightMovement Instance = new StraightMovement();
+
+        public float LateralOffset(float time) => 0f;
+    }
+
+    // Scout: zigue-zague leve (amplitude 0,5 u, 1,5 Hz, Seção 4.4). Também não guarda estado.
+    public sealed class ZigZagMovement : IEnemyMovement
+    {
+        private readonly float _amplitude;
+        private readonly float _frequency;
+
+        public ZigZagMovement(float amplitude, float frequency)
+        {
+            _amplitude = amplitude;
+            _frequency = frequency;
+        }
+
+        public float LateralOffset(float time) => _amplitude * Mathf.Sin(2f * Mathf.PI * _frequency * time);
+    }
+}
+```
+
+#### Passo 2 — Os dados de um inimigo: `EnemyDefinition`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyDefinition.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // Um inimigo comum (Seção 4.4). Os valores são os da Wave 1; a escalada por Wave (Seção 4.3) é
+    // aplicada no spawn, pelos multiplicadores que a Fase 5 calcula.
+    [CreateAssetMenu(menuName = "Armageddon/Enemy Definition", fileName = "Enemy_")]
+    public sealed class EnemyDefinition : ScriptableObject
+    {
+        [Header("Valores na Wave 1 (Seção 4.4)")]
+        [SerializeField] private float _hitpoints = 10f;
+        [SerializeField] private float _damage = 5f;
+        [SerializeField] private float _speed = 0.8f;             // u/s
+        [SerializeField] private float _shards = 1f;              // 0,5 = "1 a cada 2" (Swarmer)
+
+        [Header("Movimento")]
+        [SerializeField] private MovementKind _movement = MovementKind.Straight;
+        [SerializeField] private float _zigZagAmplitude = 0.5f;
+        [SerializeField] private float _zigZagFrequency = 1.5f;
+
+        [Header("Spawn (usados pelas Waves, Fase 5)")]
+        [SerializeField] private int _unlockWave = 1;
+        [SerializeField] private float _spawnWeight = 50f;
+        [SerializeField] private int _clusterSize = 1;            // Swarmer: 8
+        [SerializeField] private float _clusterSpread = 0.6f;     // raio do cacho, em u
+
+        [Header("Visual (Seção 6.4)")]
+        [SerializeField] private List<SpriteVariant> _variants = new List<SpriteVariant>();
+        [SerializeField] private float _fps = 6f;
+        [SerializeField] private ExplosionKind _explosion = ExplosionKind.Small;
+
+        [NonSerialized] private IEnemyMovement _movementInstance;
+
+        public float Hitpoints => _hitpoints;
+        public float Damage => _damage;
+        public float Speed => _speed;
+        public float Shards => _shards;
+        public int UnlockWave => _unlockWave;
+        public float SpawnWeight => _spawnWeight;
+        public int ClusterSize => _clusterSize;
+        public float ClusterSpread => _clusterSpread;
+        public IReadOnlyList<SpriteVariant> Variants => _variants;
+        public float Fps => _fps;
+        public ExplosionKind Explosion => _explosion;
+
+        // Os movimentos não guardam estado, então todos os inimigos do mesmo tipo usam a mesma instância.
+        public IEnemyMovement Movement
+        {
+            get
+            {
+                if (_movementInstance == null)
+                {
+                    _movementInstance = _movement == MovementKind.ZigZag
+                        ? new ZigZagMovement(_zigZagAmplitude, _zigZagFrequency)
+                        : StraightMovement.Instance;
+                }
+                return _movementInstance;
+            }
+        }
+    }
+
+    // Uma variação visual: os frames de uma linha da spritesheet (Grunt), ou uma célula só (Brute).
+    // O Unity não serializa Sprite[][], por isso cada variação é um objeto com a sua lista.
+    [Serializable]
+    public sealed class SpriteVariant
+    {
+        public Sprite[] frames;
+    }
+}
+```
+
+#### Passo 3 — As explosões: `ExplosionPool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/ExplosionPool.cs
+using System;
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.World
+{
+    public enum ExplosionKind { Small, Big, Mothership }
+
+    // Toca uma explosão (animação "uma vez", Seção 6.4) e devolve o objeto ao pool quando ela termina.
+    public sealed class ExplosionPool : MonoBehaviour
+    {
+        [Serializable]
+        private sealed class ExplosionFrames
+        {
+            public ExplosionKind kind;
+            public Sprite[] frames;
+            public float fps = 15f;
+        }
+
+        [SerializeField] private ExplosionFrames[] _explosions;
+        [SerializeField] private int _prewarm = 16;
+        [SerializeField] private string _sortingLayer = "VFX";
+
+        private ObjectPool<SpriteAnimator> _pool;
+
+        private void Awake()
+        {
+            _pool = new ObjectPool<SpriteAnimator>(
+                createFunc: Create,
+                actionOnGet: a => a.gameObject.SetActive(true),
+                actionOnRelease: a => a.gameObject.SetActive(false),
+                actionOnDestroy: a => Destroy(a.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 256);
+
+            var warm = new SpriteAnimator[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        public void Play(ExplosionKind kind, Vector2 position)
+        {
+            var explosion = Find(kind);
+            if (explosion == null) return;
+
+            var animator = _pool.Get();
+            animator.transform.position = new Vector3(WorldLayout.SnapToPixel(position.x), WorldLayout.SnapToPixel(position.y), 0f);
+            animator.SetFrames(explosion.frames, explosion.fps, false);
+        }
+
+        private SpriteAnimator Create()
+        {
+            var go = new GameObject("Explosion");
+            go.transform.SetParent(transform, false);
+            go.AddComponent<SpriteRenderer>().sortingLayerName = _sortingLayer;
+            var animator = go.AddComponent<SpriteAnimator>();
+            animator.Finished += () => _pool.Release(animator);
+            return animator;
+        }
+
+        private ExplosionFrames Find(ExplosionKind kind)
+        {
+            foreach (var explosion in _explosions)
+            {
+                if (explosion.kind == kind) return explosion;
+            }
+            return null;
+        }
+    }
+}
+```
+
+#### Passo 4 — O inimigo em cena: `Enemy`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/Enemy.cs
+using Armageddon.Combat;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // Um inimigo comum vivo. Recebe a EnemyDefinition ao nascer (um prefab serve para todos os tipos).
+    [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator))]
+    public sealed class Enemy : MonoBehaviour, ITarget
+    {
+        private EnemyDefinition _definition;
+        private IEnemyMovement _movement;
+        private PlanetHealth _planet;
+        private EnemyPool _pool;
+        private SpriteAnimator _animator;
+        private Vector2 _radialPosition;   // a posição "na linha reta" até o planeta, sem o desvio lateral
+        private float _hitpoints;
+        private float _damage;
+        private float _age;
+        private bool _alive;
+
+        public EnemyDefinition Definition => _definition;
+        public Vector2 Position { get; private set; }
+        public float CurrentHitpoints => _hitpoints;
+        public bool IsAlive => _alive;
+
+        private void Awake()
+        {
+            _animator = GetComponent<SpriteAnimator>();
+        }
+
+        // Chamado pelo EnemyPool. Os multiplicadores são a escalada por Wave (Seção 4.3); 1 = valores da Wave 1.
+        internal void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier, float damageMultiplier,
+                            PlanetHealth planet, EnemyPool pool)
+        {
+            _definition = definition;
+            _movement = definition.Movement;
+            _planet = planet;
+            _pool = pool;
+            _radialPosition = position;
+            _hitpoints = definition.Hitpoints * hitpointsMultiplier;
+            _damage = definition.Damage * damageMultiplier;
+            _age = 0f;
+            _alive = true;
+
+            // Variação visual sorteada no spawn (Seção 6.2). O prefab tem "Random Start Frame" marcado,
+            // para os inimigos não piscarem todos em sincronia.
+            var variant = definition.Variants[Random.Range(0, definition.Variants.Count)];
+            _animator.SetFrames(variant.frames, definition.Fps, true);
+
+            ApplyPosition();
+            TargetRegistry.Register(this);
+        }
+
+        private void Update()
+        {
+            if (!_alive) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;
+
+            _age += deltaTime;
+            Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
+            float distance = toCenter.magnitude;
+
+            // Tocou o planeta (Seção 4.4): causa dano e some, sem Shards.
+            if (distance <= WorldLayout.PlanetRadius)
+            {
+                _planet.TakeDamage(_damage);
+                Die(killed: false);
+                return;
+            }
+
+            _radialPosition += toCenter / distance * Mathf.Min(_definition.Speed * deltaTime, distance);
+            ApplyPosition();
+        }
+
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!_alive) return;
+            _hitpoints -= amount;
+            if (_hitpoints <= 0f) Die(killed: true);
+        }
+
+        private void ApplyPosition()
+        {
+            Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
+            Vector2 forward = toCenter.sqrMagnitude > 0f ? toCenter.normalized : Vector2.zero;
+            Vector2 side = new Vector2(-forward.y, forward.x);
+            Position = _radialPosition + side * _movement.LateralOffset(_age);
+            transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
+        }
+
+        private void Die(bool killed)
+        {
+            _alive = false;
+            TargetRegistry.Unregister(this);
+            _pool.HandleEnemyGone(this, killed);
+        }
+
+        // Segurança: se a cena for descarregada com o inimigo vivo, ele sai do registro.
+        private void OnDisable()
+        {
+            if (!_alive) return;
+            _alive = false;
+            TargetRegistry.Unregister(this);
+        }
+    }
+}
+```
+
+#### Passo 5 — Criar e reaproveitar inimigos: `EnemyPool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyPool.cs
+using System;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.Enemies
+{
+    // Cria os inimigos comuns (com cachos, no caso do Swarmer), reaproveita-os e avisa quando cada um some.
+    public sealed class EnemyPool : MonoBehaviour
+    {
+        [SerializeField] private Enemy _prefab;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private ExplosionPool _explosions;
+        [SerializeField] private int _prewarm = 64;
+
+        private ObjectPool<Enemy> _pool;
+
+        // Inimigos vivos agora. A Fase 5 usa para o limite de 150 na tela e para o Wave Clear.
+        public int AliveCount { get; private set; }
+
+        public event Action<Enemy> EnemyKilled;          // destruído por um Satellite: vale Shards (Fase 6)
+        public event Action<Enemy> EnemyReachedPlanet;   // kamikaze: já causou o dano; não vale Shards
+
+        private void Awake()
+        {
+            _pool = new ObjectPool<Enemy>(
+                createFunc: () => Instantiate(_prefab, transform),
+                actionOnGet: e => e.gameObject.SetActive(true),
+                actionOnRelease: e => e.gameObject.SetActive(false),
+                actionOnDestroy: e => Destroy(e.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 256);
+
+            var warm = new Enemy[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        // Um "slot de spawn" (Seção 4.3): 1 inimigo, ou um cacho de ClusterSize (Swarmer = 8) espalhado em volta do ponto.
+        public void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier = 1f, float damageMultiplier = 1f)
+        {
+            int count = Mathf.Max(1, definition.ClusterSize);
+            for (int i = 0; i < count; i++)
+            {
+                Vector2 p = count == 1 ? position : position + UnityEngine.Random.insideUnitCircle * definition.ClusterSpread;
+                AliveCount++;
+                _pool.Get().Spawn(definition, p, hitpointsMultiplier, damageMultiplier, _planet, this);
+            }
+        }
+
+        // Chamado pelo próprio Enemy ao morrer ou ao tocar o planeta.
+        internal void HandleEnemyGone(Enemy enemy, bool killed)
+        {
+            AliveCount--;
+            // A explosão aparece nos dois casos: destruído no espaço ou batendo no planeta.
+            _explosions.Play(enemy.Definition.Explosion, enemy.Position);
+
+            if (killed) EnemyKilled?.Invoke(enemy);
+            else EnemyReachedPlanet?.Invoke(enemy);
+
+            _pool.Release(enemy);
+        }
+    }
+}
+```
+
+#### Passo 6 — Teclas de teste: `EnemyDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.World;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Enemies
+{
+    // G = Grunt · C = Scout · V = cacho de Swarmers · B = Brute, todos no mouse · R = 10 inimigos sorteados na borda (12 u).
+    // Mesma regra do CombatDevTools: a classe existe em todo build; campos e Update, só em desenvolvimento.
+    public sealed class EnemyDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private EnemyPool _pool;
+        [SerializeField] private EnemyDefinition _grunt;
+        [SerializeField] private EnemyDefinition _scout;
+        [SerializeField] private EnemyDefinition _swarmer;
+        [SerializeField] private EnemyDefinition _brute;
+
+        private void OnEnable()
+        {
+            _pool.EnemyKilled += HandleEnemyKilled;
+            _pool.EnemyReachedPlanet += HandleEnemyReachedPlanet;
+        }
+
+        private void OnDisable()
+        {
+            _pool.EnemyKilled -= HandleEnemyKilled;
+            _pool.EnemyReachedPlanet -= HandleEnemyReachedPlanet;
+        }
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (Mouse.current != null && Camera.main != null)
+            {
+                Vector2 mouse = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                if (keyboard.gKey.wasPressedThisFrame) _pool.Spawn(_grunt, mouse);
+                if (keyboard.cKey.wasPressedThisFrame) _pool.Spawn(_scout, mouse);
+                if (keyboard.vKey.wasPressedThisFrame) _pool.Spawn(_swarmer, mouse);
+                if (keyboard.bKey.wasPressedThisFrame) _pool.Spawn(_brute, mouse);
+            }
+
+            if (keyboard.rKey.wasPressedThisFrame)
+            {
+                var all = new[] { _grunt, _scout, _swarmer, _brute };
+                for (int i = 0; i < 10; i++)
+                {
+                    float angle = Random.Range(0f, 2f * Mathf.PI);
+                    var edge = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * WorldLayout.SpawnRadius;
+                    _pool.Spawn(all[Random.Range(0, all.Length)], edge);
+                }
+                Debug.Log($"[Dev] Inimigos vivos: {_pool.AliveCount}");
+            }
+        }
+
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            Debug.Log($"[Dev] {enemy.Definition.name} destruído (+{enemy.Definition.Shards} Shards na Fase 6). Vivos: {_pool.AliveCount}");
+        }
+
+        private void HandleEnemyReachedPlanet(Enemy enemy)
+        {
+            Debug.Log($"[Dev] {enemy.Definition.name} atingiu o planeta. Vivos: {_pool.AliveCount}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 7 — Os 4 assets de inimigo
+
+Em `Assets/_Project/Data/Enemies/`, **botão direito → Create → Armageddon → Enemy Definition**, uma vez para cada inimigo. Preencha com os valores das Seções 4.3, 4.4 e 6.4:
+
+| Asset | Hitpoints | Damage | Speed | Shards | Movement | Unlock Wave | Spawn Weight | Cluster Size | Variants | Fps | Explosion |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `Enemy_Grunt` | 10 | 5 | 0.8 | 1 | Straight | 1 | 50 | 1 | 2 variações: células 0–3 e 4–7 de `SPR_Enemy_Grunt` | 6 | Small |
+| `Enemy_Scout` | 6 | 3 | 2 | 1 | ZigZag (0.5 / 1.5) | 3 | 25 | 1 | 1 variação: células 0–3 de `SPR_Enemy_Scout` | 12 | Small |
+| `Enemy_Swarmer` | 3 | 2 | 1.2 | 0.5 | Straight | 6 | 15 | 8 | 1 variação: células 0–1 de `SPR_Enemy_Swarmer` | 4 | Small |
+| `Enemy_Brute` | 80 | 20 | 0.5 | 4 | Straight | 8 | 10 | 1 | 4 variações de 1 frame: células 0, 1, 2 e 3 de `SPR_Enemy_Brute` | 1 | Big |
+
+Na lista **Variants**, clique **+** uma vez por variação e arraste as células para o **Frames** de cada uma. No Brute, cada variação tem um frame só: o `SpriteAnimator` fica mostrando essa imagem parada.
+
+#### Passo 8 — Prefab e cena
+
+1. **Prefab do inimigo:** objeto vazio `Enemy` com:
+   - **Sprite Renderer:** qualquer célula do Grunt (só para ver o prefab); **Sorting Layer** `Enemies`.
+   - **Sprite Animator:** **Frames** vazio (o `Enemy` preenche ao nascer); **Random Start Frame** **marcado**.
+   - **Enemy**.
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+2. Na cena `Gameplay`, em `[Systems]`:
+   - `ExplosionPool`, com o componente `ExplosionPool`. Em **Explosions**, crie 2 itens: `Small` com as 5 células de `Art/VFX/SPR_VFX_Explosion_Small` e **Fps** `15`; e `Big` com as 5 de `SPR_VFX_Explosion_Big` e **Fps** `15`. A da Mothership entra na Fase 7.
+   - `EnemyPool`, com o componente `EnemyPool`: **Prefab** = `Enemy`; **Planet** = o objeto `Planet` da cena; **Explosions** = o `ExplosionPool`.
+   - `EnemyDevTools`, com o componente `EnemyDevTools`: **Pool** = o `EnemyPool`, e os 4 assets de inimigo.
+
+#### Passo 9 — Commit
+
+`git add .` e `git commit -m "Phase 4: enemy definitions, movement, pooling, kamikaze, explosions"`.
+
+**✅ Checkpoint:**
+- **R** faz nascer 10 inimigos na borda da tela, e todos andam em direção ao planeta. Nenhum pisca em sincronia com os outros.
+- Cada tipo anda do seu jeito: o Grunt em linha reta a 0,8 u/s, o Scout **rápido e em zigue-zague**, o Swarmer em **cacho de 8**, e o Brute **bem devagar**. Os Grunts aparecem com as 2 variações visuais, e os Brutes com as 4.
+- Um inimigo que chega ao planeta explode na borda dele e tira HP conforme a tabela: Grunt 5, Scout 3, Swarmer 2 cada, Brute 20. O Console mostra `atingiu o planeta`, e **F6** mostra o HP atual.
+- No Quadrant do Satellite e dentro do alcance, os inimigos são destruídos: o Grunt com **1** disparo, o Brute com **8** (e explosão maior). O Console mostra `destruído (+1 Shards…)`.
+- **G**, **C**, **V** e **B** criam cada tipo no mouse. Um Brute criado dentro do alcance mostra, pelos disparos, que precisa de 8 tiros.
+- **Esc** congela os inimigos, as explosões e a órbita.
+- Na janela **Hierarchy**, `EnemyPool` já tem 64 inimigos desativados desde o início. Depois de muitos **R**, o número de objetos para de crescer: eles são reaproveitados.
+
+**Problemas comuns:**
+- **`ArgumentOutOfRangeException` no `Enemy.Spawn`:** a `EnemyDefinition` está com a lista **Variants** vazia.
+- **O inimigo aparece sem imagem:** a variação tem o **Frames** vazio, ou o **Fps** está em 0.
+- **Os inimigos passam pelo planeta sem dar dano:** o campo **Planet** do `EnemyPool` está vazio (o Console mostra um `NullReferenceException`).
+- **Os Satellites não atiram nos inimigos, só nos alvos de teste:** o `Enemy` precisa se registrar no `TargetRegistry` no `Spawn`. Confira se o código está igual ao do Passo 4.
+- **Os inimigos piscam todos juntos:** falta marcar **Random Start Frame** no `SpriteAnimator` do prefab.
+- **A explosão fica parada no último frame:** o `ExplosionPool` devolve a explosão ao pool no evento `Finished`, que só dispara com **Loop** desmarcado, e é por isso que o `Play` usa `loop: false`.
+
+Próxima fase: **Fase 5 — Waves**. Ela coloca o `WaveDirector` para decidir quantos inimigos nascem, de que tipo, de quais Spawn Sectors e com qual escalada, com o aviso de 2 s na borda e o Wave Clear.
