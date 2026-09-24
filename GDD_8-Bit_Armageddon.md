@@ -72,6 +72,7 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 | **Farthest** | O inimigo mais longe do planeta (sinergia com Impetus) | Perk do ramo Arsenal |
 
 - **Projéteis:** cada disparo cria um projétil teleguiado que persegue o alvo, mesmo que o Satellite já tenha passado para outro Quadrant. Se o alvo morrer antes, o projétil some.
+  - **Em aberto:** a velocidade do projétil. O valor inicial no código é **10 u/s** (cruza o Attack Range base de 4 u em 0,4 s).
 
 **Fórmula de dano do disparo:**
 ```
@@ -559,10 +560,14 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Planets` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
 | `Armageddon.Combat` | `Satellite`, `SatelliteOrbit` | Disparo; a órbita compartilhada e o espaçamento dos Satellites | 3 |
 | `Armageddon.Combat` | `TargetSelector`, `TargetPriority` | Escolha de alvo dentro do Quadrant e do Attack Range | 3 |
+| `Armageddon.Combat` | `ITarget`, `TargetRegistry` | O contrato de "alvo" e a lista dos alvos vivos | 3 |
+| `Armageddon.Combat` | `SatelliteStats` | Os Stats de Offense dos Satellites e a fórmula de dano | 3 |
 | `Armageddon.Combat` | `Projectile`, `ProjectilePool` | Projétil teleguiado reaproveitado por pooling | 3 |
+| `Armageddon.World` | `PixelSprite` | Sprite branco de 1 pixel, criado por código | 3 |
 | `Armageddon.Combat` | `QuadrantView` | Mostra na tela o Quadrant coberto por cada Satellite | 3 |
+| `Armageddon.Combat` | `CombatDevTools`, `TargetDummy` | Teclas e alvos de teste do combate (só no Editor e em builds de desenvolvimento) | 3 |
 | `Armageddon.Enemies` | `EnemyDefinition` | ScriptableObject com os dados de cada inimigo | 4 |
-| `Armageddon.Enemies` | `Enemy`, `EnemyRegistry`, `EnemyPool` | Inimigo em cena, lista de vivos, pooling | 4 |
+| `Armageddon.Enemies` | `Enemy`, `EnemyPool` | Inimigo em cena (implementa `ITarget` e entra no `TargetRegistry`) e pooling | 4 |
 | `Armageddon.Enemies` | `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
 | `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, Wave Clear | 5 |
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
@@ -591,7 +596,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 0 | Setup do projeto | ✅ Escrita |
 | 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | ✅ Escrita |
 | 2 | Planeta, Quadrants e câmera | ✅ Escrita |
-| 3 | Satellites, órbita, Target Priority e projéteis | A escrever |
+| 3 | Satellites, órbita, Target Priority e projéteis | ✅ Escrita |
 | 4 | Inimigos | A escrever |
 | 5 | Waves | A escrever |
 | 6 | Stats, Shards, Upgrades e gaveta | A escrever |
@@ -2094,3 +2099,771 @@ Selecione a **Main Camera** (ela fica na raiz, pela convenção da Seção 10.1)
 - **O planeta gira rápido demais:** o **Fps** do `SpriteAnimator` ficou no padrão (8). O planeta usa 4 (Seção 6.4).
 
 Próxima fase: **Fase 3 — Satellites, órbita, Target Priority e projéteis**. Ela coloca o primeiro Satellite orbitando e atirando no Quadrant onde está.
+
+---
+
+### Fase 3 — Satellites, órbita, Target Priority e projéteis
+
+> Objetivo desta fase: o primeiro Satellite orbita o planeta e atira projéteis teleguiados nos alvos que estão **no Quadrant onde ele está** e dentro do Attack Range, escolhendo o alvo pela sua Target Priority (Seção 4.1). O Quadrant coberto aparece na tela e pisca a cada disparo. Os inimigos de verdade chegam na Fase 4; aqui usamos alvos de teste.
+
+**Conceitos novos:**
+- **Interface (`ITarget`):** um "contrato" que diz o que um alvo precisa ter (posição, HP, receber dano), sem dizer o que ele é. Os Satellites atiram em qualquer `ITarget`: hoje num alvo de teste, na Fase 4 num `Enemy`, sem mudar uma linha do código de combate.
+- **Registro de alvos (`TargetRegistry`):** uma lista dos alvos vivos. Cada alvo se inscreve ao aparecer e sai ao morrer. Procurar alvos numa lista pronta é muito mais barato do que perguntar à física da Unity, a cada disparo, "quem está perto?".
+- **Object pooling (`ObjectPool`):** em vez de criar e destruir um projétil a cada tiro (o que gera lixo de memória e engasgos do *garbage collector*), um conjunto de projéteis é criado uma vez e reaproveitado: "pegar" liga o objeto, "devolver" desliga.
+- **Um dono para o tempo da órbita:** o `SatelliteOrbit` move todos os Satellites e chama o `Tick` de cada um, na ordem. Um só `Update` controla tudo, o que evita que dois Satellites discordem sobre o ângulo da órbita.
+- **Textura gerada por código:** o preenchimento do Quadrant (um quarto de círculo do tamanho do Attack Range) é desenhado pixel a pixel na hora, para ficar exatamente na grade de pixels em qualquer alcance.
+
+#### Passo 1 — O contrato de alvo e o registro: `ITarget`, `TargetRegistry`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/ITarget.cs
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Qualquer coisa em que um Satellite pode atirar. O Enemy (Fase 4) implementa esta interface.
+    public interface ITarget
+    {
+        Vector2 Position { get; }
+        float CurrentHitpoints { get; }
+        bool IsAlive { get; }
+        void TakeDamage(float amount, bool isCritical);
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetRegistry.cs
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Lista dos alvos vivos. Cada alvo se registra no OnEnable e sai no OnDisable.
+    public static class TargetRegistry
+    {
+        private static readonly List<ITarget> _alive = new List<ITarget>();
+
+        public static IReadOnlyList<ITarget> Alive => _alive;
+
+        public static void Register(ITarget target)
+        {
+            if (!_alive.Contains(target)) _alive.Add(target);
+        }
+
+        public static void Unregister(ITarget target)
+        {
+            _alive.Remove(target);
+        }
+
+        // Com "Enter Play Mode Options" (sem recarregar o domínio), a lista estática sobreviveria entre Plays.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _alive.Clear();
+        }
+    }
+}
+```
+
+#### Passo 2 — Os Stats de combate: `SatelliteStats`
+
+Os valores de combate vêm dos Upgrades da Fase 6. Até lá, eles ficam no Inspector do `SatelliteOrbit`, com os valores base da Seção 4.2. A Fase 6 monta um `SatelliteStats` a partir dos Stats da run e chama `SetStats`.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/SatelliteStats.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Os Stats de Offense que afetam os Satellites (Seção 4.2), com os valores base.
+    // Objeto de dados: campos públicos em camelCase, como o PlayerProfile.
+    [Serializable]
+    public sealed class SatelliteStats
+    {
+        public float damage = 10f;
+        public float attackSpeed = 1f;          // disparos por segundo, por Satellite
+        [Range(0f, 0.8f)] public float criticalChance;
+        public float criticalFactor = 1.5f;
+        public float attackRange = 4f;          // em u, medido do centro do planeta
+        public float impetus;                   // fração por u (0,004 = +0,4 % por u)
+        public float orbitSpeed = 45f;          // graus por segundo
+
+        // Fórmula da Seção 4.1: Damage × (1 + Impetus × distânciaAoCentro) × (crítico ? CriticalFactor : 1).
+        public float RollDamage(float distanceToCenter, out bool isCritical)
+        {
+            isCritical = UnityEngine.Random.value < criticalChance;
+            float value = damage * (1f + impetus * distanceToCenter);
+            return isCritical ? value * criticalFactor : value;
+        }
+    }
+}
+```
+
+#### Passo 3 — Escolher o alvo: `TargetPriority`, `TargetSelector`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetSelector.cs
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // As 4 Target Priorities (Seção 4.1). Closest é a padrão; as outras são liberadas por Perks (Fase 9).
+    public enum TargetPriority
+    {
+        Closest,     // o mais perto do planeta
+        Weakest,     // o com menos HP atual
+        Strongest,   // o com mais HP atual
+        Farthest,    // o mais longe do planeta (sinergia com Impetus)
+    }
+
+    public static class TargetSelector
+    {
+        // Só considera alvos vivos, no Quadrant pedido e dentro do alcance (medido do centro do planeta).
+        // Devolve null se não houver ninguém válido.
+        public static ITarget Select(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority)
+        {
+            ITarget best = null;
+            float bestScore = float.MaxValue;
+            float rangeSquared = range * range;
+
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var target = targets[i];
+                if (!target.IsAlive) continue;
+
+                float distanceSquared = (target.Position - WorldLayout.PlanetCenter).sqrMagnitude;
+                if (distanceSquared > rangeSquared) continue;
+                if (Quadrants.FromPosition(target.Position) != quadrant) continue;
+
+                // Menor "score" vence: por isso Farthest e Strongest usam o valor negativo.
+                float score = priority switch
+                {
+                    TargetPriority.Closest => distanceSquared,
+                    TargetPriority.Farthest => -distanceSquared,
+                    TargetPriority.Weakest => target.CurrentHitpoints,
+                    TargetPriority.Strongest => -target.CurrentHitpoints,
+                    _ => distanceSquared,
+                };
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = target;
+                }
+            }
+
+            return best;
+        }
+    }
+}
+```
+
+#### Passo 4 — Um pixel de cor: `PixelSprite`
+
+O rastro dos projéteis e as linhas dos eixos são desenhados com sprites de 1 pixel. Em vez de importar um PNG de 1×1, o jogo cria esse sprite na primeira vez que precisa.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/PixelSprite.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Um sprite branco de 1 pixel (1/16 u), criado uma vez. A cor vem do SpriteRenderer.
+    public static class PixelSprite
+    {
+        private static Sprite _white;
+
+        public static Sprite White
+        {
+            get
+            {
+                if (_white != null) return _white;
+                var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+                texture.SetPixel(0, 0, Color.white);
+                texture.Apply();
+                _white = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+                return _white;
+            }
+        }
+    }
+}
+```
+
+#### Passo 5 — O projétil: `Projectile`, `ProjectilePool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/Projectile.cs
+using System;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Projétil teleguiado: persegue o alvo até acertar. Se o alvo morrer antes, some (Seção 4.1).
+    // Desenha atrás de si um rastro curto de 3 pixels na direção do movimento (Seção 6.2).
+    [RequireComponent(typeof(SpriteRenderer))]
+    public sealed class Projectile : MonoBehaviour
+    {
+        // Em aberto na Seção 4.1: velocidade do projétil. Valor inicial: 10 u/s.
+        [SerializeField] private float _speed = 10f;
+        [SerializeField] private float _hitDistance = 0.2f;
+        [SerializeField] private Color[] _trailColors =
+        {
+            new Color32(255, 170, 40, 200),
+            new Color32(214, 110, 24, 140),
+            new Color32(150, 70, 20, 90),
+        };
+
+        private ITarget _target;
+        private float _damage;
+        private bool _isCritical;
+        private Action<Projectile> _release;
+        private SpriteRenderer[] _trail;
+
+        private void Awake()
+        {
+            var layer = GetComponent<SpriteRenderer>().sortingLayerName;
+            _trail = new SpriteRenderer[_trailColors.Length];
+            for (int i = 0; i < _trail.Length; i++)
+            {
+                var pixel = new GameObject("Trail").AddComponent<SpriteRenderer>();
+                pixel.transform.SetParent(transform, false);
+                pixel.sprite = PixelSprite.White;
+                pixel.color = _trailColors[i];
+                pixel.sortingLayerName = layer;
+                pixel.sortingOrder = -1;
+                _trail[i] = pixel;
+            }
+        }
+
+        public void Launch(Vector2 from, ITarget target, float damage, bool isCritical, Action<Projectile> release)
+        {
+            transform.position = from;
+            _target = target;
+            _damage = damage;
+            _isCritical = isCritical;
+            _release = release;
+            foreach (var pixel in _trail) pixel.enabled = false;
+        }
+
+        private void Update()
+        {
+            if (_target == null || !_target.IsAlive)
+            {
+                Release();
+                return;
+            }
+
+            Vector2 position = transform.position;
+            Vector2 toTarget = _target.Position - position;
+            float step = _speed * Time.deltaTime;
+
+            if (toTarget.magnitude <= Mathf.Max(step, _hitDistance))
+            {
+                _target.TakeDamage(_damage, _isCritical);
+                Release();
+                return;
+            }
+
+            Vector2 direction = toTarget.normalized;
+            position += direction * step;
+            transform.position = position;
+            PlaceTrail(position, direction);
+        }
+
+        private void PlaceTrail(Vector2 head, Vector2 direction)
+        {
+            // Pixels atrás da bolinha (que tem 4 px), um por pixel de distância, presos à grade.
+            const float pixel = 1f / WorldLayout.PixelsPerUnit;
+            for (int i = 0; i < _trail.Length; i++)
+            {
+                Vector2 p = head - direction * (2.5f + i) * pixel;
+                _trail[i].transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+                _trail[i].enabled = true;
+            }
+        }
+
+        private void Release()
+        {
+            _target = null;
+            var release = _release;
+            _release = null;          // evita devolver duas vezes para o pool
+            release?.Invoke(this);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/ProjectilePool.cs
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.Combat
+{
+    // Reaproveita os projéteis: nada é criado nem destruído durante a run.
+    public sealed class ProjectilePool : MonoBehaviour
+    {
+        [SerializeField] private Projectile _prefab;
+        [SerializeField] private int _prewarm = 32;
+
+        private ObjectPool<Projectile> _pool;
+
+        private void Awake()
+        {
+            _pool = new ObjectPool<Projectile>(
+                createFunc: () => Instantiate(_prefab, transform),
+                actionOnGet: p => p.gameObject.SetActive(true),
+                actionOnRelease: p => p.gameObject.SetActive(false),
+                actionOnDestroy: p => Destroy(p.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 512);
+
+            // Cria os primeiros projéteis agora, no carregamento, e não no meio do primeiro combate.
+            var warm = new Projectile[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        public void Fire(Vector2 from, ITarget target, float damage, bool isCritical)
+        {
+            _pool.Get().Launch(from, target, damage, isCritical, _pool.Release);
+        }
+    }
+}
+```
+
+#### Passo 6 — O Satellite e a órbita: `Satellite`, `SatelliteOrbit`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/Satellite.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Um Satellite: fica onde o SatelliteOrbit manda e atira no Quadrant onde está (Seção 4.1).
+    // A orientação é fixa: o sprite nunca gira (Seção 6.2).
+    public sealed class Satellite : MonoBehaviour
+    {
+        [SerializeField] private TargetPriority _priority = TargetPriority.Closest;
+
+        private float _cooldown;
+
+        public TargetPriority Priority
+        {
+            get => _priority;
+            set => _priority = value;
+        }
+
+        public float AngleDegrees { get; private set; }
+        public Quadrant CurrentQuadrant => Quadrants.FromAngle(AngleDegrees);
+
+        public event Action<Satellite> Fired;
+
+        public void SetAngle(float degrees)
+        {
+            AngleDegrees = Mathf.Repeat(degrees, 360f);
+            float radians = AngleDegrees * Mathf.Deg2Rad;
+            Vector2 p = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * WorldLayout.OrbitRadius;
+            transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+        }
+
+        // Chamado pelo SatelliteOrbit a cada frame. Com o cooldown zerado e ninguém válido, segura o tiro.
+        public void Tick(float deltaTime, SatelliteStats stats, IReadOnlyList<ITarget> targets, ProjectilePool projectiles)
+        {
+            if (_cooldown > 0f)
+            {
+                _cooldown -= deltaTime;
+                if (_cooldown > 0f) return;
+            }
+
+            var target = TargetSelector.Select(targets, CurrentQuadrant, stats.attackRange, _priority);
+            if (target == null)
+            {
+                _cooldown = 0f;   // pronto para atirar assim que alguém entrar no Quadrant
+                return;
+            }
+
+            float distance = Vector2.Distance(target.Position, WorldLayout.PlanetCenter);
+            float damage = stats.RollDamage(distance, out bool isCritical);
+            projectiles.Fire(transform.position, target, damage, isCritical);
+
+            _cooldown += 1f / Mathf.Max(0.01f, stats.attackSpeed);
+            Fired?.Invoke(this);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/SatelliteOrbit.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // A órbita compartilhada: todos os Satellites no mesmo círculo, igualmente espaçados,
+    // girando juntos no sentido anti-horário na velocidade do Stat Orbit Speed (Seção 4.1).
+    public sealed class SatelliteOrbit : MonoBehaviour
+    {
+        public const int MaxSatellites = 4;
+
+        [SerializeField] private Satellite _satellitePrefab;
+        [SerializeField] private ProjectilePool _projectiles;
+        [SerializeField, Range(1, MaxSatellites)] private int _startingCount = 1;
+        [SerializeField] private SatelliteStats _stats = new SatelliteStats();
+
+        private readonly List<Satellite> _satellites = new List<Satellite>();
+        private float _angle = 90f;   // o primeiro Satellite começa no topo
+
+        public IReadOnlyList<Satellite> Satellites => _satellites;
+        public SatelliteStats Stats => _stats;
+
+        public event Action<Satellite> SatelliteFired;
+        public event Action CountChanged;
+
+        private void Start()
+        {
+            SetCount(_startingCount);
+        }
+
+        public void SetStats(SatelliteStats stats)
+        {
+            _stats = stats;
+        }
+
+        // Perks Satellite 2/3/4 (Seção 5.2). Os novos entram já espaçados; ninguém "pula" de posição.
+        public void SetCount(int count)
+        {
+            count = Mathf.Clamp(count, 1, MaxSatellites);
+
+            while (_satellites.Count < count)
+            {
+                var satellite = Instantiate(_satellitePrefab, transform);
+                satellite.Fired += HandleSatelliteFired;
+                _satellites.Add(satellite);
+            }
+
+            while (_satellites.Count > count)
+            {
+                var last = _satellites[_satellites.Count - 1];
+                last.Fired -= HandleSatelliteFired;
+                _satellites.RemoveAt(_satellites.Count - 1);
+                Destroy(last.gameObject);
+            }
+
+            PlaceSatellites();
+            CountChanged?.Invoke();
+        }
+
+        private void Update()
+        {
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado: nem gira nem atira
+
+            _angle = Mathf.Repeat(_angle + _stats.orbitSpeed * deltaTime, 360f);
+            PlaceSatellites();
+
+            var targets = TargetRegistry.Alive;
+            for (int i = 0; i < _satellites.Count; i++)
+            {
+                _satellites[i].Tick(deltaTime, _stats, targets, _projectiles);
+            }
+        }
+
+        private void PlaceSatellites()
+        {
+            if (_satellites.Count == 0) return;
+            float spacing = 360f / _satellites.Count;
+            for (int i = 0; i < _satellites.Count; i++)
+            {
+                _satellites[i].SetAngle(_angle + i * spacing);
+            }
+        }
+
+        private void HandleSatelliteFired(Satellite satellite)
+        {
+            SatelliteFired?.Invoke(satellite);
+        }
+    }
+}
+```
+
+#### Passo 7 — Mostrar os Quadrants: `QuadrantView`
+
+Como definido na Seção 6.2: as linhas dos eixos ficam sempre visíveis e discretas, e o Quadrant onde há um Satellite ganha um preenchimento translúcido quente do tamanho do Attack Range, que pisca mais forte a cada disparo.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/QuadrantView.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Desenha os eixos dos Quadrants e o preenchimento dos Quadrants cobertos (Seção 6.2).
+    public sealed class QuadrantView : MonoBehaviour
+    {
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private Color _fillColor = new Color(1f, 0.67f, 0.24f, 0.13f);
+        [SerializeField] private float _flashAlpha = 0.3f;
+        [SerializeField] private float _flashDecayPerSecond = 4f;
+        [SerializeField] private Color _axisColor = new Color(0.9f, 0.86f, 1f, 0.16f);
+        [SerializeField] private string _sortingLayer = "Quadrants";
+
+        private readonly SpriteRenderer[] _fills = new SpriteRenderer[4];
+        private readonly float[] _flash = new float[4];
+        private readonly bool[] _covered = new bool[4];
+        private Texture2D _fillTexture;
+        private float _builtRange = -1f;
+        private bool _fillVisible = true;
+
+        private void Start()
+        {
+            BuildAxes();
+            _orbit.SatelliteFired += HandleSatelliteFired;
+        }
+
+        private void OnDestroy()
+        {
+            if (_orbit != null) _orbit.SatelliteFired -= HandleSatelliteFired;
+            if (_fillTexture != null) Destroy(_fillTexture);
+        }
+
+        // "Mostrar Quadrants" das Settings (Fase 11): esconde o preenchimento; as linhas continuam.
+        public void SetFillVisible(bool visible)
+        {
+            _fillVisible = visible;
+        }
+
+        private void LateUpdate()
+        {
+            float range = _orbit.Stats.attackRange;
+            if (!Mathf.Approximately(range, _builtRange)) BuildFills(range);
+
+            for (int q = 0; q < 4; q++) _covered[q] = false;
+            foreach (var satellite in _orbit.Satellites) _covered[(int)satellite.CurrentQuadrant] = true;
+
+            for (int q = 0; q < 4; q++)
+            {
+                _flash[q] = Mathf.Max(0f, _flash[q] - _flashDecayPerSecond * Time.deltaTime);
+                var color = _fillColor;
+                color.a = Mathf.Lerp(_fillColor.a, _flashAlpha, _flash[q]);
+                _fills[q].color = color;
+                _fills[q].enabled = _fillVisible && _covered[q];
+            }
+        }
+
+        private void HandleSatelliteFired(Satellite satellite)
+        {
+            _flash[(int)satellite.CurrentQuadrant] = 1f;
+        }
+
+        // Um quarto de círculo de raio = Attack Range, pixel a pixel. Girado de 90 em 90 graus para os 4 Quadrants,
+        // o que não distorce os pixels.
+        private void BuildFills(float range)
+        {
+            _builtRange = range;
+            int size = Mathf.Max(1, Mathf.CeilToInt(range * WorldLayout.PixelsPerUnit));
+
+            if (_fillTexture != null) Destroy(_fillTexture);
+            _fillTexture = new Texture2D(size, size) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[size * size];
+            float radiusSquared = size * size;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x + 0.5f, dy = y + 0.5f;
+                    pixels[y * size + x] = dx * dx + dy * dy <= radiusSquared ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+                }
+            }
+            _fillTexture.SetPixels32(pixels);
+            _fillTexture.Apply();
+            var sprite = Sprite.Create(_fillTexture, new Rect(0, 0, size, size), Vector2.zero, WorldLayout.PixelsPerUnit);
+
+            for (int q = 0; q < 4; q++)
+            {
+                if (_fills[q] == null)
+                {
+                    _fills[q] = new GameObject($"Fill {(Quadrant)q}").AddComponent<SpriteRenderer>();
+                    _fills[q].transform.SetParent(transform, false);
+                    _fills[q].transform.localRotation = Quaternion.Euler(0f, 0f, q * 90f);
+                    _fills[q].sortingLayerName = _sortingLayer;
+                }
+                _fills[q].transform.position = WorldLayout.PlanetCenter;
+                _fills[q].sprite = sprite;
+            }
+        }
+
+        // Duas linhas pontilhadas (1 px aceso, 2 apagados) cruzando a área do jogo.
+        private void BuildAxes()
+        {
+            int length = Mathf.CeilToInt(WorldLayout.SpawnRadius * 2f * WorldLayout.PixelsPerUnit);
+            var texture = new Texture2D(length, 1) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            for (int x = 0; x < length; x++) texture.SetPixel(x, 0, x % 3 == 0 ? Color.white : Color.clear);
+            texture.Apply();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, length, 1), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+
+            for (int i = 0; i < 2; i++)
+            {
+                var axis = new GameObject(i == 0 ? "Axis X" : "Axis Y").AddComponent<SpriteRenderer>();
+                axis.transform.SetParent(transform, false);
+                axis.transform.position = WorldLayout.PlanetCenter;
+                axis.transform.localRotation = Quaternion.Euler(0f, 0f, i * 90f);
+                axis.sprite = sprite;
+                axis.color = _axisColor;
+                axis.sortingLayerName = _sortingLayer;
+                axis.sortingOrder = 1;
+            }
+        }
+    }
+}
+```
+
+#### Passo 8 — Ferramentas de teste de combate: `TargetDummy`, `CombatDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetDummy.cs
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // Alvo parado, só para testes até os inimigos existirem (Fase 4). Some do build final.
+    public sealed class TargetDummy : MonoBehaviour, ITarget
+    {
+        private float _hitpoints;
+
+        public Vector2 Position => transform.position;
+        public float CurrentHitpoints => _hitpoints;
+        public bool IsAlive => _hitpoints > 0f;
+
+        public static TargetDummy Spawn(Vector2 position, Sprite sprite, float hitpoints)
+        {
+            var go = new GameObject("TargetDummy");
+            go.transform.position = position;
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingLayerName = "Enemies";
+            var dummy = go.AddComponent<TargetDummy>();
+            dummy._hitpoints = hitpoints;
+            return dummy;
+        }
+
+        private void OnEnable() => TargetRegistry.Register(this);
+        private void OnDisable() => TargetRegistry.Unregister(this);
+
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!IsAlive) return;
+            _hitpoints -= amount;
+            Debug.Log($"[Dummy] -{amount:0.#}{(isCritical ? " CRÍTICO" : "")} → {Mathf.Max(0f, _hitpoints):0.#} HP");
+            if (_hitpoints <= 0f) Destroy(gameObject);
+        }
+    }
+}
+#endif
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/CombatDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Combat
+{
+    // Teclas de teste do combate: T = alvo de teste no mouse · 1–4 = número de Satellites · Q = troca a Target Priority.
+    // A CLASSE existe em todo build (ela fica numa cena); os campos e o Update somem do build final.
+    // Se a classe inteira sumisse, a cena teria um "Missing Script" no build final.
+    public sealed class CombatDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private Sprite _dummySprite;
+        [SerializeField] private float _dummyHitpoints = 30f;
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.tKey.wasPressedThisFrame && Mouse.current != null && Camera.main != null)
+            {
+                Vector2 world = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                TargetDummy.Spawn(world, _dummySprite, _dummyHitpoints);
+            }
+
+            if (keyboard.digit1Key.wasPressedThisFrame) _orbit.SetCount(1);
+            if (keyboard.digit2Key.wasPressedThisFrame) _orbit.SetCount(2);
+            if (keyboard.digit3Key.wasPressedThisFrame) _orbit.SetCount(3);
+            if (keyboard.digit4Key.wasPressedThisFrame) _orbit.SetCount(4);
+
+            if (keyboard.qKey.wasPressedThisFrame)
+            {
+                foreach (var satellite in _orbit.Satellites)
+                {
+                    satellite.Priority = (TargetPriority)(((int)satellite.Priority + 1) % 4);
+                }
+                Debug.Log($"[Dev] Target Priority: {_orbit.Satellites[0].Priority}");
+            }
+        }
+#endif
+    }
+}
+```
+
+#### Passo 9 — Prefabs e cena
+
+1. **Prefab do projétil:** crie um objeto vazio `Projectile` com:
+   - **Sprite Renderer:** célula 0 de `Art/Projectiles/SPR_Projectile_Satellite`; **Sorting Layer** `Projectiles`.
+   - **Sprite Animator:** as 2 células; **Fps** `8`; **Loop** marcado (Seção 6.4).
+   - **Projectile** (valores padrão).
+
+   Arraste para `Assets/_Project/Prefabs/Gameplay/` e apague da cena.
+2. **Prefab do Satellite:** objeto vazio `Satellite` com:
+   - **Sprite Renderer:** célula 0 de `Art/Satellites/SPR_Satellite`; **Sorting Layer** `Satellites`.
+   - **Sprite Animator:** as 2 células; **Fps** `2`; **Loop** marcado.
+   - **Satellite** (Priority `Closest`).
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+3. Na cena `Gameplay`:
+   - Em `[Systems]`, crie `ProjectilePool` com o componente `ProjectilePool`, e o prefab `Projectile` em **Prefab**.
+   - Em `[World]`, crie `SatelliteOrbit` na posição (0, 0, 0) com o componente `SatelliteOrbit`: **Satellite Prefab** = `Satellite`; **Projectiles** = o `ProjectilePool` da cena; **Starting Count** `1`. Os **Stats** já vêm com os valores base.
+   - Em `[World]`, crie `QuadrantView` na posição (0, 0, 0) com o componente `QuadrantView` e o `SatelliteOrbit` em **Orbit**.
+   - Em `[Systems]`, crie `CombatDevTools` com o componente `CombatDevTools`: **Orbit** = o `SatelliteOrbit`; **Dummy Sprite** = a célula 0 de `Art/Enemies/SPR_Enemy_Grunt`.
+
+#### Passo 10 — Commit
+
+`git add .` e `git commit -m "Phase 3: satellites, orbit, quadrants, target priority, homing projectiles"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: um Satellite começa no topo e dá uma volta em **8 s** no sentido anti-horário (Orbit Speed 45°/s). O Quadrant onde ele está fica levemente iluminado, e o destaque passa de Quadrant em Quadrant junto com ele.
+- As duas linhas pontilhadas dos eixos cruzam a tela e ficam sempre visíveis.
+- **T** com o mouse dentro do círculo laranja dos Gizmos cria um alvo de teste. O Satellite só atira nele **enquanto estiver no mesmo Quadrant**. Um alvo fora do círculo (Attack Range 4 u) nunca é atingido.
+- Cada disparo é uma bolinha com um rastro curto que persegue o alvo e faz o Quadrant piscar. O Console mostra `-10 → 20 HP`, e na terceira bala o alvo some.
+- Com a cadência base (1 disparo/s) e 2 s em cada Quadrant, um alvo de 30 HP colocado sozinho num Quadrant morre depois de umas duas passagens do Satellite.
+- **2**, **3** e **4** trocam o número de Satellites, que se reorganizam igualmente espaçados. Com **4**, os quatro Quadrants ficam acesos o tempo todo.
+- Com dois alvos no mesmo Quadrant (um perto e um longe do planeta), **Q** alterna a Target Priority: em `Closest` o de perto é atingido primeiro; em `Farthest`, o de longe.
+- No Inspector do `SatelliteOrbit`, **Critical Chance** `0,5` faz metade dos disparos aparecer como `CRÍTICO`, com 15 de dano (10 × 1,5).
+- **Esc** pausa tudo: a órbita, os projéteis no ar e o piscar do Quadrant.
+
+**Problemas comuns:**
+- **O Satellite gira mas nunca atira:** o alvo está fora do Attack Range (confira o círculo laranja), ou o `SatelliteOrbit` está sem o **Projectiles** preenchido (o Console mostra um `NullReferenceException`).
+- **O Satellite atira num alvo de outro Quadrant:** confira se o objeto `SatelliteOrbit` e o planeta estão na posição (0, 0, 0). Os Quadrants são medidos a partir de `WorldLayout.PlanetCenter`, que é a origem.
+- **O preenchimento aparece por cima do planeta ou dos inimigos:** a Sorting Layer `Quadrants` precisa estar logo acima de `Background` e abaixo de `Enemies` (Fase 0, Passo 7).
+- **O preenchimento aparece borrado:** a Pixel Perfect Camera precisa estar com **Grid Snapping** = `Upscale Render Texture` (Fase 2).
+- **O projétil some antes de chegar:** o alvo morreu no caminho (outro projétil chegou antes). É o comportamento definido na Seção 4.1.
+- **`Missing (Mono Script)` no `CombatDevTools` de um build:** alguém envolveu a classe inteira em `#if`. Só os campos e o `Update` ficam dentro do `#if`, como no código acima.
+
+Próxima fase: **Fase 4 — Inimigos**. Ela cria o `Enemy` (que implementa `ITarget`), os 4 inimigos comuns com os seus movimentos, o pooling e a explosão ao morrer.
