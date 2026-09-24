@@ -1,6 +1,6 @@
 # GDD — 8-Bit Armageddon
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
-**Estilo visual:** Pixel art em isométrico "falso", tela em paisagem (resolução de referência 640×360)
+**Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
 **Plataformas:** Android (Google Play) e Web (site próprio + itch.io)
 **Modelo de negócio:** Free-to-play com anúncios recompensados (sem intersticiais, sem compras no app)
 **Idiomas no lançamento:** Inglês e Português (Brasil)
@@ -11,7 +11,7 @@
 
 ## 1. Conceito Central (Pitch)
 
-O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. As **Turrets** do planeta giram e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Cada queda gera **Stardust**, a moeda da meta-progressão permanente, incentivando a próxima tentativa.
+O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. Os **Satellites** orbitam o planeta e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Cada queda gera **Stardust**, a moeda da meta-progressão permanente, incentivando a próxima tentativa.
 
 **Fantasia central:** "Eu sou o último ponto de defesa de um mundo. Quanto mais eu resistir, mais forte eu fico, mas os aliens também."
 
@@ -19,10 +19,10 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 
 ## 2. Pilares de Design
 
-1. **Automação com decisão constante:** o combate é automático (as Turrets escolhem alvo, giram e atiram sozinhas), mas a estratégia de Upgrade é ativa e contínua, sem tempo morto. Comprar um Upgrade custa um toque e nunca pausa o jogo.
+1. **Automação com decisão constante:** o combate é automático (os Satellites orbitam, escolhem alvo e atiram sozinhos), mas a estratégia de Upgrade é ativa e contínua, sem tempo morto. Comprar um Upgrade custa um toque e nunca pausa o jogo.
 2. **Run curta, morte com propósito:** cada run dura de 5 a 20 minutos; morrer não é frustração, é combustível para a meta-progressão.
 3. **Escalada dupla:** inimigos ficam mais fortes a cada Wave; o planeta também, através das escolhas do jogador. A tensão vem de saber se sua curva vence a deles.
-4. **Cerco legível:** o planeta é o centro fixo da tela; tudo ao redor (inimigos, projéteis, Firing Cones, efeitos) converge para ele. A perspectiva isométrica faz os ataques "por trás" do planeta serem parcialmente escondidos, e o jogo sempre avisa de onde a próxima ameaça vem.
+4. **Cerco legível:** o planeta é o centro fixo da tela; tudo ao redor (inimigos, projéteis, Satellites, efeitos) converge para ele. A tela é dividida em 4 **Quadrants** centrados no planeta, toda ameaça está sempre visível num deles, e o jogo sempre avisa de onde a próxima ameaça vem.
 
 ---
 
@@ -31,7 +31,7 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 ### Loop de curto prazo (dentro da run)
 1. Um indicador na borda da tela avisa, 2 s antes, de quais **Spawn Sectors** a próxima Wave vai sair.
 2. A Wave começa com um timer (30 s; 60 s na Boss Wave). Os inimigos nascem nos setores sorteados e avançam até o planeta.
-3. Cada Turret gira em direção ao alvo escolhido pela sua **Target Priority** e dispara em qualquer inimigo que entre no seu **Firing Cone**.
+3. Os **Satellites** orbitam o planeta, e cada um dispara nos inimigos do **Quadrant** por onde está passando, escolhendo o alvo pela sua **Target Priority**.
 4. Inimigo destruído → o jogador ganha **Shards**.
 5. O jogador gasta Shards em **Upgrades** (válidos só nesta run) pela gaveta na parte de baixo da tela, sem pausar o jogo.
 6. A próxima Wave começa quando o timer acaba **ou** quando a tela fica sem inimigos, o que vier primeiro. Esvaziar a tela (**Wave Clear**) paga um bônus de Shards.
@@ -45,27 +45,24 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 
 ### Loop de longo prazo (meta)
 - **Conquistas** desbloqueiam novos **Planet Cores** (variantes de planeta que mudam a build) e **Skins**.
-- O ramo **Arsenal** da árvore de Perks libera mais Turrets (até 4) e novas Target Priorities, mudando *como* o jogo é jogado, não só os números.
+- O ramo **Arsenal** da árvore de Perks libera mais Satellites (até 4) e novas Target Priorities, mudando *como* o jogo é jogado, não só os números.
 - A **recompensa diária** (sequência de 7 dias) dá um motivo para voltar todo dia.
 
 ---
 
 ## 4. Sistemas de Combate
 
-> **Unidades:** todas as distâncias abaixo estão em **unidades de mundo (u)** no plano lógico (ver Seção 6.1). Com 32 pixels por unidade, a tela de 640×360 mostra 20 × 11,25 u.
+> **Unidades:** todas as distâncias abaixo estão em **unidades de mundo (u)** no plano lógico (ver Seção 6.1). Com 16 pixels por unidade, a tela de 320×180 mostra 20 × 11,25 u. O planeta tem 2 u de diâmetro (raio de 1 u).
 
-### 4.1 Turrets e Firing Cone
+### 4.1 Satellites e Quadrants
 
 **Definido:**
-- O planeta começa com **1 Turret** e pode chegar a **4**, desbloqueadas pelo ramo Arsenal dos Perks (Seção 5.2).
-- As Turrets ficam **distribuídas igualmente** na borda do planeta: 1 = topo; 2 = lados opostos; 3 = a cada 120°; 4 = a cada 90°. Cada uma gira 360° livremente.
-- Todas as Turrets usam os **mesmos Stats** (Damage, Attack Speed etc.). Só a mira e a Target Priority são individuais.
-- **Firing Cone:** cada Turret tem um setor à sua frente com ângulo = Stat **Cone Angle** e alcance = Stat **Attack Range**. O alcance é sempre medido **a partir do centro do planeta**, não da Turret, para que todas as Turrets tenham o mesmo alcance efetivo.
-- **Rotação:** a Turret gira em direção ao alvo escolhido na velocidade do Stat **Turn Speed** (graus por segundo).
-- **Escolha do alvo:** a Turret escolhe um alvo entre **todos** os inimigos dentro do Attack Range (360°), usando a sua Target Priority.
-- **Disparo "de passagem":** quando o cooldown zera, a Turret dispara no inimigo **dentro do Firing Cone** que estiver mais bem colocado segundo a sua Target Priority, mesmo que não seja o alvo para o qual ela está girando. Se não houver ninguém no cone, ela segura o tiro e continua girando.
-- **Coordenação:** uma Turret evita escolher como alvo de rotação um inimigo que outra Turret já está perseguindo, desde que haja outro alvo válido. Isso evita que todas virem para o mesmo lado.
-- **Target Priority** é configurada **por Turret**, na aba "Turrets" da gaveta de upgrades:
+- O planeta começa com **1 Satellite** e pode chegar a **4**, desbloqueados pelo ramo Arsenal dos Perks (Seção 5.2).
+- **Órbita:** todos os Satellites giram na **mesma órbita circular**, com raio de **1,75 u** a partir do centro do planeta (o planeta tem raio de 1 u), no sentido **anti-horário**, na velocidade do Stat **Orbit Speed** (graus por segundo). Ficam **espaçados igualmente** e giram juntos: 1 Satellite; 2 opostos; 3 a cada 120°; 4 a cada 90°. Com 4, cada um está sempre num Quadrant diferente e a cobertura é total. Com menos, cada Satellite "visita" um Quadrant de cada vez.
+- **Quadrants:** a tela é dividida em 4 setores de 90°, como um plano cartesiano centrado no planeta: acima à direita, acima à esquerda, abaixo à esquerda e abaixo à direita. Um inimigo exatamente sobre a linha entre dois Quadrants pertence a um só deles (regra técnica, sem efeito visível).
+- **Alvos:** um Satellite só pode atirar em inimigos que estejam **no Quadrant onde ele está agora** **e** dentro do Stat **Attack Range**, medido **a partir do centro do planeta** (assim todos os Satellites têm o mesmo alcance efetivo). Se não houver ninguém válido, ele segura o tiro.
+- Todos os Satellites usam os **mesmos Stats** (Damage, Attack Speed etc.). Só a Target Priority é individual.
+- **Target Priority** escolhe qual inimigo válido (no Quadrant e no alcance) recebe o tiro. É configurada **por Satellite**, na aba "Satellites" da gaveta de upgrades:
 
 | Target Priority | Escolhe | Como desbloquear |
 |---|---|---|
@@ -74,7 +71,7 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 | **Strongest** | O inimigo com mais HP atual | Perk do ramo Arsenal |
 | **Farthest** | O inimigo mais longe do planeta (sinergia com Impetus) | Perk do ramo Arsenal |
 
-- **Projéteis:** cada disparo cria um projétil teleguiado que persegue o alvo. Se o alvo morrer antes, o projétil some.
+- **Projéteis:** cada disparo cria um projétil teleguiado que persegue o alvo, mesmo que o Satellite já tenha passado para outro Quadrant. Se o alvo morrer antes, o projétil some.
 
 **Fórmula de dano do disparo:**
 ```
@@ -94,18 +91,17 @@ Os Stats são organizados em três **Tracks**, que são as três abas da gaveta 
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
 | **Damage** | Dano por disparo | 10 | +3 | — | 10 |
-| **Attack Speed** | Disparos por segundo, por Turret | 1,0/s | +0,08/s | 6,0/s | 12 |
+| **Attack Speed** | Disparos por segundo, por Satellite | 1,0/s | +0,08/s | 6,0/s | 12 |
 | **Critical Chance** | Probabilidade de crítico | 0% | +1,5 p.p. | 80% | 15 |
 | **Critical Factor** | Multiplicador de dano no crítico | 1,5× | +0,1× | 6× | 15 |
 | **Attack Range** | Raio de detecção e disparo, medido do centro do planeta | 4,0 u | +0,15 u | 8,0 u | 12 |
 | **Impetus** | Dano extra por unidade de distância do alvo | 0%/u | +0,4%/u | 12%/u | 20 |
-| **Cone Angle** | Abertura do Firing Cone | 60° | +8° | 180° | 15 |
-| **Turn Speed** | Velocidade de rotação das Turrets | 90°/s | +15°/s | 360°/s | 12 |
+| **Orbit Speed** | Velocidade da órbita dos Satellites | 45°/s | +5°/s | 180°/s | 12 |
 
 Observações de design:
 - Critical Chance e Critical Factor são separados para permitir builds de "chance alta + fator baixo" e o oposto.
 - Impetus incentiva Attack Range alto e a Target Priority Farthest.
-- Cone Angle e Turn Speed decidem quão rápido o planeta reage a ameaças "por trás". Com os valores base, virar 180° leva 2 s, tempo suficiente para um Scout chegar.
+- Orbit Speed decide quanto tempo um Quadrant fica sem cobertura quando o jogador tem menos de 4 Satellites. Com o valor base, 1 Satellite dá a volta em 8 s e fica 2 s em cada Quadrant. Um Grunt leva uns 3,7 s para cruzar o Attack Range base, então alguns chegam ao planeta nas primeiras Waves. Isso é proposital: cria o incentivo para comprar Orbit Speed ou o Satellite 2.
 
 #### 🛡️ Defense
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
@@ -196,7 +192,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 
 ### 5.2 Perks
 
-**Definido:** 18 Perks em 4 **Branches**. Cada Perk tem um ou mais níveis; custo do próximo nível = `baseCost × 1.6^nível`. Os Perks "Starting X" multiplicam ou somam ao valor **base** do Stat no início da run.
+**Definido:** 17 Perks em 4 **Branches**. Cada Perk tem um ou mais níveis; custo do próximo nível = `baseCost × 1.6^nível`. Os Perks "Starting X" multiplicam ou somam ao valor **base** do Stat no início da run.
 
 **Definido (valor inicial, ajustar via Analytics):**
 
@@ -206,17 +202,16 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | Offense | Starting Attack Speed | 5 | +4% Attack Speed base | 20 | — |
 | Offense | Starting Crit Chance | 5 | +2 p.p. Critical Chance base | 25 | — |
 | Offense | Starting Range | 3 | +5% Attack Range base | 25 | — |
-| Offense | Starting Cone Angle | 3 | +10° Cone Angle base | 30 | — |
-| Offense | Starting Turn Speed | 3 | +20°/s Turn Speed base | 30 | — |
+| Offense | Starting Orbit Speed | 3 | +5°/s Orbit Speed base | 30 | — |
 | Defense | Starting Hitpoints | 5 | +10% Hitpoints base | 20 | — |
 | Defense | Starting Regeneration | 5 | +0,3 HP/s | 25 | — |
 | Defense | Starting Defense | 5 | +1 Defense (absolute) | 25 | — |
 | Utility | Starting Shards | 5 | Começa a run com +25 Shards | 20 | — |
 | Utility | Shards Bonus | 5 | +5 p.p. Resource Bonus base | 30 | — |
 | Utility | Stardust Conversion | 5 | +1 p.p. na conversão de Stardust | 40 | — |
-| Arsenal | Turret 2 | 1 | Segunda Turret | 300 | — |
-| Arsenal | Turret 3 | 1 | Terceira Turret | 1.200 | Turret 2 |
-| Arsenal | Turret 4 | 1 | Quarta Turret | 4.000 | Turret 3 |
+| Arsenal | Satellite 2 | 1 | Segundo Satellite | 300 | — |
+| Arsenal | Satellite 3 | 1 | Terceiro Satellite | 1.200 | Satellite 2 |
+| Arsenal | Satellite 4 | 1 | Quarto Satellite | 4.000 | Satellite 3 |
 | Arsenal | Target Priority: Weakest | 1 | Libera Weakest | 100 | — |
 | Arsenal | Target Priority: Strongest | 1 | Libera Strongest | 150 | — |
 | Arsenal | Target Priority: Farthest | 1 | Libera Farthest | 200 | — |
@@ -228,8 +223,8 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | Planet Core | Modificadores | Desbloqueio |
 |---|---|---|
 | **Terra Core** | Nenhum (equilibrado) | Desde o início |
-| **Ice Core** | +30% em todos os Stats de Defense; −20% Attack Speed; +20° Cone Angle base | Conquista *Frozen Resolve* |
-| **Magma Core** | +30% Damage; −25% Hitpoints; −15° Cone Angle base; +30°/s Turn Speed base | Conquista *Triple Threat* |
+| **Ice Core** | +30% em todos os Stats de Defense; −20% Attack Speed; +0,5 u de Attack Range base | Conquista *Frozen Resolve* |
+| **Magma Core** | +30% Damage; −25% Hitpoints; −0,5 u de Attack Range base; +15°/s Orbit Speed base | Conquista *Triple Threat* |
 
 ### 5.4 Skins
 
@@ -261,7 +256,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | Critical Mass | Dar 500 críticos numa run | 100 Stardust |
 | Untouchable | Destruir uma Mothership sem o planeta tomar dano durante a Boss Wave | 150 Stardust |
 | Clean Sweep | Fazer Wave Clear em 10 Waves seguidas antes do timer | 75 Stardust |
-| Full Arsenal | Ter 4 Turrets | 100 Stardust |
+| Full Arsenal | Ter 4 Satellites | 100 Stardust |
 | Dedicated | Pegar a recompensa diária 7 dias seguidos | 100 Stardust |
 
 ### 5.6 Recompensa diária
@@ -279,31 +274,56 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 
 ## 6. Arte e Apresentação
 
-### 6.1 Isométrico "falso"
+### 6.1 Câmera top-down
 
 **Definido:**
-- Toda a simulação (posições, distâncias, Firing Cones, alcance) acontece num **plano lógico** 2D circular, como se a câmera olhasse de cima.
-- A **apresentação** achata o eixo vertical: posição na tela = `(x, y × 0,6)`. Círculos viram elipses, e os sprites são desenhados em 3/4.
-- Os sprites são **ordenados pelo Y da tela**: quem está "atrás" do planeta (Y maior) é desenhado por trás dele e fica parcialmente escondido. É esse o gancho de tensão do pilar 4.
-- A tela é em **paisagem**, com resolução de referência **640×360** e **Pixel Perfect Camera** (escala inteira: 3× em 1080p). Em proporções diferentes de 16:9, o jogo mostra um pouco mais de espaço em vez de distorcer.
+- A câmera olha **de cima (top-down)**. A simulação e a tela usam o mesmo plano 2D: órbitas, alcances e Quadrants são círculos e retas de verdade na tela, sem achatamento.
+- Nada fica escondido atrás do planeta: Satellites e inimigos estão sempre visíveis. A ordem de desenho é fixa: fundo, inimigos, planeta, Satellites, projéteis, efeitos.
+- A tela é em **paisagem**, com resolução de referência **320×180** e **Pixel Perfect Camera** (escala inteira: 6× em 1080p). Em proporções diferentes de 16:9, o jogo mostra um pouco mais de espaço em vez de distorcer.
 
 ### 6.2 Direção de arte
 
-- **Paleta:** contraste forte entre o planeta e as Turrets (tons quentes, "vida") e o espaço e os inimigos (tons frios, "ameaça"), para leitura instantânea de "meu × deles".
-- **Tamanhos:** 32 pixels por unidade. Inimigos comuns de 16–24 px; Brute de uns 32 px; Mothership de uns 64 px; planeta de uns 96 px (3 u de diâmetro).
-- **Firing Cones:** sempre visíveis como setores translúcidos achatados pela projeção; ficam mais fortes a cada disparo. Podem ser escondidos nas Settings.
+- **Definido: estilo.** Pixel art colorida "clássica", baseada nas referências em `Sprites/8-Bit-Armageddon/_referencia/` (`ref1.png` e `ref2.png`): pixels grandes, sombreamento suave com 3 a 5 tons por objeto, brilho no canto de cima à esquerda (luz vinda de cima à esquerda) e **contorno preto**. O fundo é espaço azul-marinho escuro com estrelas. Os sprites são vistos de cima, com um leve volume (a luz de cima à esquerda dá a sensação de esfera ou cúpula). As referências são arte de banco de imagens com marca d'água: servem de guia para o PixelLab e nunca entram no build.
+- **Definido: paleta "meu × deles".**
+  - **Planeta e Satellites (estilo `ref2`):** cores vivas. Cada Planet Core tem a sua própria paleta: Terra = verde e azul, Ice = azul-gelo e branco, Magma = laranja e amarelo. Os Satellites usam um tom quente que combine com o Core.
+  - **Inimigos e projéteis inimigos (estilo `ref1`):** tons frios, puxados para **lavanda e roxo**. Não usam azul, para não se confundir com o Ice Core.
+- **Definido: cada Skin é um sprite próprio.** São 9 planetas (3 Planet Cores × 3 Skins), cada um desenhado com as suas cores. O jogo não recolore sprites.
+- **Definido: o sprite do planeta não mostra dano.** O planeta tem a mesma cara com qualquer HP; o HP aparece só na barra do HUD, e cada acerto dá um flash no sprite. O planeta **gira**: loop de **32 frames a 4 fps** (8 s por volta), numa faixa de células de 32×32.
+- **Em aberto (pós-lançamento):** estados visuais de dano do planeta (ex.: rachaduras com 2/3 e 1/3 do HP). Custariam 3 versões de cada um dos 9 planetas.
+- **Definido: grade de 32×32.** Todo PNG de arte (sprites do mundo, ícones, painéis de UI) é montado numa grade de células de **32×32 px**, e no Unity é sempre fatiado com *Sprite Editor → Slice → Grid By Cell Size 32×32*. O desenho fica centralizado na célula, com o pivô no centro e o resto transparente.
+- **Definido: tamanhos** (16 pixels por unidade; tamanho do desenho dentro da célula de 32×32):
+
+  | Sprite | Desenho |
+  |---|---|
+  | Planeta | 32 px (a célula toda, 2 u de diâmetro) |
+  | Mothership | 28 px |
+  | Brute | 24 px |
+  | Grunt / Scout | 16 px |
+  | Swarmer | 8 px |
+  | Satellite | 12 px |
+  | Ícones pequenos (Stats, Shards, Stardust, abas da gaveta) | 16 px |
+  | Ícones grandes (retratos dos Planet Cores, conquistas) | 32 px (a célula toda) |
+- **Definido: Quadrants na tela.** As linhas dos eixos ficam sempre visíveis, bem discretas (1 px pontilhado, quase transparente). O Quadrant onde há um Satellite ganha um preenchimento translúcido quente em forma de quarto de círculo, do tamanho do Attack Range, que pisca mais forte a cada disparo. Assim o jogador vê ao mesmo tempo o que está coberto e até onde vai o alcance. O "Mostrar Quadrants" das Settings esconde o preenchimento; as linhas continuam.
 - **Legibilidade dos efeitos:** disparos e críticos precisam ser legíveis mesmo com 150 inimigos na tela. Pixel art pede exagero visual (flash no sprite, números de dano, screen shake leve) para compensar a resolução baixa.
-- **Em aberto:** quem produz a arte e o áudio (PixelLab, artista contratado, packs ou produção própria). O guia Unity especifica os assets (tamanhos, animações, lista de sons), mas não o produtor.
+- **Definido: produção da arte.** Toda a arte da 1.0 é gerada no **PixelLab**. Os arquivos ficam neste repositório em `Sprites/8-Bit-Armageddon/{Planet,Satellites,Enemies,Projectiles,VFX,UI,Backgrounds}/`, espelhando `Assets/_Project/Art/`, já com o nome final `SPR_<Tipo>_<Nome>.png`. Candidatos rejeitados vão para `_candidatos_descartados/` dentro da pasta.
+- **Definido: direções dos sprites.**
+  - **Satellite:** satélite clássico (corpo central + dois painéis solares) em dourado/laranja, com **orientação fixa** (painéis sempre na horizontal): um sprite só, sem direções, mais uma luz de antena piscando.
+  - **Inimigos comuns** (Grunt, Scout, Swarmer, Brute): design **radialmente simétrico** (discos, orbes, cristais), com um sprite só para qualquer direção de chegada. O movimento aparece numa animação de pulsar ou girar.
+  - **Mothership:** tem frente, com **8 direções**, porque orbita o planeta e é única na tela.
+  - **Grunt:** disco voador lavanda/roxo, com luzes magenta que giram pela borda (4 frames). Tem **2 variações visuais**, sorteadas no spawn, só para dar variedade à tela; as duas são o mesmo inimigo, com os mesmos valores.
+  - **Projétil do Satellite:** bolinha brilhante de 4 px em laranja/amarelo, com 2 frames de piscar. É redonda, então não precisa de direções (o projétil é teleguiado e muda de ângulo o tempo todo). O jogo desenha atrás dela um **rastro curto de 2–3 px** na direção do movimento, para não se confundir com as estrelas do fundo.
+- **Definido: fundo de espaço.** É montado com **tiles de 32×32** que se repetem sem emenda: azul-marinho com estrelinhas, em 3 ou 4 variações sorteadas. Por cima, estrelas maiores piscando, como sprites separados. Assim o fundo segue a grade de 32×32 e cobre qualquer proporção de tela (Seção 6.1).
+- **Em aberto:** quem produz o áudio (artista contratado, packs ou produção própria). O guia Unity especifica a lista de sons, mas não o produtor.
 
 ### 6.3 Interface
 
 **Definido: gaveta de upgrades.**
-- **Fechada:** uma faixa fina na parte de baixo da tela com o saldo de Shards e 4 abas: **Offense**, **Defense**, **Utility** (cada uma com cor e ícone próprios) e **Turrets**.
+- **Fechada:** uma faixa fina na parte de baixo da tela com o saldo de Shards e 4 abas: **Offense**, **Defense**, **Utility** (cada uma com cor e ícone próprios) e **Satellites**.
 - **Aberta:** tocar numa aba abre a gaveta com cerca de 40% da altura da tela. Os Stats daquela Track aparecem como **cards** numa fileira com rolagem horizontal. Cada card mostra nome, nível, valor atual → próximo valor e custo.
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
 - **Câmera:** com a gaveta aberta, a câmera desliza para cima para o planeta continuar inteiro à vista. O jogo nunca pausa.
-- **Aba Turrets:** uma linha por Turret desbloqueada, com um seletor da Target Priority (só as prioridades já desbloqueadas).
+- **Aba Satellites:** uma linha por Satellite desbloqueado, com um seletor da Target Priority (só as prioridades já desbloqueadas).
 
 **Definido: fluxo de telas.**
 1. **Boot:** logo e carregamento.
@@ -322,8 +342,8 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 - Vibração on/off.
 - Screen shake on/off.
 - Números de dano on/off.
-- Mostrar Firing Cones on/off.
-- Modo daltônico: troca as cores verde/vermelho do feedback por azul/laranja.
+- Mostrar Quadrants on/off.
+- Modo daltônico: dá aos inimigos uma marca extra, além da cor, para diferenciá-los do planeta e dos Satellites. **Em aberto:** qual marca (contorno de outra cor, ícone, padrão).
 - Reduzir flashes: suaviza os flashes de crítico e de dano (fotossensibilidade).
 - Resetar progresso, com confirmação dupla.
 
@@ -380,10 +400,10 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 **Definido:** a 1.0 contém:
 1. 4 inimigos comuns (Grunt, Scout, Swarmer, Brute) + a Mothership a cada 10 Waves.
 2. Waves híbridas com Spawn Sectors e aviso na borda da tela.
-3. 14 Stats em 3 Tracks, com Upgrades pela gaveta.
-4. 1 a 4 Turrets com Firing Cone, rotação limitada e Target Priority por Turret (4 prioridades).
+3. 13 Stats em 3 Tracks, com Upgrades pela gaveta.
+4. 1 a 4 Satellites em órbita, cada um atacando o Quadrant onde está, com Target Priority por Satellite (4 prioridades).
 5. 3 Planet Cores, 6 Skins desbloqueáveis, 16 conquistas.
-6. Árvore de 18 Perks em 4 Branches.
+6. Árvore de 17 Perks em 4 Branches.
 7. Stardust, recompensa diária e os três anúncios recompensados.
 8. Revive, pausa (inclusive automática), Results.
 9. Settings e acessibilidade completos (Seção 6.3), dicas contextuais de onboarding.
@@ -423,7 +443,7 @@ Cada fase segue o mesmo formato:
 
 ### 10.1 Convenções do projeto
 
-**Idioma:** todo nome no projeto (scripts, classes, variáveis, funções, GameObjects, Prefabs, assets, pastas) é em **inglês** e usa os termos do [glossário](contexts/8-bit-armageddon/CONTEXT.md). Se o glossário diz **Turret**, nada no projeto se chama `WeaponPoint` ou `Cannon`. Comentários no código podem ser em português.
+**Idioma:** todo nome no projeto (scripts, classes, variáveis, funções, GameObjects, Prefabs, assets, pastas) é em **inglês** e usa os termos do [glossário](contexts/8-bit-armageddon/CONTEXT.md). Se o glossário diz **Satellite**, nada no projeto se chama `Turret`, `Drone` ou `Orbital`. Comentários no código podem ser em português.
 
 **Código C#:**
 
@@ -444,10 +464,10 @@ Cada fase segue o mesmo formato:
 
 | Tipo | Padrão | Exemplo |
 |---|---|---|
-| Prefab | PascalCase, nome do conceito | `Grunt.prefab`, `Turret.prefab`, `StatCard.prefab` |
+| Prefab | PascalCase, nome do conceito | `Grunt.prefab`, `Satellite.prefab`, `StatCard.prefab` |
 | ScriptableObject de dados | `<Tipo>_<Nome>` | `Enemy_Grunt`, `Stat_Damage`, `Perk_StartingDamage`, `Core_Terra` |
 | Sprite / spritesheet | `<Tipo>_<Nome>` | `SPR_Planet_Terra_Classic`, `SPR_Enemy_Scout` |
-| Áudio | `SFX_<Nome>` / `MUS_<Nome>` | `SFX_TurretFire`, `MUS_Gameplay` |
+| Áudio | `SFX_<Nome>` / `MUS_<Nome>` | `SFX_SatelliteFire`, `MUS_Gameplay` |
 | Cena | PascalCase | `Boot`, `MainMenu`, `Gameplay` |
 
 **Hierarquia das cenas:** cada cena tem GameObjects vazios de agrupamento, na raiz, com nomes entre colchetes: `[Systems]` (gerenciadores sem visual), `[World]` (tudo que aparece no mundo do jogo), `[UI]` (Canvas e telas). Nada solto na raiz além deles, da câmera e do `EventSystem`.
@@ -463,14 +483,13 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Core` | `SceneLoader` | Troca de cenas com tela de transição | 1 |
 | `Armageddon.Core` | `SaveService`, `PlayerProfile` | Save JSON versionado e os dados salvos do jogador | 1 |
 | `Armageddon.Core` | `GameClock` | Pausa (manual e automática) e escala de tempo | 1 |
-| `Armageddon.World` | `IsoProjection` | Conversão plano lógico ↔ tela (Y × 0,6) | 2 |
-| `Armageddon.World` | `IsoBody` | Componente que posiciona um objeto a partir da posição lógica e ordena por Y | 2 |
+| `Armageddon.World` | `Quadrant` | Os 4 Quadrants e em qual deles uma posição está | 2 |
 | `Armageddon.World` | `CameraRig` | Pixel Perfect Camera, deslocamento com a gaveta, shake | 2 |
 | `Armageddon.Planet` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
-| `Armageddon.Combat` | `Turret`, `TurretMount` | Rotação, Firing Cone, disparo; posições das Turrets no planeta | 3 |
-| `Armageddon.Combat` | `TargetSelector`, `TargetPriority` | Escolha de alvo e coordenação entre Turrets | 3 |
+| `Armageddon.Combat` | `Satellite`, `SatelliteOrbit` | Disparo; a órbita compartilhada e o espaçamento dos Satellites | 3 |
+| `Armageddon.Combat` | `TargetSelector`, `TargetPriority` | Escolha de alvo dentro do Quadrant e do Attack Range | 3 |
 | `Armageddon.Combat` | `Projectile`, `ProjectilePool` | Projétil teleguiado reaproveitado por pooling | 3 |
-| `Armageddon.Combat` | `FiringConeView` | Desenho do cone translúcido | 3 |
+| `Armageddon.Combat` | `QuadrantView` | Mostra na tela o Quadrant coberto por cada Satellite | 3 |
 | `Armageddon.Enemies` | `EnemyDefinition` | ScriptableObject com os dados de cada inimigo | 4 |
 | `Armageddon.Enemies` | `Enemy`, `EnemyRegistry`, `EnemyPool` | Inimigo em cena, lista de vivos, pooling | 4 |
 | `Armageddon.Enemies` | `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
@@ -478,7 +497,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
 | `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 14 Stats e seus valores na run | 6 |
 | `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
-| `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `TurretPanel` | A gaveta de upgrades | 6 |
+| `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
 | `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss e o laser telegrafado | 7 |
 | `Armageddon.Run` | `RunController`, `RunSummary` | Ciclo de vida da run, Revive, fim de run | 8 |
 | `Armageddon.UI` | `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView` | Telas da run | 8 |
@@ -500,8 +519,8 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 |---|---|---|
 | 0 | Setup do projeto | ✅ Escrita |
 | 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | A escrever |
-| 2 | Planeta, isométrico falso e câmera | A escrever |
-| 3 | Turrets, Firing Cone, Target Priority e projéteis | A escrever |
+| 2 | Planeta, Quadrants e câmera | A escrever |
+| 3 | Satellites, órbita, Target Priority e projéteis | A escrever |
 | 4 | Inimigos | A escrever |
 | 5 | Waves | A escrever |
 | 6 | Stats, Shards, Upgrades e gaveta | A escrever |
@@ -602,7 +621,7 @@ Assets/
   _Project/
     Art/
       Planet/
-      Turrets/
+      Satellites/
       Enemies/
       Projectiles/
       VFX/
@@ -670,7 +689,7 @@ Todos os scripts dentro de `Scripts/` (e das subpastas) passam a fazer parte da 
 1. Arraste qualquer PNG de teste para dentro de `Assets/_Project/Art/`.
 2. Selecione o PNG e configure no Inspector:
    - **Texture Type:** `Sprite (2D and UI)`
-   - **Pixels Per Unit:** `32`
+   - **Pixels Per Unit:** `16`
    - **Filter Mode:** `Point (no filter)`
    - **Compression:** `None`
    - **Generate Mip Maps** (em Advanced): desmarcado
@@ -684,7 +703,7 @@ Todos os scripts dentro de `Scripts/` (e das subpastas) passam a fazer parte da 
 
 A partir de agora, toda imagem colocada em `Art/` já entra com as configurações certas de pixel art.
 
-> **Por que PPU 32?** Com 32 pixels por unidade, uma unidade de mundo = um tile de 32×32, e a tela de referência 640×360 mostra exatamente 20 × 11,25 unidades. Todas as distâncias do GDD (Seção 4) estão nessa unidade.
+> **Por que PPU 16?** Com 16 pixels por unidade, a tela de referência 320×180 mostra exatamente 20 × 11,25 unidades, e todas as distâncias do GDD (Seção 4) estão nessa unidade. Uma célula de sprite de 32×32 (Seção 6.2) ocupa 2 × 2 u, o tamanho do planeta.
 
 #### Passo 7 — Cenas
 
@@ -743,7 +762,7 @@ Feche a Unity (ela só grava algumas configurações em disco ao fechar), abra d
 **✅ Checkpoint:**
 - O projeto abre sem nenhuma mensagem vermelha no Console (**Window > General > Console**).
 - `Assets/_Project/` tem toda a estrutura de pastas, e `Scripts/` tem o `Armageddon.asmdef`.
-- Um PNG novo colocado em `Art/` entra automaticamente com PPU 32 e Filter Point.
+- Um PNG novo colocado em `Art/` entra automaticamente com PPU 16 e Filter Point.
 - A cena `Boot` está no índice 0 da Scene List.
 - *(Recomendado, e economiza muita dor depois)* Com um celular Android conectado por USB, com a **Depuração USB** ativada nas Opções do desenvolvedor, **File > Build Profiles > Android > Build And Run** instala o projeto vazio no aparelho e mostra uma tela azul/cinza. Isso prova que o SDK Android está funcionando antes de existir qualquer código.
 - `git lfs ls-files` lista os PNGs que você já tiver no projeto (se ainda não tiver nenhum, a lista fica vazia, o que é normal).

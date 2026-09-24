@@ -38,16 +38,16 @@ _Avoid_: continue, segunda chance
 Variante do planeta escolhida antes da run, com pontos fortes e fracos próprios: Terra Core (equilibrado), Ice Core, Magma Core. Desbloqueado por conquista, nunca por Stardust.
 _Avoid_: núcleo planetário, planet type, Núcleo Estelar
 
-**Turret**:
-Ponto de disparo do planeta, que gira sozinho com velocidade limitada e só dispara em alvos dentro do seu Firing Cone; o planeta começa com uma e pode ter até quatro.
-_Avoid_: weapon point, canhão orbital, cannon
+**Satellite**:
+Arma do planeta que orbita em volta dele e só ataca inimigos no Quadrant por onde está passando; o planeta começa com um e pode ter até quatro, todos na mesma órbita e igualmente espaçados.
+_Avoid_: Turret, drone, orbital, canhão
 
-**Firing Cone**:
-O setor (ângulo × alcance) para onde uma Turret está apontada no momento; só inimigos dentro dele podem ser alvo de disparo. O ângulo é o Stat Cone Angle, o alcance é o Stat Attack Range.
-_Avoid_: campo de visão, FOV, arco de tiro, mira cônica
+**Quadrant**:
+Um dos 4 setores de 90° da tela, como um plano cartesiano centrado no planeta; um Satellite só atira em inimigos do Quadrant onde está e dentro do Attack Range.
+_Avoid_: Sector, setor, zona (Sector é só para Spawn Sector), Firing Cone
 
 **Target Priority**:
-A regra (Closest, Weakest, Strongest, Farthest) que decide para qual inimigo dentro do Attack Range uma Turret gira; enquanto gira, ela dispara em qualquer inimigo que estiver no seu Firing Cone.
+A regra (Closest, Weakest, Strongest, Farthest) que decide em qual inimigo válido (no Quadrant do Satellite e dentro do Attack Range) um Satellite atira.
 _Avoid_: mira, targeting mode
 
 **Skin**:
@@ -83,5 +83,5 @@ Um nó da árvore de meta-progressão, comprado com Stardust e mantido entre run
 _Avoid_: upgrade permanente, meta upgrade
 
 **Branch**:
-Um dos quatro ramos da árvore de Perks: Offense, Defense, Utility e Arsenal. Os três primeiros espelham as Tracks; Arsenal libera Turrets e Target Priorities.
+Um dos quatro ramos da árvore de Perks: Offense, Defense, Utility e Arsenal. Os três primeiros espelham as Tracks; Arsenal libera Satellites e Target Priorities.
 _Avoid_: Track (Track é só para Stats da run), categoria, category
