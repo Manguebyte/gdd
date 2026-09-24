@@ -118,3 +118,10 @@ soft shading 3-4 tones, highlight at top-left. Crisp 1px black outline. Game ass
   - `VFX/SPR_VFX_Explosion_Mothership.png`: 6 frames de 64×64. O núcleo branco se abre em partículas que passam de branco para rosa, magenta e roxo, e somem.
   - `VFX/SPR_VFX_Laser_Warning.png`: 2 frames, tracejado vermelho de 1 px. `_Laser_Beam.png`: 4 frames, feixe de 3 px com núcleo branco. `_Laser_Impact.png`: 4 frames. Os tiles são horizontais, com a linha em y = 16. O jogo os repete ao longo da linha e os gira (GDD §6.2).
   - `UI/SPR_UI_SpawnSectorArrow.png`: 6 linhas (setores de 30°, 90°, 150°, 210°, 270°, 330°) × 2 colunas (aceso/apagado). A seta aponta para o planeta.
+
+### UI (etapa E)
+
+- **Painéis e botões:** `_tools/ui_panels.py`. `UI/SPR_UI_Panel.png`, `UI/SPR_UI_Button.png` (normal | pressionado | desabilitado) e `UI/SPR_UI_DrawerStrip.png`. No Unity: *Border* = 8 px nos 4 lados, *Image Type* = *Sliced*.
+- **Ícones:** `create_1_direction_object` com `size: 16` e `item_descriptions` (um texto por ícone, cada um repetido 2× para ter alternativas), 20 gerações para os 42 pedidos. Os escolhidos ficam em `UI/SPR_UI_Icons.png`, em células de 32×32; a ordem das células está em `UI/SPR_UI_Icons_ordem.txt`.
+  - Correções por script: Attack Range recolorido para laranja; Satellites com os painéis azuis trocados por cinza; Orbit Speed desenhado à mão (a IA gerou uma bolha sem significado).
+  - Os 64 candidatos estão em `UI/_candidatos_descartados/`.

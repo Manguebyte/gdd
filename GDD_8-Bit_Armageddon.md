@@ -327,12 +327,18 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 ### 6.3 Interface
 
 **Definido: gaveta de upgrades.**
-- **Fechada:** uma faixa fina na parte de baixo da tela com o saldo de Shards e 4 abas: **Offense**, **Defense**, **Utility** (cada uma com cor e ícone próprios) e **Satellites**.
+- **Fechada:** uma faixa fina na parte de baixo da tela com o saldo de Shards e 4 abas, cada uma com cor e ícone próprios: **Offense** (laranja), **Defense** (azul), **Utility** (verde) e **Satellites** (cinza). O vermelho fica de fora, porque é exclusivo do laser da Mothership, e a lavanda/magenta também, porque é dos inimigos.
 - **Aberta:** tocar numa aba abre a gaveta com cerca de 40% da altura da tela. Os Stats daquela Track aparecem como **cards** numa fileira com rolagem horizontal. Cada card mostra nome, nível, valor atual → próximo valor e custo.
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
 - **Câmera:** com a gaveta aberta, a câmera desliza para cima para o planeta continuar inteiro à vista. O jogo nunca pausa.
 - **Aba Satellites:** uma linha por Satellite desbloqueado, com um seletor da Target Priority (só as prioridades já desbloqueadas).
+
+**Definido: arte da interface.**
+- **Painéis e botões:** metal cinza-escuro, com bordas mais claras e detalhes laranja, na mesma linguagem do Satellite ("equipamento do jogador"). São **9-slice** em células de 32×32, com bordas de 8 px: painel, botão (normal, pressionado e desabilitado) e a faixa da gaveta fechada.
+- **Ícones:** 16 px dentro de células de 32×32, todos numa spritesheet só (13 Stats, 4 abas, Shards, Stardust e troféu).
+- **Fonte:** **m5x7** (Daniel Linssen, CC0), com 7 px de altura, no tamanho 16 do TextMeshPro. Tem todos os acentos do português, mas em maiúsculas eles ficam espremidos, então a UI usa **maiúsculas e minúsculas**, nunca tudo em caixa alta. A fonte não tem "→": o card de Stat usa uma setinha como ícone. O arquivo e a licença estão em `Sprites/8-Bit-Armageddon/Fonts/`.
+- **Retratos e conquistas:** a Core Select usa o **sprite do próprio planeta** girando como retrato de cada Planet Core e Skin. As conquistas usam **um ícone de troféu em 3 estados** (bloqueada, desbloqueada, recompensa coletada), e as que dão um Core ou uma Skin mostram o planeta como recompensa.
 
 **Definido: fluxo de telas.**
 1. **Boot:** logo e carregamento.
