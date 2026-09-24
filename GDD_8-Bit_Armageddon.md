@@ -133,7 +133,7 @@ Utility é a Track "de investimento": não ataca nem defende, mas acelera o aces
   - Consequência: enquanto uma Mothership estiver viva, a tela nunca esvazia, então os bônus se acumulam e são pagos todos juntos quando ela morre.
 - **Spawn Sectors:** o círculo ao redor do planeta é dividido em 6 arcos de 60°. Cada Wave sorteia 1 setor (Waves 1–4), 2 setores (Waves 5–14) ou 3 setores (Wave 15 em diante). Os inimigos nascem num ponto aleatório dentro dos setores sorteados, a 12 u do centro (fora da tela).
 - **Ritmo de spawn:** os inimigos de uma Wave nascem espalhados igualmente nos primeiros 20 s do timer.
-- **Limite de tela:** no máximo **150 inimigos** vivos ao mesmo tempo. Se o limite for atingido, o spawn espera.
+- **Limite de tela:** no máximo **150 inimigos** vivos ao mesmo tempo. Se o limite for atingido, o spawn espera. Os slots que não couberem **não são descartados**: continuam na fila e nascem assim que houver espaço, mesmo que a próxima Wave já tenha começado. O Wave Clear só acontece com essa fila vazia.
 
 **Definido (valor inicial, ajustar via Analytics):**
 | Item | Fórmula |
@@ -571,8 +571,9 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.World` | `ExplosionPool` | Explosões (animação "uma vez") reaproveitadas por pooling | 4 |
 | `Armageddon.Enemies` | `EnemyDevTools` | Teclas de teste de inimigos (só no Editor e em builds de desenvolvimento) | 4 |
 | `Armageddon.Enemies` | `IEnemyMovement`, `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
-| `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, Wave Clear | 5 |
+| `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, fila de spawn, Wave Clear | 5 |
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
+| `Armageddon.Waves` | `WaveDevTools` | Teclas de teste das Waves (só no Editor e em builds de desenvolvimento) | 5 |
 | `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 13 Stats e seus valores na run | 6 |
 | `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
 | `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
@@ -600,7 +601,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 2 | Planeta, Quadrants e câmera | ✅ Escrita |
 | 3 | Satellites, órbita, Target Priority e projéteis | ✅ Escrita |
 | 4 | Inimigos | ✅ Escrita |
-| 5 | Waves | A escrever |
+| 5 | Waves | ✅ Escrita |
 | 6 | Stats, Shards, Upgrades e gaveta | A escrever |
 | 7 | Mothership | A escrever |
 | 8 | Run: Revive, pausa, Results | A escrever |
@@ -3391,3 +3392,517 @@ Na lista **Variants**, clique **+** uma vez por variação e arraste as células
 - **A explosão fica parada no último frame:** o `ExplosionPool` devolve a explosão ao pool no evento `Finished`, que só dispara com **Loop** desmarcado, e é por isso que o `Play` usa `loop: false`.
 
 Próxima fase: **Fase 5 — Waves**. Ela coloca o `WaveDirector` para decidir quantos inimigos nascem, de que tipo, de quais Spawn Sectors e com qual escalada, com o aviso de 2 s na borda e o Wave Clear.
+
+---
+
+### Fase 5 — Waves
+
+> Objetivo desta fase: a run acontece sozinha. Um aviso de 2 s na borda da tela mostra de quais Spawn Sectors a próxima Wave vem; os inimigos nascem espalhados nos primeiros 20 s, com a composição e a escalada da Seção 4.3; a próxima Wave começa quando o timer acaba ou quando a tela esvazia; e o Wave Clear paga todas as Waves pendentes. O pagamento em Shards entra na Fase 6, e a Mothership (Boss Wave) na Fase 7.
+
+**Conceitos novos:**
+- **Máquina de estados simples:** o `WaveDirector` está sempre numa de três fases: `Idle` (sem run), `Warning` (os 2 s de aviso) e `Running` (a Wave rodando). Cada fase tem a sua regra de saída. Assim, o código de "o que fazer agora" fica num lugar só e fácil de ler.
+- **Fila de spawn:** ao começar, a Wave coloca todos os seus slots numa fila, cada um com o seu horário de nascer. A cada frame, nasce quem já está na hora e cabe no limite de 150 inimigos. Um slot que não coube fica na fila e nasce depois, mesmo que outra Wave já tenha começado: é o "o spawn espera" da Seção 4.3.
+- **Sorteio com pesos:** cada tipo de inimigo tem um peso (Grunt 50, Scout 25…). O sorteio soma os pesos dos tipos já liberados, sorteia um número nessa soma e vê em qual faixa ele caiu. Os pesos ficam "renormalizados" sem nenhuma conta extra.
+- **Dados de balanceamento separados do código (`WaveBalance`):** todos os números da Seção 4.3 ficam num asset. O ajuste pós-Analytics é editar esse asset, não recompilar.
+
+#### Passo 1 — Os números das Waves: `WaveBalance`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveBalance.cs
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // Todos os números da Seção 4.3 (valores iniciais, ajustar via Analytics).
+    [CreateAssetMenu(menuName = "Armageddon/Wave Balance", fileName = "WaveBalance")]
+    public sealed class WaveBalance : ScriptableObject
+    {
+        [Header("Tempo (s)")]
+        [SerializeField] private float _waveDuration = 30f;
+        [SerializeField] private float _bossWaveDuration = 60f;
+        [SerializeField] private float _warningDuration = 2f;
+        [SerializeField] private float _spawnWindow = 20f;      // os slots nascem espalhados nestes primeiros segundos
+
+        [Header("Tamanho: slots = min(base + porWave·w, máximo)")]
+        [SerializeField] private int _baseSlots = 6;
+        [SerializeField] private int _slotsPerWave = 2;
+        [SerializeField] private int _maxSlots = 60;
+        [SerializeField] private int _maxAlive = 150;           // limite de inimigos na tela
+
+        [Header("Escalada: base × crescimento^(w−1)")]
+        [SerializeField] private float _hitpointsGrowth = 1.09f;
+        [SerializeField] private float _damageGrowth = 1.06f;
+
+        [Header("Spawn Sectors: 1 setor até a Wave anterior à primeira abaixo")]
+        [SerializeField] private int _twoSectorsFromWave = 5;
+        [SerializeField] private int _threeSectorsFromWave = 15;
+
+        [Header("Boss Wave e Wave Clear")]
+        [SerializeField] private int _bossEvery = 10;
+        [SerializeField] private int _clearBonusBase = 5;       // bônus = (base + w) × (1 + Resource per Wave)
+
+        [Header("Inimigos comuns sorteáveis")]
+        [SerializeField] private List<EnemyDefinition> _enemies = new List<EnemyDefinition>();
+
+        public float WaveDuration => _waveDuration;
+        public float BossWaveDuration => _bossWaveDuration;
+        public float WarningDuration => _warningDuration;
+        public float SpawnWindow => _spawnWindow;
+        public int MaxAlive => _maxAlive;
+        public IReadOnlyList<EnemyDefinition> Enemies => _enemies;
+
+        public bool IsBossWave(int wave) => wave > 0 && wave % _bossEvery == 0;
+        public int SlotsFor(int wave) => Mathf.Min(_baseSlots + _slotsPerWave * wave, _maxSlots);
+        public float HitpointsMultiplier(int wave) => Mathf.Pow(_hitpointsGrowth, wave - 1);
+        public float DamageMultiplier(int wave) => Mathf.Pow(_damageGrowth, wave - 1);
+
+        public int SectorCountFor(int wave)
+        {
+            if (wave >= _threeSectorsFromWave) return 3;
+            if (wave >= _twoSectorsFromWave) return 2;
+            return 1;
+        }
+
+        // Bônus de uma Wave paga no Wave Clear, antes do Stat Resource per Wave (aplicado na Fase 6).
+        public int ClearBonus(int wave) => _clearBonusBase + wave;
+    }
+}
+```
+
+#### Passo 2 — O diretor das Waves: `WaveDirector`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveDirector.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // Conduz a run Wave a Wave (Seção 4.3): aviso de 2 s, spawn espalhado, escalada, fim da Wave e Wave Clear.
+    public sealed class WaveDirector : MonoBehaviour
+    {
+        public const int SectorCount = 6;          // 6 arcos de 60°
+        public const float SectorArc = 60f;
+
+        private enum Phase { Idle, Warning, Running }
+
+        // Um slot esperando para nascer: tipo, posição e escalada já decididos quando a Wave começou.
+        private struct PendingSpawn
+        {
+            public EnemyDefinition Definition;
+            public Vector2 Position;
+            public float HitpointsMultiplier;
+            public float DamageMultiplier;
+            public float DueTime;
+        }
+
+        [SerializeField] private WaveBalance _balance;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private bool _autoStart = true;   // a Fase 8 desliga: o RunController chama StartRun
+
+        private readonly Queue<PendingSpawn> _queue = new Queue<PendingSpawn>();
+        private readonly List<int> _sectors = new List<int>();
+        private readonly List<int> _unpaidWaves = new List<int>();
+        private readonly List<EnemyDefinition> _unlocked = new List<EnemyDefinition>();
+        private Phase _phase = Phase.Idle;
+        private float _phaseTime;
+        private float _runTime;
+        private float _duration;
+        private int _externalAlive;
+
+        public int CurrentWave { get; private set; }
+        public bool IsBossWave => _balance.IsBossWave(CurrentWave);
+        public bool IsWarning => _phase == Phase.Warning;
+        public float TimeRemaining => _phase == Phase.Running ? Mathf.Max(0f, _duration - _phaseTime) : 0f;
+        public int AliveCount => _enemies.AliveCount + _externalAlive;
+
+        public event Action<int, IReadOnlyList<int>> WaveWarning;          // Wave que vem e os seus Spawn Sectors
+        public event Action<int> WaveStarted;
+        public event Action<int> BossWaveStarted;                          // a Fase 7 cria a Mothership aqui
+        public event Action<IReadOnlyList<int>, bool> WaveCleared;         // Waves pagas; true = antes do timer
+
+        private void Start()
+        {
+            if (_autoStart) StartRun();
+        }
+
+        public void StartRun()
+        {
+            _queue.Clear();
+            _unpaidWaves.Clear();
+            _runTime = 0f;
+            BeginWarning(1);
+        }
+
+        public void StopRun()
+        {
+            _phase = Phase.Idle;
+            _queue.Clear();
+        }
+
+        // Inimigos vivos que não vêm do EnemyPool (a Mothership, Fase 7). Contam para o Wave Clear.
+        public void AddExternalAlive(int delta)
+        {
+            _externalAlive = Mathf.Max(0, _externalAlive + delta);
+        }
+
+        private void Update()
+        {
+            float deltaTime = Time.deltaTime;
+            if (_phase == Phase.Idle || deltaTime <= 0f) return;
+
+            _phaseTime += deltaTime;
+            _runTime += deltaTime;
+            SpawnDue();
+
+            if (TryWaveClear()) return;
+
+            if (_phase == Phase.Warning && _phaseTime >= _balance.WarningDuration)
+            {
+                BeginWave();
+            }
+            else if (_phase == Phase.Running && _phaseTime >= _duration)
+            {
+                // Timer acabou com inimigos vivos: esta Wave continua "não paga" até o próximo Wave Clear.
+                BeginWarning(CurrentWave + 1);
+            }
+        }
+
+        private void BeginWarning(int wave)
+        {
+            CurrentWave = wave;
+            _phase = Phase.Warning;
+            _phaseTime = 0f;
+            ChooseSectors(_balance.SectorCountFor(wave));
+            WaveWarning?.Invoke(wave, _sectors);
+        }
+
+        private void BeginWave()
+        {
+            _phase = Phase.Running;
+            _phaseTime = 0f;
+            int wave = CurrentWave;
+            bool boss = _balance.IsBossWave(wave);
+            _duration = boss ? _balance.BossWaveDuration : _balance.WaveDuration;
+            _unpaidWaves.Add(wave);
+
+            // Boss Wave: só a Mothership, sem inimigos comuns (Seção 4.5).
+            if (!boss) EnqueueSlots(wave);
+
+            WaveStarted?.Invoke(wave);
+            if (boss) BossWaveStarted?.Invoke(wave);
+        }
+
+        private void EnqueueSlots(int wave)
+        {
+            _unlocked.Clear();
+            float totalWeight = 0f;
+            foreach (var definition in _balance.Enemies)
+            {
+                if (definition.UnlockWave > wave) continue;
+                _unlocked.Add(definition);
+                totalWeight += definition.SpawnWeight;
+            }
+            if (_unlocked.Count == 0) return;
+
+            int slots = _balance.SlotsFor(wave);
+            float interval = _balance.SpawnWindow / slots;
+            float hitpoints = _balance.HitpointsMultiplier(wave);
+            float damage = _balance.DamageMultiplier(wave);
+
+            for (int i = 0; i < slots; i++)
+            {
+                _queue.Enqueue(new PendingSpawn
+                {
+                    Definition = PickWeighted(totalWeight),
+                    Position = RandomPointInSectors(),
+                    HitpointsMultiplier = hitpoints,
+                    DamageMultiplier = damage,
+                    DueTime = _runTime + i * interval,
+                });
+            }
+        }
+
+        // Nasce quem já está na hora, respeitando o limite de inimigos na tela. Um cacho de Swarmers conta como 8.
+        private void SpawnDue()
+        {
+            while (_queue.Count > 0)
+            {
+                var next = _queue.Peek();
+                if (next.DueTime > _runTime) return;
+                if (AliveCount + Mathf.Max(1, next.Definition.ClusterSize) > _balance.MaxAlive) return;   // o spawn espera
+
+                _queue.Dequeue();
+                _enemies.Spawn(next.Definition, next.Position, next.HitpointsMultiplier, next.DamageMultiplier);
+            }
+        }
+
+        // Wave Clear (Seção 4.3): a tela ficou vazia e não há ninguém esperando para nascer.
+        // Paga TODAS as Waves pendentes, inclusive as que já tinham passado do timer.
+        private bool TryWaveClear()
+        {
+            if (_unpaidWaves.Count == 0 || _queue.Count > 0 || AliveCount > 0) return false;
+
+            bool beforeTimer = _phase == Phase.Running && _phaseTime < _duration;
+            var paid = _unpaidWaves.ToArray();
+            _unpaidWaves.Clear();
+            WaveCleared?.Invoke(paid, beforeTimer);
+
+            // Na fase Running, a tela vazia também começa a próxima Wave (Seção 4.3).
+            if (_phase == Phase.Running) BeginWarning(CurrentWave + 1);
+            return true;
+        }
+
+        private EnemyDefinition PickWeighted(float totalWeight)
+        {
+            float roll = UnityEngine.Random.value * totalWeight;
+            foreach (var definition in _unlocked)
+            {
+                roll -= definition.SpawnWeight;
+                if (roll < 0f) return definition;
+            }
+            return _unlocked[_unlocked.Count - 1];
+        }
+
+        // Sorteia 'count' setores diferentes entre os 6 (embaralhamento parcial).
+        private void ChooseSectors(int count)
+        {
+            _sectors.Clear();
+            for (int i = 0; i < SectorCount; i++) _sectors.Add(i);
+            for (int i = 0; i < count; i++)
+            {
+                int j = UnityEngine.Random.Range(i, SectorCount);
+                (_sectors[i], _sectors[j]) = (_sectors[j], _sectors[i]);
+            }
+            _sectors.RemoveRange(count, SectorCount - count);
+        }
+
+        // Um ponto aleatório num dos setores sorteados, a 12 u do centro (fora da tela).
+        private Vector2 RandomPointInSectors()
+        {
+            int sector = _sectors[UnityEngine.Random.Range(0, _sectors.Count)];
+            float angle = (sector * SectorArc + UnityEngine.Random.Range(0f, SectorArc)) * Mathf.Deg2Rad;
+            return WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * WorldLayout.SpawnRadius;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Só para teste: faz o timer da Wave atual acabar agora.
+        public void DevEndWaveTimer()
+        {
+            if (_phase == Phase.Running) _phaseTime = _duration;
+        }
+#endif
+    }
+}
+```
+
+> **Setores e setas:** o setor `k` cobre de `60·k°` a `60·k + 60°`; o centro dele fica em `30 + 60·k°`. São exatamente as 6 direções das setas de `SPR_UI_SpawnSectorArrow` (linha `k` da spritesheet, Seção 6.4).
+
+#### Passo 3 — O aviso na borda: `SpawnSectorIndicator`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/SpawnSectorIndicator.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // Durante os 2 s de aviso, mostra uma seta piscando na borda da tela para cada Spawn Sector sorteado (Seção 6.2).
+    // A seta fica onde a linha "planeta → centro do setor" cruza a borda da tela, e acompanha a câmera.
+    public sealed class SpawnSectorIndicator : MonoBehaviour
+    {
+        [Serializable]
+        private sealed class ArrowFrames
+        {
+            public Sprite[] frames;   // aceso e apagado
+        }
+
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private ArrowFrames[] _arrows = new ArrowFrames[WaveDirector.SectorCount];   // índice = setor
+        [SerializeField] private float _fps = 4f;
+        [SerializeField] private float _edgeMargin = 1f;   // distância da seta até a borda, em u
+        [SerializeField] private string _sortingLayer = "VFX";
+        [SerializeField] private int _sortingOrder = 100;
+
+        private readonly SpriteAnimator[] _views = new SpriteAnimator[WaveDirector.SectorCount];
+
+        private void Awake()
+        {
+            for (int i = 0; i < _views.Length; i++)
+            {
+                var go = new GameObject($"Arrow {i}");
+                go.transform.SetParent(transform, false);
+                var renderer = go.AddComponent<SpriteRenderer>();
+                renderer.sortingLayerName = _sortingLayer;
+                renderer.sortingOrder = _sortingOrder;
+                _views[i] = go.AddComponent<SpriteAnimator>();
+                _views[i].SetFrames(_arrows[i].frames, _fps, true);
+                go.SetActive(false);
+            }
+        }
+
+        private void OnEnable()
+        {
+            _waves.WaveWarning += HandleWaveWarning;
+            _waves.WaveStarted += HandleWaveStarted;
+        }
+
+        private void OnDisable()
+        {
+            _waves.WaveWarning -= HandleWaveWarning;
+            _waves.WaveStarted -= HandleWaveStarted;
+        }
+
+        private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
+        {
+            HideAll();
+            foreach (int sector in sectors) _views[sector].gameObject.SetActive(true);
+        }
+
+        private void HandleWaveStarted(int wave)
+        {
+            HideAll();
+        }
+
+        private void HideAll()
+        {
+            foreach (var view in _views) view.gameObject.SetActive(false);
+        }
+
+        private void LateUpdate()
+        {
+            var view = Camera.main;
+            if (view == null) return;
+
+            Vector2 cameraCenter = view.transform.position;
+            float halfHeight = view.orthographicSize - _edgeMargin;
+            float halfWidth = view.orthographicSize * view.aspect - _edgeMargin;
+            Vector2 origin = WorldLayout.PlanetCenter;
+
+            for (int i = 0; i < _views.Length; i++)
+            {
+                if (!_views[i].gameObject.activeSelf) continue;
+
+                float angle = (i * WaveDirector.SectorArc + WaveDirector.SectorArc * 0.5f) * Mathf.Deg2Rad;
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+
+                // Distância, ao longo da direção, até a primeira borda (esquerda/direita ou cima/baixo) da tela.
+                float tx = direction.x > 0f ? (cameraCenter.x + halfWidth - origin.x) / direction.x
+                         : direction.x < 0f ? (cameraCenter.x - halfWidth - origin.x) / direction.x
+                         : float.MaxValue;
+                float ty = direction.y > 0f ? (cameraCenter.y + halfHeight - origin.y) / direction.y
+                         : direction.y < 0f ? (cameraCenter.y - halfHeight - origin.y) / direction.y
+                         : float.MaxValue;
+                Vector2 p = origin + direction * Mathf.Min(tx, ty);
+
+                _views[i].transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+            }
+        }
+    }
+}
+```
+
+#### Passo 4 — Teclas de teste: `WaveDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System.Collections.Generic;
+using System.Linq;
+using Armageddon.Combat;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Waves
+{
+    // N = acaba o timer da Wave atual · K = destrói todos os inimigos (testa o Wave Clear). Registra os eventos no Console.
+    public sealed class WaveDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private WaveDirector _waves;
+
+        private void OnEnable()
+        {
+            _waves.WaveWarning += HandleWaveWarning;
+            _waves.WaveStarted += HandleWaveStarted;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            _waves.WaveWarning -= HandleWaveWarning;
+            _waves.WaveStarted -= HandleWaveStarted;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.nKey.wasPressedThisFrame) _waves.DevEndWaveTimer();
+
+            if (keyboard.kKey.wasPressedThisFrame)
+            {
+                // Cópia da lista: cada alvo que morre sai do TargetRegistry durante o laço.
+                foreach (var target in TargetRegistry.Alive.ToList()) target.TakeDamage(float.MaxValue, false);
+            }
+        }
+
+        private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
+        {
+            Debug.Log($"[Waves] Aviso: Wave {wave} vem dos setores {string.Join(", ", sectors)}");
+        }
+
+        private void HandleWaveStarted(int wave)
+        {
+            Debug.Log($"[Waves] Wave {wave} começou{(_waves.IsBossWave ? " (BOSS: a Mothership entra na Fase 7)" : "")}. Vivos: {_waves.AliveCount}");
+        }
+
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            Debug.Log($"[Waves] Wave Clear{(beforeTimer ? " antes do timer" : "")}: paga(s) {string.Join(", ", paidWaves)}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 5 — O asset de balanceamento e a cena
+
+1. Em `Assets/_Project/Data/Balance/`, **Create → Armageddon → Wave Balance**, com o nome `WaveBalance`. Os valores padrão já são os da Seção 4.3. Em **Enemies**, arraste os 4 assets da Fase 4 (`Enemy_Grunt`, `Enemy_Scout`, `Enemy_Swarmer`, `Enemy_Brute`).
+2. Na cena `Gameplay`:
+   - Em `[Systems]`, crie `WaveDirector` com o componente `WaveDirector`: **Balance** = `WaveBalance`; **Enemies** = o `EnemyPool`; **Auto Start** marcado.
+   - Em `[World]`, crie `SpawnSectorIndicator` com o componente `SpawnSectorIndicator`: **Waves** = o `WaveDirector`. Em **Arrows** (6 itens), coloque no item `k` as células `2k` e `2k+1` de `Art/UI/SPR_UI_SpawnSectorArrow`: item 0 = células 0 e 1 (setor de 30°), item 1 = células 2 e 3 (90°), e assim por diante até o item 5 = células 10 e 11 (330°).
+   - Em `[Systems]`, crie `WaveDevTools` com o componente `WaveDevTools` e o `WaveDirector` em **Waves**.
+3. O `EnemyDevTools` da Fase 4 continua útil, mas a tecla **R** agora compete com as Waves: use-a só para testar o limite de tela.
+
+#### Passo 6 — Commit
+
+`git add .` e `git commit -m "Phase 5: waves, spawn sectors, scaling, screen cap, wave clear"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: uma seta magenta pisca na borda da tela por 2 s (Console: `Aviso: Wave 1 vem dos setores 3`, por exemplo), some, e **8 Grunts** (6 + 2 × 1) nascem **daquele lado**, espalhados ao longo de 20 s.
+- Sem nenhum Satellite por perto dos inimigos, a Wave 2 começa quando o timer de 30 s acaba. Com os Satellites destruindo todos, ela começa antes (Console: `Wave Clear antes do timer: paga(s) 1`).
+- Deixe o timer da Wave 1 acabar com inimigos vivos e aperte **K** durante a Wave 2, depois que todos os dela nascerem: o Console mostra `Wave Clear…: paga(s) 1, 2`. As duas são pagas juntas (Seção 4.3).
+- Scouts aparecem a partir da Wave 3, Swarmers da 6 e Brutes da 8 (use **N** para avançar rápido). A partir da Wave 5 aparecem **2 setas** e, da 15, **3**.
+- Com a gaveta aberta (**F3**), as setas continuam na borda visível da tela.
+- Na Wave 10, o Console mostra `(BOSS: a Mothership entra na Fase 7)`, e a Wave termina sozinha por não ter inimigos. É esperado até a Fase 7.
+- Várias vezes **R** (10 inimigos cada) até passar de 150 vivos: a Wave para de soltar inimigos e volta a soltar assim que alguns morrem.
+- **Esc** pausa o timer, o spawn e o piscar das setas.
+
+**Problemas comuns:**
+- **Nenhum inimigo nasce:** a lista **Enemies** do `WaveBalance` está vazia, ou nenhum inimigo tem **Unlock Wave** ≤ 1.
+- **Os inimigos nascem do lado oposto da seta:** a ordem das células no **Arrows** do `SpawnSectorIndicator` está trocada. O item `k` precisa ser a linha `k` da spritesheet (células `2k` e `2k+1`).
+- **A Wave nunca termina antes do timer, mesmo com a tela vazia:** ainda há slots na fila, esperando a hora de nascer (os 20 s de spawn). O Wave Clear só acontece com a fila vazia **e** a tela vazia.
+- **As setas aparecem no centro da tela:** a **Main Camera** não está com a tag `MainCamera` (o `Camera.main` não a encontra).
+
+Próxima fase: **Fase 6 — Stats, Shards, Upgrades e gaveta**. Ela transforma os inimigos destruídos e os Wave Clears em Shards e cria a gaveta de upgrades com os 13 Stats.
