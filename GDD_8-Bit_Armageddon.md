@@ -517,11 +517,11 @@ Cada fase segue o mesmo formato:
 | Namespace | `Armageddon.<Área>` | `Armageddon.Combat` |
 | Classe, struct, enum, interface | PascalCase; interfaces com `I` | `WaveDirector`, `IAdService` |
 | Método e propriedade | PascalCase | `TryPurchase()`, `CurrentWave` |
-| Campo privado | `_camelCase` | `_turnSpeed` |
+| Campo privado | `_camelCase` | `_orbitSpeed` |
 | Campo exposto no Inspector | `[SerializeField] private` + `_camelCase` | `[SerializeField] private float _orbitRadius;` |
 | Evento C# | PascalCase, verbo no passado, sem `On` | `event Action<Enemy> EnemyKilled;` |
 | Método que responde a evento | `Handle` + nome do evento | `HandleEnemyKilled(Enemy enemy)` |
-| Constante | PascalCase | `const float IsoYScale = 0.6f;` |
+| Constante | PascalCase | `const float OrbitRadius = 1.75f;` |
 
 > Por que `_camelCase` + `[SerializeField] private` em vez de `public`? Um campo `public` pode ser alterado por qualquer outro script, e bugs de "quem mudou esse valor?" são dos mais difíceis de achar. Com `[SerializeField] private`, o valor aparece no Inspector para você ajustar, mas só a própria classe pode alterá-lo em código.
 
@@ -543,11 +543,14 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 
 | Área (namespace) | Script | Responsabilidade | Fase |
 |---|---|---|---|
-| `Armageddon.Core` | `GameBootstrap` | Primeiro script a rodar: inicializa os serviços e carrega o Main Menu | 1 |
+| `Armageddon.Core` | `GameBootstrap` | Primeiro código a rodar, antes de qualquer cena: cria o `[Services]` e registra os serviços | 1 |
+| `Armageddon.Core` | `BootSequence` | Na cena Boot: mostra o logo e carrega o Main Menu | 1 |
 | `Armageddon.Core` | `Services` | Acesso central aos serviços (save, áudio, anúncios…) | 1 |
 | `Armageddon.Core` | `SceneLoader` | Troca de cenas com tela de transição | 1 |
-| `Armageddon.Core` | `SaveService`, `PlayerProfile` | Save JSON versionado e os dados salvos do jogador | 1 |
+| `Armageddon.Core` | `SaveService`, `PlayerProfile`, `SaveStorage` | Save JSON versionado, os dados salvos do jogador e onde eles moram (arquivo ou navegador) | 1 |
 | `Armageddon.Core` | `GameClock` | Pausa (manual e automática) e escala de tempo | 1 |
+| `Armageddon.Core` | `AppLifecycle` | Segundo plano, perda de foco, fechar o app e o botão "voltar" | 1 |
+| `Armageddon.Core` | `DevShortcuts` | Atalhos de teste (só no Editor e em builds de desenvolvimento) | 1 |
 | `Armageddon.World` | `Quadrant` | Os 4 Quadrants e em qual deles uma posição está | 2 |
 | `Armageddon.World` | `CameraRig` | Pixel Perfect Camera, deslocamento com a gaveta, shake | 2 |
 | `Armageddon.Planet` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
@@ -560,7 +563,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Enemies` | `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
 | `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, Wave Clear | 5 |
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
-| `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 14 Stats e seus valores na run | 6 |
+| `Armageddon.Economy` | `StatDefinition`, `RunStats` | Definição dos 13 Stats e seus valores na run | 6 |
 | `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
 | `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
 | `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss e o laser telegrafado | 7 |
@@ -583,7 +586,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | Fase | Conteúdo | Status |
 |---|---|---|
 | 0 | Setup do projeto | ✅ Escrita |
-| 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | A escrever |
+| 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | ✅ Escrita |
 | 2 | Planeta, Quadrants e câmera | A escrever |
 | 3 | Satellites, órbita, Target Priority e projéteis | A escrever |
 | 4 | Inimigos | A escrever |
@@ -876,3 +879,684 @@ Feche a Unity (ela só grava algumas configurações em disco ao fechar), abra d
 - **Sprites borrados ou "piscando":** o sprite foi importado antes do Preset existir, ou está fora de `Assets/_Project/Art/`. Selecione-o e clique no ícone de Preset → `SpriteImporter_PixelArt`.
 - **O celular não aparece no Build And Run:** ative as **Opções do desenvolvedor** no Android (tocar 7 vezes em "Número da versão"), ligue a **Depuração USB** e aceite o pedido de autorização que aparece no celular ao conectar o cabo.
 - **Os PNGs foram para o Git como arquivo normal:** o `git lfs install` não foi rodado, ou o `.gitattributes` foi criado depois do commit. Rode `git lfs migrate import --include="*.png,*.wav,*.ogg"` antes de enviar o repositório para qualquer lugar.
+
+---
+
+### Fase 1 — Arquitetura: bootstrap, serviços, cenas, save e pausa
+
+> Objetivo desta fase: o jogo abre na cena `Boot`, inicializa os serviços, mostra o logo e passa para o `MainMenu` com uma transição suave. O progresso do jogador é salvo em disco com versão, e o jogo pausa sozinho quando perde o foco. Nada de gameplay ainda: esta é a "fundação" que todas as outras fases usam.
+
+**Conceitos novos:**
+- **Serviço:** um sistema que vive o jogo inteiro e não pertence a nenhuma cena (save, troca de cenas, pausa e, depois, áudio e anúncios). Todos ficam num objeto chamado `[Services]`, que nunca é destruído.
+- **Service Locator (`Services`):** uma classe estática com uma propriedade para cada serviço. Qualquer script escreve `Services.Save.Profile` em vez de procurar o objeto na cena. É simples e explícito: você sabe exatamente quais serviços existem olhando um arquivo só.
+- **`[RuntimeInitializeOnLoadMethod]`:** um atributo que faz a Unity chamar um método estático **antes da primeira cena carregar**, em qualquer cena. É isso que permite apertar Play direto na cena `Gameplay` e ter os serviços funcionando, sem precisar passar pela `Boot`.
+- **`DontDestroyOnLoad`:** marca um objeto para sobreviver à troca de cena.
+- **Save versionado:** o arquivo de save guarda o número da versão do formato. Quando o formato mudar numa atualização do jogo, o código sabe converter um save antigo em vez de apagá-lo.
+- **Escrita atômica:** o save é escrito num arquivo temporário e só depois substitui o original. Se o celular desligar no meio da escrita, o save antigo continua inteiro.
+- **`Time.timeScale`:** o multiplicador de tempo da Unity. Com `0`, tudo o que usa `Time.deltaTime` (movimento, animações, timers) congela; é assim que o jogo pausa. A UI de pausa usa `Time.unscaledDeltaTime`, que ignora o `timeScale`.
+
+#### Passo 1 — Referência do Unity UI no asmdef
+
+A transição de cena usa componentes de UI (`Canvas`, `Image`). Selecione `Assets/_Project/Scripts/Armageddon.asmdef` e, em **Assembly Definition References**, adicione `UnityEngine.UI`. **Apply**.
+
+#### Passo 2 — Os dados salvos: `PlayerProfile`
+
+O `PlayerProfile` é tudo o que o jogo guarda entre sessões. Nesta fase ele só tem o básico; cada fase que precisar salvar algo acrescenta campos aqui.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/PlayerProfile.cs
+using System;
+using System.Collections.Generic;
+
+namespace Armageddon.Core
+{
+    // Dados salvos do jogador. É um objeto de dados puro, lido e gravado pelo SaveService em JSON.
+    // O JsonUtility só grava campos públicos de tipos simples, List e classes/structs [Serializable]:
+    // Dictionary NÃO é suportado, por isso os níveis de Perk são uma lista de pares.
+    // Exceção à convenção de nomes: por ser um objeto de dados, os campos são públicos em camelCase,
+    // e esses nomes viram as chaves do JSON. Renomear um campo é uma mudança de versão do save.
+    [Serializable]
+    public sealed class PlayerProfile
+    {
+        public int version;
+        public int launchCount;
+        public int stardust;
+        public List<PerkLevel> perkLevels = new List<PerkLevel>();
+        public List<string> unlockedCoreIds = new List<string>();
+        public List<string> unlockedSkinIds = new List<string>();
+        public string selectedCoreId;
+        public string selectedSkinId;
+
+        public static PlayerProfile CreateNew()
+        {
+            return new PlayerProfile
+            {
+                version = SaveService.CurrentVersion,
+                unlockedCoreIds = new List<string> { "Terra" },
+                // A Skin "Classic" de cada Core vem liberada; ela só pode ser usada quando o Core for desbloqueado.
+                unlockedSkinIds = new List<string> { "Terra_Classic", "Ice_Classic", "Magma_Classic" },
+                selectedCoreId = "Terra",
+                selectedSkinId = "Terra_Classic",
+            };
+        }
+    }
+
+    [Serializable]
+    public struct PerkLevel
+    {
+        public string perkId;
+        public int level;
+    }
+}
+```
+
+> **Campo novo não precisa de migração.** Ao ler um save antigo, o `JsonUtility` deixa com o valor padrão (0, `null` ou a lista vazia do inicializador) qualquer campo que não existia no arquivo. Só é preciso subir a versão e escrever uma migração quando um campo **muda de nome ou de significado**.
+
+#### Passo 3 — Onde o save é guardado: `SaveStorage`
+
+No Android (e no Editor), o save é um arquivo em `Application.persistentDataPath`. Essa pasta entra no **Auto Backup** do Android (Seção 7.3). Na Web, o jogo usa o armazenamento do navegador via `PlayerPrefs`, que a Unity grava no IndexedDB.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SaveStorage.cs
+using System.IO;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // Onde o JSON do save mora. O SaveService não sabe se é arquivo ou navegador: só usa esta interface.
+    public interface ISaveStorage
+    {
+        string Read();          // null se ainda não existe save
+        string ReadBackup();    // null se não existe backup
+        void Write(string json);
+        void Delete();
+    }
+
+    public static class SaveStorage
+    {
+        public static ISaveStorage CreateForPlatform()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return new PlayerPrefsSaveStorage();
+#else
+            return new FileSaveStorage(Application.persistentDataPath);
+#endif
+        }
+    }
+
+    // Android, iOS, desktop e Editor: arquivo com escrita atômica e uma cópia de backup.
+    public sealed class FileSaveStorage : ISaveStorage
+    {
+        private readonly string _path;
+        private readonly string _tempPath;
+        private readonly string _backupPath;
+
+        public FileSaveStorage(string folder)
+        {
+            _path = Path.Combine(folder, "profile.json");
+            _tempPath = _path + ".tmp";
+            _backupPath = _path + ".bak";
+        }
+
+        public string Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;
+
+        public string ReadBackup() => File.Exists(_backupPath) ? File.ReadAllText(_backupPath) : null;
+
+        public void Write(string json)
+        {
+            // 1) escreve tudo num arquivo temporário; 2) troca de uma vez só, guardando o anterior como .bak.
+            File.WriteAllText(_tempPath, json);
+            if (File.Exists(_path))
+                File.Replace(_tempPath, _path, _backupPath);
+            else
+                File.Move(_tempPath, _path);
+        }
+
+        public void Delete()
+        {
+            foreach (var path in new[] { _path, _tempPath, _backupPath })
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+    }
+
+    // Web: PlayerPrefs, que a Unity grava no IndexedDB do navegador.
+    public sealed class PlayerPrefsSaveStorage : ISaveStorage
+    {
+        private const string Key = "profile";
+        private const string BackupKey = "profile.bak";
+
+        public string Read() => PlayerPrefs.HasKey(Key) ? PlayerPrefs.GetString(Key) : null;
+
+        public string ReadBackup() => PlayerPrefs.HasKey(BackupKey) ? PlayerPrefs.GetString(BackupKey) : null;
+
+        public void Write(string json)
+        {
+            if (PlayerPrefs.HasKey(Key)) PlayerPrefs.SetString(BackupKey, PlayerPrefs.GetString(Key));
+            PlayerPrefs.SetString(Key, json);
+            PlayerPrefs.Save();
+        }
+
+        public void Delete()
+        {
+            PlayerPrefs.DeleteKey(Key);
+            PlayerPrefs.DeleteKey(BackupKey);
+            PlayerPrefs.Save();
+        }
+    }
+}
+```
+
+#### Passo 4 — O serviço de save: `SaveService`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SaveService.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // Carrega, migra e grava o PlayerProfile. Não é MonoBehaviour: não precisa de cena nem de Update.
+    public sealed class SaveService
+    {
+        // Suba este número quando o formato do save mudar de um jeito que exija migração (ver Migrate).
+        public const int CurrentVersion = 1;
+
+        private readonly ISaveStorage _storage;
+
+        public PlayerProfile Profile { get; private set; }
+
+        // Disparado depois de "Resetar progresso" (Settings, Fase 11): quem guarda dados do perfil em cache deve recarregar.
+        public event Action ProfileReset;
+
+        public SaveService(ISaveStorage storage)
+        {
+            _storage = storage;
+        }
+
+        public void Load()
+        {
+            Profile = TryParse(_storage.Read(), "principal")
+                      ?? TryParse(_storage.ReadBackup(), "backup")
+                      ?? PlayerProfile.CreateNew();
+            Migrate(Profile);
+        }
+
+        public void Save()
+        {
+            try
+            {
+                _storage.Write(JsonUtility.ToJson(Profile));
+            }
+            catch (Exception e)
+            {
+                // Falha de disco não pode derrubar o jogo: registra e segue. O próximo Save tenta de novo.
+                Debug.LogError($"[SaveService] Falha ao salvar: {e.Message}");
+            }
+        }
+
+        public void ResetProgress()
+        {
+            Profile = PlayerProfile.CreateNew();
+            Save();
+            ProfileReset?.Invoke();
+        }
+
+        private static PlayerProfile TryParse(string json, string source)
+        {
+            if (string.IsNullOrEmpty(json)) return null;
+            try
+            {
+                var profile = JsonUtility.FromJson<PlayerProfile>(json);
+                if (profile != null && profile.version > 0) return profile;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[SaveService] Save {source} corrompido: {e.Message}");
+            }
+            return null;
+        }
+
+        private static void Migrate(PlayerProfile profile)
+        {
+            if (profile.version > CurrentVersion)
+            {
+                // Save de uma versão mais nova do jogo (ex.: o jogador voltou para um APK antigo). Não mexe em nada.
+                Debug.LogWarning($"[SaveService] Save da versão {profile.version}, mais nova que a do jogo ({CurrentVersion}).");
+                return;
+            }
+
+            while (profile.version < CurrentVersion)
+            {
+                // Quando existir a versão 2, a conversão da 1 para a 2 entra aqui, por exemplo:
+                // if (profile.version == 1) profile.campoNovo = ConverterDe(profile.campoAntigo);
+                profile.version++;
+            }
+        }
+    }
+}
+```
+
+#### Passo 5 — Pausa e tempo: `GameClock`
+
+A pausa pode ter mais de um motivo ao mesmo tempo: o jogador apertou pausa **e** a oferta de Revive está na tela (Fase 8). O `GameClock` guarda um conjunto de motivos, e o jogo só volta a andar quando **todos** saem.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/GameClock.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    public enum PauseReason
+    {
+        Manual,   // botão de pausa, botão "voltar" ou o app perdeu o foco
+        Modal,    // uma janela que congela o jogo sem ser a pausa (ex.: oferta de Revive, Fase 8)
+    }
+
+    // Dono do Time.timeScale. Nenhum outro script deve alterar Time.timeScale diretamente.
+    public sealed class GameClock : MonoBehaviour
+    {
+        private readonly HashSet<PauseReason> _reasons = new HashSet<PauseReason>();
+        private float _timeScale = 1f;
+        private bool _wasPaused;
+
+        public bool IsPaused => _reasons.Count > 0;
+
+        // Só existe pausa durante a run. Nos menus, perder o foco não pausa nada.
+        public bool IsGameplayActive { get; private set; }
+
+        // true = acabou de pausar; false = acabou de voltar. A PauseView (Fase 8) escuta este evento.
+        public event Action<bool> PauseChanged;
+
+        public void SetGameplayActive(bool active)
+        {
+            IsGameplayActive = active;
+            if (!active) _reasons.Clear();
+            Apply();
+        }
+
+        public void Pause(PauseReason reason)
+        {
+            if (_reasons.Add(reason)) Apply();
+        }
+
+        public void Resume(PauseReason reason)
+        {
+            if (_reasons.Remove(reason)) Apply();
+        }
+
+        public void TogglePause()
+        {
+            if (_reasons.Contains(PauseReason.Manual)) Resume(PauseReason.Manual);
+            else Pause(PauseReason.Manual);
+        }
+
+        // Escala de tempo da run quando não está pausada (1 = normal). Reservado para efeitos como câmera lenta.
+        public void SetTimeScale(float scale)
+        {
+            _timeScale = Mathf.Max(0f, scale);
+            Apply();
+        }
+
+        // Chamado pelo AppLifecycle quando o app vai para segundo plano ou perde o foco.
+        // Vira uma pausa MANUAL de propósito: ao voltar, o jogo continua pausado até o jogador tocar em "continuar".
+        public void HandleApplicationSuspended()
+        {
+            if (IsGameplayActive) Pause(PauseReason.Manual);
+        }
+
+        private void Apply()
+        {
+            Time.timeScale = IsPaused ? 0f : _timeScale;
+            if (IsPaused == _wasPaused) return;
+            _wasPaused = IsPaused;
+            Debug.Log(IsPaused ? "[GameClock] Pausado" : "[GameClock] Retomado");
+            PauseChanged?.Invoke(IsPaused);
+        }
+    }
+}
+```
+
+#### Passo 6 — Troca de cenas: `SceneLoader`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SceneLoader.cs
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+namespace Armageddon.Core
+{
+    // Os nomes precisam ser IGUAIS aos nomes dos arquivos de cena (Fase 0, Passo 8).
+    public enum GameScene { Boot, MainMenu, Gameplay }
+
+    // Troca de cena com fade para preto. Cria o próprio Canvas de transição: não precisa de prefab.
+    public sealed class SceneLoader : MonoBehaviour
+    {
+        private const float FadeDuration = 0.25f;
+
+        private CanvasGroup _fade;
+
+        public bool IsLoading { get; private set; }
+
+        public event Action<GameScene> SceneLoaded;
+
+        private void Awake()
+        {
+            _fade = CreateFadeOverlay();
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private void OnDestroy()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
+        public void Load(GameScene scene)
+        {
+            if (IsLoading) return;   // ignora cliques repetidos durante a transição
+            StartCoroutine(LoadRoutine(scene));
+        }
+
+        private IEnumerator LoadRoutine(GameScene scene)
+        {
+            IsLoading = true;
+            _fade.blocksRaycasts = true;
+            yield return Fade(0f, 1f);
+
+            var operation = SceneManager.LoadSceneAsync(scene.ToString());
+            while (!operation.isDone) yield return null;
+
+            yield return Fade(1f, 0f);
+            _fade.blocksRaycasts = false;
+            IsLoading = false;
+        }
+
+        // Roda em TODA cena carregada, inclusive a primeira quando você aperta Play direto numa cena.
+        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (!Enum.TryParse(scene.name, out GameScene gameScene)) return;
+            Services.Clock.SetGameplayActive(gameScene == GameScene.Gameplay);
+            SceneLoaded?.Invoke(gameScene);
+        }
+
+        private IEnumerator Fade(float from, float to)
+        {
+            // Tempo "unscaled": o fade funciona mesmo com o jogo pausado (timeScale = 0).
+            for (float t = 0f; t < FadeDuration; t += Time.unscaledDeltaTime)
+            {
+                _fade.alpha = Mathf.Lerp(from, to, t / FadeDuration);
+                yield return null;
+            }
+            _fade.alpha = to;
+        }
+
+        private CanvasGroup CreateFadeOverlay()
+        {
+            var root = new GameObject("SceneFade", typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasGroup));
+            root.transform.SetParent(transform, false);
+
+            var canvas = root.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1000;   // acima de qualquer UI do jogo
+
+            var image = new GameObject("Black", typeof(Image)).GetComponent<Image>();
+            image.transform.SetParent(root.transform, false);
+            image.color = Color.black;
+            var rect = image.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var group = root.GetComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;   // só bloqueia toques durante a transição
+            group.interactable = false;
+            return group;
+        }
+    }
+}
+```
+
+#### Passo 7 — Ciclo de vida do app: `AppLifecycle`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/AppLifecycle.cs
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // Reage aos eventos do sistema: segundo plano, perda de foco, fechar o app e o botão "voltar".
+    public sealed class AppLifecycle : MonoBehaviour
+    {
+        // Android: o app foi para segundo plano (o jogador trocou de app ou apagou a tela).
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) Suspend();
+        }
+
+        // Web e desktop: a aba ou a janela perdeu o foco.
+        private void OnApplicationFocus(bool focused)
+        {
+            // No Editor, clicar no Inspector tira o foco do Game view: pausar aí atrapalharia o desenvolvimento.
+            if (Application.isEditor) return;
+            if (!focused) Suspend();
+        }
+
+        private void OnApplicationQuit()
+        {
+            Services.Save?.Save();
+        }
+
+        private void Update()
+        {
+            // O botão "voltar" do Android chega como a tecla Escape no Input System. No Editor, é o próprio Esc.
+            var keyboard = Keyboard.current;
+            if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame) return;
+
+            // Na run, "voltar" alterna a pausa. Nos menus, cada tela trata o "voltar" (Fase 9).
+            if (Services.Clock.IsGameplayActive) Services.Clock.TogglePause();
+        }
+
+        private static void Suspend()
+        {
+            if (!Services.IsReady) return;
+            Services.Save.Save();
+            Services.Clock.HandleApplicationSuspended();
+        }
+    }
+}
+```
+
+#### Passo 8 — O ponto de acesso: `Services`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/Services.cs
+namespace Armageddon.Core
+{
+    // Acesso central aos serviços do jogo. Preenchido pelo GameBootstrap antes da primeira cena carregar.
+    // Cada fase que cria um serviço novo (áudio, anúncios, settings...) acrescenta uma propriedade aqui.
+    public static class Services
+    {
+        public static SaveService Save { get; private set; }
+        public static SceneLoader Scenes { get; private set; }
+        public static GameClock Clock { get; private set; }
+
+        public static bool IsReady { get; private set; }
+
+        internal static void Register(SaveService save, SceneLoader scenes, GameClock clock)
+        {
+            Save = save;
+            Scenes = scenes;
+            Clock = clock;
+            IsReady = true;
+        }
+
+        internal static void Clear()
+        {
+            Save = null;
+            Scenes = null;
+            Clock = null;
+            IsReady = false;
+        }
+    }
+}
+```
+
+#### Passo 9 — Atalhos de desenvolvimento: `DevShortcuts`
+
+Enquanto os menus não existem, precisamos de um jeito de trocar de cena e testar o save. Este script só existe no Editor e em builds de desenvolvimento: ele some sozinho do build final.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/DevShortcuts.cs
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // F1 = MainMenu · F2 = Gameplay · F5 = +10 Stardust e salva · F9 = apaga o progresso.
+    public sealed class DevShortcuts : MonoBehaviour
+    {
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.f1Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.MainMenu);
+            if (keyboard.f2Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.Gameplay);
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                Services.Save.Profile.stardust += 10;
+                Services.Save.Save();
+                Debug.Log($"[Dev] Stardust = {Services.Save.Profile.stardust}");
+            }
+
+            if (keyboard.f9Key.wasPressedThisFrame)
+            {
+                Services.Save.ResetProgress();
+                Debug.Log("[Dev] Progresso apagado.");
+            }
+        }
+    }
+}
+#endif
+```
+
+#### Passo 10 — Quem liga tudo: `GameBootstrap`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/GameBootstrap.cs
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // Primeiro código do jogo a rodar, antes de qualquer cena. Cria o objeto [Services] e registra os serviços.
+    public static class GameBootstrap
+    {
+        // Com "Enter Play Mode Options" ligado (sem recarregar o domínio), variáveis estáticas sobrevivem
+        // entre um Play e outro. Este método zera tudo no começo de cada Play.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Services.Clear();
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Initialize()
+        {
+            if (Services.IsReady) return;
+
+            var root = new GameObject("[Services]");
+            Object.DontDestroyOnLoad(root);
+
+            var save = new SaveService(SaveStorage.CreateForPlatform());
+            save.Load();
+            save.Profile.launchCount++;
+            save.Save();
+
+            var clock = root.AddComponent<GameClock>();
+            var scenes = root.AddComponent<SceneLoader>();
+            root.AddComponent<AppLifecycle>();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            root.AddComponent<DevShortcuts>();
+#endif
+
+            Services.Register(save, scenes, clock);
+            Debug.Log($"[GameBootstrap] Serviços prontos. Abertura nº {save.Profile.launchCount}. Save em: {Application.persistentDataPath}");
+        }
+    }
+}
+```
+
+> **Por que o `SceneLoader` usa `Services.Clock` se ele é registrado depois?** O `AddComponent` roda o `Awake` na hora, mas o `SceneLoader` só usa `Services.Clock` quando uma cena carrega, e isso acontece depois do `Initialize` terminar. Regra geral para serviços: **no `Awake`, só configure a si mesmo**; use outros serviços a partir do `Start` ou de eventos.
+
+#### Passo 11 — A cena `Boot`: `BootSequence`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/BootSequence.cs
+using System.Collections;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // Fica na cena Boot: mostra o logo por um tempo mínimo e passa para o Main Menu.
+    // A tela de consentimento (Fase 10) entra entre o logo e o menu.
+    public sealed class BootSequence : MonoBehaviour
+    {
+        [SerializeField] private float _minimumLogoTime = 1f;
+
+        private IEnumerator Start()
+        {
+            yield return new WaitForSecondsRealtime(_minimumLogoTime);
+            Services.Scenes.Load(GameScene.MainMenu);
+        }
+    }
+}
+```
+
+Monte as cenas:
+1. **Boot:** crie os objetos vazios de agrupamento `[Systems]` e `[UI]` (convenção da Seção 10.1). Em `[Systems]`, adicione um objeto `BootSequence` com o componente `BootSequence`. Em `[UI]`, crie **UI > Canvas** e, dentro dele, **UI > Text - TextMeshPro** escrito "8-Bit Armageddon", com a fonte `m5x7 Raster` no tamanho 16 (Fase 0, Passo 7). Esse é o "logo" provisório.
+2. **MainMenu:** crie `[Systems]`, `[UI]` e, no Canvas, um texto "Main Menu".
+3. **Gameplay:** crie `[Systems]`, `[World]` e `[UI]`. Para ver a pausa funcionando, coloque um planeta girando em `[World]`: abra a setinha de `Art/Planet/SPR_Planet_Terra_Classic_Rotate`, selecione os 32 sprites (clique no primeiro, Shift+clique no último) e **arraste todos juntos para a cena**. A Unity cria um objeto com `Animator` e um clipe de animação; salve o clipe em `Assets/_Project/Art/Planet/` como `ANIM_Planet_Rotate`. Abra **Window > Animation > Animation**, selecione o objeto, ative **Show Sample Rate** no menu ⋮ da janela e troque **Samples** para `4` (os 4 fps do planeta, Seção 6.4). No `SpriteRenderer`, escolha a **Sorting Layer** `Planet`.
+
+#### Passo 12 — Configuração base da Localization
+
+Os textos só serão traduzidos na Fase 11, mas os idiomas precisam existir desde já, para que todo texto novo nasça localizável.
+1. **Edit > Project Settings > Localization** → **Create**. Salve o asset em `Assets/_Project/Localization/` como `LocalizationSettings`.
+2. Na mesma tela, clique em **Locale Generator**, marque **English (en)** e **Portuguese (Brazil) (pt-BR)** e clique em **Generate Locales**, salvando em `Assets/_Project/Localization/Locales/`.
+3. **Window > Asset Management > Localization Tables** → **New Table Collection** → tipo **String Table Collection**, nome `UI`, marcando os dois idiomas → **Create**, em `Assets/_Project/Localization/`.
+4. Crie a primeira chave, `menu.play`, com os valores "Play" (en) e "Jogar" (pt-BR). Ela será usada no botão do Main Menu na Fase 9.
+
+#### Passo 13 — Commit
+
+`git add .` e `git commit -m "Phase 1: bootstrap, services, scene loader, versioned save, pause"`.
+
+**✅ Checkpoint:**
+- Com a cena **Boot** aberta, aperte Play: o texto "8-Bit Armageddon" aparece por ~1 s, a tela escurece e clareia, e aparece o "Main Menu". O Console mostra `[GameBootstrap] Serviços prontos. Abertura nº 1`.
+- Durante o Play, a janela **Hierarchy** mostra `DontDestroyOnLoad → [Services]` com os componentes `GameClock`, `SceneLoader`, `AppLifecycle` e `DevShortcuts`.
+- **F2** leva para o Gameplay com o planeta girando; **F1** volta para o menu. As duas trocas têm o fade.
+- No Gameplay, **Esc** congela o planeta (Console: `[GameClock] Pausado`) e **Esc** de novo o faz voltar a girar. No Main Menu, Esc não faz nada.
+- Parar e apertar Play de novo mostra `Abertura nº 2`: o save sobreviveu.
+- **F5** algumas vezes, pare o Play e abra no Explorer a pasta mostrada no log do `GameBootstrap` ("Save em: …"): o `profile.json` tem `"version":1` e o `stardust` somado. Depois de dois saves, existe também o `profile.json.bak`.
+- Apertar Play **direto na cena Gameplay** também funciona (serviços prontos, Esc pausa), sem passar pela Boot.
+- **F9** apaga o progresso: no Play seguinte, a abertura volta a ser a nº 1.
+
+**Problemas comuns:**
+- **`NullReferenceException` em `Services.Clock` ou `Services.Save`:** algum script usou um serviço no `Awake` de um objeto que foi criado **dentro** do `GameBootstrap.Initialize`, antes do `Services.Register`. Mova esse uso para o `Start` (regra do Passo 10).
+- **`The type or namespace name 'UI' does not exist in the namespace 'UnityEngine'`:** faltou adicionar `UnityEngine.UI` ao asmdef (Passo 1).
+- **`The type or namespace name 'InputSystem' could not be found`:** falta `Unity.InputSystem` no asmdef (Fase 0, Passo 5), ou o **Active Input Handling** não está em `Input System Package (New)` (Fase 0, Passo 9).
+- **O Console mostra `Scene 'Gameplay' couldn't be loaded because it has not been added to the build settings`:** a cena não está na **Scene List** do **File > Build Profiles** (Fase 0, Passo 8), ou o nome do arquivo não é idêntico ao do enum `GameScene`.
+- **A abertura é sempre a nº 1:** o save não está sendo gravado. Procure no Console por `[SaveService] Falha ao salvar`; em geral é antivírus ou a pasta sincronizada por nuvem bloqueando o arquivo.
+- **O planeta não congela na pausa:** o `Animator` está com **Update Mode = Unscaled Time**. Deixe em `Normal`: tudo o que é gameplay usa o tempo normal, e só a UI de pausa usa o "unscaled".
+- **Clicar fora do Game view não pausa o jogo no Editor:** é de propósito (Passo 7). Para testar a pausa automática, rode um build de Android ou Web e troque de app ou de aba.
+
+Próxima fase: **Fase 2 — Planeta, Quadrants e câmera**. Ela coloca o planeta de verdade na cena, com HP, a Pixel Perfect Camera em 320×180 e os 4 Quadrants.
