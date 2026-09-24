@@ -364,6 +364,56 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 
 **Definido: onboarding.** Sem tutorial forçado. Na primeira run, **dicas contextuais** aparecem na hora certa (ex.: "Toque em Offense para comprar Damage" quando o jogador tem Shards pela primeira vez) e somem depois que a ação é feita. Cada dica aparece uma vez por perfil.
 
+### 6.4 Catálogo de assets
+
+Referência técnica para importar e usar a arte no Unity. Os arquivos estão em `Sprites/8-Bit-Armageddon/` (a pasta tem o mesmo nome em `Assets/_Project/Art/`). A arte e as regras visuais são descritas nas Seções 6.1 a 6.3; esta seção só diz **como cada arquivo é usado**.
+
+**Definido: regras gerais.**
+- Todo arquivo tem **PPU 16**, **Filter Mode Point** e **Compression None** (preset da Fase 0). O **pivô é sempre o centro** da célula.
+- Uma **spritesheet** (arquivo com mais de uma célula) é importada com **Sprite Mode = Multiple** e fatiada com **Grid By Cell Size** do tamanho da célula na tabela. Nos arquivos com mais de uma linha, cada **linha** é uma variação ou direção, e cada **coluna** é um frame.
+- **Animação:** frames da esquerda para a direita. "Loop" repete; "uma vez" toca e o objeto volta para o pool.
+- **Sorting Layers** (de trás para frente, seguindo a ordem de desenho da Seção 6.1): `Background`, `Quadrants`, `Enemies`, `Planet`, `Satellites`, `Projectiles`, `VFX`. A UI (Canvas) fica por cima de tudo.
+
+#### Mundo
+
+| Arquivo | Célula | Layout | Frames | fps | Animação | Sorting Layer | Uso |
+|---|---|---|---|---|---|---|---|
+| `Planet/SPR_Planet_<Core>_<Skin>_Rotate` | 32×32 | 1 linha | 32 | 4 | loop | `Planet` | O planeta girando (9 arquivos: 3 Cores × 3 Skins). Uma volta = 8 s. |
+| `Planet/SPR_Planet_<Core>_<Skin>` | 32×32 | 1 célula | 1 | — | — | UI | Imagem estática do planeta (= frame 1 da rotação): ícone de recompensa de conquista. |
+| `Satellites/SPR_Satellite` | 32×32 | 1 linha | 2 | 2 | loop | `Satellites` | Luz laranja acesa / apagada. Nunca gira. |
+| `Projectiles/SPR_Projectile_Satellite` | 32×32 | 1 linha | 2 | 8 | loop | `Projectiles` | Bolinha que pisca. O rastro é desenhado por código (Seção 6.2). |
+| `Enemies/SPR_Enemy_Grunt` | 32×32 | 2 linhas × 4 | 4 | 6 | loop | `Enemies` | Linha = variação visual, sorteada no spawn. |
+| `Enemies/SPR_Enemy_Scout` | 32×32 | 1 linha | 4 | 12 | loop | `Enemies` | Giro da estrela (os 4 frames fecham uma volta de 90°). |
+| `Enemies/SPR_Enemy_Swarmer` | 32×32 | 1 linha | 2 | 4 | loop | `Enemies` | Núcleo pulsando. |
+| `Enemies/SPR_Enemy_Brute` | 32×32 | 1 linha | 1 | — | — | `Enemies` | Cada **coluna** é uma variação visual (4), sorteada no spawn. Sem animação. |
+| `Enemies/SPR_Enemy_Mothership` | **64×64** | 1 linha | 5 | 5 | loop | `Enemies` | Luzes da borda acendendo em sequência. Única célula de 64×64. |
+| `Backgrounds/SPR_Background_Space` | 32×32 | 1 linha | — | — | — | `Background` | 4 tiles de fundo, **sorteados** por célula de 32×32 para cobrir a tela (não é animação). |
+| `Backgrounds/SPR_Background_StarTwinkle` | 32×32 | 1 linha | 4 | 4 | loop | `Background` | Estrela grande piscando, espalhada por cima dos tiles. |
+
+#### VFX
+
+| Arquivo | Célula | Frames | fps | Animação | Sorting Layer | Uso |
+|---|---|---|---|---|---|---|
+| `VFX/SPR_VFX_Explosion_Small` | 32×32 | 5 | 15 | uma vez | `VFX` | Morte de Grunt, Scout e Swarmer. |
+| `VFX/SPR_VFX_Explosion_Big` | 32×32 | 5 | 15 | uma vez | `VFX` | Morte do Brute. |
+| `VFX/SPR_VFX_Explosion_Mothership` | **64×64** | 6 | 12 | uma vez | `VFX` | Morte da Mothership. |
+| `VFX/SPR_VFX_Laser_Warning` | 32×32 | 2 | 6 | loop por 1,5 s | `VFX` | Aviso do laser. Tile repetido e girado ao longo da linha Mothership → planeta (Seção 6.2). |
+| `VFX/SPR_VFX_Laser_Beam` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Feixe do laser. Mesmo uso do aviso. |
+| `VFX/SPR_VFX_Laser_Impact` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Ponta do feixe, na borda do planeta. |
+
+#### Interface
+
+| Arquivo | Célula | Layout | Uso |
+|---|---|---|---|
+| `UI/SPR_UI_Panel` | 32×32 | 1 célula | Painel. **9-slice** com bordas de 8 px (*Sprite Editor → Border* = 8 nos 4 lados; na Image, *Image Type = Sliced*). |
+| `UI/SPR_UI_Button` | 32×32 | 3 colunas | Botão normal, pressionado e desabilitado (as 3 *sprites* do *Sprite Swap* do Button). 9-slice com bordas de 8 px. |
+| `UI/SPR_UI_DrawerStrip` | 32×32 | 1 célula | Faixa da gaveta fechada. *Image Type = Tiled*, repetida na horizontal por toda a largura. |
+| `UI/SPR_UI_SpawnSectorArrow` | 32×32 | 6 linhas × 2 | Linha = Spawn Sector (30°, 90°, 150°, 210°, 270°, 330°); coluna = aceso / apagado, piscando a 4 fps durante o aviso de 2 s. |
+| `UI/SPR_UI_Icons` | 32×32 | 8 colunas × 3 linhas | Ícones de 16 px centralizados na célula. Ordem das células abaixo. |
+| `Fonts/m5x7.ttf` | — | — | Fonte do jogo. Vira um *Font Asset* do TextMeshPro, usado no tamanho 16 (Seção 6.3). |
+
+**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada.
+
 ---
 
 ## 7. Monetização, Plataformas e Serviços
@@ -642,6 +692,7 @@ Assets/
       VFX/
       UI/
       Backgrounds/
+      Fonts/
     Audio/
       Music/
       SFX/
@@ -720,7 +771,36 @@ A partir de agora, toda imagem colocada em `Art/` já entra com as configuraçõ
 
 > **Por que PPU 16?** Com 16 pixels por unidade, a tela de referência 320×180 mostra exatamente 20 × 11,25 unidades, e todas as distâncias do GDD (Seção 4) estão nessa unidade. Uma célula de sprite de 32×32 (Seção 6.2) ocupa 2 × 2 u, o tamanho do planeta.
 
-#### Passo 7 — Cenas
+#### Passo 7 — Importar a arte
+
+A arte do jogo já está pronta no repositório do GDD, em `Sprites/8-Bit-Armageddon/`, e cada arquivo está descrito na Seção 6.4. Neste passo ela entra no projeto já configurada. Nenhum sprite será usado em cena ainda: isso começa na Fase 2.
+
+**Conceitos novos:**
+- **Sprite Mode Multiple:** um PNG com vários desenhos (uma **spritesheet**) vira vários sprites, um por célula. Sem isso, a Unity trata o arquivo inteiro como uma imagem só.
+- **Slice (fatiar):** o Sprite Editor corta a spritesheet em células do mesmo tamanho. No nosso caso, 32×32 (ou 64×64 na Mothership), como definido na Seção 6.2.
+- **9-slice:** um sprite com as bordas marcadas. Ao esticar, a Unity estica só o meio e mantém os cantos intactos: é assim que um painel de 32×32 vira uma janela de qualquer tamanho.
+- **Sorting Layer:** a "camada" de desenho de um sprite. Quem está numa camada mais de baixo na lista é desenhado por cima.
+
+1. **Copie a arte.** Copie para `Assets/_Project/Art/` as pastas `Planet`, `Satellites`, `Enemies`, `Projectiles`, `VFX`, `UI`, `Backgrounds` e `Fonts` de `Sprites/8-Bit-Armageddon/`. **Não copie** `_candidatos_descartados/`, `_tools/`, `_previews/`, `_referencia/`, os `_preview_*.gif` nem o `PROMPTS.md`: são material de produção, não do jogo. No PowerShell, um comando faz tudo (troque os dois caminhos pelos seus):
+   ```powershell
+   robocopy "C:\caminho\GDD\Sprites\8-Bit-Armageddon" "C:\caminho\Armageddon\Assets\_Project\Art" /E /XD _candidatos_descartados _tools _previews _referencia /XF PROMPTS.md _preview_*
+   ```
+   Copiar arquivos **novos** pelo Explorer é seguro; o que quebra referências é **mover** arquivos que a Unity já conhece. Volte para a Unity e espere a importação terminar. O preset do Passo 6 já aplica PPU 16 e Filter Point em tudo.
+2. **Marque as spritesheets como Multiple.** Na janela Project, selecione **todos** os PNGs **exceto** os que têm uma célula só (`SPR_Planet_<Core>_<Skin>.png`, os 9 estáticos, mais `SPR_UI_Panel.png` e `SPR_UI_DrawerStrip.png`). Segure Ctrl para selecionar vários. No Inspector, troque **Sprite Mode** para `Multiple` e clique **Apply**.
+3. **Fatie cada spritesheet.** Para cada arquivo marcado no item 2: selecione → **Open Sprite Editor** → menu **Slice** → **Type:** `Grid By Cell Size` → **Pixel Size:** `32 × 32` (use **`64 × 64`** em `SPR_Enemy_Mothership` e `SPR_VFX_Explosion_Mothership`) → **Pivot:** `Center` → **Method:** `Delete Existing` → **Slice** → **Apply** (canto de cima à direita). Deixe **Keep Empty Rects** desmarcado: as 2 últimas células de `SPR_UI_Icons` estão vazias e não viram sprite.
+4. **Marque as bordas de 9-slice.** Abra o Sprite Editor de `SPR_UI_Panel` e de `SPR_UI_Button`. Clique em cada sprite (o painel, e os 3 estados do botão) e, no quadro **Sprite** do canto de baixo, preencha **Border** `L 8, T 8, R 8, B 8`. **Apply**.
+5. **Crie o Font Asset da fonte.** **Window > TextMeshPro > Font Asset Creator** e configure:
+   - **Source Font File:** `Art/Fonts/m5x7.ttf`
+   - **Sampling Point Size:** `Custom Size` = `16`
+   - **Padding:** `0`
+   - **Render Mode:** `RASTER_HINTED` (fonte pixel não usa SDF; com SDF ela fica borrada)
+   - **Character Set:** `Extended ASCII` (inclui todos os acentos do português)
+   - **Atlas Resolution:** `256 × 256`
+
+   Clique **Generate Font Atlas** → **Save** e salve em `Art/Fonts/` como `m5x7 Raster.asset`.
+6. **Crie as Sorting Layers.** **Edit > Project Settings > Tags and Layers** → **Sorting Layers** → **+** e crie, **nesta ordem**, abaixo de `Default`: `Background`, `Quadrants`, `Enemies`, `Planet`, `Satellites`, `Projectiles`, `VFX`. A ordem da lista é a ordem de desenho (Seção 6.4): a última fica por cima.
+
+#### Passo 8 — Cenas
 
 Em `Assets/_Project/Scenes/`, crie três cenas (**botão direito → Create → Scene**, ou **File > New Scene** e salve):
 
@@ -734,7 +814,7 @@ Apague a cena de exemplo que veio com o template (`SampleScene`).
 
 Abra **File > Build Profiles** (no Unity 6, substitui o antigo "Build Settings"), clique em **Scene List** e adicione as cenas **nesta ordem**: `Boot` (índice 0), `MainMenu`, `Gameplay`. A cena de índice 0 é a que abre quando o jogo inicia.
 
-#### Passo 8 — Player Settings (todas as plataformas)
+#### Passo 9 — Player Settings (todas as plataformas)
 
 **Edit > Project Settings > Player**, na parte comum a todas as plataformas:
 
@@ -747,7 +827,7 @@ Abra **File > Build Profiles** (no Unity 6, substitui o antigo "Build Settings")
 Em **Other Settings > Configuration**:
 - **Active Input Handling:** `Input System Package (New)`. Se a Unity pedir para reiniciar, reinicie.
 
-#### Passo 9 — Plataforma Android
+#### Passo 10 — Plataforma Android
 
 1. **File > Build Profiles** → selecione **Android** → **Switch Platform**. A troca demora alguns minutos na primeira vez, porque a Unity reimporta os assets para Android.
 2. **Edit > Project Settings > Player**, aba **Android**:
@@ -763,28 +843,36 @@ Em **Other Settings > Configuration**:
 | Other Settings > Configuration | Scripting Backend | `IL2CPP` | Obrigatório para 64 bits e mais rápido que Mono |
 | Other Settings > Configuration | Target Architectures | só **ARM64** | O Google Play exige 64 bits, e todo aparelho com Android 8+ do público-alvo é ARM64 |
 
-#### Passo 10 — Plataforma Web
+#### Passo 11 — Plataforma Web
 
 1. **File > Build Profiles** → selecione **Web**. Não precisa trocar a plataforma ativa agora; só confira que ela aparece sem aviso de módulo faltando.
 2. **Edit > Project Settings > Player**, aba **Web** → **Publishing Settings**:
    - **Compression Format:** `Brotli`
    - **Decompression Fallback:** marcado. Sem isso, o jogo não abre em servidores que não enviam os cabeçalhos HTTP de compressão (como o itch.io). A Fase 14 detalha a configuração do site próprio.
 
-#### Passo 11 — Commit
+#### Passo 12 — Commit
 
-Feche a Unity (ela só grava algumas configurações em disco ao fechar), abra de novo, e faça o commit: `git add .` e `git commit -m "Project setup: packages, folders, presets, scenes, platform settings"`.
+Feche a Unity (ela só grava algumas configurações em disco ao fechar), abra de novo, e faça o commit: `git add .` e `git commit -m "Project setup: packages, folders, presets, art import, scenes, platform settings"`.
 
 **✅ Checkpoint:**
 - O projeto abre sem nenhuma mensagem vermelha no Console (**Window > General > Console**).
 - `Assets/_Project/` tem toda a estrutura de pastas, e `Scripts/` tem o `Armageddon.asmdef`.
 - Um PNG novo colocado em `Art/` entra automaticamente com PPU 16 e Filter Point.
 - A cena `Boot` está no índice 0 da Scene List.
+- Em `Art/Enemies/`, clicar na setinha de `SPR_Enemy_Grunt` mostra 8 sprites (`SPR_Enemy_Grunt_0` a `_7`), e a de `SPR_Enemy_Mothership` mostra 5. Arrastar qualquer um deles para a cena mostra o desenho **nítido**, do tamanho certo (a Mothership bem maior que o Grunt).
+- `SPR_UI_Panel` colocado numa **Image** de UI com **Image Type = Sliced** estica sem deformar os cantos.
+- Um texto TextMeshPro com a fonte `m5x7 Raster` no tamanho 16 escreve "Ação, não, você" com os acentos e sem borrão.
+- As 7 Sorting Layers aparecem na ordem da Seção 6.4.
 - *(Recomendado, e economiza muita dor depois)* Com um celular Android conectado por USB, com a **Depuração USB** ativada nas Opções do desenvolvedor, **File > Build Profiles > Android > Build And Run** instala o projeto vazio no aparelho e mostra uma tela azul/cinza. Isso prova que o SDK Android está funcionando antes de existir qualquer código.
 - `git lfs ls-files` lista os PNGs que você já tiver no projeto (se ainda não tiver nenhum, a lista fica vazia, o que é normal).
 
 **Problemas comuns:**
 - **"Android SDK not found" ou "JDK not found" no build:** os submódulos OpenJDK e Android SDK & NDK não foram instalados. No Hub: **Installs** → engrenagem da versão → **Add modules**.
 - **Erros vermelhos do DOTween depois de criar o asmdef:** rode de novo **Tools > Demigiant > DOTween Utility Panel > Setup DOTween…** com **Create ASMDEF** marcado, e confira que `DOTween.Modules` está nas referências do `Armageddon.asmdef`.
+- **Uma spritesheet aparece como uma imagem só na cena:** ela ficou como `Single`. Troque o **Sprite Mode** para `Multiple` e fatie (Passo 7, itens 2 e 3).
+- **A fatia saiu deslocada ou cortando o desenho:** o **Pixel Size** do slice está errado. Todas as células são 32×32, menos as duas da Mothership (64×64).
+- **Texto borrado ou com contorno "fantasma":** o Font Asset foi gerado em modo SDF. Refaça com **Render Mode = `RASTER_HINTED`**.
+- **Letras acentuadas aparecem como quadradinhos:** o Font Asset foi gerado com um Character Set sem acentos. Refaça com `Extended ASCII`. O caractere "→" não existe na fonte mesmo (Seção 6.3).
 - **Sprites borrados ou "piscando":** o sprite foi importado antes do Preset existir, ou está fora de `Assets/_Project/Art/`. Selecione-o e clique no ícone de Preset → `SpriteImporter_PixelArt`.
 - **O celular não aparece no Build And Run:** ative as **Opções do desenvolvedor** no Android (tocar 7 vezes em "Número da versão"), ligue a **Depuração USB** e aceite o pedido de autorização que aparece no celular ao conectar o cabo.
 - **Os PNGs foram para o Git como arquivo normal:** o `git lfs install` não foi rodado, ou o `.gitattributes` foi criado depois do commit. Rode `git lfs migrate import --include="*.png,*.wav,*.ogg"` antes de enviar o repositório para qualquer lugar.
