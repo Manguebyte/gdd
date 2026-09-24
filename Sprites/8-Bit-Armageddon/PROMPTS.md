@@ -110,3 +110,11 @@ soft shading 3-4 tones, highlight at top-left. Crisp 1px black outline. Game ass
 - **Sem IA:** gerados por `_tools/planets.py <pasta>`. É a mesma técnica da rotação do Terra Classic, com três materiais por planeta (base, relevo e detalhe), 3 tons cada, e as paletas tiradas dos planetas da `ref2`. A configuração de cada um (cores, seed, limiares) está no dicionário `PLANETS` do script.
 - Relevo em "manchas" (continentes, dunas, placas de gelo) ou em "faixas" finas (rios de lava do Magma Classic/Obsidian). A aurora do Ice Aurora só aparece perto dos polos.
 - Cada planeta tem `SPR_Planet_<Core>_<Skin>_Rotate.png` (32 frames) e `SPR_Planet_<Core>_<Skin>.png` (= frame 1).
+
+### VFX e indicador de Spawn Sector (etapa D)
+
+- **Sem IA:** tudo é desenhado por `_tools/vfx.py <pasta>`.
+  - `VFX/SPR_VFX_Explosion_Small.png` e `_Big.png`: 5 frames de 32×32.
+  - `VFX/SPR_VFX_Explosion_Mothership.png`: 6 frames de 64×64. O núcleo branco se abre em partículas que passam de branco para rosa, magenta e roxo, e somem.
+  - `VFX/SPR_VFX_Laser_Warning.png`: 2 frames, tracejado vermelho de 1 px. `_Laser_Beam.png`: 4 frames, feixe de 3 px com núcleo branco. `_Laser_Impact.png`: 4 frames. Os tiles são horizontais, com a linha em y = 16. O jogo os repete ao longo da linha e os gira (GDD §6.2).
+  - `UI/SPR_UI_SpawnSectorArrow.png`: 6 linhas (setores de 30°, 90°, 150°, 210°, 270°, 330°) × 2 colunas (aceso/apagado). A seta aponta para o planeta.
