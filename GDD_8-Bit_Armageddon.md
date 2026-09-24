@@ -285,31 +285,35 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 
 - **Definido: estilo.** Pixel art colorida "clássica", baseada nas referências em `Sprites/8-Bit-Armageddon/_referencia/` (`ref1.png` e `ref2.png`): pixels grandes, sombreamento suave com 3 a 5 tons por objeto, brilho no canto de cima à esquerda (luz vinda de cima à esquerda) e **contorno preto**. O fundo é espaço azul-marinho escuro com estrelas. Os sprites são vistos de cima, com um leve volume (a luz de cima à esquerda dá a sensação de esfera ou cúpula). As referências são arte de banco de imagens com marca d'água: servem de guia para o PixelLab e nunca entram no build.
 - **Definido: paleta "meu × deles".**
-  - **Planeta e Satellites (estilo `ref2`):** cores vivas. Cada Planet Core tem a sua própria paleta: Terra = verde e azul, Ice = azul-gelo e branco, Magma = laranja e amarelo. Os Satellites usam um tom quente que combine com o Core.
+  - **Planeta (estilo `ref2`):** cores vivas. Cada Planet Core tem a sua própria paleta: Terra = verde e azul, Ice = azul-gelo e branco, Magma = laranja e amarelo.
+  - **Satellites:** tons de **cinza** (metal), com uma **luz laranja** piscando como detalhe quente. A silhueta quadrada e o cinza neutro os separam dos inimigos, que são arredondados e lavanda.
   - **Inimigos e projéteis inimigos (estilo `ref1`):** tons frios, puxados para **lavanda e roxo**. Não usam azul, para não se confundir com o Ice Core.
 - **Definido: cada Skin é um sprite próprio.** São 9 planetas (3 Planet Cores × 3 Skins), cada um desenhado com as suas cores. O jogo não recolore sprites.
 - **Definido: o sprite do planeta não mostra dano.** O planeta tem a mesma cara com qualquer HP; o HP aparece só na barra do HUD, e cada acerto dá um flash no sprite. O planeta **gira**: loop de **32 frames a 4 fps** (8 s por volta), numa faixa de células de 32×32.
 - **Em aberto (pós-lançamento):** estados visuais de dano do planeta (ex.: rachaduras com 2/3 e 1/3 do HP). Custariam 3 versões de cada um dos 9 planetas.
-- **Definido: grade de 32×32.** Todo PNG de arte (sprites do mundo, ícones, painéis de UI) é montado numa grade de células de **32×32 px**, e no Unity é sempre fatiado com *Sprite Editor → Slice → Grid By Cell Size 32×32*. O desenho fica centralizado na célula, com o pivô no centro e o resto transparente.
+- **Definido: grade de 32×32.** Todo PNG de arte (sprites do mundo, ícones, painéis de UI) é montado numa grade de células de **32×32 px**, e no Unity é sempre fatiado com *Sprite Editor → Slice → Grid By Cell Size 32×32*. O desenho fica centralizado na célula, com o pivô no centro e o resto transparente. **Única exceção: a Mothership**, que usa células de **64×64** (fatiada com *Grid By Cell Size 64×64*) para ser claramente maior que qualquer inimigo comum.
 - **Definido: tamanhos** (16 pixels por unidade; tamanho do desenho dentro da célula de 32×32):
 
   | Sprite | Desenho |
   |---|---|
   | Planeta | 32 px (a célula toda, 2 u de diâmetro) |
-  | Mothership | 28 px |
+  | Mothership | ~50×34 px (célula de 64×64) |
   | Brute | 24 px |
   | Grunt / Scout | 16 px |
   | Swarmer | 8 px |
-  | Satellite | 12 px |
+  | Satellite | 14×8 px |
   | Ícones pequenos (Stats, Shards, Stardust, abas da gaveta) | 16 px |
   | Ícones grandes (retratos dos Planet Cores, conquistas) | 32 px (a célula toda) |
 - **Definido: Quadrants na tela.** As linhas dos eixos ficam sempre visíveis, bem discretas (1 px pontilhado, quase transparente). O Quadrant onde há um Satellite ganha um preenchimento translúcido quente em forma de quarto de círculo, do tamanho do Attack Range, que pisca mais forte a cada disparo. Assim o jogador vê ao mesmo tempo o que está coberto e até onde vai o alcance. O "Mostrar Quadrants" das Settings esconde o preenchimento; as linhas continuam.
 - **Legibilidade dos efeitos:** disparos e críticos precisam ser legíveis mesmo com 150 inimigos na tela. Pixel art pede exagero visual (flash no sprite, números de dano, screen shake leve) para compensar a resolução baixa.
 - **Definido: produção da arte.** Toda a arte da 1.0 é gerada no **PixelLab**. Os arquivos ficam neste repositório em `Sprites/8-Bit-Armageddon/{Planet,Satellites,Enemies,Projectiles,VFX,UI,Backgrounds}/`, espelhando `Assets/_Project/Art/`, já com o nome final `SPR_<Tipo>_<Nome>.png`. Candidatos rejeitados vão para `_candidatos_descartados/` dentro da pasta.
 - **Definido: direções dos sprites.**
-  - **Satellite:** satélite clássico (corpo central + dois painéis solares) em dourado/laranja, com **orientação fixa** (painéis sempre na horizontal): um sprite só, sem direções, mais uma luz de antena piscando.
+  - **Satellite:** corpo cúbico cinza com dois painéis solares altos, em tons de cinza, com **orientação fixa** (painéis sempre na horizontal): um sprite só, sem direções, e uma luz laranja piscando (2 frames).
   - **Inimigos comuns** (Grunt, Scout, Swarmer, Brute): design **radialmente simétrico** (discos, orbes, cristais), com um sprite só para qualquer direção de chegada. O movimento aparece numa animação de pulsar ou girar.
-  - **Mothership:** tem frente, com **8 direções**, porque orbita o planeta e é única na tela.
+  - **Scout:** drone lavanda em forma de estrela de 4 pontas, girando (4 frames). A silhueta é diferente da do Grunt, para ler como "o rápido".
+  - **Swarmer:** orbe lavanda de 8 px com núcleo magenta pulsando (2 frames). Em cacho, lê como um enxame de luzinhas.
+  - **Brute:** disco blindado (um Grunt grande com placas de armadura escuras), de 24 px. Mesma família do Grunt, para o jogador entender "maior e blindado = aguenta mais". Tem **4 variações visuais**, sorteadas no spawn, com os mesmos valores.
+  - **Mothership:** disco gigante visto em 3/4 (o mesmo ângulo do Grunt), com uma cúpula magenta e 5 luzes na borda que acendem em sequência (5 frames). Um sprite só, sem direções; o laser sai do centro dela em direção ao planeta.
   - **Grunt:** disco voador lavanda/roxo, com luzes magenta que giram pela borda (4 frames). Tem **2 variações visuais**, sorteadas no spawn, só para dar variedade à tela; as duas são o mesmo inimigo, com os mesmos valores.
   - **Projétil do Satellite:** bolinha brilhante de 4 px em laranja/amarelo, com 2 frames de piscar. É redonda, então não precisa de direções (o projétil é teleguiado e muda de ângulo o tempo todo). O jogo desenha atrás dela um **rastro curto de 2–3 px** na direção do movimento, para não se confundir com as estrelas do fundo.
 - **Definido: fundo de espaço.** É montado com **tiles de 32×32** que se repetem sem emenda: azul-marinho com estrelinhas, em 3 ou 4 variações sorteadas. Por cima, estrelas maiores piscando, como sprites separados. Assim o fundo segue a grade de 32×32 e cobre qualquer proporção de tela (Seção 6.1).
