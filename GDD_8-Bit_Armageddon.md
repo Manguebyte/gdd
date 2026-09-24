@@ -331,7 +331,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 - **Aberta:** tocar numa aba abre a gaveta com cerca de 40% da altura da tela. Os Stats daquela Track aparecem como **cards** numa fileira com rolagem horizontal. Cada card mostra nome, nível, valor atual → próximo valor e custo.
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
-- **Câmera:** com a gaveta aberta, a câmera desliza para cima para o planeta continuar inteiro à vista. O jogo nunca pausa.
+- **Câmera:** com a gaveta aberta, a visão desliza para o planeta ficar inteiro no centro da área livre (o mundo sobe; a câmera desce). O jogo nunca pausa.
 - **Aba Satellites:** uma linha por Satellite desbloqueado, com um seletor da Target Priority (só as prioridades já desbloqueadas).
 
 **Definido: arte da interface.**
@@ -551,9 +551,12 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Core` | `GameClock` | Pausa (manual e automática) e escala de tempo | 1 |
 | `Armageddon.Core` | `AppLifecycle` | Segundo plano, perda de foco, fechar o app e o botão "voltar" | 1 |
 | `Armageddon.Core` | `DevShortcuts` | Atalhos de teste (só no Editor e em builds de desenvolvimento) | 1 |
-| `Armageddon.World` | `Quadrant` | Os 4 Quadrants e em qual deles uma posição está | 2 |
-| `Armageddon.World` | `CameraRig` | Pixel Perfect Camera, deslocamento com a gaveta, shake | 2 |
-| `Armageddon.Planet` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
+| `Armageddon.World` | `WorldLayout` | Medidas do mundo (raio do planeta, órbita, spawn) e a grade de pixels | 2 |
+| `Armageddon.World` | `Quadrant`, `Quadrants` | Os 4 Quadrants e em qual deles uma posição ou ângulo está | 2 |
+| `Armageddon.World` | `SpriteAnimator` | Loop de frames sem Animator (planeta, estrelas, inimigos, VFX) | 2 |
+| `Armageddon.World` | `SpaceBackground` | Fundo em tiles sorteados e estrelas piscando | 2 |
+| `Armageddon.World` | `CameraRig` | Pixel Perfect Camera e deslocamento com a gaveta (o shake entra na Fase 12) | 2 |
+| `Armageddon.Planets` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
 | `Armageddon.Combat` | `Satellite`, `SatelliteOrbit` | Disparo; a órbita compartilhada e o espaçamento dos Satellites | 3 |
 | `Armageddon.Combat` | `TargetSelector`, `TargetPriority` | Escolha de alvo dentro do Quadrant e do Attack Range | 3 |
 | `Armageddon.Combat` | `Projectile`, `ProjectilePool` | Projétil teleguiado reaproveitado por pooling | 3 |
@@ -587,7 +590,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 |---|---|---|
 | 0 | Setup do projeto | ✅ Escrita |
 | 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | ✅ Escrita |
-| 2 | Planeta, Quadrants e câmera | A escrever |
+| 2 | Planeta, Quadrants e câmera | ✅ Escrita |
 | 3 | Satellites, órbita, Target Priority e projéteis | A escrever |
 | 4 | Inimigos | A escrever |
 | 5 | Waves | A escrever |
@@ -609,7 +612,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 **Conceitos novos:**
 - **Unity Hub e módulos:** o Unity Hub instala versões da Unity e os "módulos" de cada plataforma. Sem o módulo Android, a Unity não consegue gerar o `.aab` para o Google Play; sem o módulo Web, não gera o build de navegador.
 - **URP (Universal Render Pipeline):** o sistema de renderização moderna da Unity. O template "Universal 2D" já vem com o renderizador 2D configurado, que é o que usamos para luzes e efeitos em pixel art.
-- **Pacote (package):** uma biblioteca oficial da Unity (Input System, Cinemachine, Localization…) instalada pelo **Package Manager**. Bibliotecas de terceiros (DOTween) vêm da **Asset Store**.
+- **Pacote (package):** uma biblioteca oficial da Unity (Input System, Localization…) instalada pelo **Package Manager**. Bibliotecas de terceiros (DOTween) vêm da **Asset Store**.
 - **Assembly Definition (asmdef):** um arquivo que agrupa scripts numa "assembly" separada. Com ele, a Unity recompila só o que mudou, e o projeto fica mais rápido de iterar à medida que cresce. Também deixa explícito de quais bibliotecas o seu código depende.
 - **Preset:** uma configuração salva (ex.: "como importar um sprite de pixel art") que a Unity aplica automaticamente em todo arquivo novo de uma pasta. Evita o erro clássico de pixel art borrada.
 - **Git LFS:** extensão do Git para arquivos binários grandes (imagens, sons). Sem ela, o repositório incha a cada versão de um sprite.
@@ -666,7 +669,6 @@ Abra **Window > Package Manager**, selecione **Unity Registry** na lateral e ins
 | Pacote | Para quê | Fase em que é usado |
 |---|---|---|
 | **Input System** | Toque, mouse, teclado e o botão "voltar" do Android. Normalmente já vem instalado no Unity 6. | 1 |
-| **Cinemachine** | Câmera e screen shake (Impulse) | 2 e 12 |
 | **Localization** | Textos em Inglês e Português | 11 (mas a configuração base entra na Fase 1) |
 
 O **TextMeshPro** já vem dentro do pacote **Unity UI** no Unity 6. Na primeira vez que você criar um texto TMP, a Unity pede para importar os "TMP Essentials": aceite.
@@ -742,7 +744,6 @@ Mova para `Assets/_Project/Settings/Rendering/` os assets de URP que o template 
 1. Em `Assets/_Project/Scripts/`, **botão direito → Create → Scripting → Assembly Definition**. Nome: `Armageddon`.
 2. Selecione o arquivo e, no Inspector, em **Assembly Definition References**, adicione:
    - `Unity.InputSystem`
-   - `Unity.Cinemachine`
    - `Unity.TextMeshPro`
    - `Unity.Localization`
    - `Unity.RenderPipelines.Universal.Runtime`
@@ -1560,3 +1561,536 @@ Os textos só serão traduzidos na Fase 11, mas os idiomas precisam existir desd
 - **Clicar fora do Game view não pausa o jogo no Editor:** é de propósito (Passo 7). Para testar a pausa automática, rode um build de Android ou Web e troque de app ou de aba.
 
 Próxima fase: **Fase 2 — Planeta, Quadrants e câmera**. Ela coloca o planeta de verdade na cena, com HP, a Pixel Perfect Camera em 320×180 e os 4 Quadrants.
+
+---
+
+### Fase 2 — Planeta, Quadrants e câmera
+
+> Objetivo desta fase: a cena `Gameplay` mostra o fundo de espaço e o planeta girando no centro, nítido em qualquer resolução, com HP, dano (já com a fórmula de defesa) e regeneração. O código já sabe em qual **Quadrant** cada ponto da tela está, e a câmera desliza quando a gaveta de upgrades abrir. Ainda não há Satellites nem inimigos.
+
+**Conceitos novos:**
+- **Pixel Perfect Camera:** componente do URP que faz a câmera mostrar exatamente 320×180 pixels do jogo e ampliar por um número **inteiro** (6× em 1080p). Sem ele, a pixel art fica com pixels de tamanhos diferentes e "tremendo" ao se mover.
+- **Upscale Render Texture:** o jogo é desenhado primeiro numa imagem de 320×180 e só depois ampliado para a tela. Assim, até o que gira (o laser da Mothership) ou se move meio pixel continua preso à grade de pixels.
+- **Unidade de mundo (u):** com PPU 16, 1 u = 16 px. O planeta tem 2 u de diâmetro e a tela mostra 20 × 11,25 u (Seção 4).
+- **Sprite animado sem Animator:** para loops simples de frames (planeta, estrelas e, depois, inimigos e Satellites), um componente pequeno que troca o sprite a cada 1/fps segundos é mais leve e mais fácil de reiniciar do que um `Animator` com um controller por objeto. Com 150 inimigos na tela, isso faz diferença.
+- **Gizmos:** desenhos que só aparecem na janela Scene (e no Game, se ligados), úteis para ver raios e eixos invisíveis durante o desenvolvimento.
+
+#### Passo 1 — Medidas do mundo: `WorldLayout`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/WorldLayout.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Medidas do mundo em unidades (u). 1 u = 16 px (Seções 4 e 6.1). O planeta fica sempre na origem.
+    public static class WorldLayout
+    {
+        public const float PixelsPerUnit = 16f;
+        public const float PlanetRadius = 1f;     // planeta de 32 px = 2 u de diâmetro
+        public const float OrbitRadius = 1.75f;   // órbita dos Satellites (Seção 4.1)
+        public const float SpawnRadius = 12f;     // onde os inimigos nascem (Seção 4.3)
+
+        public static readonly Vector2 PlanetCenter = Vector2.zero;
+
+        // Arredonda uma posição para a grade de pixels (1/16 u).
+        public static float SnapToPixel(float value) => Mathf.Round(value * PixelsPerUnit) / PixelsPerUnit;
+    }
+}
+```
+
+#### Passo 2 — Os 4 Quadrants: `Quadrant`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/Quadrant.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Os 4 Quadrants da tela, centrados no planeta (Seção 4.1), na ordem anti-horária da órbita.
+    public enum Quadrant
+    {
+        TopRight = 0,     //   0° a  90°
+        TopLeft = 1,      //  90° a 180°
+        BottomLeft = 2,   // 180° a 270°
+        BottomRight = 3,  // 270° a 360°
+    }
+
+    public static class Quadrants
+    {
+        // Ângulo em graus: 0° = direita, crescendo no sentido anti-horário (o mesmo da órbita).
+        // Um ponto exatamente sobre um eixo fica no Quadrant que COMEÇA naquele ângulo (ex.: 90° = TopLeft),
+        // assim ele pertence a um só Quadrant, como pede a Seção 4.1.
+        public static Quadrant FromAngle(float degrees)
+        {
+            float angle = Mathf.Repeat(degrees, 360f);
+            return (Quadrant)Mathf.Min(3, Mathf.FloorToInt(angle / 90f));
+        }
+
+        public static Quadrant FromPosition(Vector2 position)
+        {
+            Vector2 offset = position - WorldLayout.PlanetCenter;
+            return FromAngle(Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg);
+        }
+
+        public static float StartAngle(Quadrant quadrant) => (int)quadrant * 90f;
+    }
+}
+```
+
+#### Passo 3 — Sprites animados: `SpriteAnimator`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/SpriteAnimator.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Troca o sprite do SpriteRenderer a uma taxa fixa (os fps da Seção 6.4).
+    // Usa o tempo normal: pausa junto com o jogo.
+    [RequireComponent(typeof(SpriteRenderer))]
+    public sealed class SpriteAnimator : MonoBehaviour
+    {
+        [SerializeField] private Sprite[] _frames;
+        [SerializeField] private float _fps = 8f;
+        [SerializeField] private bool _loop = true;
+        [SerializeField] private bool _randomStartFrame;
+
+        private SpriteRenderer _renderer;
+        private float _time;
+
+        public bool IsPlaying { get; private set; }
+
+        // Só para animações "uma vez" (explosões): avisa quando o último frame terminou.
+        public event Action Finished;
+
+        private void Awake()
+        {
+            _renderer = GetComponent<SpriteRenderer>();
+        }
+
+        private void OnEnable()
+        {
+            Play();
+        }
+
+        public void SetFrames(Sprite[] frames, float fps, bool loop)
+        {
+            _frames = frames;
+            _fps = fps;
+            _loop = loop;
+            Play();
+        }
+
+        public void Play()
+        {
+            IsPlaying = _frames != null && _frames.Length > 0 && _fps > 0f;
+            if (!IsPlaying) return;
+            _time = _randomStartFrame ? UnityEngine.Random.Range(0, _frames.Length) / _fps : 0f;
+            Show(Mathf.FloorToInt(_time * _fps));
+        }
+
+        private void Update()
+        {
+            if (!IsPlaying) return;
+
+            _time += Time.deltaTime;
+            int frame = Mathf.FloorToInt(_time * _fps);
+
+            if (!_loop && frame >= _frames.Length)
+            {
+                Show(_frames.Length - 1);
+                IsPlaying = false;
+                Finished?.Invoke();
+                return;
+            }
+
+            Show(frame % _frames.Length);
+        }
+
+        private void Show(int frame)
+        {
+            _renderer.sprite = _frames[frame];
+        }
+    }
+}
+```
+
+#### Passo 4 — Vida do planeta: `PlanetHealth`
+
+Os valores de HP, regeneração e defesa vêm dos Stats, que só existem na Fase 6. Por enquanto, eles ficam no Inspector com os valores base da Seção 4.2, e os métodos `Set…` já existem para a Fase 6 chamar.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planet/PlanetHealth.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // HP do planeta: dano com a fórmula de defesa, regeneração, morte e Revive.
+    public sealed class PlanetHealth : MonoBehaviour
+    {
+        public const float MaxDefenseRelative = 0.75f;   // teto do Stat (Seção 4.2)
+
+        [SerializeField] private float _maxHitpoints = 100f;
+        [SerializeField] private float _regeneration;            // HP por segundo
+        [SerializeField] private float _defenseAbsolute;
+        [SerializeField, Range(0f, MaxDefenseRelative)] private float _defenseRelative;
+
+        public float Current { get; private set; }
+        public float Max => _maxHitpoints;
+        public bool IsDead { get; private set; }
+
+        public event Action<float> Damaged;   // recebe o dano FINAL, depois da defesa
+        public event Action HealthChanged;
+        public event Action Died;
+
+        private void Awake()
+        {
+            Current = _maxHitpoints;
+        }
+
+        private void Update()
+        {
+            if (IsDead || _regeneration <= 0f || Current >= _maxHitpoints) return;
+            Current = Mathf.Min(_maxHitpoints, Current + _regeneration * Time.deltaTime);
+            HealthChanged?.Invoke();
+        }
+
+        // Fórmula da Seção 4.2: max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative)).
+        public static float ComputeDamage(float raw, float defenseAbsolute, float defenseRelative)
+        {
+            return Mathf.Max(1f, (raw - defenseAbsolute) * (1f - defenseRelative));
+        }
+
+        public void TakeDamage(float raw)
+        {
+            if (IsDead || raw <= 0f) return;
+
+            float damage = ComputeDamage(raw, _defenseAbsolute, _defenseRelative);
+            Current = Mathf.Max(0f, Current - damage);
+            Damaged?.Invoke(damage);
+            HealthChanged?.Invoke();
+
+            if (Current <= 0f)
+            {
+                IsDead = true;
+                Died?.Invoke();
+            }
+        }
+
+        // Upgrade de Hitpoints: o HP atual sobe na mesma quantidade que o máximo (Seção 4.2).
+        public void SetMaxHitpoints(float value)
+        {
+            float gained = value - _maxHitpoints;
+            _maxHitpoints = Mathf.Max(1f, value);
+            if (gained > 0f && !IsDead) Current += gained;
+            Current = Mathf.Min(Current, _maxHitpoints);
+            HealthChanged?.Invoke();
+        }
+
+        public void SetRegeneration(float hpPerSecond)
+        {
+            _regeneration = Mathf.Max(0f, hpPerSecond);
+        }
+
+        public void SetDefense(float absolute, float relative)
+        {
+            _defenseAbsolute = Mathf.Max(0f, absolute);
+            _defenseRelative = Mathf.Clamp(relative, 0f, MaxDefenseRelative);
+        }
+
+        // Revive (Seção 4.6): volta com uma fração do HP máximo.
+        public void Revive(float fraction)
+        {
+            IsDead = false;
+            Current = _maxHitpoints * Mathf.Clamp01(fraction);
+            HealthChanged?.Invoke();
+        }
+    }
+}
+```
+
+#### Passo 5 — O planeta: `Planet`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planet/Planet.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // O planeta no centro do mundo. A skin (sprites da rotação) é trocada pela Core Select na Fase 9.
+    [RequireComponent(typeof(PlanetHealth))]
+    public sealed class Planet : MonoBehaviour
+    {
+        public PlanetHealth Health { get; private set; }
+        public Vector2 Center => WorldLayout.PlanetCenter;
+        public float Radius => WorldLayout.PlanetRadius;
+
+        private void Awake()
+        {
+            Health = GetComponent<PlanetHealth>();
+            transform.position = WorldLayout.PlanetCenter;
+        }
+
+        // Na janela Scene: o raio do planeta, a órbita dos Satellites, os eixos dos Quadrants e o alcance base (4 u).
+        private void OnDrawGizmos()
+        {
+            Vector3 center = WorldLayout.PlanetCenter;
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(center, WorldLayout.PlanetRadius);
+            Gizmos.color = Color.gray;
+            Gizmos.DrawWireSphere(center, WorldLayout.OrbitRadius);
+            Gizmos.color = new Color(1f, 0.6f, 0.2f);
+            Gizmos.DrawWireSphere(center, 4f);
+            Gizmos.color = Color.white;
+            float axis = WorldLayout.SpawnRadius;
+            Gizmos.DrawLine(center + Vector3.left * axis, center + Vector3.right * axis);
+            Gizmos.DrawLine(center + Vector3.down * axis, center + Vector3.up * axis);
+        }
+    }
+}
+```
+
+#### Passo 6 — O fundo de espaço: `SpaceBackground`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/SpaceBackground.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Cobre a área visível com os tiles de fundo sorteados (Seção 6.4) e espalha estrelas piscando por cima.
+    // Cobre também uma margem: a câmera desce com a gaveta aberta, e telas mais largas que 16:9 mostram mais espaço.
+    public sealed class SpaceBackground : MonoBehaviour
+    {
+        private const float TileSize = 2f;   // 32 px = 2 u
+
+        [SerializeField] private Sprite[] _tiles;           // as 4 células de SPR_Background_Space
+        [SerializeField] private Sprite[] _twinkleFrames;   // as 4 células de SPR_Background_StarTwinkle
+        [SerializeField] private float _twinkleFps = 4f;
+        [SerializeField] private int _twinkleCount = 8;
+        [SerializeField] private int _seed = 7;
+        [SerializeField] private float _margin = 3f;
+        [SerializeField] private string _sortingLayer = "Background";
+
+        private void Start()
+        {
+            Build(Camera.main);
+        }
+
+        private void Build(Camera view)
+        {
+            var random = new System.Random(_seed);
+            float halfHeight = view.orthographicSize + _margin;
+            float halfWidth = view.orthographicSize * view.aspect + _margin;
+            int columns = Mathf.CeilToInt(halfWidth / TileSize);
+            int rows = Mathf.CeilToInt(halfHeight / TileSize);
+
+            for (int x = -columns; x < columns; x++)
+            {
+                for (int y = -rows; y < rows; y++)
+                {
+                    // O pivô é o centro da célula: o centro do tile fica no meio de cada quadrado de 2 u.
+                    var position = new Vector2(x * TileSize + TileSize * 0.5f, y * TileSize + TileSize * 0.5f);
+                    CreateSprite("Tile", _tiles[random.Next(_tiles.Length)], position, 0);
+                }
+            }
+
+            for (int i = 0; i < _twinkleCount; i++)
+            {
+                var position = new Vector2(
+                    WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfWidth),
+                    WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfHeight));
+                var star = CreateSprite("Twinkle", _twinkleFrames[0], position, 1);
+                star.gameObject.AddComponent<SpriteAnimator>().SetFrames(_twinkleFrames, _twinkleFps, true);
+            }
+        }
+
+        private SpriteRenderer CreateSprite(string name, Sprite sprite, Vector2 position, int order)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = position;
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingLayerName = _sortingLayer;
+            renderer.sortingOrder = order;
+            return renderer;
+        }
+    }
+}
+```
+
+> As estrelas piscam em sincronia, de propósito: o fundo não deve chamar atenção. A opção **Random Start Frame** do `SpriteAnimator` existe para os inimigos (Fase 4), que ficam mais naturais cada um num frame diferente.
+
+#### Passo 7 — A câmera: `CameraRig`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/CameraRig.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Câmera da run: centrada no planeta, desliza quando a gaveta de upgrades abre (Seção 6.3).
+    // Fica no mesmo objeto da Camera e do componente Pixel Perfect Camera (URP). O shake entra na Fase 12.
+    [RequireComponent(typeof(Camera))]
+    public sealed class CameraRig : MonoBehaviour
+    {
+        [SerializeField, Range(0f, 0.8f)] private float _drawerScreenFraction = 0.4f;
+        [SerializeField] private float _slideTime = 0.15f;
+
+        private Camera _camera;
+        private float _currentY;
+        private float _targetY;
+        private float _velocity;
+
+        public bool IsDrawerOpen { get; private set; }
+
+        private void Awake()
+        {
+            _camera = GetComponent<Camera>();
+            ApplyPosition(0f);
+        }
+
+        // A gaveta cobre a parte de baixo da tela. Para o planeta ficar no centro da área livre,
+        // a câmera DESCE metade da altura da gaveta (o mundo parece subir).
+        public void SetDrawerOpen(bool open)
+        {
+            IsDrawerOpen = open;
+            float viewHeight = _camera.orthographicSize * 2f;
+            _targetY = open ? -viewHeight * _drawerScreenFraction * 0.5f : 0f;
+        }
+
+        private void LateUpdate()
+        {
+            // Tempo "unscaled": a câmera termina de deslizar mesmo se o jogo pausar no meio.
+            _currentY = Mathf.SmoothDamp(_currentY, _targetY, ref _velocity, _slideTime, Mathf.Infinity, Time.unscaledDeltaTime);
+            ApplyPosition(_currentY);
+        }
+
+        private void ApplyPosition(float y)
+        {
+            // Posição presa à grade de pixels: evita o mundo "tremer" meio pixel durante o deslize.
+            transform.position = new Vector3(0f, WorldLayout.SnapToPixel(y), -10f);
+        }
+    }
+}
+```
+
+#### Passo 8 — Novos atalhos de desenvolvimento
+
+Substitua o `DevShortcuts` da Fase 1 por esta versão, que acrescenta os testes desta fase (F3, F4, F6 e F7):
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/DevShortcuts.cs
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // F1 = MainMenu · F2 = Gameplay · F3 = abre/fecha a gaveta (câmera) · F4 = Quadrant sob o mouse
+    // F5 = +10 Stardust e salva · F6 = 10 de dano no planeta · F7 = Revive com 50% · F9 = apaga o progresso.
+    public sealed class DevShortcuts : MonoBehaviour
+    {
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.f1Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.MainMenu);
+            if (keyboard.f2Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.Gameplay);
+
+            if (keyboard.f3Key.wasPressedThisFrame)
+            {
+                var rig = FindAnyObjectByType<CameraRig>();
+                if (rig != null) rig.SetDrawerOpen(!rig.IsDrawerOpen);
+            }
+
+            if (keyboard.f4Key.wasPressedThisFrame && Mouse.current != null && Camera.main != null)
+            {
+                Vector2 world = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                Debug.Log($"[Dev] Mouse em {world} → {Quadrants.FromPosition(world)}");
+            }
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                Services.Save.Profile.stardust += 10;
+                Services.Save.Save();
+                Debug.Log($"[Dev] Stardust = {Services.Save.Profile.stardust}");
+            }
+
+            var planet = FindAnyObjectByType<Planet>();
+            if (planet != null && keyboard.f6Key.wasPressedThisFrame)
+            {
+                planet.Health.TakeDamage(10f);
+                Debug.Log($"[Dev] Planeta: {planet.Health.Current:0.#}/{planet.Health.Max} HP");
+            }
+            if (planet != null && keyboard.f7Key.wasPressedThisFrame)
+            {
+                planet.Health.Revive(0.5f);
+                Debug.Log($"[Dev] Revive: {planet.Health.Current:0.#}/{planet.Health.Max} HP");
+            }
+
+            if (keyboard.f9Key.wasPressedThisFrame)
+            {
+                Services.Save.ResetProgress();
+                Debug.Log("[Dev] Progresso apagado.");
+            }
+        }
+    }
+}
+#endif
+```
+
+#### Passo 9 — Montar a câmera
+
+Abra a cena `Gameplay` e apague o planeta de teste da Fase 1 (o objeto com `Animator`). O clipe `ANIM_Planet_Rotate` e o controller que a Unity criou também podem ser apagados: a partir de agora, o planeta usa o `SpriteAnimator`.
+
+Selecione a **Main Camera** (ela fica na raiz, pela convenção da Seção 10.1):
+1. **Camera:** **Projection** = `Orthographic`; **Background Type** = `Solid Color`; cor `#141241` (o azul-marinho do fundo). Assim, se alguma borda aparecer além dos tiles, ela tem a mesma cor.
+2. **Add Component → Pixel Perfect Camera** (o do URP):
+   - **Assets Pixels Per Unit:** `16`
+   - **Reference Resolution:** `320` × `180`
+   - **Crop Frame:** `None` (em telas fora de 16:9, o jogo mostra mais espaço em vez de faixas pretas, Seção 6.1)
+   - **Grid Snapping:** `Upscale Render Texture`
+3. **Add Component → Camera Rig**.
+
+#### Passo 10 — Montar o planeta e o fundo
+
+1. **Fundo:** em `[World]`, crie um objeto vazio `SpaceBackground` na posição (0, 0, 0) com o componente `SpaceBackground`. Em **Tiles**, arraste as 4 células de `Art/Backgrounds/SPR_Background_Space`; em **Twinkle Frames**, as 4 células de `SPR_Background_StarTwinkle`.
+   > Para arrastar várias células para uma lista de uma vez: trave o Inspector (cadeado no canto de cima), abra a setinha da spritesheet na janela Project, selecione as células (clique no primeiro, Shift+clique no último) e solte **em cima do nome da lista**.
+2. **Planeta:** em `[World]`, crie um objeto `Planet` na posição (0, 0, 0) e adicione:
+   - **Sprite Renderer:** **Sprite** = a célula 0 de `SPR_Planet_Terra_Classic_Rotate`; **Sorting Layer** = `Planet`.
+   - **Sprite Animator:** **Frames** = as 32 células de `SPR_Planet_Terra_Classic_Rotate`; **Fps** = `4`; **Loop** marcado.
+   - **Planet** (o `PlanetHealth` entra junto, pelo `RequireComponent`). Deixe os valores base: **Max Hitpoints** `100`, o resto `0`.
+3. Arraste o objeto `Planet` para `Assets/_Project/Prefabs/Gameplay/` para criar o prefab `Planet.prefab`.
+
+#### Passo 11 — Commit
+
+`git add .` e `git commit -m "Phase 2: planet, health, quadrants, pixel perfect camera, background"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: o planeta gira no centro, com o fundo de estrelas cobrindo a tela inteira e algumas estrelas grandes piscando.
+- Com o **Game view** em `1920x1080`, cada pixel da arte vira um quadrado de 6×6, sem bordas borradas. Trocando para `2560x1080` (21:9) ou `1024x768` (4:3), aparece **mais espaço** dos lados ou em cima e embaixo, sem faixas pretas e sem esticar.
+- Na janela **Scene**, os Gizmos mostram o círculo do planeta (verde), a órbita (cinza), o alcance base (laranja) e os dois eixos dos Quadrants.
+- **F4** com o mouse em cada canto da tela mostra no Console `TopRight`, `TopLeft`, `BottomLeft` e `BottomRight` nos lugares certos.
+- **F3** faz o mundo deslizar para cima (o planeta sobe até o centro dos 60% de cima da tela); **F3** de novo o traz de volta. O movimento é suave e sem tremer.
+- **F6** tira 10 de HP (`90/100`, `80/100`…). Com **Defense Absolute** = `5` no Inspector, cada F6 tira só 5. Com **Defense Absolute** = `20`, tira 1 (o mínimo da fórmula).
+- Com **Regeneration** = `2`, o HP volta a subir 2 por segundo depois do F6. Com **Esc** (pausa), o planeta, as estrelas e a regeneração param juntos.
+- Ao chegar a 0 HP, o dano para de ser aplicado; **F7** traz o planeta de volta com 50 HP.
+
+**Problemas comuns:**
+- **A arte aparece borrada ou com pixels de tamanhos diferentes:** a **Reference Resolution** ou o **Assets Pixels Per Unit** da Pixel Perfect Camera não bate com 320×180 / 16, ou o Game view está com **Scale** diferente de 1×. Confira também se os sprites vieram com PPU 16 (preset da Fase 0).
+- **Faixas pretas nas bordas:** **Crop Frame** não está em `None`.
+- **O fundo não cobre um canto da tela ao abrir a gaveta:** aumente **Margin** no `SpaceBackground`. O valor 3 cobre a gaveta de 40% em 16:9.
+- **O planeta não aparece, mas o objeto existe:** a **Sorting Layer** dele está abaixo da `Background`, ou a câmera está com Z maior que 0. O `CameraRig` põe a câmera em Z = −10: não mova a câmera à mão.
+- **`'Planet' is a namespace but is used like a type`:** algum script usa o namespace antigo `Armageddon.Planet`. O namespace é `Armageddon.Planets` (com "s"), justamente para não colidir com a classe `Planet`.
+- **O planeta gira rápido demais:** o **Fps** do `SpriteAnimator` ficou no padrão (8). O planeta usa 4 (Seção 6.4).
+
+Próxima fase: **Fase 3 — Satellites, órbita, Target Priority e projéteis**. Ela coloca o primeiro Satellite orbitando e atirando no Quadrant onde está.
