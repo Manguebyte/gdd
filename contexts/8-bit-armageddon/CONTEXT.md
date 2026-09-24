@@ -25,7 +25,7 @@ Wave especial, a cada 10 ondas, com um único boss de padrão de ataque telegraf
 _Avoid_: onda marco, milestone wave
 
 **Mothership**:
-O boss das Boss Waves; fica em órbita, dispara laser telegrafado e solta Swarmers, e permanece em campo até morrer.
+O boss das Boss Waves; entra pela borda e desce em espiral em volta do planeta até uma órbita mínima, dispara laser telegrafado e solta Swarmers, e permanece em campo até morrer.
 _Avoid_: chefe, boss (quando se refere a este inimigo específico)
 
 **Revive**:

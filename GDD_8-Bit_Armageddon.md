@@ -60,7 +60,7 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 - O planeta começa com **1 Satellite** e pode chegar a **4**, desbloqueados pelo ramo Arsenal dos Perks (Seção 5.2).
 - **Órbita:** todos os Satellites giram na **mesma órbita circular**, com raio de **1,75 u** a partir do centro do planeta (o planeta tem raio de 1 u), no sentido **anti-horário**, na velocidade do Stat **Orbit Speed** (graus por segundo). Ficam **espaçados igualmente** e giram juntos: 1 Satellite; 2 opostos; 3 a cada 120°; 4 a cada 90°. Com 4, cada um está sempre num Quadrant diferente e a cobertura é total. Com menos, cada Satellite "visita" um Quadrant de cada vez.
 - **Quadrants:** a tela é dividida em 4 setores de 90°, como um plano cartesiano centrado no planeta: acima à direita, acima à esquerda, abaixo à esquerda e abaixo à direita. Um inimigo exatamente sobre a linha entre dois Quadrants pertence a um só deles (regra técnica, sem efeito visível).
-- **Alvos:** um Satellite só pode atirar em inimigos que estejam **no Quadrant onde ele está agora** **e** dentro do Stat **Attack Range**, medido **a partir do centro do planeta** (assim todos os Satellites têm o mesmo alcance efetivo). Se não houver ninguém válido, ele segura o tiro.
+- **Alvos:** um Satellite só pode atirar em inimigos que estejam **no Quadrant onde ele está agora** **e** dentro do Stat **Attack Range**, medido **a partir do centro do planeta** (assim todos os Satellites têm o mesmo alcance efetivo). Um inimigo está dentro do alcance quando a **borda** dele está: `distância do centro do inimigo − raio do inimigo ≤ Attack Range`. O raio é metade do tamanho do sprite (Grunt e Scout 0,5 u, Swarmer 0,25 u, Brute 0,75 u, Mothership 1,5 u). Se não houver ninguém válido, ele segura o tiro.
 - Todos os Satellites usam os **mesmos Stats** (Damage, Attack Speed etc.). Só a Target Priority é individual.
 - **Target Priority** escolhe qual inimigo válido (no Quadrant e no alcance) recebe o tiro. É configurada **por Satellite**, na aba "Satellites" da gaveta de upgrades:
 
@@ -164,7 +164,8 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 
 **Definido:**
 - Toda Wave múltipla de 10 (10, 20, 30…) é uma **Boss Wave**: nasce uma única **Mothership**, sem inimigos comuns. HP e dano escalam com a mesma fórmula da Seção 4.3.
-- A Mothership **não é kamikaze**. Ela entra e fica em órbita a 7 u do centro, girando devagar (10°/s).
+- A Mothership **não é kamikaze**. Ela nasce na borda (12 u), no Spawn Sector indicado pelo aviso da Boss Wave, e desce em linha reta a **1,5 u/s** até **7 u** do centro. Durante a entrada ela já pode ser atingida (se estiver no alcance), mas só começa a atacar quando chega aos 7 u.
+- **Espiral:** dali em diante ela gira devagar (10°/s, uma volta a cada 36 s) e **se aproxima em espiral**, perdendo **1,5 u de raio por volta**, de forma contínua, até uma **órbita mínima de 3,5 u**, onde continua girando e atacando. Com a regra de alcance pela borda (Seção 4.1), o Attack Range base (4 u) a alcança depois de cerca de 1 volta; quem comprou Range a alcança antes.
 - **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta.
 - **Swarmers:** a cada 15 s, solta um cacho de 8 Swarmers.
 - **Barra de HP** no topo da tela enquanto ela estiver viva.
@@ -581,7 +582,10 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Economy` | `EconomyDevTools` | Teclas de teste da economia (só no Editor e em builds de desenvolvimento) | 6 |
 | `Armageddon.UI` | `IntegerCanvasScale` | Escala inteira da UI, igual à da Pixel Perfect Camera | 6 |
 | `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
-| `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss e o laser telegrafado | 7 |
+| `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss (entrada e espiral) e o laser telegrafado | 7 |
+| `Armageddon.Enemies` | `MothershipSpawner` | Cria a Mothership nas Boss Waves e a conta como inimiga viva | 7 |
+| `Armageddon.UI` | `BossHealthBar` | Barra de HP da Mothership no topo da tela | 7 |
+| `Armageddon.Enemies` | `MothershipDevTools` | Tecla de teste da Mothership (só no Editor e em builds de desenvolvimento) | 7 |
 | `Armageddon.Run` | `RunController`, `RunSummary` | Ciclo de vida da run, Revive, fim de run | 8 |
 | `Armageddon.UI` | `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView` | Telas da run | 8 |
 | `Armageddon.Meta` | `PerkDefinition`, `PerkService` | Árvore de Perks | 9 |
@@ -607,7 +611,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 4 | Inimigos | ✅ Escrita |
 | 5 | Waves | ✅ Escrita |
 | 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
-| 7 | Mothership | A escrever |
+| 7 | Mothership | ✅ Escrita |
 | 8 | Run: Revive, pausa, Results | A escrever |
 | 9 | Meta-progressão: Stardust, Perks, Planet Cores, Skins, conquistas, recompensa diária | A escrever |
 | 10 | Anúncios, consentimento e analytics | A escrever |
@@ -2132,6 +2136,7 @@ namespace Armageddon.Combat
     public interface ITarget
     {
         Vector2 Position { get; }
+        float Radius { get; }              // metade do tamanho do sprite, em u: o alcance mede até a BORDA (Seção 4.1)
         float CurrentHitpoints { get; }
         bool IsAlive { get; }
         void TakeDamage(float amount, bool isCritical);
@@ -2229,13 +2234,12 @@ namespace Armageddon.Combat
 
     public static class TargetSelector
     {
-        // Só considera alvos vivos, no Quadrant pedido e dentro do alcance (medido do centro do planeta).
+        // Só considera alvos vivos, no Quadrant pedido e com a BORDA dentro do alcance (medido do centro do planeta).
         // Devolve null se não houver ninguém válido.
         public static ITarget Select(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority)
         {
             ITarget best = null;
             float bestScore = float.MaxValue;
-            float rangeSquared = range * range;
 
             for (int i = 0; i < targets.Count; i++)
             {
@@ -2243,7 +2247,7 @@ namespace Armageddon.Combat
                 if (!target.IsAlive) continue;
 
                 float distanceSquared = (target.Position - WorldLayout.PlanetCenter).sqrMagnitude;
-                if (distanceSquared > rangeSquared) continue;
+                if (Mathf.Sqrt(distanceSquared) - target.Radius > range) continue;
                 if (Quadrants.FromPosition(target.Position) != quadrant) continue;
 
                 // Menor "score" vence: por isso Farthest e Strongest usam o valor negativo.
@@ -2751,6 +2755,7 @@ namespace Armageddon.Combat
         private float _hitpoints;
 
         public Vector2 Position => transform.position;
+        public float Radius => 0.5f;
         public float CurrentHitpoints => _hitpoints;
         public bool IsAlive => _hitpoints > 0f;
 
@@ -2857,7 +2862,7 @@ namespace Armageddon.Combat
 **✅ Checkpoint:**
 - Play na `Gameplay`: um Satellite começa no topo e dá uma volta em **8 s** no sentido anti-horário (Orbit Speed 45°/s). O Quadrant onde ele está fica levemente iluminado, e o destaque passa de Quadrant em Quadrant junto com ele.
 - As duas linhas pontilhadas dos eixos cruzam a tela e ficam sempre visíveis.
-- **T** com o mouse dentro do círculo laranja dos Gizmos cria um alvo de teste. O Satellite só atira nele **enquanto estiver no mesmo Quadrant**. Um alvo fora do círculo (Attack Range 4 u) nunca é atingido.
+- **T** com o mouse dentro do círculo laranja dos Gizmos cria um alvo de teste. O Satellite só atira nele **enquanto estiver no mesmo Quadrant**. Um alvo cuja borda fica fora do círculo (Attack Range 4 u; o alvo de teste tem raio 0,5 u) nunca é atingido.
 - Cada disparo é uma bolinha com um rastro curto que persegue o alvo e faz o Quadrant piscar. O Console mostra `-10 → 20 HP`, e na terceira bala o alvo some.
 - Com a cadência base (1 disparo/s) e 2 s em cada Quadrant, um alvo de 30 HP colocado sozinho num Quadrant morre depois de umas duas passagens do Satellite.
 - **2**, **3** e **4** trocam o número de Satellites, que se reorganizam igualmente espaçados. Com **4**, os quatro Quadrants ficam acesos o tempo todo.
@@ -2951,6 +2956,7 @@ namespace Armageddon.Enemies
         [SerializeField] private float _damage = 5f;
         [SerializeField] private float _speed = 0.8f;             // u/s
         [SerializeField] private float _shards = 1f;              // 0,5 = "1 a cada 2" (Swarmer)
+        [SerializeField] private float _radius = 0.5f;            // metade do sprite, em u: o alcance mede até a borda (Seção 4.1)
 
         [Header("Movimento")]
         [SerializeField] private MovementKind _movement = MovementKind.Straight;
@@ -2974,6 +2980,7 @@ namespace Armageddon.Enemies
         public float Damage => _damage;
         public float Speed => _speed;
         public float Shards => _shards;
+        public float Radius => _radius;
         public int UnlockWave => _unlockWave;
         public float SpawnWeight => _spawnWeight;
         public int ClusterSize => _clusterSize;
@@ -3113,6 +3120,7 @@ namespace Armageddon.Enemies
 
         public EnemyDefinition Definition => _definition;
         public Vector2 Position { get; private set; }
+        public float Radius => _definition.Radius;
         public float CurrentHitpoints => _hitpoints;
         public bool IsAlive => _alive;
 
@@ -3352,12 +3360,12 @@ namespace Armageddon.Enemies
 
 Em `Assets/_Project/Data/Enemies/`, **botão direito → Create → Armageddon → Enemy Definition**, uma vez para cada inimigo. Preencha com os valores das Seções 4.3, 4.4 e 6.4:
 
-| Asset | Hitpoints | Damage | Speed | Shards | Movement | Unlock Wave | Spawn Weight | Cluster Size | Variants | Fps | Explosion |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `Enemy_Grunt` | 10 | 5 | 0.8 | 1 | Straight | 1 | 50 | 1 | 2 variações: células 0–3 e 4–7 de `SPR_Enemy_Grunt` | 6 | Small |
-| `Enemy_Scout` | 6 | 3 | 2 | 1 | ZigZag (0.5 / 1.5) | 3 | 25 | 1 | 1 variação: células 0–3 de `SPR_Enemy_Scout` | 12 | Small |
-| `Enemy_Swarmer` | 3 | 2 | 1.2 | 0.5 | Straight | 6 | 15 | 8 | 1 variação: células 0–1 de `SPR_Enemy_Swarmer` | 4 | Small |
-| `Enemy_Brute` | 80 | 20 | 0.5 | 4 | Straight | 8 | 10 | 1 | 4 variações de 1 frame: células 0, 1, 2 e 3 de `SPR_Enemy_Brute` | 1 | Big |
+| Asset | Hitpoints | Damage | Speed | Shards | Radius | Movement | Unlock Wave | Spawn Weight | Cluster Size | Variants | Fps | Explosion |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `Enemy_Grunt` | 10 | 5 | 0.8 | 1 | 0.5 | Straight | 1 | 50 | 1 | 2 variações: células 0–3 e 4–7 de `SPR_Enemy_Grunt` | 6 | Small |
+| `Enemy_Scout` | 6 | 3 | 2 | 1 | 0.5 | ZigZag (0.5 / 1.5) | 3 | 25 | 1 | 1 variação: células 0–3 de `SPR_Enemy_Scout` | 12 | Small |
+| `Enemy_Swarmer` | 3 | 2 | 1.2 | 0.5 | 0.25 | Straight | 6 | 15 | 8 | 1 variação: células 0–1 de `SPR_Enemy_Swarmer` | 4 | Small |
+| `Enemy_Brute` | 80 | 20 | 0.5 | 4 | 0.75 | Straight | 8 | 10 | 1 | 4 variações de 1 frame: células 0, 1, 2 e 3 de `SPR_Enemy_Brute` | 1 | Big |
 
 Na lista **Variants**, clique **+** uma vez por variação e arraste as células para o **Frames** de cada uma. No Brute, cada variação tem um frame só: o `SpriteAnimator` fica mostrando essa imagem parada.
 
@@ -3520,6 +3528,7 @@ namespace Armageddon.Waves
         private int _externalAlive;
 
         public int CurrentWave { get; private set; }
+        public IReadOnlyList<int> CurrentSectors => _sectors;   // os Spawn Sectors da Wave atual (a Mothership entra por um deles)
         public bool IsBossWave => _balance.IsBossWave(CurrentWave);
         public bool IsWarning => _phase == Phase.Warning;
         public float TimeRemaining => _phase == Phase.Running ? Mathf.Max(0f, _duration - _phaseTime) : 0f;
@@ -4712,3 +4721,610 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - **O valor aparece com vírgula ou com ponto dependendo do computador:** é a cultura do sistema operacional. A Fase 11 (Localization) fixa a formatação por idioma.
 
 Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, cachos de Swarmers e a barra de HP.
+
+---
+
+### Fase 7 — Mothership
+
+> Objetivo desta fase: toda Wave múltipla de 10 traz a **Mothership** (Seção 4.5). Ela entra pelo setor do aviso, desce em espiral em volta do planeta, telegrafa e dispara o laser a cada 8 s, solta cachos de Swarmers a cada 15 s, tem uma barra de HP no topo da tela e, ao morrer, explode e paga 50 Shards. Se o timer da Boss Wave acabar com ela viva, ela continua em campo junto com as Waves seguintes.
+
+**Conceitos novos:**
+- **Movimento em duas etapas:** primeiro a **entrada** (linha reta da borda até 7 u) e depois a **espiral** (o ângulo cresce 10°/s e o raio diminui 1,5 u a cada 360°). A espiral é só "órbita com raio encolhendo": `raio -= 1,5 × (10 / 360) × dt`, limitado a 3,5 u.
+- **Ataque telegrafado:** o laser tem duas fases visíveis: o **aviso** (a linha tracejada piscando por 1,5 s, que dá tempo de o jogador entender o perigo) e o **disparo** (o feixe, que causa o dano de uma vez). O dano passa pela fórmula de defesa do planeta (Seção 4.2); a Defense relativa é a melhor contra ele.
+- **SpriteRenderer em modo Tiled:** em vez de criar vários tiles para o laser, um único `SpriteRenderer` no modo **Tiled** repete o tile de 32 px ao longo do comprimento que você mandar (`size`). A linha acompanha a Mothership a cada frame só mudando o comprimento e o ângulo.
+- **Inimigo "externo" às Waves:** a Mothership não vem do `EnemyPool`, mas conta como inimiga viva: o `MothershipSpawner` avisa o `WaveDirector` (`AddExternalAlive`), e é por isso que a tela nunca "esvazia" com ela viva (Seção 4.3).
+
+#### Passo 1 — O laser: `LaserAttack`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/LaserAttack.cs
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // O laser da Mothership (Seção 4.5): aviso tracejado piscando por 1,5 s, depois o feixe, que causa o dano uma vez.
+    // Fica no mesmo objeto da Mothership e cria a linha e o impacto como objetos filhos.
+    public sealed class LaserAttack : MonoBehaviour
+    {
+        private enum State { Idle, Telegraph, Beam }
+
+        [SerializeField] private Sprite[] _warningFrames;   // SPR_VFX_Laser_Warning (2)
+        [SerializeField] private Sprite[] _beamFrames;      // SPR_VFX_Laser_Beam (4)
+        [SerializeField] private Sprite[] _impactFrames;    // SPR_VFX_Laser_Impact (4)
+        [SerializeField] private float _warningFps = 6f;
+        [SerializeField] private float _beamFps = 12f;
+        [SerializeField] private float _telegraphTime = 1.5f;
+        [SerializeField] private float _beamTime = 0.4f;    // quanto tempo o feixe fica visível depois do dano
+        [SerializeField] private string _sortingLayer = "VFX";
+
+        private SpriteRenderer _line;
+        private SpriteAnimator _lineAnimator;
+        private SpriteAnimator _impact;
+        private PlanetHealth _planet;
+        private State _state;
+        private float _damage;
+        private float _time;
+
+        public bool IsBusy => _state != State.Idle;
+
+        private void Awake()
+        {
+            _line = CreatePart("LaserLine", out _lineAnimator);
+            _line.drawMode = SpriteDrawMode.Tiled;   // repete o tile ao longo do comprimento (precisa de Mesh Type = Full Rect)
+            CreatePart("LaserImpact", out _impact);
+            Hide();
+        }
+
+        public void Init(PlanetHealth planet)
+        {
+            _planet = planet;
+        }
+
+        public void Begin(float damage)
+        {
+            _damage = damage;
+            _state = State.Telegraph;
+            _time = 0f;
+            _line.gameObject.SetActive(true);
+            _lineAnimator.SetFrames(_warningFrames, _warningFps, true);
+            Place();
+        }
+
+        public void Cancel()
+        {
+            _state = State.Idle;
+            Hide();
+        }
+
+        private void LateUpdate()
+        {
+            if (_state == State.Idle) return;
+
+            _time += Time.deltaTime;
+            if (_state == State.Telegraph && _time >= _telegraphTime)
+            {
+                _planet.TakeDamage(_damage);
+                _state = State.Beam;
+                _time = 0f;
+                _lineAnimator.SetFrames(_beamFrames, _beamFps, true);
+                _impact.gameObject.SetActive(true);
+                _impact.SetFrames(_impactFrames, _beamFps, true);
+            }
+            else if (_state == State.Beam && _time >= _beamTime)
+            {
+                Cancel();
+                return;
+            }
+
+            Place();
+        }
+
+        // Da Mothership até a borda do planeta. A linha é girada: é a exceção de rotação da Seção 6.2.
+        private void Place()
+        {
+            Vector2 from = transform.position;
+            Vector2 toCenter = WorldLayout.PlanetCenter - from;
+            Vector2 direction = toCenter.normalized;
+            Vector2 end = WorldLayout.PlanetCenter - direction * WorldLayout.PlanetRadius;
+            float length = Vector2.Distance(from, end);
+
+            _line.transform.position = (from + end) * 0.5f;
+            _line.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
+            _line.size = new Vector2(length, 2f);   // 2 u = a altura da célula de 32 px
+            _impact.transform.position = end;
+        }
+
+        private SpriteRenderer CreatePart(string name, out SpriteAnimator animator)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingLayerName = _sortingLayer;
+            animator = go.AddComponent<SpriteAnimator>();
+            return renderer;
+        }
+
+        private void Hide()
+        {
+            _line.gameObject.SetActive(false);
+            _impact.gameObject.SetActive(false);
+        }
+    }
+}
+```
+
+#### Passo 2 — O boss: `Mothership`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/Mothership.cs
+using System;
+using Armageddon.Combat;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // O boss das Boss Waves (Seção 4.5). Entra em linha reta até 7 u, desce em espiral até 3,5 u,
+    // e ataca com o laser e com cachos de Swarmers. Implementa ITarget: os Satellites atiram nela sem código novo.
+    [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator), typeof(LaserAttack))]
+    public sealed class Mothership : MonoBehaviour, ITarget
+    {
+        [Header("Valores base, antes da escalada por Wave (Seção 4.5)")]
+        [SerializeField] private float _baseHitpoints = 1200f;
+        [SerializeField] private float _baseLaserDamage = 25f;
+        [SerializeField] private float _shards = 50f;
+
+        [Header("Movimento")]
+        [SerializeField] private float _entrySpeed = 1.5f;        // u/s, da borda até a primeira órbita
+        [SerializeField] private float _startOrbitRadius = 7f;
+        [SerializeField] private float _minOrbitRadius = 3.5f;
+        [SerializeField] private float _shrinkPerLap = 1.5f;      // u de raio perdidos a cada volta
+        [SerializeField] private float _angularSpeed = 10f;       // graus por segundo
+        [SerializeField] private float _radius = 1.5f;            // metade do sprite: o alcance mede até a borda
+
+        [Header("Ataques")]
+        [SerializeField] private float _laserInterval = 8f;
+        [SerializeField] private float _swarmerInterval = 15f;
+        [SerializeField] private EnemyDefinition _swarmer;
+
+        private LaserAttack _laser;
+        private EnemyPool _enemies;
+        private float _hitpointsMultiplier;
+        private float _damageMultiplier;
+        private float _laserDamage;
+        private float _angle;          // graus, 0 = direita, anti-horário (como a órbita dos Satellites)
+        private float _distance;       // distância atual ao centro
+        private bool _inOrbit;
+        private bool _alive;
+        private float _laserTimer;
+        private float _swarmerTimer;
+
+        public Vector2 Position { get; private set; }
+        public float Radius => _radius;
+        public float CurrentHitpoints { get; private set; }
+        public float MaxHitpoints { get; private set; }
+        public bool IsAlive => _alive;
+        public float Shards => _shards;
+        public int Wave { get; private set; }
+
+        public event Action<Mothership> Died;
+
+        private void Awake()
+        {
+            _laser = GetComponent<LaserAttack>();
+        }
+
+        public void Spawn(int wave, float angleDegrees, float hitpointsMultiplier, float damageMultiplier,
+                          PlanetHealth planet, EnemyPool enemies)
+        {
+            Wave = wave;
+            _angle = angleDegrees;
+            _distance = WorldLayout.SpawnRadius;
+            _hitpointsMultiplier = hitpointsMultiplier;
+            _damageMultiplier = damageMultiplier;
+            _enemies = enemies;
+            MaxHitpoints = _baseHitpoints * hitpointsMultiplier;
+            CurrentHitpoints = MaxHitpoints;
+            _laserDamage = _baseLaserDamage * damageMultiplier;
+            _inOrbit = false;
+            _alive = true;
+            _laser.Init(planet);
+            ApplyPosition();
+            TargetRegistry.Register(this);
+        }
+
+        private void Update()
+        {
+            if (!_alive) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;
+
+            if (!_inOrbit)
+            {
+                // Entrada: linha reta até a primeira órbita. Ainda não ataca.
+                _distance = Mathf.Max(_startOrbitRadius, _distance - _entrySpeed * deltaTime);
+                if (_distance <= _startOrbitRadius)
+                {
+                    _inOrbit = true;
+                    _laserTimer = 0f;
+                    _swarmerTimer = 0f;
+                }
+            }
+            else
+            {
+                // Espiral: o ângulo avança e o raio encolhe 1,5 u por volta, até a órbita mínima.
+                _angle = Mathf.Repeat(_angle + _angularSpeed * deltaTime, 360f);
+                _distance = Mathf.Max(_minOrbitRadius, _distance - _shrinkPerLap * (_angularSpeed / 360f) * deltaTime);
+                UpdateAttacks(deltaTime);
+            }
+
+            ApplyPosition();
+        }
+
+        private void UpdateAttacks(float deltaTime)
+        {
+            _laserTimer += deltaTime;
+            if (_laserTimer >= _laserInterval && !_laser.IsBusy)
+            {
+                _laserTimer = 0f;
+                _laser.Begin(_laserDamage);
+            }
+
+            _swarmerTimer += deltaTime;
+            if (_swarmerTimer >= _swarmerInterval)
+            {
+                _swarmerTimer = 0f;
+                // Os Swarmers da Mothership escalam com a Wave dela (Seção 4.3).
+                _enemies.Spawn(_swarmer, Position, _hitpointsMultiplier, _damageMultiplier);
+            }
+        }
+
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!_alive) return;
+            CurrentHitpoints -= amount;
+            if (CurrentHitpoints > 0f) return;
+
+            CurrentHitpoints = 0f;
+            _alive = false;
+            _laser.Cancel();
+            TargetRegistry.Unregister(this);
+            Died?.Invoke(this);
+        }
+
+        private void ApplyPosition()
+        {
+            float radians = _angle * Mathf.Deg2Rad;
+            Position = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * _distance;
+            transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
+        }
+
+        private void OnDisable()
+        {
+            if (!_alive) return;
+            _alive = false;
+            TargetRegistry.Unregister(this);
+        }
+    }
+}
+```
+
+#### Passo 3 — Quem cria a Mothership: `MothershipSpawner`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/MothershipSpawner.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // Cria a Mothership em cada Boss Wave, conta-a como inimiga viva no WaveDirector e toca a explosão ao morrer.
+    // Pode haver mais de uma: se uma sobreviver até a Boss Wave seguinte, a nova entra junto (Seção 4.5).
+    public sealed class MothershipSpawner : MonoBehaviour
+    {
+        [SerializeField] private Mothership _prefab;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private WaveBalance _balance;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private ExplosionPool _explosions;
+
+        private readonly List<Mothership> _alive = new List<Mothership>();
+
+        public IReadOnlyList<Mothership> Alive => _alive;
+
+        public event Action<Mothership> MothershipSpawned;
+        public event Action<Mothership> MothershipKilled;   // Shards (Fase 6), Stardust e conquistas (Fase 9)
+
+        private void OnEnable()
+        {
+            _waves.BossWaveStarted += Spawn;
+        }
+
+        private void OnDisable()
+        {
+            _waves.BossWaveStarted -= Spawn;
+        }
+
+        public void Spawn(int wave)
+        {
+            // Entra pelo centro de um dos setores do aviso da Boss Wave.
+            var sectors = _waves.CurrentSectors;
+            int sector = sectors[UnityEngine.Random.Range(0, sectors.Count)];
+            float angle = sector * WaveDirector.SectorArc + WaveDirector.SectorArc * 0.5f;
+
+            var mothership = Instantiate(_prefab, transform);
+            mothership.Spawn(wave, angle, _balance.HitpointsMultiplier(wave), _balance.DamageMultiplier(wave), _planet, _enemies);
+            mothership.Died += HandleDied;
+            _alive.Add(mothership);
+            _waves.AddExternalAlive(1);
+            MothershipSpawned?.Invoke(mothership);
+        }
+
+        private void HandleDied(Mothership mothership)
+        {
+            mothership.Died -= HandleDied;
+            _alive.Remove(mothership);
+            _waves.AddExternalAlive(-1);
+            _explosions.Play(ExplosionKind.Mothership, mothership.Position);
+            MothershipKilled?.Invoke(mothership);
+            Destroy(mothership.gameObject);   // uma por Boss Wave: não precisa de pool
+        }
+    }
+}
+```
+
+#### Passo 4 — A barra de HP: `BossHealthBar`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/BossHealthBar.cs
+using Armageddon.Enemies;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Barra de HP da Mothership no topo da tela (Seção 4.5). Mostra a mais antiga viva e some quando não há nenhuma.
+    public sealed class BossHealthBar : MonoBehaviour
+    {
+        [SerializeField] private MothershipSpawner _spawner;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private Image _fill;
+
+        private void Awake()
+        {
+            _fill.sprite = PixelSprite.White;   // a cor vem do Image (magenta, a cor dos inimigos)
+            _fill.type = Image.Type.Filled;
+            _fill.fillMethod = Image.FillMethod.Horizontal;
+            _root.SetActive(false);
+        }
+
+        private void LateUpdate()
+        {
+            var alive = _spawner.Alive;
+            bool visible = alive.Count > 0;
+            if (_root.activeSelf != visible) _root.SetActive(visible);
+            if (!visible) return;
+
+            var mothership = alive[0];
+            _fill.fillAmount = mothership.CurrentHitpoints / mothership.MaxHitpoints;
+        }
+    }
+}
+```
+
+#### Passo 5 — Shards da Mothership: atualize o `RunEconomy`
+
+A Mothership paga 50 Shards (Seção 4.5), também multiplicados por `(1 + Resource Bonus)` (Seção 4.4). Substitua o `RunEconomy` da Fase 6 por esta versão. Ela só acrescenta o campo **Motherships** e o `HandleMothershipKilled`:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
+    // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
+    public sealed class RunEconomy : MonoBehaviour
+    {
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private WaveBalance _waveBalance;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private MothershipSpawner _motherships;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private int _startingShards;   // o Perk Starting Shards (Fase 9) soma aqui
+
+        public StatCatalog Catalog => _catalog;
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+        public UpgradeService Upgrades { get; private set; }
+
+        private void Awake()
+        {
+            Stats = new RunStats(_catalog.Stats);
+            Wallet = new ShardWallet();
+            Upgrades = new UpgradeService(Stats, Wallet);
+        }
+
+        private void OnEnable()
+        {
+            Stats.StatChanged += HandleStatChanged;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            Stats.StatChanged -= HandleStatChanged;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        private void Start()
+        {
+            Wallet.Add(_startingShards);
+            ApplyAll();
+        }
+
+        // Perks e Planet Core (Fase 9) chamam isto no começo da run.
+        public void AddModifier(StatModifier modifier)
+        {
+            Stats.AddModifier(modifier);
+        }
+
+        private void HandleStatChanged(StatId id)
+        {
+            ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
+        }
+
+        private void ApplyAll()
+        {
+            _orbit.SetStats(new SatelliteStats
+            {
+                damage = Stats.Value(StatId.Damage),
+                attackSpeed = Stats.Value(StatId.AttackSpeed),
+                criticalChance = Stats.Value(StatId.CriticalChance),
+                criticalFactor = Stats.Value(StatId.CriticalFactor),
+                attackRange = Stats.Value(StatId.AttackRange),
+                impetus = Stats.Value(StatId.Impetus),
+                orbitSpeed = Stats.Value(StatId.OrbitSpeed),
+            });
+
+            _planet.SetMaxHitpoints(Stats.Value(StatId.Hitpoints));
+            _planet.SetRegeneration(Stats.Value(StatId.Regeneration));
+            _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
+        }
+
+        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            AwardKill(enemy.Definition.Shards);
+        }
+
+        private void HandleMothershipKilled(Mothership mothership)
+        {
+            AwardKill(mothership.Shards);
+        }
+
+        private void AwardKill(float baseShards)
+        {
+            Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            float multiplier = 1f + Stats.Value(StatId.ResourcePerWave);
+            foreach (int wave in paidWaves) Wallet.Add(_waveBalance.ClearBonus(wave) * multiplier);
+        }
+    }
+}
+```
+
+No Inspector do `RunEconomy`, preencha o campo novo **Motherships** com o `MothershipSpawner` (Passo 7).
+
+#### Passo 6 — Tecla de teste: `MothershipDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/MothershipDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Waves;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Enemies
+{
+    // X = cria uma Mothership agora, com a escalada da Wave atual. Registra a morte no Console.
+    public sealed class MothershipDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private MothershipSpawner _spawner;
+        [SerializeField] private WaveDirector _waves;
+
+        private void OnEnable()
+        {
+            _spawner.MothershipKilled += HandleKilled;
+        }
+
+        private void OnDisable()
+        {
+            _spawner.MothershipKilled -= HandleKilled;
+        }
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.xKey.wasPressedThisFrame) _spawner.Spawn(Mathf.Max(1, _waves.CurrentWave));
+        }
+
+        private void HandleKilled(Mothership mothership)
+        {
+            Debug.Log($"[Boss] Mothership da Wave {mothership.Wave} destruída (+{mothership.Shards} Shards).");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 7 — Import dos tiles do laser, prefab e cena
+
+1. **Mesh Type dos tiles do laser:** selecione `Art/VFX/SPR_VFX_Laser_Warning` e `SPR_VFX_Laser_Beam`. No Inspector, em **Advanced**, troque **Mesh Type** para `Full Rect` e clique **Apply**. Sem isso, o modo Tiled do `SpriteRenderer` não repete o tile, e a Unity mostra um aviso amarelo.
+2. **Prefab da Mothership:** objeto vazio `Mothership` com:
+   - **Sprite Renderer:** célula 0 de `Art/Enemies/SPR_Enemy_Mothership`; **Sorting Layer** `Enemies`.
+   - **Sprite Animator:** as 5 células; **Fps** `5`; **Loop** marcado (Seção 6.4).
+   - **Laser Attack:** **Warning Frames** = as 2 células de `SPR_VFX_Laser_Warning`; **Beam Frames** = as 4 de `SPR_VFX_Laser_Beam`; **Impact Frames** = as 4 de `SPR_VFX_Laser_Impact`.
+   - **Mothership:** **Swarmer** = `Enemy_Swarmer`. O resto já vem com os valores da Seção 4.5.
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+3. **Explosão da Mothership:** no `ExplosionPool` (Fase 4), acrescente um 3º item em **Explosions**: `Mothership`, com as 6 células de `Art/VFX/SPR_VFX_Explosion_Mothership` e **Fps** `12`.
+4. Em `[Systems]`:
+   - `MothershipSpawner`, com o componente `MothershipSpawner`: **Prefab** = `Mothership`; **Waves** = `WaveDirector`; **Balance** = `WaveBalance`; **Enemies** = `EnemyPool`; **Planet** = o `PlanetHealth`; **Explosions** = `ExplosionPool`.
+   - `MothershipDevTools`, com o componente `MothershipDevTools`: **Spawner** = `MothershipSpawner`; **Waves** = `WaveDirector`.
+   - No `RunEconomy`, **Motherships** = `MothershipSpawner`.
+5. **Barra de HP:** no `HUDCanvas` (Fase 6), crie um objeto de UI `BossHealthBar` com o componente `BossHealthBar`, e dentro dele:
+   - `Root`: uma **UI → Image** ancorada em cima e centralizada (**top center**), **200 × 12**, **Pos Y** `−4`, com `SPR_UI_Panel` em **Image Type** `Sliced`.
+   - Dentro de `Root`: `Fill`, uma **UI → Image** que preenche o painel com margem de 3 px (stretch-stretch, **Left/Right/Top/Bottom** = 3), com **Color** magenta `#FF78DC`.
+   - Também dentro de `Root`: um TMP `Mothership` (m5x7, 16) logo abaixo da barra.
+
+   No `BossHealthBar`: **Spawner** = `MothershipSpawner`; **Root** = `Root`; **Fill** = `Fill`.
+
+#### Passo 8 — Commit
+
+`git add .` e `git commit -m "Phase 7: mothership, spiral orbit, telegraphed laser, boss health bar"`.
+
+**✅ Checkpoint:**
+- **X** cria uma Mothership na borda. Ela desce em linha reta, e a barra magenta aparece no topo da tela. Chegando a 7 u, começa a girar devagar no sentido anti-horário, **cada volta um pouco mais perto**, até parar de se aproximar num círculo de 3,5 u.
+- Com o alcance base (4 u), os Satellites só começam a atingi-la depois de cerca de uma volta. Com o **Range** comprado, antes. A barra de HP desce a cada acerto.
+- A cada 8 s aparece uma linha vermelha tracejada piscando entre ela e o planeta, que **acompanha o movimento**. Depois de 1,5 s, vira um feixe com núcleo branco e um brilho na borda do planeta, e o HP do planeta cai 25 (na Wave 1; **F6** mostra o valor). Com **Defense %** comprada, o dano cai.
+- A cada 15 s, um cacho de 8 Swarmers sai de onde ela está e avança para o planeta.
+- Destruída, ela solta a explosão grande, a barra some, o saldo sobe 50 Shards e o Console mostra `[Boss] Mothership da Wave … destruída`.
+- Com **N** até a Wave 10, a Mothership nasce sozinha **do lado da seta do aviso**. Se o timer de 60 s acabar com ela viva, a Wave 11 começa com ela ainda em campo, e o Wave Clear só acontece depois que ela e todos os outros morrerem, pagando as Waves acumuladas juntas.
+- **Esc** congela a espiral, o laser (inclusive no meio do aviso) e o timer dos Swarmers.
+
+**Problemas comuns:**
+- **O laser aparece como um único tile esticado ou borrado:** o **Mesh Type** do tile não está em `Full Rect` (item 1 do Passo 7).
+- **O laser não aparece, mas o planeta perde HP:** as listas de frames do `LaserAttack` estão vazias.
+- **A Mothership nunca é atingida:** confira o **Radius** dela (1,5) e se o `TargetSelector` é a versão da Fase 3 que mede até a borda do alvo (`distância − Radius`).
+- **A Wave nunca termina depois que a Mothership morre:** o `MothershipSpawner` não chamou `AddExternalAlive(-1)`, e o Console costuma mostrar um erro no `HandleDied`. Confira também se ele é o único a criar Motherships (não arraste o prefab direto na cena).
+- **`NullReferenceException` no `RunEconomy` ao dar Play:** o campo novo **Motherships** está vazio.
+- **Os Swarmers da Mothership não aparecem:** o campo **Swarmer** do prefab está vazio.
+
+Próxima fase: **Fase 8 — Run: Revive, pausa e Results**. Ela junta tudo num ciclo de run completo: começar, pausar com a tela de pausa, morrer, oferecer o Revive e mostrar o Results.
