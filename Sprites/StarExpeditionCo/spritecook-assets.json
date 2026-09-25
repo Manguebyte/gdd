@@ -1,0 +1,558 @@
+{
+  "assets": [
+    {
+      "asset_id": "d28bf0dd-46d4-4f0f-b7bc-afc6a86a2f1e",
+      "sha12": "86818637eff2",
+      "label": "SPR_Bg_Galaxy1"
+    },
+    {
+      "asset_id": "8b65db55-bf0b-423a-ad70-2f39946f74a0",
+      "sha12": "188db191c6fc",
+      "label": "SPR_Bg_Galaxy2"
+    },
+    {
+      "asset_id": "a36cc402-273a-467f-96b1-02334518c53c",
+      "sha12": "a7ac4d861050",
+      "label": "SPR_Bg_Galaxy3"
+    },
+    {
+      "asset_id": "510aea02-77a2-4729-b5b4-29e77955ecf9",
+      "sha12": "e03b0cce1958",
+      "label": "SPR_Crew_Engineer_1"
+    },
+    {
+      "asset_id": "6ee0030e-e321-4cb3-8178-c61f5774ab8a",
+      "sha12": "d1f91c89f838",
+      "label": "SPR_Crew_Engineer_2"
+    },
+    {
+      "asset_id": "bf809eb4-6766-4f57-a20a-8baf66e38236",
+      "sha12": "21917de43741",
+      "label": "SPR_Crew_Engineer_3"
+    },
+    {
+      "asset_id": "f525c282-d851-4536-ae96-a9ad3424e3fa",
+      "sha12": "22b162aff44d",
+      "label": "SPR_Crew_Guard_1"
+    },
+    {
+      "asset_id": "041a850a-bb52-434a-9c92-8069418e0fd3",
+      "sha12": "70f88b1d170f",
+      "label": "SPR_Crew_Guard_2"
+    },
+    {
+      "asset_id": "41377bef-ae84-46d7-b37a-f32fc846546b",
+      "sha12": "6300e43bc1f5",
+      "label": "SPR_Crew_Guard_3"
+    },
+    {
+      "asset_id": "19baafba-561a-427c-ba1f-76fad88eb979",
+      "sha12": "5c47a6ec44f5",
+      "label": "SPR_Crew_Medic_1"
+    },
+    {
+      "asset_id": "4aeb054d-d7fd-43d0-83ff-9d469933b356",
+      "sha12": "f22da33c7462",
+      "label": "SPR_Crew_Medic_2"
+    },
+    {
+      "asset_id": "b6879af1-8857-408c-8348-9edf6227113e",
+      "sha12": "957784e6fd65",
+      "label": "SPR_Crew_Medic_3"
+    },
+    {
+      "asset_id": "be8ba8cf-4cac-442e-82be-9f178d15b464",
+      "sha12": "4e7615176bb8",
+      "label": "SPR_Crew_Pilot_1"
+    },
+    {
+      "asset_id": "585b3478-9e98-41f0-a015-c3baf0cc3a46",
+      "sha12": "e15820f64b2a",
+      "label": "SPR_Crew_Pilot_2"
+    },
+    {
+      "asset_id": "f7008aa0-0b08-4894-b916-7ec99bf45265",
+      "sha12": "1cbd9cf40932",
+      "label": "SPR_Crew_Pilot_3"
+    },
+    {
+      "asset_id": "0cee429f-7502-4b86-80b1-64f685c939d5",
+      "sha12": "1c826e41d293",
+      "label": "SPR_Crew_Scientist_1"
+    },
+    {
+      "asset_id": "50eaa733-089e-4fb0-a995-032a88338687",
+      "sha12": "0efb9d5c9028",
+      "label": "SPR_Crew_Scientist_2"
+    },
+    {
+      "asset_id": "a4bb2895-605b-422c-8176-d09d4419e8c8",
+      "sha12": "7b661056c8cb",
+      "label": "SPR_Crew_Scientist_3"
+    },
+    {
+      "asset_id": "30d0042e-03ba-494b-a4da-9832e04c7b73",
+      "sha12": "4685c855ddfe",
+      "label": "SPR_Crew_Scout_1"
+    },
+    {
+      "asset_id": "6d3a0ad3-a437-4722-84be-48b04ec31e46",
+      "sha12": "737372abdcef",
+      "label": "SPR_Crew_Scout_2"
+    },
+    {
+      "asset_id": "9ebc7d67-8fcf-4acb-9851-e1c925bd14ca",
+      "sha12": "2f9810595e21",
+      "label": "SPR_Crew_Scout_3"
+    },
+    {
+      "asset_id": "b581db77-c049-4e96-b740-9b1137c8124f",
+      "sha12": "2136e78980ec",
+      "label": "SPR_Item_alien_relic"
+    },
+    {
+      "asset_id": "7991d410-650c-40d4-a85e-7042f28a60ef",
+      "sha12": "47ff027aa7d5",
+      "label": "SPR_Item_alloy_armor"
+    },
+    {
+      "asset_id": "80fddbfd-bf7f-477c-b867-496191a595a3",
+      "sha12": "2e5ccbe059a9",
+      "label": "SPR_Item_alloy_plate"
+    },
+    {
+      "asset_id": "1a94b172-3cc0-453f-b7a6-af4563974ab4",
+      "sha12": "db0d84b10749",
+      "label": "SPR_Item_ancient_core"
+    },
+    {
+      "asset_id": "84f6784e-db47-4e2b-b980-14663427bb87",
+      "sha12": "ed2024ab939c",
+      "label": "SPR_Item_carbon_dust"
+    },
+    {
+      "asset_id": "1b558670-c199-41e0-befd-2ee54bb5f533",
+      "sha12": "27f91591dcae",
+      "label": "SPR_Item_circuit_board"
+    },
+    {
+      "asset_id": "a8a7b534-d870-4465-8938-a1c59e953b9d",
+      "sha12": "55384a6923e8",
+      "label": "SPR_Item_dark_matter"
+    },
+    {
+      "asset_id": "6a4c7e8a-601b-433b-84cc-353e2fa1e05d",
+      "sha12": "78095bdd75bf",
+      "label": "SPR_Item_deep_scanner"
+    },
+    {
+      "asset_id": "136fbec3-9d0e-4ab4-93ec-2348375f98ac",
+      "sha12": "8ddda66ca38f",
+      "label": "SPR_Item_drill_rig"
+    },
+    {
+      "asset_id": "7aaadcd8-2980-4c3d-bb9a-41f9bfb35bae",
+      "sha12": "28f0e16e841a",
+      "label": "SPR_Item_emergency_beacon"
+    },
+    {
+      "asset_id": "4e27b780-e22a-477f-b5e2-be83eca75aa0",
+      "sha12": "835ddddae308",
+      "label": "SPR_Item_field_scanner"
+    },
+    {
+      "asset_id": "2ec615f6-1f98-44b7-84a6-fddf528e9e5c",
+      "sha12": "615ef97531d4",
+      "label": "SPR_Item_fuel_rod"
+    },
+    {
+      "asset_id": "fb0217b3-d4c1-4442-b961-0608ad910b7d",
+      "sha12": "b96f217f7795",
+      "label": "SPR_Item_graviton_aegis"
+    },
+    {
+      "asset_id": "973d87b5-7d5e-4bd7-beea-bf56645cbd30",
+      "sha12": "e27a5f4a681e",
+      "label": "SPR_Item_graviton_coil"
+    },
+    {
+      "asset_id": "43dc4459-e67a-492b-b483-567347166201",
+      "sha12": "d5f233d34790",
+      "label": "SPR_Item_helium3"
+    },
+    {
+      "asset_id": "03a5a8eb-f78d-4235-b6e1-5d04f76fe3fd",
+      "sha12": "e5da93bc8e6e",
+      "label": "SPR_Item_ice_crystal"
+    },
+    {
+      "asset_id": "3e57eff6-d430-4c68-b845-b906c7b11a04",
+      "sha12": "3a4df39d8bf5",
+      "label": "SPR_Item_iron_ore"
+    },
+    {
+      "asset_id": "367e75ae-f36d-448b-9b7d-ec8a3771e026",
+      "sha12": "1f3284a0338c",
+      "label": "SPR_Item_lazarus_module"
+    },
+    {
+      "asset_id": "8a35a50d-fad9-456f-8c1e-376b453f6a66",
+      "sha12": "1173a7bfb4ed",
+      "label": "SPR_Item_living_crystal"
+    },
+    {
+      "asset_id": "d8be8c75-614c-4350-b965-4946fbf95b90",
+      "sha12": "b17a4376f04e",
+      "label": "SPR_Item_matter_weaver"
+    },
+    {
+      "asset_id": "6750a776-80da-4394-9951-37e662a3628b",
+      "sha12": "521f9fd05714",
+      "label": "SPR_Item_nano_forge"
+    },
+    {
+      "asset_id": "100c36b2-6854-4bb4-8bbe-5cc684632870",
+      "sha12": "249f7a9d8a29",
+      "label": "SPR_Item_nano_gel"
+    },
+    {
+      "asset_id": "0d4a221b-a89d-445c-9d80-1181fc07d432",
+      "sha12": "92392ad3e065",
+      "label": "SPR_Item_optical_lens"
+    },
+    {
+      "asset_id": "43f33fb4-56c5-4217-9252-bb6fc5d5cc2d",
+      "sha12": "1299777407a6",
+      "label": "SPR_Item_oracle_array"
+    },
+    {
+      "asset_id": "631dcdd4-d712-4133-a825-78069caa60b4",
+      "sha12": "8f1666e64308",
+      "label": "SPR_Item_padded_suit"
+    },
+    {
+      "asset_id": "261ce285-8827-4489-a904-55c57f2bac50",
+      "sha12": "075aa05bc5d8",
+      "label": "SPR_Item_phase_cloak"
+    },
+    {
+      "asset_id": "ba14c4f7-ab2e-469f-ac7e-8173c6acf788",
+      "sha12": "75a35e7ac53b",
+      "label": "SPR_Item_plasma_moss"
+    },
+    {
+      "asset_id": "63b1daff-3077-4975-83af-d15a77053985",
+      "sha12": "b7881f5af95d",
+      "label": "SPR_Item_power_cell"
+    },
+    {
+      "asset_id": "b41b8776-0bcc-4f98-913d-1d6ce9092aee",
+      "sha12": "c1b54d587489",
+      "label": "SPR_Item_quantum_chip"
+    },
+    {
+      "asset_id": "3d48ac1e-bd34-47b3-bcf1-126d4bc815ab",
+      "sha12": "1ca63090e5d1",
+      "label": "SPR_Item_quantum_scanner"
+    },
+    {
+      "asset_id": "15c8ad66-7dbc-4691-851e-92037357a142",
+      "sha12": "faa9c9b451d7",
+      "label": "SPR_Item_salvage_kit"
+    },
+    {
+      "asset_id": "2396e6c1-bea8-4815-a07f-a43a6c7fdb08",
+      "sha12": "55e1963234be",
+      "label": "SPR_Item_shield_harness"
+    },
+    {
+      "asset_id": "22742184-44e2-412f-9363-eb6983f86472",
+      "sha12": "5a6d850080ce",
+      "label": "SPR_Item_silica_sand"
+    },
+    {
+      "asset_id": "68dc7a35-e328-45f2-ba7f-369a55af246c",
+      "sha12": "3e5b188df923",
+      "label": "SPR_Item_singularity_seed"
+    },
+    {
+      "asset_id": "742bfad4-c526-4697-b6e5-3aa09490a7a4",
+      "sha12": "302766a0a664",
+      "label": "SPR_Item_star_pearl"
+    },
+    {
+      "asset_id": "493f7731-fffe-4446-8b66-6ed329a1d85b",
+      "sha12": "af397efab797",
+      "label": "SPR_Item_stasis_pod"
+    },
+    {
+      "asset_id": "33e7044d-ef7b-4c34-92e5-59c5ca7d8e20",
+      "sha12": "9bcb60178fef",
+      "label": "SPR_Item_titanium_ore"
+    },
+    {
+      "asset_id": "3eaebde4-42b1-4310-a2d2-dfa3a3ba05fb",
+      "sha12": "83301b9a0166",
+      "label": "SPR_Item_void_dust"
+    },
+    {
+      "asset_id": "81a74eb0-ef17-4e97-91db-5d223fdddab0",
+      "sha12": "5e40fd992f9f",
+      "label": "SPR_Planet_cinder_Surface"
+    },
+    {
+      "asset_id": "280b5e87-d7f8-473b-864c-14acd3ec51b7",
+      "sha12": "bd3351c9ac30",
+      "label": "SPR_Planet_coral_Surface"
+    },
+    {
+      "asset_id": "05f107ba-c8cd-4248-92c5-046519d8b6b4",
+      "sha12": "70a4c1673573",
+      "label": "SPR_Planet_duna_Surface"
+    },
+    {
+      "asset_id": "74d07a1d-bc25-4ced-9108-2ef96d6bae15",
+      "sha12": "b52388496bfa",
+      "label": "SPR_Planet_echo_Surface"
+    },
+    {
+      "asset_id": "5e77caf4-cd2d-426f-bb51-0eb7ec1e9963",
+      "sha12": "f5556cad0baf",
+      "label": "SPR_Planet_ember_Surface"
+    },
+    {
+      "asset_id": "a96c9c63-4cd1-431d-a747-be294f271ef9",
+      "sha12": "cf495462bc0f",
+      "label": "SPR_Planet_gate_Surface"
+    },
+    {
+      "asset_id": "31f297cb-4c91-4df9-a467-5eae24534c46",
+      "sha12": "6eb08d6ecf02",
+      "label": "SPR_Planet_glacia_Surface"
+    },
+    {
+      "asset_id": "87938b5e-1da6-4fb6-9571-86643988eae7",
+      "sha12": "cdeb1e2f903e",
+      "label": "SPR_Planet_halcyon_Surface"
+    },
+    {
+      "asset_id": "39229c41-16a7-47ab-a43f-c53f6bae0857",
+      "sha12": "6ce9c20bf452",
+      "label": "SPR_Planet_hollow_Surface"
+    },
+    {
+      "asset_id": "8a686964-a597-49f8-acc1-049df8f8895f",
+      "sha12": "1ba9a4eee16c",
+      "label": "SPR_Planet_kora_Surface"
+    },
+    {
+      "asset_id": "2c235a97-0947-4680-973a-d6756189d2eb",
+      "sha12": "e585f87db2ef",
+      "label": "SPR_Planet_lumen_Surface"
+    },
+    {
+      "asset_id": "dd62ee30-d25d-4732-87d1-498ec3768987",
+      "sha12": "848b9be7f380",
+      "label": "SPR_Planet_mire_Surface"
+    },
+    {
+      "asset_id": "a509abcd-4e28-48fe-a56e-b871816d1522",
+      "sha12": "704bfdf7d867",
+      "label": "SPR_Planet_nyx_Surface"
+    },
+    {
+      "asset_id": "8da7c7e2-ca37-47eb-ab3d-b5edf706155a",
+      "sha12": "e7cb5df2ce91",
+      "label": "SPR_Planet_obsidia_Surface"
+    },
+    {
+      "asset_id": "cbab789a-bde6-4700-80dd-8a0b3c52f97d",
+      "sha12": "40a71b78f1d0",
+      "label": "SPR_Planet_rust9_Surface"
+    },
+    {
+      "asset_id": "3b1eece7-105f-43c3-95a9-693e8a936b52",
+      "sha12": "889709569533",
+      "label": "SPR_Planet_tamarin_Surface"
+    },
+    {
+      "asset_id": "990bfc1a-7b8f-4344-b3ca-e42a601183f1",
+      "sha12": "d078ad6d3dcb",
+      "label": "SPR_Planet_vegarift_Surface"
+    },
+    {
+      "asset_id": "c93f2631-6040-4113-bb51-b6ee276ad6e6",
+      "sha12": "654181017d7a",
+      "label": "SPR_Planet_vitra_Surface"
+    },
+    {
+      "asset_id": "bf193574-9441-4926-aaab-f16456aeeb81",
+      "sha12": "6d06a1d9982b",
+      "label": "SPR_Ship_Scout"
+    },
+    {
+      "asset_id": "f77c5097-0473-47e9-b01b-349b03ae0c41",
+      "sha12": "6ca9214dde59",
+      "label": "SPR_Ship_Scout_b"
+    },
+    {
+      "asset_id": "6069a08b-80c7-431d-aef3-af6b898e2f0d",
+      "sha12": "4203a1f03a56",
+      "label": "SPR_Store_Feature"
+    },
+    {
+      "asset_id": "6fdf8b7e-4ebb-4f25-b88d-9e4605ab7377",
+      "sha12": "147c435af8d8",
+      "label": "SPR_Store_Icon"
+    },
+    {
+      "asset_id": "0817067d-09b9-4f41-a11a-2656c0438db1",
+      "sha12": "ae8e61ea0434",
+      "label": "SPR_Store_Icon_b"
+    },
+    {
+      "asset_id": "03993efe-7b84-4fa3-ac41-8193a7b72a88",
+      "sha12": "28596e99ccd3",
+      "label": "SPR_UI_Arrow"
+    },
+    {
+      "asset_id": "ba6036ca-b04b-484a-8355-403da2ca099c",
+      "sha12": "5fe500abefa9",
+      "label": "SPR_UI_Button_Primary_Disabled",
+      "derived_from": "SPR_UI_Button_Primary_Normal"
+    },
+    {
+      "asset_id": "ba6036ca-b04b-484a-8355-403da2ca099c",
+      "sha12": "d9d08d358dee",
+      "label": "SPR_UI_Button_Primary_Normal"
+    },
+    {
+      "asset_id": "ba6036ca-b04b-484a-8355-403da2ca099c",
+      "sha12": "0d2121cf3e02",
+      "label": "SPR_UI_Button_Primary_Pressed",
+      "derived_from": "SPR_UI_Button_Primary_Normal"
+    },
+    {
+      "asset_id": "d5e618df-2f74-4a05-8039-f6c38d5ecc13",
+      "sha12": "f177689859cf",
+      "label": "SPR_UI_Button_Secondary_Disabled",
+      "derived_from": "SPR_UI_Button_Secondary_Normal"
+    },
+    {
+      "asset_id": "d5e618df-2f74-4a05-8039-f6c38d5ecc13",
+      "sha12": "b4ee881f53bc",
+      "label": "SPR_UI_Button_Secondary_Normal"
+    },
+    {
+      "asset_id": "d5e618df-2f74-4a05-8039-f6c38d5ecc13",
+      "sha12": "cf25fca8816c",
+      "label": "SPR_UI_Button_Secondary_Pressed",
+      "derived_from": "SPR_UI_Button_Secondary_Normal"
+    },
+    {
+      "asset_id": "4c5ae07d-7f21-4e83-8ae5-0865d7d2e3ac",
+      "sha12": "c6743371b9cd",
+      "label": "SPR_UI_Icon_Ad"
+    },
+    {
+      "asset_id": "8b3d4cd2-7c4a-4e65-adf9-3d37e99256c7",
+      "sha12": "5668ecf20a47",
+      "label": "SPR_UI_Icon_Alert"
+    },
+    {
+      "asset_id": "60cb3033-92ef-4706-9ee0-164c94c3fd8b",
+      "sha12": "62d62d589932",
+      "label": "SPR_UI_Icon_Check"
+    },
+    {
+      "asset_id": "2673389c-2a06-4766-a7de-152556b0ac6a",
+      "sha12": "ef8b4b35bb6c",
+      "label": "SPR_UI_Icon_Close"
+    },
+    {
+      "asset_id": "259ef491-3050-4fd6-a56f-2f989273d954",
+      "sha12": "5eab221cc797",
+      "label": "SPR_UI_Icon_Credits"
+    },
+    {
+      "asset_id": "991ec53d-a939-4f59-aa36-6cf1130a1a3e",
+      "sha12": "381b9883f890",
+      "label": "SPR_UI_Icon_Crew"
+    },
+    {
+      "asset_id": "4233c314-123c-475e-827d-67ac6538981f",
+      "sha12": "a779c6658b18",
+      "label": "SPR_UI_Icon_Cycle"
+    },
+    {
+      "asset_id": "b1b8b0e2-0942-44c5-99d4-393dafe3bc0d",
+      "sha12": "caaddf5d84aa",
+      "label": "SPR_UI_Icon_Lock"
+    },
+    {
+      "asset_id": "2c8a0eef-3d69-4118-9eb4-b0a774fd6f73",
+      "sha12": "5970e585115c",
+      "label": "SPR_UI_Icon_Loss"
+    },
+    {
+      "asset_id": "907aff15-4105-4c83-9b49-6053a357d03e",
+      "sha12": "7a26e9e29858",
+      "label": "SPR_UI_Icon_Map"
+    },
+    {
+      "asset_id": "be0b7053-d8e4-4078-950b-86307275ec62",
+      "sha12": "6621290efed2",
+      "label": "SPR_UI_Icon_Risk"
+    },
+    {
+      "asset_id": "a0165de1-8635-459b-9a54-907dbbcc78b0",
+      "sha12": "0301568394bf",
+      "label": "SPR_UI_Icon_Settings"
+    },
+    {
+      "asset_id": "6a98ea4b-772b-4a56-ac09-8c44c43a123e",
+      "sha12": "71011c25c63c",
+      "label": "SPR_UI_Icon_Shop"
+    },
+    {
+      "asset_id": "18051e08-c265-4b02-b795-f1d40516705f",
+      "sha12": "2e14b9870d46",
+      "label": "SPR_UI_Icon_Success"
+    },
+    {
+      "asset_id": "13d82b13-23f9-4d93-a575-9001b394cac6",
+      "sha12": "0c67630d85fd",
+      "label": "SPR_UI_Icon_Timer"
+    },
+    {
+      "asset_id": "06415ff9-31a4-4928-9db4-2250ecf270e4",
+      "sha12": "eb346cdbe218",
+      "label": "SPR_UI_Icon_Workshop"
+    },
+    {
+      "asset_id": "e9c24b51-9b17-4de3-9f32-60f20eaf9042",
+      "sha12": "67b5704d9ca0",
+      "label": "SPR_UI_Logo"
+    },
+    {
+      "asset_id": "8d3899a6-4a93-459e-a3d4-510cdf22c5ff",
+      "sha12": "031f5f5e0cf2",
+      "label": "SPR_UI_Logo_b"
+    },
+    {
+      "asset_id": "0c111667-720f-4810-9a1a-87c6f9968af8",
+      "sha12": "da25d46e8dff",
+      "label": "SPR_UI_Panel"
+    },
+    {
+      "asset_id": "d2c74213-0d6d-4ecf-8fc1-15b30ddf5276",
+      "sha12": "112068adbc57",
+      "label": "SPR_UI_TabBar"
+    },
+    {
+      "asset_id": "15baa075-b71f-4ed1-abb7-bf8d039409ae",
+      "sha12": "e97f67a2c521",
+      "label": "SPR_UI_TopBar"
+    }
+  ]
+}
