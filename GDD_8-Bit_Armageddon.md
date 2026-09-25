@@ -179,6 +179,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 - Quando o HP do planeta chega a 0, o jogo congela e aparece a oferta de **Revive**: "Assistir anúncio para reviver", com contagem regressiva de 5 s.
   - Só aparece se o Revive ainda não foi usado nesta run **e** se há um anúncio recompensado disponível.
   - Se o jogador assistir até o fim: o planeta volta com **50% do HP máximo** e uma onda de choque destrói todos os inimigos a até 4 u do centro (sem dar Shards). A run continua.
+    - **Em aberto:** se a onda de choque também atinge a Mothership (ela pode estar a 3,5 u). No código da Fase 8, **não atinge**: só os inimigos comuns são apagados.
   - Se recusar, se a contagem acabar ou se o anúncio falhar: vai para Results.
 - **Pausa:** o botão de pausa congela o jogo. O jogo também **pausa sozinho** quando o app vai para segundo plano ou a aba do navegador perde o foco.
 
@@ -586,15 +587,18 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Enemies` | `MothershipSpawner` | Cria a Mothership nas Boss Waves e a conta como inimiga viva | 7 |
 | `Armageddon.UI` | `BossHealthBar` | Barra de HP da Mothership no topo da tela | 7 |
 | `Armageddon.Enemies` | `MothershipDevTools` | Tecla de teste da Mothership (só no Editor e em builds de desenvolvimento) | 7 |
+| `Armageddon.Platform` | `IAdService`, `NullAdService`, `FakeAdService` | Contrato de anúncios; "sem anúncio" e anúncio simulado para testes | 8 |
 | `Armageddon.Run` | `RunController`, `RunSummary` | Ciclo de vida da run, Revive, fim de run | 8 |
+| `Armageddon.World` | `ShockwaveView` | O anel da onda de choque do Revive, desenhado por código | 8 |
+| `Armageddon.Run` | `RunDevTools` | Teclas de teste da run (só no Editor e em builds de desenvolvimento) | 8 |
 | `Armageddon.UI` | `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView` | Telas da run | 8 |
 | `Armageddon.Meta` | `PerkDefinition`, `PerkService` | Árvore de Perks | 9 |
 | `Armageddon.Meta` | `PlanetCoreDefinition`, `SkinDefinition` | Planet Cores e Skins | 9 |
 | `Armageddon.Meta` | `AchievementDefinition`, `AchievementService` | Conquistas | 9 |
 | `Armageddon.Meta` | `DailyRewardService` | Recompensa diária | 9 |
 | `Armageddon.UI` | `MainMenuView`, `PerkTreeView`, `CoreSelectView`, `AchievementsView` | Telas do menu | 9 |
-| `Armageddon.Services` | `IAdService`, `LevelPlayAdService`, `H5AdService`, `NullAdService` | Anúncios por plataforma | 10 |
-| `Armageddon.Services` | `ConsentService`, `AnalyticsService` | Consentimento (UMP) e UGS Analytics | 10 |
+| `Armageddon.Platform` | `LevelPlayAdService`, `H5AdService` | Os provedores reais de anúncio por plataforma | 10 |
+| `Armageddon.Platform` | `ConsentService`, `AnalyticsService` | Consentimento (UMP) e UGS Analytics | 10 |
 | `Armageddon.Core` | `SettingsService` | Configurações e acessibilidade | 11 |
 | `Armageddon.UI` | `SettingsView` | Tela de Settings | 11 |
 | `Armageddon.Juice` | `AudioService`, `CameraShaker`, `DamageNumberSpawner`, `HitFlash` | Som, shake, números de dano, flashes | 12 |
@@ -612,7 +616,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 5 | Waves | ✅ Escrita |
 | 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
 | 7 | Mothership | ✅ Escrita |
-| 8 | Run: Revive, pausa, Results | A escrever |
+| 8 | Run: Revive, pausa, Results | ✅ Escrita |
 | 9 | Meta-progressão: Stardust, Perks, Planet Cores, Skins, conquistas, recompensa diária | A escrever |
 | 10 | Anúncios, consentimento e analytics | A escrever |
 | 11 | Localização, Settings e acessibilidade | A escrever |
@@ -743,7 +747,7 @@ Assets/
       Economy/
       Run/
       Meta/
-      Services/
+      Platform/
       UI/
       Juice/
       Onboarding/
@@ -1188,12 +1192,16 @@ namespace Armageddon.Core
         // true = acabou de pausar; false = acabou de voltar. A PauseView (Fase 8) escuta este evento.
         public event Action<bool> PauseChanged;
 
+        // Chamado a cada cena carregada. Uma cena nova sempre começa sem pausa, inclusive quando
+        // "jogar de novo" recarrega a própria Gameplay (Fase 8).
         public void SetGameplayActive(bool active)
         {
             IsGameplayActive = active;
-            if (!active) _reasons.Clear();
+            _reasons.Clear();
             Apply();
         }
+
+        public bool IsPausedBy(PauseReason reason) => _reasons.Contains(reason);
 
         public void Pause(PauseReason reason)
         {
@@ -1399,8 +1407,8 @@ namespace Armageddon.Core
 namespace Armageddon.Core
 {
     // Acesso central aos serviços do jogo. Preenchido pelo GameBootstrap antes da primeira cena carregar.
-    // Cada fase que cria um serviço novo (áudio, anúncios, settings...) acrescenta uma propriedade aqui.
-    public static class Services
+    // É "partial": fases seguintes acrescentam serviços em arquivos próprios (ex.: Services.Ads.cs, Fase 8).
+    public static partial class Services
     {
         public static SaveService Save { get; private set; }
         public static SceneLoader Scenes { get; private set; }
@@ -3103,6 +3111,14 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // Como um inimigo saiu de cena.
+    public enum EnemyExit
+    {
+        Killed,          // destruído por um Satellite: vale Shards
+        ReachedPlanet,   // kamikaze: bateu no planeta e causou dano
+        Removed,         // apagado por um efeito (onda de choque do Revive, Fase 8): sem Shards e sem dano
+    }
+
     // Um inimigo comum vivo. Recebe a EnemyDefinition ao nascer (um prefab serve para todos os tipos).
     [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator))]
     public sealed class Enemy : MonoBehaviour, ITarget
@@ -3166,7 +3182,7 @@ namespace Armageddon.Enemies
             if (distance <= WorldLayout.PlanetRadius)
             {
                 _planet.TakeDamage(_damage);
-                Die(killed: false);
+                Die(EnemyExit.ReachedPlanet);
                 return;
             }
 
@@ -3178,7 +3194,7 @@ namespace Armageddon.Enemies
         {
             if (!_alive) return;
             _hitpoints -= amount;
-            if (_hitpoints <= 0f) Die(killed: true);
+            if (_hitpoints <= 0f) Die(EnemyExit.Killed);
         }
 
         private void ApplyPosition()
@@ -3190,11 +3206,17 @@ namespace Armageddon.Enemies
             transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
         }
 
-        private void Die(bool killed)
+        // Tira o inimigo de cena sem Shards e sem dano ao planeta (onda de choque do Revive, Fase 8).
+        public void Remove()
+        {
+            if (_alive) Die(EnemyExit.Removed);
+        }
+
+        private void Die(EnemyExit exit)
         {
             _alive = false;
             TargetRegistry.Unregister(this);
-            _pool.HandleEnemyGone(this, killed);
+            _pool.HandleEnemyGone(this, exit);
         }
 
         // Segurança: se a cena for descarregada com o inimigo vivo, ele sai do registro.
@@ -3264,15 +3286,15 @@ namespace Armageddon.Enemies
             }
         }
 
-        // Chamado pelo próprio Enemy ao morrer ou ao tocar o planeta.
-        internal void HandleEnemyGone(Enemy enemy, bool killed)
+        // Chamado pelo próprio Enemy ao sair de cena.
+        internal void HandleEnemyGone(Enemy enemy, EnemyExit exit)
         {
             AliveCount--;
-            // A explosão aparece nos dois casos: destruído no espaço ou batendo no planeta.
+            // A explosão aparece sempre: destruído, batendo no planeta ou apagado pela onda de choque.
             _explosions.Play(enemy.Definition.Explosion, enemy.Position);
 
-            if (killed) EnemyKilled?.Invoke(enemy);
-            else EnemyReachedPlanet?.Invoke(enemy);
+            if (exit == EnemyExit.Killed) EnemyKilled?.Invoke(enemy);
+            else if (exit == EnemyExit.ReachedPlanet) EnemyReachedPlanet?.Invoke(enemy);
 
             _pool.Release(enemy);
         }
@@ -5328,3 +5350,671 @@ namespace Armageddon.Enemies
 - **Os Swarmers da Mothership não aparecem:** o campo **Swarmer** do prefab está vazio.
 
 Próxima fase: **Fase 8 — Run: Revive, pausa e Results**. Ela junta tudo num ciclo de run completo: começar, pausar com a tela de pausa, morrer, oferecer o Revive e mostrar o Results.
+
+---
+
+### Fase 8 — Run: Revive, pausa e Results
+
+> Objetivo desta fase: a run tem começo, meio e fim. O HUD mostra o HP do planeta, a Wave e o timer, e tem um botão de pausa que abre a tela de pausa (continuar, Settings, desistir). Quando o planeta chega a 0 HP, o jogo congela e oferece o **Revive** por 5 s (Seção 4.6); aceitando, o planeta volta com 50% e uma onda de choque limpa os inimigos perto dele. Recusando, ou na segunda morte, aparece o **Results** com o resumo da run e os botões "jogar de novo" e "menu".
+
+**Conceitos novos:**
+- **Controlador da run (`RunController`):** o único dono do estado da run (`Running`, `ReviveOffer`, `Ended`). As telas não decidem nada: elas mostram o estado e chamam métodos como `AcceptRevive` ou `GiveUp`. Assim, a regra "o Revive só existe uma vez por run e só com anúncio disponível" fica num lugar só.
+- **Interface de anúncios (`IAdService`):** o Revive precisa de um anúncio recompensado, mas os anúncios reais só entram na Fase 10. A interface define o que o jogo precisa ("tem anúncio pronto?", "mostre e me avise se foi assistido"). Até a Fase 10, o Editor usa um **anúncio simulado** e o build final usa um "sem anúncio". Quando os anúncios reais chegarem, nada nesta fase muda.
+- **Tempo "unscaled" na UI:** a oferta de Revive tem uma contagem regressiva de 5 s **com o jogo congelado** (`timeScale = 0`). Por isso ela conta com `Time.unscaledDeltaTime`.
+- **Resumo da run (`RunSummary`):** um objeto de dados com tudo o que aconteceu na run (Wave, kills, tempo, Shards). O Results mostra, e a Fase 9 usa o mesmo objeto para calcular o Stardust e as conquistas.
+
+#### Passo 1 — Anúncios, por enquanto simulados: `IAdService`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Platform/AdService.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Platform
+{
+    // Os três momentos de anúncio recompensado (Seção 7.1).
+    public enum AdPlacement { Revive, DoubleStardust, DoubleDailyReward }
+
+    // O que o jogo precisa de um provedor de anúncios. A Fase 10 implementa os provedores reais
+    // (LevelPlay no Android, H5 Games Ads na Web). "completed" recebe true só se o anúncio foi assistido até o fim.
+    public interface IAdService
+    {
+        bool IsRewardedReady(AdPlacement placement);
+        void ShowRewarded(AdPlacement placement, Action<bool> completed);
+    }
+
+    // Build final antes da Fase 10 (e o itch.io, Seção 7.1): nunca há anúncio, então os botões de anúncio não aparecem.
+    public sealed class NullAdService : IAdService
+    {
+        public bool IsRewardedReady(AdPlacement placement) => false;
+        public void ShowRewarded(AdPlacement placement, Action<bool> completed) => completed?.Invoke(false);
+    }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // Editor e builds de desenvolvimento: "assiste" na hora. As flags simulam falha e falta de anúncio (RunDevTools).
+    public sealed class FakeAdService : IAdService
+    {
+        public static bool SimulateFailure;
+        public static bool SimulateUnavailable;
+
+        public bool IsRewardedReady(AdPlacement placement) => !SimulateUnavailable;
+
+        public void ShowRewarded(AdPlacement placement, Action<bool> completed)
+        {
+            Debug.Log($"[FakeAd] {placement}: {(SimulateFailure ? "falhou" : "assistido até o fim")}");
+            completed?.Invoke(!SimulateFailure);
+        }
+    }
+#endif
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/Services.Ads.cs
+using Armageddon.Platform;
+
+namespace Armageddon.Core
+{
+    // A parte dos anúncios do Services (o Services é "partial" desde a Fase 1).
+    public static partial class Services
+    {
+        private static IAdService _ads;
+
+        // Criado na primeira vez que alguém pede. A Fase 10 chama SetAds com o provedor real da plataforma.
+        public static IAdService Ads => _ads ??= CreateDefaultAds();
+
+        public static void SetAds(IAdService ads)
+        {
+            _ads = ads;
+        }
+
+        private static IAdService CreateDefaultAds()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            return new FakeAdService();
+#else
+            return new NullAdService();
+#endif
+        }
+    }
+}
+```
+
+> Os provedores de anúncio, consentimento e analytics ficam no namespace `Armageddon.Platform` (pasta `Scripts/Platform/`), e não em `Armageddon.Services`: um namespace com esse nome esconderia a classe `Services` em todos os outros namespaces do jogo, e `Services.Clock` deixaria de compilar.
+
+#### Passo 2 — A onda de choque: `ShockwaveView`
+
+A onda de choque do Revive é um anel que cresce até 4 u (128 px), grande demais para a grade de 32×32 da arte (Seção 6.2). Por isso ela é desenhada por código: os frames do anel são gerados uma vez, pixel a pixel, e tocados com o `SpriteAnimator`.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/ShockwaveView.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // Anel que cresce do centro do planeta até o raio da onda de choque do Revive (Seção 4.6).
+    public sealed class ShockwaveView : MonoBehaviour
+    {
+        [SerializeField] private float _maxRadius = 4f;   // u
+        [SerializeField] private int _frameCount = 10;
+        [SerializeField] private float _fps = 24f;
+        [SerializeField] private Color _color = new Color(1f, 0.85f, 0.4f, 1f);   // tom quente: é um efeito do jogador
+        [SerializeField] private string _sortingLayer = "VFX";
+
+        private SpriteAnimator _animator;
+
+        private void Awake()
+        {
+            var go = new GameObject("Ring");
+            go.transform.SetParent(transform, false);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingLayerName = _sortingLayer;
+            renderer.color = _color;
+            _animator = go.AddComponent<SpriteAnimator>();
+            _animator.Finished += () => go.SetActive(false);
+            _animator.SetFrames(BuildFrames(), _fps, false);
+            go.SetActive(false);
+        }
+
+        public void Play()
+        {
+            transform.position = WorldLayout.PlanetCenter;
+            _animator.gameObject.SetActive(true);   // o OnEnable do SpriteAnimator recomeça do frame 0
+        }
+
+        // Anéis de 2 px de espessura, do menor ao maior, cada vez mais transparentes.
+        private Sprite[] BuildFrames()
+        {
+            var frames = new Sprite[_frameCount];
+            for (int k = 0; k < _frameCount; k++)
+            {
+                int radius = Mathf.Max(2, Mathf.RoundToInt(_maxRadius * WorldLayout.PixelsPerUnit * (k + 1) / _frameCount));
+                int size = radius * 2 + 2;
+                byte alpha = (byte)Mathf.RoundToInt(255f * (1f - 0.7f * k / _frameCount));
+                var texture = new Texture2D(size, size) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+                var pixels = new Color32[size * size];
+                float center = size * 0.5f;
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float distance = Mathf.Sqrt((x + 0.5f - center) * (x + 0.5f - center) + (y + 0.5f - center) * (y + 0.5f - center));
+                        pixels[y * size + x] = Mathf.Abs(distance - radius) <= 1f ? new Color32(255, 255, 255, alpha) : new Color32(0, 0, 0, 0);
+                    }
+                }
+                texture.SetPixels32(pixels);
+                texture.Apply();
+                frames[k] = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+            }
+            return frames;
+        }
+    }
+}
+```
+
+#### Passo 3 — O resumo e o controle da run: `RunSummary`, `RunController`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunSummary.cs
+using System;
+
+namespace Armageddon.Run
+{
+    // O que aconteceu na run. O Results mostra; a Fase 9 usa para Stardust, conquistas e Analytics.
+    [Serializable]
+    public sealed class RunSummary
+    {
+        public int waveReached;
+        public int enemiesDestroyed;        // inimigos comuns + Motherships
+        public int mothershipsDestroyed;
+        public float survivalSeconds;
+        public float shardsEarned;          // todos os Shards ganhos, inclusive os gastos (Seção 5.1)
+        public bool revived;
+        public bool gaveUp;
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunController.cs
+using System;
+using System.Linq;
+using Armageddon.Combat;
+using Armageddon.Core;
+using Armageddon.Economy;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Platform;
+using Armageddon.Waves;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Run
+{
+    // Ciclo de vida da run (Seção 4.6): começa, oferece o Revive na morte e termina no Results.
+    public sealed class RunController : MonoBehaviour
+    {
+        public enum RunState { Running, ReviveOffer, Ended }
+
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private MothershipSpawner _motherships;
+        [SerializeField] private ShockwaveView _shockwave;
+        [SerializeField] private float _reviveHealthFraction = 0.5f;
+        [SerializeField] private float _shockwaveRadius = 4f;
+        [SerializeField] private float _reviveOfferSeconds = 5f;
+
+        private int _enemiesDestroyed;
+        private int _mothershipsDestroyed;
+
+        public RunState State { get; private set; } = RunState.Running;
+        public bool ReviveUsed { get; private set; }
+        public float SurvivalSeconds { get; private set; }
+        public float ReviveOfferSeconds => _reviveOfferSeconds;
+
+        public event Action ReviveOffered;
+        public event Action<RunSummary> RunEnded;
+
+        private void OnEnable()
+        {
+            _planet.Died += HandlePlanetDied;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;
+        }
+
+        private void OnDisable()
+        {
+            _planet.Died -= HandlePlanetDied;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;
+        }
+
+        private void Start()
+        {
+            _waves.StartRun();   // o WaveDirector fica com "Auto Start" desligado: quem começa a run é este script
+        }
+
+        private void Update()
+        {
+            if (State == RunState.Running) SurvivalSeconds += Time.deltaTime;   // pausado, não conta
+        }
+
+        private void HandleEnemyKilled(Enemy enemy) => _enemiesDestroyed++;
+
+        private void HandleMothershipKilled(Mothership mothership)
+        {
+            _enemiesDestroyed++;
+            _mothershipsDestroyed++;
+        }
+
+        // HP chegou a 0: o jogo congela e, se der, oferece o Revive (uma vez por run, só com anúncio pronto).
+        private void HandlePlanetDied()
+        {
+            if (State != RunState.Running) return;
+            Services.Clock.Pause(PauseReason.Modal);
+
+            if (!ReviveUsed && Services.Ads.IsRewardedReady(AdPlacement.Revive))
+            {
+                State = RunState.ReviveOffer;
+                ReviveOffered?.Invoke();
+            }
+            else
+            {
+                EndRun(gaveUp: false);
+            }
+        }
+
+        public void AcceptRevive()
+        {
+            if (State != RunState.ReviveOffer) return;
+            Services.Ads.ShowRewarded(AdPlacement.Revive, HandleReviveAdFinished);
+        }
+
+        public void DeclineRevive()
+        {
+            if (State == RunState.ReviveOffer) EndRun(gaveUp: false);
+        }
+
+        // Anúncio assistido até o fim: volta com 50% e a onda de choque. Falhou ou fechou antes: Results (Seção 4.6).
+        private void HandleReviveAdFinished(bool rewarded)
+        {
+            if (State != RunState.ReviveOffer) return;
+            if (!rewarded)
+            {
+                EndRun(gaveUp: false);
+                return;
+            }
+
+            ReviveUsed = true;
+            _planet.Revive(_reviveHealthFraction);
+            ClearEnemiesAroundPlanet();
+            _shockwave.Play();
+            State = RunState.Running;
+            Services.Clock.Resume(PauseReason.Modal);
+        }
+
+        // Botão "desistir" da tela de pausa.
+        public void GiveUp()
+        {
+            if (State != RunState.Running) return;
+            Services.Clock.Resume(PauseReason.Manual);
+            Services.Clock.Pause(PauseReason.Modal);   // o mundo continua congelado atrás do Results
+            EndRun(gaveUp: true);
+        }
+
+        public void PlayAgain() => Services.Scenes.Load(GameScene.Gameplay);
+        public void GoToMenu() => Services.Scenes.Load(GameScene.MainMenu);
+
+        // Só os inimigos comuns (Seção 4.6; a Mothership fica de fora, ver o "Em aberto" da seção). Sem Shards.
+        private void ClearEnemiesAroundPlanet()
+        {
+            foreach (var target in TargetRegistry.Alive.ToList())
+            {
+                if (target is not Enemy enemy) continue;
+                float edgeDistance = Vector2.Distance(enemy.Position, WorldLayout.PlanetCenter) - enemy.Radius;
+                if (edgeDistance <= _shockwaveRadius) enemy.Remove();
+            }
+        }
+
+        private void EndRun(bool gaveUp)
+        {
+            State = RunState.Ended;
+            _waves.StopRun();
+            RunEnded?.Invoke(new RunSummary
+            {
+                waveReached = _waves.CurrentWave,
+                enemiesDestroyed = _enemiesDestroyed,
+                mothershipsDestroyed = _mothershipsDestroyed,
+                survivalSeconds = SurvivalSeconds,
+                shardsEarned = _economy.Wallet.TotalEarned,
+                revived = ReviveUsed,
+                gaveUp = gaveUp,
+            });
+        }
+    }
+}
+```
+
+#### Passo 4 — As telas da run: `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/HudView.cs
+using Armageddon.Core;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // HUD da run (Seção 6.3): HP do planeta, Wave e timer, e o botão de pausa.
+    // A barra da Mothership é o BossHealthBar (Fase 7).
+    public sealed class HudView : MonoBehaviour
+    {
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private Image _healthFill;
+        [SerializeField] private TMP_Text _healthText;
+        [SerializeField] private TMP_Text _waveText;
+        [SerializeField] private TMP_Text _timerText;
+        [SerializeField] private Button _pauseButton;
+
+        // Só reescreve os textos quando o número muda: evita criar strings novas a cada frame.
+        private int _shownHealth = -1;
+        private int _shownMaxHealth = -1;
+        private int _shownWave = -1;
+        private int _shownSeconds = -2;
+
+        private void Awake()
+        {
+            _healthFill.sprite = PixelSprite.White;
+            _healthFill.type = Image.Type.Filled;
+            _healthFill.fillMethod = Image.FillMethod.Horizontal;
+            _pauseButton.onClick.AddListener(() => Services.Clock.Pause(PauseReason.Manual));
+        }
+
+        private void LateUpdate()
+        {
+            _healthFill.fillAmount = _planet.Max > 0f ? _planet.Current / _planet.Max : 0f;
+
+            int health = Mathf.CeilToInt(_planet.Current);
+            int maxHealth = Mathf.CeilToInt(_planet.Max);
+            if (health != _shownHealth || maxHealth != _shownMaxHealth)
+            {
+                _shownHealth = health;
+                _shownMaxHealth = maxHealth;
+                _healthText.text = $"{health}/{maxHealth}";
+            }
+
+            if (_waves.CurrentWave != _shownWave)
+            {
+                _shownWave = _waves.CurrentWave;
+                _waveText.text = $"Wave {_shownWave}";
+            }
+
+            int seconds = _waves.IsWarning ? -1 : Mathf.CeilToInt(_waves.TimeRemaining);
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                _timerText.text = seconds < 0 ? "" : $"{seconds}s";
+            }
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/PauseView.cs
+using Armageddon.Core;
+using Armageddon.Run;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Tela de pausa (Seção 6.3): continuar, Settings (Fase 11) e desistir da run.
+    // Aparece com a pausa MANUAL (botão, "voltar" do Android ou perda de foco) enquanto a run está rodando.
+    public sealed class PauseView : MonoBehaviour
+    {
+        [SerializeField] private RunController _run;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private Button _continueButton;
+        [SerializeField] private Button _settingsButton;
+        [SerializeField] private Button _giveUpButton;
+
+        private void Awake()
+        {
+            _continueButton.onClick.AddListener(() => Services.Clock.Resume(PauseReason.Manual));
+            _giveUpButton.onClick.AddListener(() => _run.GiveUp());
+            _settingsButton.interactable = false;   // a tela de Settings entra na Fase 11
+            _root.SetActive(false);
+        }
+
+        // Verificar a cada frame (2 booleanos) é mais simples e mais seguro do que acompanhar
+        // todas as combinações de pausa manual, pausa modal e estado da run.
+        private void LateUpdate()
+        {
+            bool visible = Services.IsReady
+                           && Services.Clock.IsPausedBy(PauseReason.Manual)
+                           && _run.State == RunController.RunState.Running;
+            if (_root.activeSelf != visible) _root.SetActive(visible);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/ReviveOfferView.cs
+using Armageddon.Run;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Oferta de Revive (Seção 4.6): "assistir anúncio para reviver", com contagem regressiva de 5 s.
+    // O jogo está congelado, por isso a contagem usa o tempo "unscaled".
+    public sealed class ReviveOfferView : MonoBehaviour
+    {
+        [SerializeField] private RunController _run;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private TMP_Text _countdownText;
+        [SerializeField] private Button _watchButton;
+        [SerializeField] private Button _declineButton;
+
+        private float _remaining;
+        private int _shownSeconds;
+        private bool _open;
+
+        private void Awake()
+        {
+            _watchButton.onClick.AddListener(() => { Close(); _run.AcceptRevive(); });
+            _declineButton.onClick.AddListener(() => { Close(); _run.DeclineRevive(); });
+            _root.SetActive(false);
+        }
+
+        private void OnEnable() => _run.ReviveOffered += Open;
+        private void OnDisable() => _run.ReviveOffered -= Open;
+
+        private void Open()
+        {
+            _remaining = _run.ReviveOfferSeconds;
+            _shownSeconds = -1;
+            _open = true;
+            _root.SetActive(true);
+        }
+
+        private void Close()
+        {
+            _open = false;
+            _root.SetActive(false);
+        }
+
+        private void Update()
+        {
+            if (!_open) return;
+
+            _remaining -= Time.unscaledDeltaTime;
+            if (_remaining <= 0f)
+            {
+                Close();
+                _run.DeclineRevive();   // a contagem acabou: vai para o Results
+                return;
+            }
+
+            int seconds = Mathf.CeilToInt(_remaining);
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                _countdownText.text = seconds.ToString();
+            }
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/ResultsView.cs
+using Armageddon.Run;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // Results (Seção 6.3): estatísticas da run e os botões "jogar de novo" e "menu".
+    // O Stardust e o botão "dobrar com anúncio" entram na Fase 9.
+    public sealed class ResultsView : MonoBehaviour
+    {
+        [SerializeField] private RunController _run;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private TMP_Text _waveText;
+        [SerializeField] private TMP_Text _enemiesText;
+        [SerializeField] private TMP_Text _timeText;
+        [SerializeField] private TMP_Text _shardsText;
+        [SerializeField] private TMP_Text _stardustText;
+        [SerializeField] private Button _doubleStardustButton;
+        [SerializeField] private Button _playAgainButton;
+        [SerializeField] private Button _menuButton;
+
+        private void Awake()
+        {
+            _playAgainButton.onClick.AddListener(() => _run.PlayAgain());
+            _menuButton.onClick.AddListener(() => _run.GoToMenu());
+            _doubleStardustButton.gameObject.SetActive(false);   // Fase 9
+            _root.SetActive(false);
+        }
+
+        private void OnEnable() => _run.RunEnded += Show;
+        private void OnDisable() => _run.RunEnded -= Show;
+
+        private void Show(RunSummary summary)
+        {
+            int seconds = Mathf.FloorToInt(summary.survivalSeconds);
+            _waveText.text = $"Wave {summary.waveReached}";
+            _enemiesText.text = summary.enemiesDestroyed.ToString();
+            _timeText.text = $"{seconds / 60}:{seconds % 60:00}";
+            _shardsText.text = Mathf.FloorToInt(summary.shardsEarned).ToString();
+            _stardustText.text = "-";   // a Fase 9 calcula o Stardust da run
+            _root.SetActive(true);
+        }
+    }
+}
+```
+
+#### Passo 5 — Teclas de teste: `RunDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Planets;
+using Armageddon.Platform;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Run
+{
+    // L = zera o HP do planeta · O = o próximo anúncio falha (liga/desliga) · I = sem anúncio disponível (liga/desliga).
+    public sealed class RunDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private RunController _run;
+
+        private void OnEnable() => _run.RunEnded += HandleRunEnded;
+        private void OnDisable() => _run.RunEnded -= HandleRunEnded;
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.lKey.wasPressedThisFrame) _planet.TakeDamage(1000000f);
+
+            if (keyboard.oKey.wasPressedThisFrame)
+            {
+                FakeAdService.SimulateFailure = !FakeAdService.SimulateFailure;
+                Debug.Log($"[Dev] Anúncio falha: {FakeAdService.SimulateFailure}");
+            }
+
+            if (keyboard.iKey.wasPressedThisFrame)
+            {
+                FakeAdService.SimulateUnavailable = !FakeAdService.SimulateUnavailable;
+                Debug.Log($"[Dev] Sem anúncio disponível: {FakeAdService.SimulateUnavailable}");
+            }
+        }
+
+        private void HandleRunEnded(RunSummary summary)
+        {
+            Debug.Log($"[Run] Fim: Wave {summary.waveReached}, {summary.enemiesDestroyed} inimigos, " +
+                      $"{summary.survivalSeconds:0}s, {summary.shardsEarned:0} Shards, revive: {summary.revived}, desistiu: {summary.gaveUp}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 6 — Montar na cena
+
+1. **Lógica:** no `WaveDirector`, **desmarque Auto Start** (agora quem começa a run é o `RunController`). Em `[World]`, crie `Shockwave` na posição (0, 0, 0) com o componente `ShockwaveView`. Em `[Systems]`, crie:
+   - `RunController`, com o componente `RunController`: **Planet** = o `PlanetHealth`; **Waves**, **Economy**, **Enemies**, **Motherships** = os objetos das fases anteriores; **Shockwave** = `Shockwave`.
+   - `RunDevTools`, com o componente `RunDevTools`: **Planet** e **Run**.
+2. **HUD** (no `HUDCanvas` da Fase 6), em pixels da tela de 320×180:
+   - `HealthBar`, ancorado em cima à esquerda (**top left**), **Pos** (4, −4), **80 × 8**: uma **Image** de fundo com `SPR_UI_Panel` (Sliced) e, dentro, uma **Image** `Fill` com margem de 2 px e **Color** laranja `#F28E17` (a cor do "meu"). Ao lado, o TMP `HealthText` (m5x7, 16).
+   - Em cima à direita (**top right**): o TMP `WaveText` e, abaixo dele, o `TimerText`, alinhados à direita; e um **Button** `PauseButton` de **16 × 16** (`SPR_UI_Button`, Sliced) com o texto `II`.
+   - Um objeto `HUD` com o componente `HudView`, com todos esses campos ligados.
+3. **Pausa:** no `HUDCanvas`, um objeto `PauseView` com o componente `PauseView` e um filho `Root`: uma **Image** preta com alfa ~50% cobrindo a tela inteira (para escurecer o jogo e bloquear os toques) e, no centro, um painel `SPR_UI_Panel` (Sliced) de **120 × 80** com o título `Paused` e três botões de **100 × 16** (`SPR_UI_Button`): `Continue`, `Settings` e `Give up`. Ligue os campos.
+4. **Revive:** mesmo formato: `ReviveOfferView` com o `Root` (fundo escuro e painel de **140 × 80**), o texto `Watch an ad to revive?`, o `CountdownText` (o número grande) e dois botões: `Watch ad` e `No thanks`.
+5. **Results:** `ResultsView` com o `Root` (fundo escuro e painel de **160 × 120**), o título `Results`, as linhas `Wave`, `Enemies`, `Time`, `Shards` e `Stardust` (um TMP de rótulo e um TMP de valor em cada) e três botões: `Double with ad` (o `DoubleStardustButton`, escondido até a Fase 9), `Play again` e `Menu`.
+6. **Ordem de desenho do Canvas:** na hierarquia do `HUDCanvas`, deixe nesta ordem, de cima para baixo: `HUD`, `BossHealthBar`, `UpgradeDrawer`, `PauseView`, `ReviveOfferView`, `ResultsView`. Na UI, quem vem depois na lista é desenhado por cima.
+
+> Os textos das telas estão em inglês porque o inglês é o idioma base da tabela de Localization (Fase 1). A Fase 11 troca cada texto por uma chave traduzida.
+
+#### Passo 7 — Commit
+
+`git add .` e `git commit -m "Phase 8: run controller, revive, pause screen, HUD, results"`.
+
+**✅ Checkpoint:**
+- O HUD mostra `100/100` e a barra laranja cheia, `Wave 1` e o timer contando de `30s` para baixo (durante o aviso de 2 s, o timer fica vazio).
+- O botão `II` (ou **Esc**) pausa o jogo e abre a tela de pausa. **Continue** volta. **Give up** leva direto ao Results.
+- **L** zera o HP: o jogo congela e aparece a oferta de Revive, com a contagem 5, 4, 3… **Watch ad** (o anúncio simulado é "assistido" na hora): o planeta volta com 50 HP, o anel dourado se expande do planeta, os inimigos a até 4 u somem com explosão (e **sem** somar Shards), e a run continua.
+- **L** de novo na mesma run: **não** há segunda oferta, vai direto para o Results.
+- Numa run nova (**Play again**): **L** e deixar a contagem chegar a 0 leva ao Results. Com **O** ligado (anúncio falha), **Watch ad** também leva ao Results. Com **I** ligado (sem anúncio), a oferta nem aparece.
+- O Results mostra a Wave alcançada, os inimigos destruídos, o tempo (`m:ss`) e os Shards ganhos (incluindo os gastos). O Console repete o resumo (`[Run] Fim: …`).
+- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 0, sem pausa presa. **Menu** vai para o Main Menu.
+- Com a oferta de Revive na tela, **Esc** não abre a pausa por cima.
+
+**Problemas comuns:**
+- **A run começa duas vezes (duas Waves 1 juntas):** o **Auto Start** do `WaveDirector` continua marcado.
+- **Depois do Play again, o jogo continua congelado:** o `GameClock` é o da versão antiga da Fase 1, que só limpava as pausas ao **sair** da Gameplay. A versão atual limpa a cada cena carregada (`SetGameplayActive`).
+- **A oferta de Revive nunca aparece:** no build final, antes da Fase 10, é o esperado (o `NullAdService` nunca tem anúncio). No Editor, confira se a tecla **I** não ficou ligada.
+- **Os botões das telas não respondem:** a tela está atrás de outra no Canvas (a ordem da hierarquia, item 6 do Passo 6), ou o fundo escuro de outra tela invisível está com **Raycast Target** marcado e ativo.
+- **`The type or namespace name 'Clock' does not exist in the namespace 'Armageddon.Services'`:** algum arquivo foi criado no namespace `Armageddon.Services`. Os provedores de plataforma usam `Armageddon.Platform` (Passo 1); não existe namespace `Armageddon.Services`.
+- **Os inimigos voltam a dar dano logo depois do Revive:** os que estavam longe continuam vindo (a onda só limpa 4 u). É o esperado; o planeta tem 50% do HP para aguentar.
+
+Próxima fase: **Fase 9 — Meta-progressão**. Ela transforma a run em Stardust, cria a árvore de Perks, os Planet Cores e Skins, as conquistas e a recompensa diária, e monta o Main Menu.
