@@ -5,6 +5,7 @@ Cada jogo do estúdio é um contexto separado, com seu próprio glossário. Os j
 ## Contexts
 
 - [8-Bit Armageddon](./contexts/8-bit-armageddon/CONTEXT.md): roguelike de defesa automática de planeta (GDD em `GDD_8-Bit_Armageddon.md`)
+- [Star Expedition Co.](./contexts/star-expedition-co/CONTEXT.md): gerenciamento de equipe com expedições idle de tempo real (GDD em `StarExpeditionCo.md`)
 
 ## Relationships
 
