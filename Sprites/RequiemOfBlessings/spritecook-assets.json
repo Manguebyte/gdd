@@ -1,0 +1,303 @@
+{
+  "project": "Requiem of Blessings",
+  "project_id": "7a19a731-7fdf-4a55-938a-8203a2dbb384",
+  "assets": [
+    {
+      "path": "Hero/SPR_Hero_Idle.png",
+      "asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77",
+      "sha12": "c222857d7c9e",
+      "size": "170x170"
+    },
+    {
+      "path": "Hero/_candidatos_descartados/SPR_Hero_Idle_alt_a.png",
+      "asset_id": "ac5e92f7-a560-4f5b-bb71-0815e20cea05",
+      "sha12": "d6a214c212ab",
+      "size": "164x164"
+    },
+    {
+      "path": "Hero/_candidatos_descartados/SPR_Hero_Idle_alt_c.png",
+      "asset_id": "ac792c07-7b63-408a-bce2-a2b0a7bb6398",
+      "sha12": "51a5f5c68f7d",
+      "size": "180x180"
+    },
+    {
+      "path": "Enemies/SPR_Enemy_Ghoul.png",
+      "asset_id": "05449070-dffa-44a6-a340-9b83b35fa3bd",
+      "sha12": "680aa014c665",
+      "size": "154x154",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_Ghoul_SoulGuardian.png",
+      "asset_id": "a0776289-c261-499f-a648-ca313542a0b3",
+      "sha12": "7e606e65d645",
+      "size": "154x154",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_SkeletonArcher.png",
+      "asset_id": "f9a5af1d-2a00-4977-b7b2-2b56b220d20b",
+      "sha12": "78e7074b4a8a",
+      "size": "170x170",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_CultistMage.png",
+      "asset_id": "ca83a426-63c4-45be-904c-5da4cfdd7a22",
+      "sha12": "29df62d87f96",
+      "size": "168x168",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Boss_FallenBishop.png",
+      "asset_id": "48794ec6-14e2-4d95-aba5-7ba0bf366e36",
+      "sha12": "313c8dd9e060",
+      "size": "170x170",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Backgrounds/SPR_Background_Battle_Cathedral.png",
+      "asset_id": "1be00fa2-92ae-4a3e-8254-884880f139a6",
+      "sha12": "c4f528e89dba",
+      "size": "384x216"
+    },
+    {
+      "path": "Backgrounds/SPR_Background_Camp.png",
+      "asset_id": "22b27fa7-3d48-46de-95db-fc89001977ac",
+      "sha12": "1d1e942d68ba",
+      "size": "384x214"
+    },
+    {
+      "path": "Icons/SPR_Icon_Soul.png",
+      "asset_id": "3577fce4-cb39-4f90-ad47-eafb0c8b7276",
+      "sha12": "9747853657d8",
+      "size": "42x42"
+    },
+    {
+      "path": "Icons/SPR_Icon_SoulKnowledge.png",
+      "asset_id": "db2c3b68-d3b5-4252-97a8-614eef9b12bb",
+      "sha12": "525a75ac27d8",
+      "size": "158x158"
+    },
+    {
+      "path": "Icons/SPR_Icon_Torch.png",
+      "asset_id": "5ac393e1-e0f9-4f84-8835-ca60c93f3ada",
+      "sha12": "2586b0038b57",
+      "size": "70x70"
+    },
+    {
+      "path": "Icons/SPR_Icon_ElixirHP.png",
+      "asset_id": "97abb135-cab6-472f-b601-aa085e3d5a8b",
+      "sha12": "5fb14cc5e456",
+      "size": "40x40"
+    },
+    {
+      "path": "Icons/SPR_Icon_ElixirBlessing.png",
+      "asset_id": "94ae23fa-856a-439c-a6c5-0da95395d4b9",
+      "sha12": "8bdaa235449f",
+      "size": "74x74"
+    },
+    {
+      "path": "Icons/SPR_Icon_Stone.png",
+      "asset_id": "26a84fd1-9992-47e0-ad52-e2fcb53e084a",
+      "sha12": "36ec63e82679",
+      "size": "38x38"
+    },
+    {
+      "path": "Icons/SPR_Icon_Bomb.png",
+      "asset_id": "37c2677d-5f48-4312-8175-38a892c3dc2d",
+      "sha12": "01a79af1e600",
+      "size": "40x40"
+    },
+    {
+      "path": "Icons/SPR_Icon_EnemyShield.png",
+      "asset_id": "855bc5ce-4b82-4163-9141-e76d258ce698",
+      "sha12": "62324a002fb8",
+      "size": "42x42"
+    },
+    {
+      "path": "Icons/SPR_Icon_DivineBlessing.png",
+      "asset_id": "0c07a710-924f-46ad-be19-605172d4bd48",
+      "sha12": "6ca5399d2b6d",
+      "size": "28x28"
+    },
+    {
+      "path": "Icons/SPR_Icon_Burn.png",
+      "asset_id": "dfe595fa-3558-448b-aae2-399c44e4fa82",
+      "sha12": "6d12a0ffecac",
+      "size": "42x42"
+    },
+    {
+      "path": "Icons/_candidatos_descartados/SPR_Icon_EnemyShield_v1.png",
+      "asset_id": "ce5942d2-6031-48fc-be7d-a10cab7c1496",
+      "sha12": "eece67fdee8e",
+      "size": "42x42"
+    },
+    {
+      "path": "Icons/_candidatos_descartados/SPR_Icon_Burn_v1.png",
+      "asset_id": "7f878ba3-e936-4fc4-b6a5-9c0863a264ff",
+      "sha12": "4d1d448d8591",
+      "size": "42x42"
+    },
+    {
+      "path": "Hero/SPR_Hero_Anim_Idle.png",
+      "asset_id": "71f19249-7f0a-459b-8207-3337d9bc146d",
+      "sha12": "17277ae2aed6",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77"
+    },
+    {
+      "path": "Hero/SPR_Hero_Anim_Attack.png",
+      "asset_id": "79d9d1df-1a05-45bd-894f-702cddd556de",
+      "sha12": "34a80f082253",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77"
+    },
+    {
+      "path": "Hero/SPR_Hero_Anim_Dodge.png",
+      "asset_id": "bf1daf5a-1e40-4e86-b804-9fa0634249fc",
+      "sha12": "b6b030ea199c",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77"
+    },
+    {
+      "path": "Hero/SPR_Hero_Anim_Parry.png",
+      "asset_id": "52f37f79-5894-44ce-afcf-de28f3f2c549",
+      "sha12": "c61e2d85af52",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77"
+    },
+    {
+      "path": "Hero/SPR_Hero_Anim_Hurt.png",
+      "asset_id": "8e2f30f8-b066-45e6-a893-9aae306c6768",
+      "sha12": "63da82b1345f",
+      "size": "1164x194",
+      "frames": 6,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "251cb050-6557-40c3-adf8-5019c4c71a77"
+    },
+    {
+      "path": "Enemies/SPR_Enemy_Ghoul_Anim_Idle.png",
+      "asset_id": "18c03b80-1b7b-4fab-b1a6-1dc76a66707d",
+      "sha12": "3d85667973d4",
+      "size": "1392x174",
+      "frames": 8,
+      "frame_size": "174x174",
+      "fps": 8,
+      "source_asset_id": "05449070-dffa-44a6-a340-9b83b35fa3bd",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_Ghoul_Anim_Attack.png",
+      "asset_id": "22e2b1ce-e40f-4b34-9dc6-1ec8c84d814c",
+      "sha12": "810177db5662",
+      "size": "1392x174",
+      "frames": 8,
+      "frame_size": "174x174",
+      "fps": 8,
+      "source_asset_id": "05449070-dffa-44a6-a340-9b83b35fa3bd",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_SkeletonArcher_Anim_Idle.png",
+      "asset_id": "4cc86032-a03b-4419-b8c1-f3be685de3ac",
+      "sha12": "87fba2c2f95c",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "f9a5af1d-2a00-4977-b7b2-2b56b220d20b",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_SkeletonArcher_Anim_Attack.png",
+      "asset_id": "78bb1074-e384-48d1-8f6e-74d31a2800c4",
+      "sha12": "2abef2bd06d0",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "f9a5af1d-2a00-4977-b7b2-2b56b220d20b",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_CultistMage_Anim_Idle.png",
+      "asset_id": "b15ccb22-fba1-427b-a1c3-ba1e422e3bf1",
+      "sha12": "a0e732bf96d0",
+      "size": "1536x192",
+      "frames": 8,
+      "frame_size": "192x192",
+      "fps": 8,
+      "source_asset_id": "ca83a426-63c4-45be-904c-5da4cfdd7a22",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_CultistMage_Anim_Attack.png",
+      "asset_id": "4f9accbd-15d7-4c35-bc72-5f9d65d84c3c",
+      "sha12": "8c497f224348",
+      "size": "1536x192",
+      "frames": 8,
+      "frame_size": "192x192",
+      "fps": 8,
+      "source_asset_id": "ca83a426-63c4-45be-904c-5da4cfdd7a22",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Enemy_Ghoul_SoulGuardian_Anim_Idle.png",
+      "asset_id": "413a668d-1729-42ee-b5e3-b1a74484ce81",
+      "sha12": "abded1a9494a",
+      "size": "1392x174",
+      "frames": 8,
+      "frame_size": "174x174",
+      "fps": 8,
+      "source_asset_id": "a0776289-c261-499f-a648-ca313542a0b3",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Boss_FallenBishop_Anim_Idle.png",
+      "asset_id": "7b7f0d0e-b409-4c43-a8a1-e3a978efafaf",
+      "sha12": "67ab81a2068e",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "48794ec6-14e2-4d95-aba5-7ba0bf366e36",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/_candidatos_descartados/SPR_Boss_FallenBishop_Anim_Attack_v1.png",
+      "asset_id": "218be41f-1707-46e5-bde1-739ae8fbae54",
+      "sha12": "9b3d62c63b09",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "48794ec6-14e2-4d95-aba5-7ba0bf366e36",
+      "mirrored_locally": true
+    },
+    {
+      "path": "Enemies/SPR_Boss_FallenBishop_Anim_Attack.png",
+      "asset_id": "d71a3cb4-fb12-4a15-ad1b-45a3a1df7c36",
+      "sha12": "7a5a77a41d3c",
+      "size": "1552x194",
+      "frames": 8,
+      "frame_size": "194x194",
+      "fps": 8,
+      "source_asset_id": "48794ec6-14e2-4d95-aba5-7ba0bf366e36",
+      "mirrored_locally": true
+    }
+  ]
+}
