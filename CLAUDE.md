@@ -8,6 +8,13 @@ This is a **game design document (GDD) repository**, not a code project. It cont
 
 Each GDD file is self-contained: its own "Parte 1 — GDD" (or GDD Core) section plus its own Unity implementation guide. Don't assume content from one file applies to another — they are separate games with separate mechanics, only sharing the repo's overall Markdown conventions (see "Conventions when editing this document" below, which apply repo-wide, not just to `RallySurvive.md`).
 
+## Site (Docusaurus / GitHub Pages)
+
+`site/` is a Docusaurus site that publishes the GDDs to GitHub Pages (`https://manguebyte.github.io/gdd/`) via `.github/workflows/deploy-site.yml` on every push to `main`. The root `.md` files stay the single source of truth — never edit `site/docs/` (generated, gitignored). `site/scripts/split-gdds.mjs` splits each GDD into two pages, "GDD" and "Guia Unity", using the `GAMES` table at the top of the script (`guideStart`/`gddStart` regexes match the heading where the Unity guide starts/ends). Commands, run inside `site/`: `npm start` (local preview with live reload of the root `.md` files), `npm run build`.
+
+- **New GDD file** → add a line to `GAMES`, or it won't appear on the site.
+- **Renaming the heading where a Unity guide starts** → update that game's `guideStart`; the build fails loudly if it no longer matches.
+
 If future work adds an actual Unity project (scripts, scenes, assets) alongside this GDD, that project's own tooling (Unity Editor, .NET/C# compiler) should be documented separately once it exists — don't assume it exists yet.
 
 ## Document structure

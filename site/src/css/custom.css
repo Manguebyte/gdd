@@ -1,0 +1,29 @@
+/* Cores do site: verde-mangue no tema claro, mais claro no escuro. */
+:root {
+  --ifm-color-primary: #1f8a5b;
+  --ifm-color-primary-dark: #1c7c52;
+  --ifm-color-primary-darker: #1a754d;
+  --ifm-color-primary-darkest: #156040;
+  --ifm-color-primary-light: #229864;
+  --ifm-color-primary-lighter: #249f69;
+  --ifm-color-primary-lightest: #29b477;
+  --ifm-code-font-size: 92%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #4cc98f;
+  --ifm-color-primary-dark: #37c182;
+  --ifm-color-primary-darker: #34b67b;
+  --ifm-color-primary-darkest: #2b9665;
+  --ifm-color-primary-light: #63d09d;
+  --ifm-color-primary-lighter: #6fd4a4;
+  --ifm-color-primary-lightest: #92dfbb;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Tabelas largas (ex.: Tabela de Divergências) rolam dentro da página. */
+.markdown table {
+  display: block;
+  overflow-x: auto;
+}

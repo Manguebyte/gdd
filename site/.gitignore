@@ -1,0 +1,8 @@
+# Dependências e saída do build
+node_modules/
+build/
+.docusaurus/
+.cache-loader/
+
+# Gerado por scripts/split-gdds.mjs a partir dos .md da raiz
+docs/
