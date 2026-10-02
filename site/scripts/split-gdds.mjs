@@ -77,6 +77,20 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'EvilEnemyDefense.md',
+    slug: 'evil-enemy-defense',
+    label: 'Evil Enemy Defense',
+    description: 'Tower defense ao contrário: monte o Exército, divida-o entre as duas entradas e assista ao cerco.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
+    source: 'GuerreiroDaMasmorra.md',
+    slug: 'guerreiro-da-masmorra',
+    label: 'Guerreiro da Masmorra',
+    description: 'RPG de turnos mobile em que cada golpe inimigo vira uma reação em tempo real (parry, salto, esquiva).',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',

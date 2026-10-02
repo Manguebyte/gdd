@@ -1,0 +1,51 @@
+{
+  "project_id": "8b474b5c-28b1-4fd0-ba06-cdb243e3a081",
+  "style_reference": "c6a46a97-e05e-4e04-bbcf-ffca81194890",
+  "assets": [
+    {
+      "asset_id": "c6a46a97-e05e-4e04-bbcf-ffca81194890",
+      "sha12": "5510e4885036",
+      "label": "warrior - pose base (referência de estilo)",
+      "file": "heroes/warrior.png"
+    },
+    {
+      "asset_id": "1c6a701b-49e4-482b-b732-cada45431953",
+      "sha12": "dcccf7fc4951",
+      "label": "warrior idle - 8 quadros 640px",
+      "file": "anims/warrior_idle_sheet.png"
+    },
+    {
+      "asset_id": "9fdf75be-598f-443f-9be1-192d496d3c32",
+      "sha12": "4e600763fca9",
+      "label": "warrior attack - 8 quadros 640px",
+      "file": "anims/warrior_attack_sheet.png"
+    },
+    {
+      "asset_id": "da750de1-3f07-41fa-afd3-d9922a7a4306",
+      "sha12": "c1c6679fe113",
+      "label": "pawn (Servo) - pose base",
+      "file": "monsters/pawn.png"
+    },
+    {
+      "asset_id": "1b5d5a05-1fbd-44ee-b025-beda452908ef",
+      "sha12": "26cdfce2fdd0",
+      "label": "pawn attack - 8 quadros 640px",
+      "file": "anims/pawn_attack_sheet.png"
+    },
+    {
+      "asset_id": "9ea3ba21-24b8-42d7-a807-61945e974cbc",
+      "sha12": "ffc0971c4d17",
+      "label": "archer (Arqueiro) - pose base",
+      "file": "monsters/archer.png"
+    },
+    {
+      "asset_id": "d6aeea1b-f8e4-46b9-bb44-c500bbf5128f",
+      "sha12": "ec8074284c90",
+      "label": "archer attack - 8 quadros 640px",
+      "file": "anims/archer_attack_sheet.png"
+    }
+  ],
+  "derived": {
+    "bosses/": "gerados localmente por _tools/recolor_knight.py a partir do warrior (sem asset_id)"
+  }
+}
