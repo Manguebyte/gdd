@@ -693,6 +693,20 @@
         }
       },
       {
+        "asset_id": "21fa7140-2e4b-45a5-908c-17499a97f283",
+        "label": "wear_bar_full",
+        "file": "ui/components/wear_bars/wear_bar_full.png",
+        "group": "wear_bars",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        },
+        "local_fix": "derivado de wear_bar_yellow: os 2 segmentos pretos do fim foram trocados por amarelos, para servir de preenchimento (Image Filled) da barra de desgaste"
+      },
+      {
         "asset_id": "3b57ff52-6e19-45d2-a188-e9ffb337d3c4",
         "sha12": "fd31e04f89ea",
         "label": "wear_bar_empty",

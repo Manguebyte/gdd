@@ -156,7 +156,7 @@
 - **Proposta inicial (Em aberto):** traçado da pista como uma faixa grossa sobre fundo liso; carros como ícones simples vistos de cima, num sprite branco tingido com a cor da equipe; o carro do jogador com um contorno de destaque.
 - **Proposta inicial (Em aberto):** fundo do mapa em papel creme, como um programa de corrida impresso da época; equipes nas cores nacionais de corrida dos anos 60 (verde britânico, vermelho italiano, azul francês, prata alemão...).
 - **Em aberto:** paleta final, tipografia, identidade das equipes (nomes, logos), arte da tela da temporada.
-- **Assets gerados:** `Sprites/PaddockBoss/` (SpriteCook, com manifesto `spritecook-assets.json`): carro em 2 variações, contorno de destaque, faixa de largada, fundo do mapa e o kit de UI (56 componentes em `ui/components/`).
+- **Assets gerados:** `Sprites/PaddockBoss/` (SpriteCook, com manifesto `spritecook-assets.json`): carro em 2 variações, contorno de destaque, faixa de largada, fundo do mapa e o kit de UI (57 componentes em `ui/components/`, um deles, `wear_bar_full`, derivado localmente). O guia Unity (Parte 2) usa essa arte desde a fase em que cada objeto é criado; não há etapa de placeholders.
 - **Definido:** a referência visual da interface é o conceito `Sprites/PaddockBoss/ui/concept_selected.png`: papel creme, cabeçalhos verde-escuros, botões BOX verde/vermelho, selos de composto circulares, cards de notificação. Ele vale como **direção de arte**, não como lista de funcionalidades. Os elementos que ele mostra além do MVP (subdivisões de engenharia como aerodinâmica e confiabilidade, mistura de combustível, estilo de pilotagem, modo do motor, controle de velocidade da simulação, clima, mensagens de rádio) continuam **Em aberto** (§3, §4 e §15).
 
 ## 10. HUD / UI
@@ -320,15 +320,15 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 
 | Fase | Parte | Conteúdo | Etapas |
 |---|---|---|---|
-| 0 | 3 | Setup do projeto | 0A Unity · 0B projeto e Git · 0C pastas e cenas |
+| 0 | 3 | Setup do projeto | 0A Unity · 0B projeto e Git · 0C pastas e cenas · 0D importar a arte |
 | 1 | 4 | Dados: balanceamento e equipes | 1A balanceamento · 1B equipes |
 | 2 | 5 | Pista: geometria, editor e desenho | 2A dados e geometria · 2B ferramenta de desenho · 2C três pistas · 2D pista na cena Main |
-| 3 | 6 | Simulação da corrida | 3A carros como bolinhas · 3B ícone do carro · 3C tabela de posições |
+| 3 | 6 | Simulação da corrida | 3A carros como bolinhas · 3B sprite do carro · 3C tabela de posições |
 | 4 | 7 | Pneus e pit stop | 4A script · 4B painel do primeiro carro · 4C segundo carro |
 | 5 | 8 | Economia e investimentos | 5A dinheiro entrando · 5B botões de compra |
 | 6 | 9 | IA das equipes rivais | 6A box e compras da IA · 6B personalidades |
 | 7 | 10 | Campeonato e save local | 7A dados e save · 7B tela da temporada · 7C fluxo completo |
-| 8 | 11 | Layout multiplataforma e arte | 8A área segura · 8B câmera · 8C arte |
+| 8 | 11 | Layout multiplataforma e acabamento | 8A área segura · 8B câmera · 8C fonte e revisão da arte |
 | 9 | 12 | Testes automáticos | 9A assemblies · 9B testes · 9C rodar |
 | 10 | 13 | Build e próximos passos | — |
 
@@ -338,7 +338,7 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 
 ## Fase 0 — Setup do Projeto
 
-> Objetivo desta fase: um projeto Unity 6 2D vazio, versionado no Git, com as pastas e cenas que o resto do guia usa.
+> Objetivo desta fase: um projeto Unity 6 2D vazio, versionado no Git, com as pastas e cenas que o resto do guia usa e a arte do SpriteCook já importada.
 
 **Conceitos novos:**
 - **Unity Hub:** o programa que instala versões da Unity (o "Editor") e abre projetos. Cada versão pode ter **módulos** de plataforma; sem o módulo Android, por exemplo, a Unity não gera APK/AAB.
@@ -356,6 +356,9 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 - **GameObject e componente:** tudo na cena é um GameObject (um "objeto vazio" com posição). O que ele faz vem dos **componentes** presos a ele (um `SpriteRenderer` desenha uma imagem; um script seu é um componente também).
 - **Play Mode:** o botão ▶ no topo roda o jogo dentro do Editor. ⚠️ **Tudo o que você mudar na cena durante o Play é desfeito ao sair do Play.** Saia do Play antes de editar.
 - **Git LFS:** extensão do Git para guardar arquivos binários grandes (imagens, áudio) fora do histórico normal.
+- **Sprite:** uma imagem (PNG) importada com **Texture Type** = `Sprite (2D and UI)`. Só assim ela pode ir num `SpriteRenderer` (mundo) ou numa `Image` (UI).
+- **Pixels Per Unit (PPU):** quantos pixels de uma imagem cabem em 1 unidade do mundo. Define o tamanho de um sprite na cena: o mesmo PNG com PPU 1200 fica 10 vezes menor do que com PPU 120.
+- **9-slice (bordas do sprite):** o sprite é dividido em 9 partes por 4 linhas de borda. Ao esticar uma `Image` com **Image Type** = `Sliced`, os cantos ficam do tamanho original e só o miolo estica. É o que deixa um painel de cantos arredondados servir para qualquer tamanho.
 
 ### Etapa 0A — Instalar a Unity
 
@@ -419,15 +422,62 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 ### 🧪 Teste rápido
 Aperte ▶. A Game view mostra um fundo azul/cinza vazio e o Console não tem erros. Aperte ▶ de novo para sair.
 
+### Etapa 0D — Importar a arte
+
+A arte segue a Parte 1 §9: flat vector minimalista com vibe de F1 dos anos 60. Ela já foi gerada no SpriteCook e está no repositório de GDDs, em `Sprites/PaddockBoss/`. O manifesto `spritecook-assets.json` guarda o `asset_id` de cada peça (para regerar ou criar variações coerentes depois) e as bordas 9-slice das peças de UI. Importar tudo agora deixa cada fase seguinte montar seus objetos já com a arte final, sem placeholders.
+
+**Sprites do mapa:**
+
+| Arquivo (em `Sprites/PaddockBoss/`) | Tamanho | Uso no jogo |
+|---|---|---|
+| `cars/car60s_white_v1.png` ou `cars/car60s_white_v2.png` | 456×962 / 468×953 | `Body` do prefab `CarMarker` (Fase 3). Branco, apontando para cima: o `SpriteRenderer` tinge com a cor da equipe. Use **uma** das duas variações (escolha **Em aberto**). |
+| `cars/car60s_highlight_v1.png` ou `cars/car60s_highlight_v2.png` | igual ao carro correspondente | `Highlight` do prefab: contorno do carro do jogador. Use o da **mesma variação** do carro, para encaixar. |
+| `track/start_line.png` | 943×72 | `StartLine` (Fase 2): faixa quadriculada de largada. |
+| `track/map_background.png` | 1024×1024 | `Background` (Fase 2) e fundo da tela da temporada (Fase 7): papel creme de programa de corrida, repetível lado a lado. |
+| `source/` | — | Originais do SpriteCook, antes da limpeza. **Não importe** no Unity. |
+
+> Os carros saíram do SpriteCook com um brilho branco semitransparente em volta, que viraria uma auréola colorida ao tingir. Os arquivos em `cars/` já estão limpos (alfa cortado e imagem recortada). Os contornos foram gerados a partir da silhueta do carro, por isso encaixam exatamente quando importados com o mesmo Pixels Per Unit.
+
+1. No Explorer, copie as pastas `cars/` e `track/` de `Sprites/PaddockBoss/` para `Assets/_Project/Sprites/` do projeto Unity. A pasta `source/` e o JSON ficam de fora.
+2. Na Project, selecione **todos** os PNGs de `cars/` (Ctrl+clique). No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Single`, **Pixels Per Unit** = `1200`, **Apply**. Com 1200, o carro tem cerca de 0,8 unidade de comprimento, o bastante para ler no mapa sem cobrir a pista. Carro e contorno precisam do **mesmo** valor, ou o contorno não encaixa.
+3. `track/start_line.png`: **Texture Type** = `Sprite (2D and UI)`, **Pixels Per Unit** = `590` (a faixa fica com 1,6 unidade, a largura da pista), **Apply**.
+4. `track/map_background.png`: **Texture Type** = `Sprite (2D and UI)`, **Mesh Type** = `Full Rect` (exigido para repetir o sprite), **Wrap Mode** = `Repeat`, **Pixels Per Unit** = `128` (cada repetição mede 8 unidades), **Apply**.
+
+**Kit de UI:** gerado no SpriteCook a partir do conceito escolhido (`ui/concept_selected.png`, a referência visual do HUD). Os componentes estão em `ui/components/<grupo>/`.
+
+5. Copie a pasta `ui/components/` para `Assets/_Project/Sprites/` e renomeie a cópia para `UI`. `ui/concept_selected.png`, `ui/component_sheet.png` e `ui/source/` são só referência e ficam fora do projeto.
+6. Selecione todos os PNGs de `Sprites/UI/` (clique na pasta, depois na busca da Project digite `t:Texture2D` e **Ctrl+A**) → **Texture Type** = `Sprite (2D and UI)` → **Apply**.
+7. **Bordas 9-slice.** Para cada peça da tabela abaixo: selecione o PNG → **Open Sprite Editor** (botão no Inspector) → no painel do canto inferior direito, digite **Border** L/T/R/B → **Apply** (topo da janela). Sem isso, os cantos arredondados esticam junto com o miolo.
+
+   | Peça (em `Sprites/UI/`) | Border (L, T, R, B) | Usada em |
+   |---|---|---|
+   | `panels/panel_cream` | 18, 18, 18, 18 | fundo do `SidePanel`, `MoneyPanel` e `CarPit_0/1` |
+   | `buttons_small/button_cream` | 14, 14, 14, 14 | `CompoundButton`, botões de investimento |
+   | `buttons_small/button_green` e `button_red` | 14, 14, 14, 14 | `BoxButton` do carro 1 e do carro 2 |
+   | `big_buttons/big_button_green` | 18, 18, 18, 18 | `ContinueButton` da tela da temporada |
+
+   Os valores vêm do campo `nine_slice` do manifesto; as demais peças usadas no MVP são **Simple** e não precisam de borda.
+8. **Recorte do cabeçalho.** `headers/header_green` traz embaixo uma faixa creme para títulos de coluna, que o HUD do MVP não usa. No Sprite Editor dele, no painel do canto inferior direito: **Position** **X** `0`, **Y** `58`, **W** `627`, **H** `97` → **Apply**. Sobra só a faixa verde com a bandeira quadriculada.
+
+> **Correções locais:** 9 ícones de `icons/` e os 2 capacetes foram corrigidos à mão depois da geração (a limpeza automática do SpriteCook apagou o miolo dos ícones e deixou o fundo creme nos capacetes). `wear_bars/wear_bar_full` foi derivado de `wear_bar_yellow`, que já vinha com os 2 últimos segmentos pretos, desenhados como "pneu gasto": a barra cheia precisa estar toda amarela para o preenchimento da Fase 4 funcionar. O selo `tyre_badge_hard` e o `icon_money` foram gerados à parte, depois do kit, no mesmo estilo; os originais estão em `ui/source/`. O manifesto marca as peças corrigidas com `local_fix`.
+
+> **Peças sem uso no MVP:** cards de notificação (`notifications/`), botões de mídia e de velocidade (`media/`), flâmulas (`pennants/`), medidores (`meters/`, `progress/`), botões de ícone (`icon_buttons/`), botões BOX com símbolo (`box_buttons/`: o símbolo central colide com os textos longos do botão, como "Box nesta volta (cancelar)"), cards de upgrade (`upgrade_rows/`: a barra de nível desenhada é decorativa e cobre o texto) e botões de compra (`buy_buttons/`). Elas ficam no projeto para as funções **Em aberto** da Parte 1 (§3, §4 e §15), que o conceito mostra.
+
+#### 🧪 Teste rápido
+Arraste `car60s_white_v1` da Project para a Scene: aparece um F1 anos 60 branco de menos de 1 unidade de comprimento. Arraste `car60s_highlight_v1` para o mesmo lugar (mesma **Position**): o contorno abraça o carro. Na Project, clique em `panels/panel_cream`: a prévia do Inspector mostra as linhas verdes da borda. Apague os dois objetos de teste da cena.
+
 ### ✅ Checkpoint da Fase 0
 - O projeto abre sem erros no Console.
 - `Assets/_Project/` tem as pastas acima e as cenas `Main` e `TrackLab`.
+- `Assets/_Project/Sprites/` tem `cars/`, `track/` e `UI/`, todos importados como `Sprite (2D and UI)`.
 - `git status` não lista `Library/` nem `Temp/` (o `.gitignore` funcionou).
 - Duplo clique num `.cs` qualquer abre o editor de código configurado.
 
 #### Problemas comuns
 - **O template Universal 2D não aparece:** atualize o Hub; na lista de templates, use a busca.
 - **Duplo clique no script abre o Bloco de Notas:** falta a etapa de **External Script Editor** (0B, passo 2).
+- **Os PNGs aparecem como ícone de arquivo e não podem ir para um Sprite Renderer:** o **Texture Type** ficou em `Default`. Selecione, troque para `Sprite (2D and UI)` e clique **Apply** (sem o Apply, nada muda).
+- **O Sprite Editor não abre ou diz que falta pacote:** o template não é o Universal 2D. Instale o **2D Sprite** pelo **Window → Package Manager**.
 
 Próxima fase: **Dados** — os números do jogo e as equipes viram assets editáveis.
 
@@ -1032,13 +1082,14 @@ Montar a cena:
    - **Color:** clique na barra de gradiente, selecione as duas setas de cor de cima e coloque `#3A3F4B` (cinza-chumbo).
    - **Corner Vertices** = `4` e **End Cap Vertices** = `4` (cantos arredondados, mais limpo no flat vector).
    - **Order in Layer** (seção Additional Settings / Sorting) = `0`.
-5. Linha de largada: botão direito em `[World]` → **2D Object → Sprites → Square** → `StartLine`. **Scale** = (1.6, 0.25, 1), **Color** branco, **Order in Layer** = `1`. Arraste `StartLine` para o campo **Start Line** do `Track Renderer`.
-6. Câmera: selecione `Main Camera`. **Projection** = Orthographic (já vem assim no 2D), **Size** = `16`, **Position** = (0, 0, -10). Em **Environment → Background**, uma cor de fundo escura (ex.: `#14171C`). A Fase 8 troca o Size fixo por enquadramento automático.
-7. No **Track Renderer**, arraste `Track_A` para **Editor Preview** e clique no ⋮ → **Desenhar prévia no Editor**.
-8. **Ctrl+S** para salvar a cena.
+5. Linha de largada: botão direito em `[World]` → **2D Object → Sprites → Square** → `StartLine`. No **Sprite Renderer**: **Sprite** = `start_line` (da Etapa 0D), **Color** branco, **Order in Layer** = `1`. **Scale** = (1, 1, 1): o tamanho vem do Pixels Per Unit da importação. Arraste `StartLine` para o campo **Start Line** do `Track Renderer`.
+6. Fundo: botão direito em `[World]` → **2D Object → Sprites → Square** → `Background`. **Sprite** = `map_background`, **Draw Mode** = `Tiled`, **Size** = (200, 200), **Order in Layer** = `-10`, **Position** = (0, 0, 0). O papel creme se repete e cobre toda a área que a câmera pode mostrar.
+7. Câmera: selecione `Main Camera`. **Projection** = Orthographic (já vem assim no 2D), **Size** = `16`, **Position** = (0, 0, -10). Em **Environment → Background** = `#EFE6D2` (o creme do papel): se a câmera passar da borda do fundo, a cor continua a mesma. A Fase 8 troca o Size fixo por enquadramento automático.
+8. No **Track Renderer**, arraste `Track_A` para **Editor Preview** e clique no ⋮ → **Desenhar prévia no Editor**.
+9. **Ctrl+S** para salvar a cena.
 
 #### 🧪 Teste rápido
-Sem apertar Play, a Scene e a Game view mostram a `Track_A` como uma faixa cinza fechada, com a linha de largada branca atravessada no `WP_00`.
+Sem apertar Play, a Scene e a Game view mostram o papel creme e, sobre ele, a `Track_A` como uma faixa cinza-chumbo fechada, com a faixa quadriculada de largada atravessada no `WP_00`.
 
 **Hierarchy esperada ao fim da Fase 2 (cena `Main`):**
 
@@ -1048,7 +1099,8 @@ Main
 ├─ [Systems]
 ├─ [World]
 │  ├─ Track          (Line Renderer, Track Renderer)
-│  └─ StartLine      (Sprite Renderer)
+│  ├─ StartLine      (Sprite Renderer: start_line)
+│  └─ Background     (Sprite Renderer: map_background, Tiled)
 └─ [UI]
 ```
 
@@ -1061,6 +1113,8 @@ Main
 - **Linha rosa ou invisível:** falta o material `Sprite-Unlit-Default` no Line Renderer (o projeto é URP 2D).
 - **A prévia não aparece na Game view:** a câmera está longe da pista. Confira **Position** (0, 0, -10) e **Size** 16, e se a `TrackAuthoring` estava em (0, 0, 0) ao gravar.
 - **Gravei, mas o asset voltou ao que era:** você editou os waypoints e não clicou em **Gravar** de novo. O asset só muda no Bake.
+- **O fundo aparece esticado em vez de repetido, com um aviso amarelo no Sprite Renderer:** o `map_background` não está com **Mesh Type** = `Full Rect` (Etapa 0D, passo 4).
+- **A pista some atrás do papel:** o `Background` não está com **Order in Layer** `-10`.
 
 Próxima fase: **Simulação da corrida** — 14 carros andando, completando voltas e trocando de posição.
 
@@ -1655,21 +1709,23 @@ Montar na cena `Main`:
 #### 🧪 Teste rápido
 Aperte ▶. 14 bolinhas coloridas saem de trás da linha de largada e dão voltas. Nas curvas, elas se aproximam umas das outras (estão freando). As duas bolinhas amarelas maiores são os carros do jogador. Em cerca de um minuto (com Time Scale 4), todas param sobre a linha de chegada.
 
-### Etapa 3B — O ícone do carro (prefab)
+### Etapa 3B — O sprite do carro (prefab)
+
+O carro usa os sprites importados na Etapa 0D. Use a **mesma variação** (v1 ou v2) no `Body` e no `Highlight`.
 
 1. Na Hierarchy, botão direito no vazio → **Create Empty** → `CarMarker`. **Reset** no Transform.
-2. Botão direito em `CarMarker` → **2D Object → Sprites → Capsule** → `Body`. **Scale** = (0.5, 0.8, 1); **Sprite Renderer → Order in Layer** = `3`.
-3. Botão direito em `CarMarker` → **2D Object → Sprites → Capsule** → `Highlight`. **Scale** = (0.7, 1.0, 1); **Color** = `#FFE14D`; **Order in Layer** = `2` (fica atrás do Body, como um contorno).
-4. Botão direito em `CarMarker` → **3D Object → Text - TextMeshPro** → `Label`. Aceite **Import TMP Essentials** se for pedido. No Inspector:
+2. Botão direito em `CarMarker` → **2D Object → Sprites → Square** → `Body`. **Sprite** = `car60s_white_v1`, **Scale** = (1, 1, 1), **Color** = branco (o script tinge com a cor da equipe na largada), **Order in Layer** = `3`.
+3. Botão direito em `CarMarker` → **2D Object → Sprites → Square** → `Highlight`. **Sprite** = `car60s_highlight_v1`, **Scale** = (1, 1, 1), **Color** = `#14171C`, **Order in Layer** = `2` (fica atrás do Body, como um contorno). O contorno quase preto se destaca no papel creme, com cara de impresso; um contorno amarelo sumiria nos carros de cores claras.
+4. Botão direito em `CarMarker` → **3D Object → Text - TextMeshPro** → `Label`. Aceite **Import TMP Essentials** se for pedido. A letra fica sobre o capacete do piloto. No Inspector:
    - **Rect Transform:** **Pos** (0, 0, 0), **Width** 1, **Height** 1.
-   - **Text Input:** `A`. **Font Size** = `3`. **Alignment:** centro horizontal e centro vertical. **Vertex Color** = preto.
+   - **Text Input:** `A`. **Font Size** = `2`. **Alignment:** centro horizontal e centro vertical. **Vertex Color** = branco. Se a letra atrapalhar a leitura do carro, desative o objeto `Label`: o script continua funcionando.
    - **Extra Settings → Order in Layer** = `4`.
 5. Selecione `CarMarker`. **Add Component → Car Marker** e arraste os filhos para **Body**, **Player Highlight** (o `Highlight`) e **Label**.
 6. Arraste `CarMarker` da Hierarchy para a pasta `Assets/_Project/Prefabs/`. O ícone fica azul: virou prefab. Apague o `CarMarker` da Hierarchy (Delete); o prefab continua na Project.
 7. Selecione `RaceRunner` e arraste o prefab `CarMarker` para **Car Marker Prefab**.
 
 #### 🧪 Teste rápido
-Aperte ▶. Agora cada carro é uma cápsula com a cor da equipe, apontando para onde anda e com a inicial do piloto sempre de pé. Os do jogador têm contorno amarelo. Carros lado a lado ficam levemente separados (faixas), e não um em cima do outro. As bolinhas de gizmo continuam por baixo; desligue **Gizmos** na Game view se atrapalharem.
+Aperte ▶. Agora cada carro é um F1 anos 60 tingido com a cor da equipe, apontando para onde anda e com a inicial do piloto sempre de pé. Os do jogador têm um contorno escuro bem encaixado. Carros lado a lado ficam levemente separados (faixas), e não um em cima do outro. As bolinhas de gizmo continuam por baixo; desligue **Gizmos** na Game view se atrapalharem.
 
 ### Etapa 3C — Volta e tabela de posições
 
@@ -1747,15 +1803,18 @@ Montar a UI, clique a clique:
 3. **Game view:** no menu de resolução da Game view (onde diz *Free Aspect*), escolha `Full HD (1920x1080)`. Se não existir, clique em **+** e crie.
 4. **SidePanel:** botão direito em `Canvas` → **UI → Panel** → `SidePanel`.
    - **Rect Transform:** clique no quadrado de âncoras (canto superior esquerdo do componente), segure **Shift + Alt** e clique na opção da **coluna da direita, linha de baixo** (*right / stretch*). Depois: **Width** = `640`, **Pos X** = `0`, **Top** = `0`, **Bottom** = `0`.
-   - **Image → Color** = `#1B1F27`, alfa 255 (painel opaco).
+   - **Image:** **Source Image** = `panels/panel_cream` (Etapa 0D), **Image Type** = `Sliced`, **Color** = branco, alfa 255 (painel opaco; a cor vem da arte).
    - **Add Component → Vertical Layout Group:** **Padding** 16 nos quatro lados, **Spacing** `8`, **Child Alignment** `Upper Left`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✗ Height.
-5. **LapText:** botão direito em `SidePanel` → **UI → Text - TextMeshPro** → `LapText`. Texto `Volta 1/12`, **Font Size** `40`, **Font Style** **B**. **Add Component → Layout Element** → **Preferred Height** ✓ `56`.
-6. **StandingsText:** mesmo caminho → `StandingsText`. Texto `Tabela`, **Font Size** `22`, **Alignment** topo/esquerda, **Wrapping** desligado. **Layout Element → Preferred Height** ✓ `400`.
-7. Selecione `SidePanel`. **Add Component → Race HUD** e ligue **Runner** (`RaceRunner`), **Lap Text** e **Standings Text**.
-8. **Ctrl+S**.
+5. **LapHeader:** botão direito em `SidePanel` → **UI → Image** → `LapHeader`. **Source Image** = `headers/header_green` (já recortado na 0D), **Image Type** = `Simple`, **Preserve Aspect** ✓, **Raycast Target** desligado (é decorativo). **Add Component → Layout Element** → **Preferred Height** ✓ `94`.
+6. **LapText:** botão direito em `LapHeader` → **UI → Text - TextMeshPro** → `LapText`. Âncoras: **Alt** + *stretch / stretch*; **Left** `24`, **Right** `140` (para não cobrir a bandeira), **Top** e **Bottom** `0`. Texto `Volta 1/12`, **Font Size** `40`, **Font Style** **B**, **Alignment** meio/esquerda, **Vertex Color** = `#EFE6D2` (creme).
+7. **StandingsText:** botão direito em `SidePanel` → **UI → Text - TextMeshPro** → `StandingsText`. Texto `Tabela`, **Font Size** `20`, **Alignment** topo/esquerda, **Wrapping** desligado, **Vertex Color** = `#14171C`. **Add Component → Layout Element → Preferred Height** ✓ `340`.
+8. Selecione `SidePanel`. **Add Component → Race HUD** e ligue **Runner** (`RaceRunner`), **Lap Text** e **Standings Text**.
+9. **Ctrl+S**.
+
+> **Cores de texto no guia inteiro:** texto sobre o papel creme em `#14171C` (quase preto); texto sobre verde ou vermelho em `#EFE6D2` (creme); valores de dinheiro em `#194E34` (o verde dos cabeçalhos). O TMP cria textos brancos, que somem no creme: troque sempre o **Vertex Color**.
 
 #### 🧪 Teste rápido
-Aperte ▶. O painel escuro à direita mostra `Volta 1/12` e a tabela com 14 linhas: posição, sigla colorida da equipe, nome do piloto e diferença para o líder. Seus dois pilotos aparecem em **negrito**. A tabela muda a cada ultrapassagem; ao final, aparecem `Última volta`, `FIM` nos que terminaram e `Bandeirada!`.
+Aperte ▶. O painel creme à direita mostra a faixa verde com `Volta 1/12` e a bandeira quadriculada e, abaixo, a tabela com 14 linhas: posição, sigla colorida da equipe, nome do piloto e diferença para o líder. Seus dois pilotos aparecem em **negrito**. A tabela muda a cada ultrapassagem; ao final, aparecem `Última volta`, `FIM` nos que terminaram e `Bandeirada!`.
 
 > Parte da pista pode ficar por baixo do painel. A Fase 8 resolve isso com enquadramento automático; por ora, mova a `Main Camera` alguns pontos para a direita (**Position X** ≈ 6).
 
@@ -1770,11 +1829,13 @@ Main
 ├─ [World]
 │  ├─ Track
 │  ├─ StartLine
+│  ├─ Background
 │  └─ Cars              (vazio no Editor; os carros nascem aqui no Play)
 └─ [UI]
    └─ Canvas
-      └─ SidePanel      (Image, Vertical Layout Group, Race HUD)
-         ├─ LapText
+      └─ SidePanel      (Image: panel_cream, Vertical Layout Group, Race HUD)
+         ├─ LapHeader   (Image: header_green)
+         │  └─ LapText
          └─ StandingsText
 ```
 
@@ -1787,7 +1848,11 @@ Main
 - **`ArgumentException: A pista precisa de pelo menos 3 waypoints`:** a `TrackDefinition` usada não passou pelo **Gravar** da Fase 2.
 - **Todos os carros andam igual e a ordem nunca muda:** os rivais estão com os níveis iniciais zerados (ver tabela da Etapa 1B) ou `Noise Amplitude` está 0 no `GameBalance`.
 - **`NullReferenceException` no `CarMarker.Bind`:** um campo do prefab ficou vazio (Body, Player Highlight ou Label) ou uma equipe tem nome de piloto vazio.
-- **A tabela não aparece:** o texto está fora do painel. Confira **Control Child Size** no Vertical Layout Group e o **Layout Element** dos textos.
+- **A tabela não aparece:** o texto está fora do painel. Confira **Control Child Size** no Vertical Layout Group e o **Layout Element** dos textos. Se o texto existe mas não se lê, ele ficou branco sobre o creme: **Vertex Color** `#14171C`.
+- **Os carros ficaram enormes ou minúsculos:** é o **Pixels Per Unit** da importação (Etapa 0D), não a escala do prefab. A escala do `Body` e do `Highlight` deve ser (1, 1, 1).
+- **O contorno do jogador não encaixa no carro:** carro e contorno são de variações diferentes (v1 com v2) ou foram importados com Pixels Per Unit diferentes.
+- **Os cantos do painel creme ficaram esticados:** faltam as bordas 9-slice do `panel_cream` (Etapa 0D, passo 7) ou o **Image Type** não está em `Sliced`.
+- **A faixa verde aparece com uma parte creme embaixo:** o recorte do `header_green` (Etapa 0D, passo 8) não foi aplicado.
 
 Próxima fase: **Pneus e pit stop** — desgaste visível e o primeiro controle do jogador.
 
@@ -1827,18 +1892,24 @@ namespace PaddockBoss.UI
     // OnEnable/OnDisable rodam quando o objeto liga/desliga; é ali que o script
     // se inscreve e se desinscreve do RaceStarted, para não ficar "ouvindo" depois
     // de desligado. Os botões só chamam métodos da simulação (RequestPit/CancelPit);
-    // os textos são relidos a cada frame.
+    // os textos são relidos a cada frame. A arte da barra já é amarela: o script
+    // só a tinge de branco (cor original) até _wornTint conforme o pneu gasta, e
+    // troca o selo do composto escolhido pelo sprite da lista _compoundBadges,
+    // na ordem do enum TireCompound (Macio, Médio, Duro).
     public class CarPitControls : MonoBehaviour
     {
         [SerializeField] private RaceRunner _runner;
         [SerializeField, Range(0, 1)] private int _driverIndex;
         [SerializeField] private TMP_Text _driverText;
         [SerializeField] private Image _wearFill;
+        [SerializeField] private Color _wornTint = new(0.85f, 0.2f, 0.15f);
         [SerializeField] private TMP_Text _tireText;
         [SerializeField] private Button _boxButton;
         [SerializeField] private TMP_Text _boxLabel;
         [SerializeField] private Button _compoundButton;
         [SerializeField] private TMP_Text _compoundLabel;
+        [SerializeField] private Image _compoundBadge;
+        [SerializeField] private Sprite[] _compoundBadges = new Sprite[3];
 
         private CarState _car;
         private TireCompound _selected = TireCompound.Medium;
@@ -1884,7 +1955,7 @@ namespace PaddockBoss.UI
             if (_car != null && _car.PitRequested) _runner.Sim.RequestPit(_car, _selected);
         }
 
-        // Atualiza barra de desgaste, textos e estado dos botões.
+        // Atualiza barra de desgaste, selo, textos e estado dos botões.
         private void Update()
         {
             if (_car == null) return;
@@ -1892,9 +1963,10 @@ namespace PaddockBoss.UI
 
             _driverText.text = $"P{_car.Position}  {_car.DriverName}";
             _wearFill.fillAmount = 1f - _car.TireWear;
-            _wearFill.color = Color.Lerp(Color.green, Color.red, _car.TireWear);
+            _wearFill.color = Color.Lerp(Color.white, _wornTint, _car.TireWear);
             _tireText.text = $"{balance.GetCompound(_car.Compound).displayName}  {(1f - _car.TireWear) * 100f:0}%";
             _compoundLabel.text = $"Trocar por: {balance.GetCompound(_selected).displayName}";
+            _compoundBadge.sprite = _compoundBadges[(int)_selected];
 
             _boxLabel.text = _car.InPit ? $"No box... {_car.PitTimeRemaining:0.0}s"
                 : _car.PitRequested ? "Box nesta volta (cancelar)"
@@ -1909,38 +1981,43 @@ namespace PaddockBoss.UI
 
 ### Etapa 4B — Painel do primeiro carro
 
-1. **PitPanel:** botão direito em `SidePanel` → **Create Empty** → `PitPanel`. **Add Component → Horizontal Layout Group:** **Spacing** `16`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height. **Add Component → Layout Element → Preferred Height** ✓ `190`.
-2. **CarPit_0:** botão direito em `PitPanel` → **Create Empty** → `CarPit_0`. **Add Component → Vertical Layout Group:** **Spacing** `6`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✗ Height.
-3. Filhos de `CarPit_0`, nesta ordem (cada um com **Add Component → Layout Element → Preferred Height**):
+1. **PitPanel:** botão direito em `SidePanel` → **Create Empty** → `PitPanel`. **Add Component → Horizontal Layout Group:** **Spacing** `16`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height. **Add Component → Layout Element → Preferred Height** ✓ `230`.
+2. **CarPit_0:** botão direito em `PitPanel` → **UI → Image** → `CarPit_0` (a Image é o fundo do card). **Source Image** = `panels/panel_cream`, **Image Type** = `Sliced`. **Add Component → Vertical Layout Group:** **Padding** `10` nos quatro lados, **Spacing** `6`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✗ Height.
+3. Filhos de `CarPit_0`, nesta ordem (cada um com **Add Component → Layout Element → Preferred Height**). Os sprites são os da Etapa 0D:
 
    | Nome | Como criar (botão direito em `CarPit_0` →) | Ajustes | Preferred Height |
    |---|---|---|---|
-   | `DriverText` | **UI → Text - TextMeshPro** | Font Size 22, negrito | 30 |
-   | `WearBar` | **UI → Image** | Color `#3A3F4B` | 20 |
-   | `TireText` | **UI → Text - TextMeshPro** | Font Size 20 | 26 |
-   | `CompoundButton` | **UI → Button - TextMeshPro** | texto filho: Font Size 18 | 44 |
-   | `BoxButton` | **UI → Button - TextMeshPro** | texto filho: Font Size 20, negrito | 44 |
+   | `DriverRow` | **Create Empty** | **Add Component → Horizontal Layout Group:** **Spacing** `8`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✗ Width ✓ Height | 34 |
+   | `WearBar` | **UI → Image** | **Source Image** = `wear_bars/wear_bar_empty`, **Image Type** `Simple` | 20 |
+   | `TireText` | **UI → Text - TextMeshPro** | Font Size 18, **Vertex Color** `#14171C` | 24 |
+   | `CompoundButton` | **UI → Button - TextMeshPro** | **Image → Source Image** = `buttons_small/button_cream`, `Sliced`; texto filho: Font Size 18, **Vertex Color** `#14171C` | 48 |
+   | `BoxButton` | **UI → Button - TextMeshPro** | **Image → Source Image** = `buttons_small/button_green`, `Sliced`; texto filho: Font Size 20, negrito, **Vertex Color** `#EFE6D2` | 52 |
 
-4. **Barra de desgaste:** botão direito em `WearBar` → **UI → Image** → `Fill`.
-   - **Rect Transform:** quadrado de âncoras → **Alt** + clique na opção do canto inferior direito (*stretch / stretch*), para ocupar todo o `WearBar`.
-   - **Source Image:** clique no ⊙ e escolha `UISprite`. Sem sprite, a opção *Filled* não aparece.
-   - **Image Type** = `Filled`, **Fill Method** = `Horizontal`, **Fill Origin** = `Left`. **Color** = verde.
-5. Selecione `CarPit_0`. **Add Component → Car Pit Controls**:
+4. **Capacete e nome:** dentro de `DriverRow`:
+   - Botão direito → **UI → Image** → `Helmet`. **Source Image** = `helmets/helmet_green`, **Preserve Aspect** ✓, **Raycast Target** desligado. **Layout Element → Preferred Width** ✓ `34`.
+   - Botão direito → **UI → Text - TextMeshPro** → `DriverText`. Font Size 22, negrito, **Alignment** meio/esquerda, **Vertex Color** `#14171C`. **Layout Element → Flexible Width** ✓ `1` (ocupa o resto da linha).
+5. **Barra de desgaste:** botão direito em `WearBar` → **UI → Image** → `Fill`.
+   - **Rect Transform:** quadrado de âncoras → **Alt** + clique na opção do canto inferior direito (*stretch / stretch*). **Left** e **Right** = `0`, **Top** e **Bottom** = `1` (a arte da barra cheia é um pouco mais baixa que a da vazia).
+   - **Source Image** = `wear_bars/wear_bar_full`. **Image Type** = `Filled`, **Fill Method** = `Horizontal`, **Fill Origin** = `Left`. **Color** = branco (o script tinge de vermelho conforme o pneu gasta).
+6. **Selo do composto:** botão direito em `CompoundButton` → **UI → Image** → `Badge`. Âncoras: **Shift + Alt** + *middle / left*. **Pos X** `8`, **Width** e **Height** `36`. **Source Image** = `tyre_badges/tyre_badge_medium`, **Preserve Aspect** ✓, **Raycast Target** desligado. No texto filho do `CompoundButton`, abra **Extra Settings → Margins** e ponha **Left** = `48`, para o texto não ficar por cima do selo.
+7. Selecione `CarPit_0`. **Add Component → Car Pit Controls**:
    - **Runner** = `RaceRunner`; **Driver Index** = `0`.
-   - **Driver Text**, **Wear Fill** (o `Fill`, não o `WearBar`), **Tire Text**.
+   - **Driver Text**, **Wear Fill** (o `Fill`, não o `WearBar`), **Tire Text**. Deixe **Worn Tint** no vermelho padrão.
    - **Box Button** = `BoxButton`; **Box Label** = o `Text (TMP)` filho do `BoxButton`.
-   - **Compound Button** = `CompoundButton`; **Compound Label** = o texto filho dele.
+   - **Compound Button** = `CompoundButton`; **Compound Label** = o texto filho dele; **Compound Badge** = `Badge`.
+   - **Compound Badges** (lista com 3 posições, na ordem do enum): **Element 0** = `tyre_badge_soft`, **Element 1** = `tyre_badge_medium`, **Element 2** = `tyre_badge_hard`.
 
 #### 🧪 Teste rápido
-Aperte ▶. O painel do primeiro carro mostra `P7  Nome`, a barra cheia e verde, `Médio 100%` e os botões. Clique **Trocar por: Médio** até mostrar **Macio**. Clique **Box**: o texto vira "Box nesta volta (cancelar)". Ao cruzar a linha, a cápsula sai para o lado da pista, o botão mostra a contagem regressiva, e o carro volta com `Macio 100%`.
+Aperte ▶. O card creme do primeiro carro mostra o capacete verde com `P7  Nome`, a barra amarela cheia, `Médio 100%`, o botão creme com o selo **M** e o botão verde **Box**. Clique **Trocar por: Médio** até mostrar **Macio**: o selo vira **S**. Clique **Box**: o texto vira "Box nesta volta (cancelar)". Ao cruzar a linha, o carro sai para o lado da pista, o botão mostra a contagem regressiva, e o carro volta com `Macio 100%`. Ao longo da corrida, a barra encurta e avermelha.
 
 ### Etapa 4C — Segundo carro
 
 1. Selecione `CarPit_0` e **Ctrl+D**. Renomeie a cópia para `CarPit_1`.
 2. No **Car Pit Controls** da cópia, mude **Driver Index** para `1`. As outras referências já apontam para os filhos da cópia.
+3. Na cópia, troque a arte para a cor do segundo carro, como no conceito (Parte 1 §9): `Helmet` → **Source Image** = `helmets/helmet_red`; `BoxButton` → **Source Image** = `buttons_small/button_red`.
 
 #### 🧪 Teste rápido
-Os dois painéis mostram pilotos diferentes, e o **Box** de cada um chama só o seu carro.
+Os dois painéis mostram pilotos diferentes (capacete verde e vermelho), e o **Box** de cada um chama só o seu carro.
 
 **Hierarchy esperada (dentro de `SidePanel`) ao fim da Fase 4:**
 
@@ -1950,22 +2027,27 @@ SidePanel
 ├─ StandingsText
 └─ PitPanel                (Horizontal Layout Group)
    ├─ CarPit_0             (Vertical Layout Group, Car Pit Controls: Driver Index 0)
-   │  ├─ DriverText
-   │  ├─ WearBar
-   │  │  └─ Fill
+   │  ├─ DriverRow
+   │  │  ├─ Helmet         (helmet_green)
+   │  │  └─ DriverText
+   │  ├─ WearBar           (wear_bar_empty)
+   │  │  └─ Fill           (wear_bar_full, Filled)
    │  ├─ TireText
-   │  ├─ CompoundButton
-   │  └─ BoxButton
-   └─ CarPit_1             (igual, Driver Index 1)
+   │  ├─ CompoundButton    (button_cream)
+   │  │  └─ Badge          (tyre_badge_*)
+   │  └─ BoxButton         (button_green)
+   └─ CarPit_1             (igual, Driver Index 1, helmet_red e button_red)
 ```
 
 ### ✅ Checkpoint da Fase 4
-- A barra de cada carro do jogador esvazia e passa de verde a vermelho ao longo da corrida.
+- A barra de cada carro do jogador encurta e passa de amarelo a vermelho ao longo da corrida.
 - O pit stop troca o composto e zera o desgaste; a tabela mostra `BOX` enquanto o carro está parado.
 - Com pneu acabado, o carro fica claramente mais lento e perde posições (teste deixando um carro sem parar a corrida inteira).
 
 #### Problemas comuns
 - **A barra não esvazia:** o campo **Wear Fill** aponta para o `WearBar` em vez do `Fill`, ou o `Fill` não está como *Filled*.
+- **A barra cheia já mostra 2 segmentos pretos no fim:** o `Fill` está com `wear_bar_yellow` em vez de `wear_bar_full`.
+- **`IndexOutOfRangeException` no `CarPitControls`:** a lista **Compound Badges** não tem os 3 sprites.
 - **O botão não reage ao clique:** falta o `EventSystem` na cena, ou outro objeto de UI transparente está por cima bloqueando (desligue **Raycast Target** das imagens decorativas).
 
 Próxima fase: **Economia e investimentos** — o dinheiro entra durante a corrida e vira desempenho.
@@ -2307,11 +2389,12 @@ namespace PaddockBoss.UI
 ```
 
 Montar o painel de dinheiro:
-1. Botão direito em `SidePanel` → **Create Empty** → `MoneyPanel`. Na Hierarchy, arraste-o para ficar **entre** `StandingsText` e `PitPanel`.
-2. Em `MoneyPanel`: **Add Component → Horizontal Layout Group** (**Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height) e **Add Component → Layout Element → Preferred Height** ✓ `100`.
-3. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `MoneyText`: **Font Size** `40`, negrito, **Alignment** meio/esquerda, cor `#FFE14D`.
-4. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `FeedText`: **Font Size** `18`, **Alignment** topo/direita, cor `#6BE37A`, **Wrapping** desligado.
-5. Selecione `MoneyPanel`. **Add Component → Money Feed** e ligue **Runner**, **Money Text** e **Feed Text**.
+1. Botão direito em `SidePanel` → **UI → Image** → `MoneyPanel`. Na Hierarchy, arraste-o para ficar **entre** `StandingsText` e `PitPanel`. **Source Image** = `panels/panel_cream`, **Image Type** = `Sliced` (o card dentro do painel, como no conceito).
+2. Em `MoneyPanel`: **Add Component → Horizontal Layout Group** (**Padding** `12` nos quatro lados, **Spacing** `10`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✗ Width ✓ Height) e **Add Component → Layout Element → Preferred Height** ✓ `90`.
+3. Botão direito em `MoneyPanel` → **UI → Image** → `MoneyIcon`: **Source Image** = `icons/icon_money`, **Preserve Aspect** ✓, **Raycast Target** desligado. **Add Component → Layout Element → Preferred Width** ✓ `48`.
+4. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `MoneyText`: **Font Size** `40`, negrito, **Alignment** meio/esquerda, **Vertex Color** `#194E34`. **Layout Element → Flexible Width** ✓ `1`.
+5. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `FeedText`: **Font Size** `18`, **Alignment** topo/direita, **Vertex Color** `#194E34`, **Wrapping** desligado. **Layout Element → Flexible Width** ✓ `1`.
+6. Selecione `MoneyPanel`. **Add Component → Money Feed** e ligue **Runner**, **Money Text** e **Feed Text**.
 
 #### 🧪 Teste rápido
 Aperte ▶. O saldo começa em `$ 300` e sobe sozinho (patrocínio). A cada volta aparece `+N  Volta em Px` à direita; quando um carro seu ultrapassa, `+15  Ultrapassagem`. Na chegada, `+N  Chegada em Px`. As mensagens somem depois de 3 segundos.
@@ -2381,39 +2464,46 @@ Montar o painel:
    - **Add Component → Grid Layout Group:** **Cell Size** `296` × `80`, **Spacing** `16` × `10`, **Constraint** = `Fixed Column Count`, **Constraint Count** = `2`.
    - **Add Component → Layout Element → Preferred Height** ✓ `260`.
 2. Primeiro botão: botão direito em `InvestPanel` → **UI → Button - TextMeshPro** → `Upgrade_Engineering`.
-   - Renomeie o filho `Text (TMP)` para `Title`: **Font Size** `20`, negrito.
-   - Botão direito em `Upgrade_Engineering` → **UI → Text - TextMeshPro** → `Level` (**Font Size** `16`), e de novo → `Cost` (**Font Size** `18`, cor `#B8860B`).
-   - Em `Upgrade_Engineering`: **Add Component → Vertical Layout Group** (**Padding** 6 nos quatro lados, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height). Os três textos se empilham dentro do botão.
+   - **Image → Source Image** = `buttons_small/button_cream`, **Image Type** = `Sliced`.
+   - **Button → Transition** = `Color Tint`, **Disabled Color** = `#BDB6A8` com alfa `160`: sem dinheiro, o card fica desbotado, como os cards trancados do conceito.
+   - Renomeie o filho `Text (TMP)` para `Title`: **Font Size** `20`, negrito, **Vertex Color** `#14171C`.
+   - Botão direito em `Upgrade_Engineering` → **UI → Text - TextMeshPro** → `Level` (**Font Size** `16`, **Vertex Color** `#14171C`), e de novo → `Cost` (**Font Size** `18`, **Vertex Color** `#194E34`).
+   - Em `Upgrade_Engineering`: **Add Component → Vertical Layout Group** (**Padding** Left `60`, Right/Top/Bottom `6`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height). Os três textos se empilham à direita do ícone.
+   - **Ícone:** botão direito em `Upgrade_Engineering` → **UI → Image** → `Icon`. **Add Component → Layout Element → Ignore Layout** ✓ (o Vertical Layout Group passa a ignorá-lo). Âncoras: **Shift + Alt** + *middle / left*. **Pos X** `10`, **Width** e **Height** `42`. **Source Image** = `icons/icon_wrench`, **Preserve Aspect** ✓, **Raycast Target** desligado.
    - **Add Component → Upgrade Button:** **Runner** = `RaceRunner`, **Type** = `Engineering`, **Driver Index** = `0`, **Button** = o próprio `Upgrade_Engineering`, **Title Text**, **Level Text**, **Cost Text**.
-3. Selecione `Upgrade_Engineering` e **Ctrl+D** quatro vezes. Renomeie as cópias e mude só **Type** e **Driver Index**:
+3. Selecione `Upgrade_Engineering` e **Ctrl+D** quatro vezes. Renomeie as cópias e mude **Type**, **Driver Index** e o sprite do `Icon`:
 
-   | Objeto | Type | Driver Index |
-   |---|---|---|
-   | `Upgrade_Engineering` | Engineering | 0 |
-   | `Upgrade_Marketing` | Marketing | 0 |
-   | `Upgrade_PitCrew` | PitCrew | 0 |
-   | `Upgrade_Driver0` | DriverTraining | 0 |
-   | `Upgrade_Driver1` | DriverTraining | 1 |
+   | Objeto | Type | Driver Index | `Icon` (em `Sprites/UI/`) |
+   |---|---|---|---|
+   | `Upgrade_Engineering` | Engineering | 0 | `icons/icon_wrench` |
+   | `Upgrade_Marketing` | Marketing | 0 | `icons/icon_star` |
+   | `Upgrade_PitCrew` | PitCrew | 0 | `icons/icon_stopwatch` |
+   | `Upgrade_Driver0` | DriverTraining | 0 | `helmets/helmet_green` |
+   | `Upgrade_Driver1` | DriverTraining | 1 | `helmets/helmet_red` |
+
+   O kit não tem ícones próprios de propaganda e de equipe de boxes; a estrela e o cronômetro são a escolha provisória (arte final **Em aberto**, Parte 1 §9).
 
 4. **Ctrl+S**.
 
 #### 🧪 Teste rápido
-Aperte ▶ com **Time Scale** `1`. Os botões mostram nome, `Nv 0` e custo, e ficam cinza até o saldo alcançar o custo. Compre **Engenharia** algumas vezes: o saldo cai, o nível sobe, o custo do próximo nível aumenta, e nas voltas seguintes seus carros ganham posições. **Propaganda** acelera a subida do saldo; **Equipe de boxes** encurta a contagem do próximo pit stop.
+Aperte ▶ com **Time Scale** `1`. Os cards creme mostram ícone, nome, `Nv 0` e custo, e ficam desbotados até o saldo alcançar o custo. Compre **Engenharia** algumas vezes: o saldo cai, o nível sobe, o custo do próximo nível aumenta, e nas voltas seguintes seus carros ganham posições. **Propaganda** acelera a subida do saldo; **Equipe de boxes** encurta a contagem do próximo pit stop.
 
 **Hierarchy esperada (dentro de `SidePanel`) ao fim da Fase 5:**
 
 ```
 SidePanel                  (Race HUD)
-├─ LapText
+├─ LapHeader
+│  └─ LapText
 ├─ StandingsText
-├─ MoneyPanel              (Money Feed)
+├─ MoneyPanel              (panel_cream, Money Feed)
+│  ├─ MoneyIcon            (icon_money)
 │  ├─ MoneyText
 │  └─ FeedText
 ├─ PitPanel
 │  ├─ CarPit_0
 │  └─ CarPit_1
 └─ InvestPanel             (Grid Layout Group)
-   ├─ Upgrade_Engineering  (Upgrade Button)
+   ├─ Upgrade_Engineering  (button_cream, Upgrade Button) → Icon, Title, Level, Cost
    ├─ Upgrade_Marketing
    ├─ Upgrade_PitCrew
    ├─ Upgrade_Driver0
@@ -2423,11 +2513,12 @@ SidePanel                  (Race HUD)
 ### ✅ Checkpoint da Fase 5
 - O saldo sobe com patrocínio, voltas, ultrapassagens e chegada.
 - Cada compra tem efeito visível na mesma corrida.
-- Ao fim da corrida, todos os botões ficam cinza (não se compra depois da bandeirada).
+- Ao fim da corrida, todos os botões ficam desbotados (não se compra depois da bandeirada).
 
 #### Problemas comuns
 - **Os botões nunca acendem:** `PlayerTeam` está nulo. Confira se `Team_Player` está no campo **Player Team** do `RaceTestStarter` (é ele que marca `isPlayer = true`).
-- **O painel não cabe na tela:** a soma das **Preferred Height** passou de 1080. Diminua a da `StandingsText` ou a fonte dela.
+- **O painel não cabe na tela:** a soma das **Preferred Height** (94 + 340 + 90 + 230 + 260, mais padding e espaçamento) passou de 1080. Diminua a da `StandingsText` ou a fonte dela.
+- **O texto do card de investimento fica por cima do ícone:** falta **Ignore Layout** no `Icon` ou o **Padding Left** `60` no Vertical Layout Group do botão.
 - **`NullReferenceException` no `MoneyFeed`:** o `RaceRunner.cs` ainda é a versão da Fase 3, sem `Economy`. Substitua-o pela versão desta fase.
 
 Próxima fase: **IA das equipes rivais** — as rivais também compram e vão ao box.
@@ -2908,16 +2999,18 @@ namespace PaddockBoss.UI
 ```
 
 Montar a tela, clique a clique:
-1. Botão direito em `Canvas` → **UI → Panel** → `SeasonPanel`. O Panel já nasce ocupando o Canvas inteiro. **Image → Color** = `#101418`, alfa `245`.
+1. Botão direito em `Canvas` → **UI → Panel** → `SeasonPanel`. O Panel já nasce ocupando o Canvas inteiro. **Image:** **Source Image** = `map_background` (o papel creme da Etapa 0D, em `Sprites/track/`), **Image Type** = `Tiled`, **Color** = branco, alfa `255` (opaco: a tela da temporada esconde a corrida por inteiro).
 2. Na Hierarchy, garanta que `SeasonPanel` é o **último filho** do `Canvas`. A UI é desenhada na ordem da Hierarchy, então o último fica por cima de tudo.
-3. **Title:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Title`. Âncoras: **Shift + Alt** + clique em *top / stretch* (linha de cima, coluna da direita). **Height** = `120`, **Left**/**Right** = `0`. **Font Size** `56`, negrito, alinhamento centralizado.
-4. **Results:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Results`. No Rect Transform, abra **Anchors** e digite **Min** (0.05, 0.18) e **Max** (0.48, 0.85); depois **Left**, **Top**, **Right**, **Bottom** = `0`. **Font Size** `24`, alinhamento topo/esquerda.
+3. **Title:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Title`. Âncoras: **Shift + Alt** + clique em *top / stretch* (linha de cima, coluna da direita). **Height** = `120`, **Left**/**Right** = `0`. **Font Size** `56`, negrito, alinhamento centralizado, **Vertex Color** `#194E34`.
+4. **Results:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Results`. No Rect Transform, abra **Anchors** e digite **Min** (0.05, 0.18) e **Max** (0.48, 0.85); depois **Left**, **Top**, **Right**, **Bottom** = `0`. **Font Size** `24`, alinhamento topo/esquerda, **Vertex Color** `#14171C`.
 5. **Standings:** igual ao `Results`, com **Min** (0.52, 0.18) e **Max** (0.95, 0.85).
-6. **Botão:** botão direito em `SeasonPanel` → **UI → Button - TextMeshPro** → `ContinueButton`. Âncoras: **Shift + Alt** + *bottom / center*. **Width** `420`, **Height** `100`, **Pos Y** `40`. Renomeie o texto filho para `ContinueLabel`: texto `Largar`, **Font Size** `36`, negrito.
+6. **Botão:** botão direito em `SeasonPanel` → **UI → Button - TextMeshPro** → `ContinueButton`. Âncoras: **Shift + Alt** + *bottom / center*. **Width** `420`, **Height** `100`, **Pos Y** `40`. **Image → Source Image** = `big_buttons/big_button_green`, **Image Type** = `Sliced`. Renomeie o texto filho para `ContinueLabel`: texto `Largar`, **Font Size** `36`, negrito, **Vertex Color** `#EFE6D2`.
 7. Selecione `SeasonPanel`. **Add Component → Season Panel** e ligue **Title Text**, **Results Text**, **Standings Text**, **Continue Button** e **Continue Label**.
 
+> **Arte da tela da temporada:** a Parte 1 §9 deixa essa arte **Em aberto**. O guia reaproveita o papel do mapa e o botão grande verde do kit, para a tela combinar com o HUD até existir uma arte própria.
+
 #### 🧪 Teste rápido
-Sem Play, a Game view mostra a tela escura por cima de tudo, com o título no topo, duas colunas de texto e o botão embaixo. Ela só ganha conteúdo na 7C.
+Sem Play, a Game view mostra o papel creme por cima de tudo, com o título verde no topo, duas colunas de texto e o botão verde embaixo. Ela só ganha conteúdo na 7C.
 
 ### Etapa 7C — O fluxo completo
 
@@ -3031,10 +3124,11 @@ Main
 ├─ [World]
 │  ├─ Track
 │  ├─ StartLine
+│  ├─ Background
 │  └─ Cars
 └─ [UI]
    └─ Canvas
-      ├─ SidePanel      (Race HUD) → LapText, StandingsText, MoneyPanel, PitPanel, InvestPanel
+      ├─ SidePanel      (Race HUD) → LapHeader, StandingsText, MoneyPanel, PitPanel, InvestPanel
       └─ SeasonPanel    (Season Panel) → Title, Results, Standings, ContinueButton
 ```
 
@@ -3047,22 +3141,21 @@ Main
 - **Os botões do HUD não respondem depois da primeira corrida:** algum script do HUD se inscreveu num evento no `Awake` (que roda uma vez) em vez do `OnEnable`. Siga o padrão do `CarPitControls`.
 - **O HUD aparece por cima da tela da temporada:** o `SeasonPanel` não é o último filho do Canvas.
 
-Próxima fase: **Layout multiplataforma e arte** — a mesma tela funcionando em monitor, celular e navegador.
+Próxima fase: **Layout multiplataforma e acabamento** — a mesma tela funcionando em monitor, celular e navegador.
 
 ---
 
-# Parte 11 — Implementação Unity: Fase 8 (Layout multiplataforma e arte)
+# Parte 11 — Implementação Unity: Fase 8 (Layout multiplataforma e acabamento)
 
-## Fase 8 — Layout multiplataforma e arte
+## Fase 8 — Layout multiplataforma e acabamento
 
-> Objetivo desta fase: a tela se adapta a qualquer resolução (monitor, celular com notch, janela do navegador), a pista sempre cabe no espaço livre à esquerda do painel, e os placeholders viram arte flat vector.
+> Objetivo desta fase: a tela se adapta a qualquer resolução (monitor, celular com notch, janela do navegador), a pista sempre cabe no espaço livre à esquerda do painel, e a identidade visual ganha a fonte final.
 
 A orientação no mobile está **Em aberto** (Parte 1 §10). Este guia usa **paisagem**, a mesma tela do PC e do WebGL. O Canvas já escala desde a Fase 3 (Canvas Scaler em 1920×1080).
 
 **Conceitos novos:**
 - **Área segura (`Screen.safeArea`):** o retângulo da tela livre de notch, câmera frontal e cantos arredondados. Fora dele, botões podem ficar escondidos.
 - **Matemática da câmera ortográfica:** **Size** é metade da altura visível em unidades; a largura visível é `altura × aspect` (`aspect` = largura ÷ altura da tela).
-- **Pixels Per Unit (PPU):** quantos pixels de uma imagem cabem em 1 unidade do mundo. Define o tamanho de um sprite na cena.
 - **Device Simulator:** janela que simula celulares específicos (resolução, notch, área segura) dentro do Editor.
 
 ### Etapa 8A — Área segura
@@ -3191,79 +3284,41 @@ namespace PaddockBoss.UI
 #### 🧪 Teste rápido
 Aperte ▶ e largue uma corrida. Troque a resolução da Game view entre `Full HD (1920x1080)`, `2560x1080` (crie com **+**) e o Device Simulator em paisagem: a pista sempre aparece inteira à esquerda, sem ficar por baixo do painel. Nas etapas seguintes, pistas de tamanhos diferentes também são reenquadradas.
 
-### Etapa 8C — Arte flat vector (F1 anos 60)
+### Etapa 8C — Fonte e revisão da arte
 
-A arte segue a Parte 1 §9: flat vector minimalista com vibe de F1 dos anos 60. Os sprites de mundo já foram gerados no SpriteCook e estão neste repositório, em `Sprites/PaddockBoss/`. O manifesto `spritecook-assets.json` guarda o `asset_id` de cada um, para regerar ou criar variações coerentes depois.
+A arte do SpriteCook já entrou fase a fase: importada na Etapa 0D e aplicada na pista e no fundo (2D), no carro (3B), no painel lateral (3C, 4B, 5A, 5B) e na tela da temporada (7B). Falta a fonte e uma conferência geral.
 
-| Arquivo (em `Sprites/PaddockBoss/`) | Tamanho | Uso no jogo |
-|---|---|---|
-| `cars/car60s_white_v1.png` ou `cars/car60s_white_v2.png` | 456×962 / 468×953 | `Body` do prefab `CarMarker`. Branco, apontando para cima: o `SpriteRenderer` tinge com a cor da equipe. Use **uma** das duas variações (escolha **Em aberto**). |
-| `cars/car60s_highlight_v1.png` ou `cars/car60s_highlight_v2.png` | igual ao carro correspondente | `Highlight` do prefab: contorno do carro do jogador. Use o da **mesma variação** do carro, para encaixar. |
-| `track/start_line.png` | 943×72 | `StartLine`: faixa quadriculada de largada. |
-| `track/map_background.png` | 1024×1024 | Fundo do mapa: papel creme de programa de corrida, repetível lado a lado. |
-| `source/` | — | Originais do SpriteCook, antes da limpeza. **Não importe** no Unity. |
+1. Fonte: **Window → TextMeshPro → Font Asset Creator** → **Source Font File** = a fonte TTF da identidade (tipografia **Em aberto**; uma sem serifa geométrica ou condensada combina com cartazes de corrida dos anos 60, como os textos em caixa-alta do conceito `ui/concept_selected.png`) → **Character Set** = `Extended ASCII` (cobre é, ã, ç) → **Generate Font Atlas** → **Save** em `Assets/_Project/Sprites/UI/`.
+2. Troque o **Font Asset** de todos os textos: na Hierarchy, digite `t:TMP_Text` na busca, **Ctrl+A** e mude o campo **Font Asset** no Inspector (vale para todos os selecionados). O `Label` do prefab `CarMarker` é trocado no próprio prefab (duplo clique em `Prefabs/CarMarker`).
+3. Conferência, peça a peça, contra o conceito (Parte 1 §9):
 
-> Os carros saíram do SpriteCook com um brilho branco semitransparente em volta, que viraria uma auréola colorida ao tingir. Os arquivos em `cars/` já estão limpos (alfa cortado e imagem recortada). Os contornos foram gerados a partir da silhueta do carro, por isso encaixam exatamente quando importados com o mesmo Pixels Per Unit.
-
-A UI também tem arte própria, gerada como um kit no SpriteCook a partir do conceito escolhido (`ui/concept_selected.png`). Os componentes estão em `ui/components/<grupo>/` e o manifesto traz as bordas 9-slice de cada peça que estica. Onde cada peça entra no HUD das Fases 3 a 7:
-
-| Objeto do HUD | Componente (`ui/components/…`) | Image Type |
-|---|---|---|
-| `SidePanel`, `MoneyPanel`, `CarPit_0/1` (fundo) | `panels/panel_cream` | Sliced |
-| `LapText` (faixa atrás do texto) | `headers/header_green` (a bandeira quadriculada fica à direita) | Simple, **Preserve Aspect** |
-| Linha do jogador na tabela (opcional) | `panels/row_player_split` | Simple |
-| `BoxButton` | `box_buttons/box_button_green` (carro 1) e `box_button_red` (carro 2) | Sliced |
-| `CompoundButton` | `buttons_small/button_cream` + selo `tyre_badges/tyre_badge_soft`, `_medium` ou `_hard` | Sliced |
-| `WearBar` (fundo) / `Fill` | `wear_bars/wear_bar_empty` / `wear_bars/wear_bar_yellow` | Simple / **Filled Horizontal** |
-| Ícone de cada piloto | `helmets/helmet_green` e `helmet_red` | Simple, Preserve Aspect |
-| `Upgrade_*` (fundo do botão) | `upgrade_rows/upgrade_row_engineering`, `_marketing`, `_pitcrew`, `_driver` | Simple |
-| `Upgrade_*` sem dinheiro | `upgrade_rows/upgrade_row_locked` como **Disabled Sprite** do Button | — |
-| Ícone ao lado de `MoneyText` | `icons/icon_money` | Simple, Preserve Aspect |
-| `ContinueButton` (tela da temporada) | `big_buttons/big_button_green` | Sliced |
-| `SeasonPanel` (fundo) | `track/map_background` (o papel creme) | Tiled |
-
-> Os cards de upgrade já trazem desenhada uma barra de nível. Ela é decorativa: o nível real continua no texto `Level` do `UpgradeButton`. Se a barra confundir, use `buttons_small/button_cream` com o ícone correspondente de `icons/` por cima.
-
-**Importar a UI:**
-1. Copie `ui/components/` para `Assets/_Project/Sprites/UI/`. `ui/concept_selected.png` e `ui/component_sheet.png` são só referência e ficam fora do projeto.
-2. Selecione todos os PNGs de `UI/` → **Texture Type** = `Sprite (2D and UI)` → **Apply**.
-3. Para cada peça marcada como **Sliced** na tabela: abra o **Sprite Editor** (botão no Inspector da textura), arraste as linhas verdes de borda (ou digite **Border** L/T/R/B) com os valores de `nine_slice` do manifesto `spritecook-assets.json` (ex.: `panel_cream` = 18 em todos os lados) → **Apply**. Sem isso, os cantos arredondados esticam.
-4. Em cada `Image` do HUD, troque **Source Image** pela peça da tabela e ajuste **Image Type**. Volte a **Color** das imagens para branco: as cores agora vêm da arte. Textos sobre fundo creme ficam em `#14171C`; sobre verde ou vermelho, em creme `#EFE6D2`.
-5. `UpgradeButton` sem dinheiro: no componente **Button**, mude **Transition** para `Sprite Swap` e ponha `upgrade_row_locked` em **Disabled Sprite**. O script já liga e desliga `interactable` (Fase 5).
-
-> **Correções locais:** 9 ícones de `icons/` e os 2 capacetes foram corrigidos à mão depois da geração. A limpeza automática do SpriteCook apagou o miolo dos ícones e deixou o fundo creme nos capacetes. Os arquivos deste repositório já estão corretos; o manifesto marca quais são (`local_fix`). O selo `tyre_badge_hard` e o `icon_money` foram gerados à parte, depois do kit, no mesmo estilo; os originais estão em `ui/source/`.
-
-**Importar os sprites do mapa:**
-1. No Explorer, copie as pastas `cars/` e `track/` de `Sprites/PaddockBoss/` (do repositório de GDDs) para `Assets/_Project/Sprites/` do projeto Unity. A pasta `source/` e o JSON ficam de fora.
-2. Na Project, selecione **todos** os PNGs de `cars/` (Ctrl+clique). No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Single`, **Pixels Per Unit** = `1200`, **Apply**. Com 1200, o carro tem cerca de 0,8 unidade de comprimento, o mesmo das cápsulas provisórias. Carro e contorno precisam do **mesmo** valor, ou o contorno não encaixa.
-3. `track/start_line.png`: **Texture Type** = `Sprite (2D and UI)`, **Pixels Per Unit** = `590` (a faixa fica com 1,6 unidade, a largura da pista), **Apply**.
-4. `track/map_background.png`: **Texture Type** = `Sprite (2D and UI)`, **Mesh Type** = `Full Rect` (exigido para repetir o sprite), **Wrap Mode** = `Repeat`, **Pixels Per Unit** = `128` (cada repetição mede 8 unidades), **Apply**.
-
-**Trocar os placeholders:**
-5. Dê duplo clique no prefab `Prefabs/CarMarker` (abre o modo de edição de prefab).
-   - `Body`: **Sprite** = `car60s_white_v1` (ou v2), **Scale** = (1, 1, 1), **Color** = branco (o script tinge na largada).
-   - `Highlight`: **Sprite** = `car60s_highlight_v1` (mesma variação), **Scale** = (1, 1, 1), **Color** = `#14171C`. O contorno quase preto se destaca no papel creme, com cara de impresso. O amarelo da Fase 3 some em carros de cores claras.
-   - `Label`: a inicial do piloto passa a ficar sobre o capacete. Se atrapalhar, mude **Font Size** para `2` ou desative o objeto.
-   - Saia pela seta **<** no topo da Hierarchy; o prefab salva sozinho.
-6. `StartLine` (em `[World]`): **Sprite** = `start_line`, **Scale** = (1, 1, 1), **Color** = branco.
-7. Fundo: botão direito em `[World]` → **2D Object → Sprites → Square** → `Background`. **Sprite** = `map_background`, **Draw Mode** = `Tiled`, **Size** = (200, 200), **Order in Layer** = `-10`, **Position** = (0, 0, 0). Ele cobre toda a área que a câmera pode mostrar.
-8. `Main Camera` → **Environment → Background** = `#EFE6D2` (creme). Assim, se a câmera passar da borda do fundo, a cor continua a mesma.
-9. Fonte: **Window → TextMeshPro → Font Asset Creator** → **Source Font File** = a fonte TTF da identidade (tipografia **Em aberto**; uma sem serifa geométrica ou condensada combina com cartazes de corrida dos anos 60) → **Character Set** = `Extended ASCII` (cobre é, ã, ç) → **Generate Font Atlas** → **Save**. Troque o **Font Asset** dos textos.
+   | Objeto | Arte esperada (em `Assets/_Project/Sprites/`) | Etapa |
+   |---|---|---|
+   | `Background`, `SeasonPanel` | `track/map_background`, Tiled | 2D, 7B |
+   | `StartLine` | `track/start_line` | 2D |
+   | `CarMarker` → `Body` / `Highlight` | `cars/car60s_white_v1` / `cars/car60s_highlight_v1` (ou ambos v2) | 3B |
+   | `SidePanel`, `MoneyPanel`, `CarPit_0/1` | `UI/panels/panel_cream`, Sliced | 3C, 5A, 4B |
+   | `LapHeader` | `UI/headers/header_green`, recortado | 3C |
+   | `Helmet` | `UI/helmets/helmet_green` (carro 1) e `helmet_red` (carro 2) | 4B, 4C |
+   | `WearBar` / `Fill` | `UI/wear_bars/wear_bar_empty` / `wear_bar_full`, Filled | 4B |
+   | `CompoundButton` / `Badge` | `UI/buttons_small/button_cream` / `UI/tyre_badges/tyre_badge_*` | 4B |
+   | `BoxButton` | `UI/buttons_small/button_green` (carro 1) e `button_red` (carro 2) | 4B, 4C |
+   | `MoneyIcon` | `UI/icons/icon_money` | 5A |
+   | `Upgrade_*` / `Icon` | `UI/buttons_small/button_cream` / ícone da tabela da 5B | 5B |
+   | `ContinueButton` | `UI/big_buttons/big_button_green` | 7B |
 
 #### 🧪 Teste rápido
-Aperte ▶. O mapa aparece em papel creme. Os carros são F1 anos 60 tingidos com a cor de cada equipe, do tamanho das antigas cápsulas, e os do jogador têm contorno escuro bem encaixado. A largada é uma faixa quadriculada atravessada na pista. Os acentos dos nomes aparecem corretamente.
+Aperte ▶ e jogue uma etapa inteira. Todos os textos usam a fonte nova e os acentos dos nomes aparecem corretamente. Nenhum texto branco sobre o creme, nenhum canto arredondado esticado.
 
 ### ✅ Checkpoint da Fase 8
 - A pista sempre cabe no espaço livre em 16:9, 21:9 e no celular em paisagem.
 - Nada de UI fica sob o notch no Device Simulator.
-- Os placeholders (cápsulas e quadrado) foram substituídos pela arte.
+- Todos os objetos da tabela da 8C usam a arte indicada, e todos os textos usam a fonte da identidade.
 
 #### Problemas comuns
 - **A pista fica por baixo do painel:** **Right Panel Fraction** menor que a largura real do painel. Aumente até sobrar uma margem.
-- **Os carros ficaram enormes ou minúsculos com o sprite novo:** é o **Pixels Per Unit** da importação, não a escala do prefab.
-- **O contorno do jogador não encaixa no carro:** carro e contorno são de variações diferentes (v1 com v2) ou foram importados com Pixels Per Unit diferentes.
-- **O fundo aparece esticado em vez de repetido, com um aviso amarelo no Sprite Renderer:** o `map_background` não está com **Mesh Type** = `Full Rect`.
 - **Quadrados no lugar de letras acentuadas:** o Font Asset foi gerado só com ASCII. Gere de novo com `Extended ASCII`.
+- **No celular, a arte da UI fica borrada:** a textura foi comprimida demais na plataforma. No PNG, aba da plataforma (Android/WebGL) → **Override** ✓ → **Max Size** `2048`, **Compression** `High Quality`.
 
 Próxima fase: **Testes automáticos** — proteger as regras do jogo antes de mexer no balanceamento.
 
