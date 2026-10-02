@@ -70,6 +70,13 @@ export const GAMES = [
     gddStart: /^## 12\. /,
   },
   {
+    source: 'PaddockBoss.md',
+    slug: 'paddock-boss',
+    label: 'Paddock Boss',
+    description: 'Gerenciamento de equipe de corrida: investimentos ao vivo enquanto a corrida acontece.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',

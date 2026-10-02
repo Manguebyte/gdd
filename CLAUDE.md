@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository nature
 
-This is a **game design document (GDD) repository**, not a code project. It contains standalone GDD files, written in Portuguese, one per game/franchise — currently `RallySurvive.md` (the racing franchise: RallySurvive, Navigation Expert, RaceLegenda, Street Legends) and `StarExpeditionCo.md` (a separate, conceptually unrelated space team-management/idle RPG). There is no Unity project, no source code, no build system, and no test suite here — the repository's "product" is the design documents themselves. There are no lint/build/test commands to run.
+This is a **game design document (GDD) repository**, not a code project. It contains standalone GDD files, written in Portuguese, one per game/franchise:
+
+- `RallySurvive.md` — the racing franchise (RallySurvive, Navigation Expert, RaceLegenda, Street Legends).
+- `StarExpeditionCo.md` — space team-management with idle expeditions.
+- `PaddockBoss.md` — racing-team management sim: the race is simulated on a topdown 2D map while the player invests live (car engineering, marketing, driver training, pit crew, pit/tire strategy). Despite the racing theme it is **not** part of the Rally franchise: no `ChevronGuide`, no mouse driving, no shared track format.
+- `GDD_8-Bit_Armageddon.md`, `RequiemOfBlessings.md`, `DiceAndBlood.md`, `GDD_Protocolo_Ectoplasma.md` — other separate games (see the `GAMES` table in `site/scripts/split-gdds.mjs` for one-line descriptions).
+- `tutorial-mvp-completo-unity.md` — Unity tutorial only (Mercador & Legião), no GDD of its own.
+
+There is no Unity project, no source code, no build system, and no test suite here — the repository's "product" is the design documents themselves. There are no lint/build/test commands to run.
 
 Each GDD file is self-contained: its own "Parte 1 — GDD" (or GDD Core) section plus its own Unity implementation guide. Don't assume content from one file applies to another — they are separate games with separate mechanics, only sharing the repo's overall Markdown conventions (see "Conventions when editing this document" below, which apply repo-wide, not just to `RallySurvive.md`).
 
