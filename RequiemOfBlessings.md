@@ -660,12 +660,29 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
      ```csharp
      using UnityEngine;
 
+     // POR QUE: o jogo vai ter dezenas de inimigos (42 masmorras) que só diferem nos
+     //   NÚMEROS (nome, HP, dano, escudos). Sem esta classe, você teria que escrever um
+     //   script por inimigo ou digitar os valores em cada objeto da cena, um por um.
+     //   Quem usa: o EnemyController (Tarefa 8) lê esta "ficha" para saber com quanto
+     //   HP o inimigo começa.
+     // ESTRATÉGIA: é um ScriptableObject, não um MonoBehaviour. ScriptableObject é um
+     //   script que vira um ARQUIVO (.asset) na pasta do projeto, em vez de viver preso
+     //   a um objeto da cena. Assim a ficha "Goblin" existe uma vez só e qualquer cena
+     //   pode apontar pra ela. Esta classe só GUARDA dados — não tem lógica nenhuma
+     //   (quem age é o EnemyController). Separar "dados" de "comportamento" é o padrão
+     //   que você vai repetir em AbilityData, GemData, ItemData etc.
+     // [CreateAssetMenu] é um "atributo" (a coisa entre colchetes) que adiciona uma
+     //   entrada no menu Create do Unity (botão direito na Project window), para você
+     //   criar novos arquivos desta ficha sem código. fileName = nome padrão do arquivo
+     //   novo; menuName = caminho do item no menu.
      [CreateAssetMenu(fileName = "NewEnemy", menuName = "RequiemOfBlessings/Enemy Data")]
      public class EnemyData : ScriptableObject
      {
-         public string enemyName;
-         public int maxHP;
-         public int attackDamage;
+         // Campos "public" aparecem no Inspector, onde você preenche os valores de
+         // cada inimigo sem abrir o código.
+         public string enemyName;   // nome usado nos logs e, depois, na UI
+         public int maxHP;          // HP com que o inimigo começa cada batalha
+         public int attackDamage;   // dano base de um golpe do inimigo
          public int maxShields; // limite de escudo deste inimigo (até 10, conforme o GDD)
      }
      ```
@@ -694,21 +711,45 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
      ```csharp
      using UnityEngine;
 
+     // POR QUE: o EnemyData (Tarefa 5) é só a ficha, e uma ficha não muda durante a
+     //   luta. Alguém precisa guardar o HP e os escudos ATUAIS deste inimigo específico
+     //   (dois Goblins na mesma luta usam a mesma ficha, mas cada um tem seu próprio HP).
+     //   Quem usa: por enquanto o TestBattleTrigger (Tarefa 9); depois, o BattleManager.
+     // ESTRATÉGIA: é um MonoBehaviour, ou seja, um "componente" preso a um GameObject
+     //   da cena (o quadrado vermelho). Ele lê os valores iniciais da ficha (data) e
+     //   guarda o estado que muda (currentHP, currentShields) em campos privados. Quem
+     //   quiser causar dano não mexe no HP direto: chama ReceiveHits, que é o único
+     //   lugar onde fica a regra do escudo (seção 3.3 do GDD). Com a regra num lugar
+     //   só, não tem como alguém "esquecer" o escudo.
      public class EnemyController : MonoBehaviour
      {
          public EnemyData data; // arraste o EnemyData no Inspector
-         private int currentHP;
-         private int currentShields;
+         // "private" = só este script enxerga e muda. Evita que outro script altere
+         // o HP por fora da regra do escudo.
+         private int currentHP;       // HP atual nesta batalha (começa em data.maxHP)
+         private int currentShields;  // escudos ativos agora (0 até data.maxShields)
 
+         // Start() é chamado automaticamente pelo Unity UMA vez, no primeiro frame em
+         // que o objeto está ativo, antes do primeiro Update(). É o lugar certo para
+         // preparar valores iniciais. (Existe também o Awake(), que roda ainda antes,
+         // assim que o objeto é criado; a regra prática é: Awake para configurar a si
+         // mesmo, Start quando você depende de outros objetos já estarem prontos.)
+         // Aqui: copia o HP máximo da ficha e começa sem escudo.
          void Start()
          {
              currentHP = data.maxHP;
              currentShields = 0;
          }
 
-         // Chamado quando o jogador acerta N hits nesse inimigo
+         // Chamado quando o jogador acerta N hits nesse inimigo.
+         // POR QUE recebe "quantidade de hits" e não "dano total": pelo GDD cada hit
+         // remove 1 escudo, então precisamos processar golpe por golpe (o loop for).
          public void ReceiveHits(int hitCount, int damagePerHit)
          {
+             // Correção de revisão: se o inimigo já morreu, ignora novos hits (antes
+             // o log "foi derrotado!" se repetia a cada ataque em um inimigo morto).
+             if (currentHP <= 0) return;
+
              for (int i = 0; i < hitCount; i++)
              {
                  if (currentShields > 0)
@@ -718,6 +759,9 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
                  else
                  {
                      currentHP -= damagePerHit;
+                     // Debug.Log escreve uma mensagem na janela Console do Unity; é
+                     // a forma mais simples de "ver" o que o código está fazendo.
+                     // O $"..." permite colocar variáveis dentro do texto com {}.
                      Debug.Log($"{data.enemyName} tomou {damagePerHit} de dano. HP restante: {currentHP}");
                  }
              }
@@ -739,15 +783,36 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
   1. Crie um script `TestBattleTrigger.cs`:
      ```csharp
      using UnityEngine;
+     using UnityEngine.InputSystem; // Input System novo (Tarefa 4)
 
+     // POR QUE: ainda não existe UI nem botão de ataque, mas precisamos provar que a
+     //   regra de dano/escudo do EnemyController funciona. Este script é um "gatilho de
+     //   teste": aperte Espaço, ele chama ReceiveHits, e você confere no Console.
+     //   Quem usa: ninguém — ele é temporário e pode ser apagado quando a UI existir.
+     // ESTRATÉGIA: MonoBehaviour num objeto vazio (TestManager) que guarda uma
+     //   referência ao inimigo, preenchida arrastando no Inspector. Ele não sabe
+     //   NADA da regra de escudo; só pede "leve 2 hits de 10". Assim, quando o botão de
+     //   verdade chegar, ele faz a mesma chamada e nada no inimigo muda.
      public class TestBattleTrigger : MonoBehaviour
      {
+         // Referência a OUTRO componente da cena. Você liga os dois arrastando o
+         // Enemy_Test para este campo no Inspector (Tarefa 9, passo 3).
          public EnemyController targetEnemy;
 
+         // Update() é chamado pelo Unity UMA vez por frame (dezenas de vezes por
+         // segundo). É onde se verifica input, porque "apertou a tecla" só é
+         // verdade no frame exato em que aconteceu.
          void Update()
          {
-             if (Input.GetKeyDown(KeyCode.Space))
+             // Correção de revisão: antes usava Input.GetKeyDown(KeyCode.Space), que é
+             // do sistema de input ANTIGO. Na Tarefa 4 você trocou o backend para o
+             // Input System novo, e aí o Input antigo gera erro no Console. A forma
+             // nova: Keyboard.current é o teclado conectado (null se não houver) e
+             // wasPressedThisFrame é true só no frame em que a tecla foi apertada.
+             if (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame)
              {
+                 // Argumentos nomeados (hitCount:, damagePerHit:) só deixam a
+                 // chamada mais legível; o efeito é o mesmo sem os nomes.
                  targetEnemy.ReceiveHits(hitCount: 2, damagePerHit: 10);
              }
          }
@@ -766,6 +831,12 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
 - **Objetivo:** ter uma forma clara de saber "de quem é a vez" no combate.
 - **Passo a passo:** crie `BattleState.cs`:
   ```csharp
+  // POR QUE: a batalha tem momentos em que só certas ações valem (ex.: jogar pedra só
+  //   no pré-ataque). Precisamos de um jeito de saber "em que momento estamos".
+  //   Quem usa: o BattleManager (Tarefa 11), que guarda o estado atual.
+  // ESTRATÉGIA: um enum em arquivo próprio, sem "using UnityEngine" porque não usa
+  //   nada do Unity — é C# puro. Cada valor é uma fase do turno da seção 3.1 do GDD.
+  //   Usar nomes em vez de números (0, 1, 2) evita bugs do tipo "o 2 era o quê mesmo?".
   public enum BattleState
   {
       PlayerPreAttack,  // jogador pode jogar pedra e/ou usar item
@@ -782,17 +853,35 @@ Esta seção expande as Fases 0 e 1 da seção 12 em **tarefas bem pequenas**, c
   ```csharp
   using UnityEngine;
 
+  // POR QUE: cada sistema (escudo, quebra, queima, recuperação) sabe fazer a SUA parte,
+  //   mas alguém precisa decidir a ORDEM: quem age agora, o que acontece no início do
+  //   turno, quando passar a vez. Sem um "maestro", cada script tentaria controlar o
+  //   turno sozinho e a ordem viraria bagunça.
+  //   Quem usa: por enquanto o teste da barra de espaço; depois, os botões da UI
+  //   (Bloco G) chamam os métodos públicos daqui.
+  // ESTRATÉGIA: é uma máquina de estados. Um MonoBehaviour (no TestManager) guarda o
+  //   BattleState atual, e cada método público primeiro confere se a ação é permitida
+  //   no estado atual e só então avança para o próximo estado. Esta versão é só o
+  //   esqueleto: ela passa pelos estados em sequência, só com logs, sem lógica real
+  //   de inimigo. Nas Tarefas 12-14 ela ganha as chamadas de Quebra/Queima/Recuperação.
   public class BattleManager : MonoBehaviour
   {
+      // Em que fase do turno estamos. É public para você acompanhar no Inspector
+      // durante o Play (útil para depurar).
       public BattleState currentState;
 
+      // Start (ver EnemyController): a batalha começa no pré-ataque do jogador.
       void Start()
       {
           currentState = BattleState.PlayerPreAttack;
           Debug.Log("Turno do jogador começou. Pode jogar pedra ou usar item.");
       }
 
-      // Chamado quando o jogador decide atacar (ação final do turno)
+      // Chamado quando o jogador decide atacar (ação final do turno).
+      // POR QUE existe: é a única porta de entrada para "encerrar o turno do jogador".
+      // A primeira linha é uma "guarda": se não for o momento certo (ex.: turno do
+      // inimigo), ignora o clique. É assim que a máquina de estados impede ações
+      // fora de hora.
       public void PlayerAttacks()
       {
           if (currentState != BattleState.PlayerPreAttack) return;
@@ -825,12 +914,30 @@ Esses três sistemas (seções 3.7, 3.8 e 3.9 do GDD) são todos parecidos em es
      ```csharp
      using UnityEngine;
 
+     // POR QUE: o Sistema de Quebra (seção 3.7) vale para herói E monstros. Se a
+     //   contagem ficasse dentro do EnemyController, teríamos que reescrevê-la no
+     //   herói. Num componente separado, basta adicioná-lo em quem precisa quebrar.
+     //   Quem usa: o EnemyController chama RegisterHit ao receber um hit que conta;
+     //   o BattleManager lê IsBroken para pular o turno e chama ResolveBrokenState.
+     // ESTRATÉGIA: MonoBehaviour pequeno, com um só trabalho: contador + limiar. Ele
+     //   NÃO pula turno sozinho; só "levanta a bandeira" IsBroken. Quem decide pular o
+     //   turno é o BattleManager (o maestro). Isso mantém a regra de turno num lugar
+     //   só. Ele também não sabe QUAIS hits contam (no monstro, só Ataque Especial de
+     //   Dano Elevado): quem filtra é quem chama (passo 4 abaixo).
      public class BreakCounter : MonoBehaviour
      {
+         // Hits necessários para quebrar. Começa em 3; no jogo final vem da Força
+         // (herói) ou do número da masmorra (monstro), seção 3.7.
          public int breakThreshold = 3; // limiar inicial (seção 3.7 do GDD)
-         private int currentHits = 0;
+         private int currentHits = 0;   // hits acumulados desde a última quebra
+         // Propriedade com "get" público e "private set": qualquer script pode LER
+         // se está quebrado, mas só este script pode MUDAR. É uma forma de proteger
+         // o estado, parecida com o campo private do EnemyController.
          public bool IsBroken { get; private set; }
 
+         // Registra 1 hit que conta para a quebra e dispara a quebra ao atingir o
+         // limiar. Chamado a cada hit válido (não recebe um total, porque o GDD
+         // conta hits, não dano).
          public void RegisterHit()
          {
              if (IsBroken) return; // já quebrado, não acumula mais até resolver
@@ -844,14 +951,21 @@ Esses três sistemas (seções 3.7, 3.8 e 3.9 do GDD) são todos parecidos em es
              }
          }
 
+         // Aplica a quebra. É private e separado de RegisterHit só para organização:
+         // quando entrar o feedback visual (barra, animação, +50% de dano no monstro
+         // vulnerável), é aqui que ele vai, sem poluir a contagem.
          private void TriggerBreak()
          {
              IsBroken = true;
              currentHits = 0; // reseta pra poder quebrar de novo depois (seção 3.7)
+             // gameObject.name = nome do objeto na Hierarchy ao qual este script
+             // está preso (ex.: "Enemy_Test"). Todo MonoBehaviour tem acesso a ele.
              Debug.Log($"{gameObject.name} QUEBROU! Perde a próxima rodada.");
          }
 
-         // Chamado pelo BattleManager depois que a rodada "perdida" passou
+         // Chamado pelo BattleManager depois que a rodada "perdida" passou.
+         // POR QUE não se desliga sozinho: só o BattleManager sabe quando a rodada
+         // realmente passou.
          public void ResolveBrokenState()
          {
              IsBroken = false;
@@ -860,7 +974,7 @@ Esses três sistemas (seções 3.7, 3.8 e 3.9 do GDD) são todos parecidos em es
      ```
   2. Adicione esse script no `Enemy_Test` (Tarefa 7-8).
   3. No `EnemyController` (Tarefa 8), adicione uma referência: `public BreakCounter breakCounter;` e arraste o component no Inspector.
-  4. Dentro de `ReceiveHits`, adicione uma chamada: dentro do loop `for`, sempre que um hit causar dano de verdade (não quando remove escudo), chame `breakCounter.RegisterHit()`. **Atenção**: pelo GDD, só hits de **Ataque Especial** contam pra quebra do monstro — então essa chamada só deve acontecer quando o método `ReceiveHits` for invocado a partir de uma habilidade especial, não de ataque normal ou pedra. Uma forma simples de resolver isso: adicione um parâmetro `bool countsForBreak` no método `ReceiveHits`, e só chame `RegisterHit()` quando ele for `true`.
+  4. Dentro de `ReceiveHits`, adicione uma chamada: dentro do loop `for`, sempre que um hit causar dano de verdade (não quando remove escudo), chame `breakCounter.RegisterHit()`. **Atenção**: pelo GDD, só hits de **Ataque Especial de Dano Elevado** contam pra quebra do monstro (Área/Aleatório, ataque normal e pedra não contam — seção 3.7) — então essa chamada só deve acontecer quando o método `ReceiveHits` for invocado a partir de uma habilidade especial de Dano Elevado. Uma forma simples de resolver isso: adicione um parâmetro `bool countsForBreak` no método `ReceiveHits`, e só chame `RegisterHit()` quando ele for `true`.
 - **Conceito:** isso é o padrão de **contador + limiar** que você vai repetir nas próximas duas tarefas — só muda o que incrementa o contador e o que acontece quando ele estoura.
 
 **Tarefa 13: Criar o `BurnStatus` (Sistema de Queima)**
@@ -870,22 +984,38 @@ Esses três sistemas (seções 3.7, 3.8 e 3.9 do GDD) são todos parecidos em es
      ```csharp
      using UnityEngine;
 
+     // POR QUE: a Queima (seção 3.9) é mais um status que herói E monstros podem ter,
+     //   então segue a mesma ideia do BreakCounter: um componente reaproveitável.
+     //   Quem usa: quem aplica o golpe de fogo chama AddBurnIcon; o BattleManager chama
+     //   ResolveBurnDamage no início do turno de quem tem o componente.
+     // ESTRATÉGIA: mesmo padrão "contador + gatilho", com uma diferença importante:
+     //   ResolveBurnDamage só CALCULA e DEVOLVE o dano, não tira HP de ninguém. Quem
+     //   aplica é o BattleManager, direto no HP e SEM passar pela regra de escudo
+     //   (pelo GDD, Queima ignora escudo e não conta para a Quebra). Por isso este
+     //   script não conhece o EnemyController, o escudo nem o BreakCounter.
      public class BurnStatus : MonoBehaviour
      {
-         private int burnIcons = 0;
+         private int burnIcons = 0;  // ícones acumulados, sem teto (seção 3.9)
          public float damagePercentPerIcon = 0.03f; // 3% do HP máximo por ícone (seção 3.9)
 
+         // Soma 1 ícone. Chame só quando o golpe de fogo ACERTOU: se houve esquiva ou
+         // parry com sucesso, não se ganha ícone (seção 3.9).
          public void AddBurnIcon()
          {
              burnIcons++;
              Debug.Log($"Ícones de queima acumulados: {burnIcons}");
          }
 
-         // Chamado no início do turno de quem tem esse componente
+         // Chamado no início do turno de quem tem esse componente.
+         // Recebe o HP máximo como parâmetro (em vez de buscar sozinho) para que o
+         // mesmo script sirva para herói e monstro, cada um passando o seu HP.
+         // Devolve o dano (int) e zera os ícones; aplicar o dano fica com quem chamou.
          public int ResolveBurnDamage(int maxHP)
          {
              if (burnIcons == 0) return 0;
 
+             // Mathf.RoundToInt arredonda o float para o inteiro mais próximo
+             // (HP é int). Ex.: 4 ícones * 0.03 * 100 de HP = 12.
              int burnDamage = Mathf.RoundToInt(burnIcons * damagePercentPerIcon * maxHP);
              Debug.Log($"Queima causou {burnDamage} de dano ({burnIcons} ícones consumidos).");
              burnIcons = 0; // consome tudo de uma vez (seção 3.9)
@@ -904,13 +1034,26 @@ Esses três sistemas (seções 3.7, 3.8 e 3.9 do GDD) são todos parecidos em es
      ```csharp
      using UnityEngine;
 
+     // POR QUE: a Recuperação (seção 3.8) pune QUEM ATACOU forte (ao contrário da
+     //   Quebra, que pune quem apanhou). Vale para herói e monstro, então é mais um
+     //   componente reaproveitável.
+     //   Quem usa: o BattleManager, que chama CheckRecoveryTrigger depois de cada
+     //   ataque, confere IsRecovering antes da próxima ação e chama ClearRecovery.
+     // ESTRATÉGIA: mesmo formato de "bandeira" do BreakCounter (ver BreakCounter), mas
+     //   em script SEPARADO de propósito: o GDD diz que Quebra e Recuperação são
+     //   independentes. Com arquivos separados, mudar uma regra não quebra a outra.
+     //   Os limiares são campos públicos para você ajustar no Inspector durante o
+     //   playtest, sem recompilar.
      public class RecoveryStatus : MonoBehaviour
      {
          public int damageThreshold = 25; // valor de exemplo, balancear depois
          public int hitCountThreshold = 3; // valor de exemplo, balancear depois
+         // Mesma técnica de "get público / set privado" do BreakCounter.
          public bool IsRecovering { get; private set; }
 
-         // Chamado depois que uma ação de ataque é resolvida
+         // Chamado depois que uma ação de ataque é resolvida.
+         // Usa || ("OU"): basta UM dos limiares ser atingido, o que vier primeiro
+         // (seção 3.8).
          public void CheckRecoveryTrigger(int damageDealt, int hitCount)
          {
              if (damageDealt >= damageThreshold || hitCount >= hitCountThreshold)

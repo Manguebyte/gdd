@@ -863,9 +863,15 @@ A classe cresce a cada fase: cada fase acrescenta as propriedades dos services q
 // Caminho: Assets/_Project/Scripts/Core/Services.cs
 namespace StarExpedition.Core
 {
+    // POR QUE: qualquer tela ou sistema precisa chegar nos services (save, relógio, tripulação...)
+    // sem arrastar referências no Inspector. Esta classe é o "catálogo" onde todos se encontram.
+    // ESTRATÉGIA: classe "static" (não existe instância; acessa-se direto por Services.Save).
+    // O "internal set" deixa só o código desta mesma assembly (o GameBootstrap) preencher as
+    // propriedades; a UI só consegue ler. Não é MonoBehaviour porque não precisa de cena nem de frame.
     /// Acesso central a todos os services. Preenchido só pelo GameBootstrap.
     public static class Services
     {
+        // Uma propriedade por service. "{ get; internal set; }" = qualquer um lê, só o bootstrap escreve.
         public static SaveService Save { get; internal set; }
         public static IClock Clock { get; internal set; }
         // Fase 2+: as próximas propriedades entram aqui.
@@ -884,12 +890,19 @@ using System.Collections.Generic;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: o jogo precisa lembrar tudo do jogador entre uma sessão e outra (Credits, Roster,
+    // Expeditions em andamento...). Esta classe é esse "tudo", num formato que vira JSON.
+    // ESTRATÉGIA: classe só de dados, com campos públicos, para o JsonUtility conseguir ler e
+    // escrever. [Serializable] é o atributo que diz à Unity "esta classe pode virar JSON/Inspector".
+    // Quem muda estes campos são os services (SaveService, CrewService...), nunca a UI.
     /// Todo o estado do jogador. Só dados: nenhuma regra de jogo mora aqui.
     [Serializable]
     public class SaveData
     {
+        // "const" = valor fixo no código. Sobe (2, 3...) quando uma atualização mudar o formato do save.
         public const int CurrentVersion = 1;
 
+        // Versão do arquivo gravado; o SaveService.Migrate compara com CurrentVersion ao carregar.
         public int version = CurrentVersion;
         public long lastSeenUtcTicks;             // TrustedClock (GDD §4.4)
 
@@ -899,11 +912,13 @@ namespace StarExpedition.Core
 
         // Tripulação
         public List<CrewMemberState> roster = new List<CrewMemberState>();
+        // Contador que gera ids únicos para novos Crew Members, nunca reaproveitado.
         public int nextMemberSerial;
         public bool starterPicked;
 
         // Expeditions ativas (uma por Planet — GDD §2)
         public List<ExpeditionState> expeditions = new List<ExpeditionState>();
+        // Quantas Expeditions já foram enviadas na vida do save.
         public int totalExpeditionsStarted;
 
         // Progresso
@@ -924,6 +939,9 @@ namespace StarExpedition.Core
         public SettingsState settings = new SettingsState();
     }
 
+    // POR QUE: representa UM Crew Member do Roster dentro do save.
+    // ESTRATÉGIA: guarda só ids (classId, equippedItemId), não os ScriptableObjects inteiros,
+    // porque JSON não sabe gravar referências a assets. O id é "resolvido" pelo GameDatabase (Fase 2).
     [Serializable]
     public class CrewMemberState
     {
@@ -934,11 +952,15 @@ namespace StarExpedition.Core
         public string equippedItemId;             // vazio = sem Equipment
     }
 
+    // POR QUE: uma Expedition em andamento precisa sobreviver ao app fechado (é um timer real).
+    // ESTRATÉGIA: guarda o instante de início em ticks UTC (long, porque o JsonUtility não serializa
+    // DateTime) + a duração. O tempo restante é sempre recalculado: fim = início + duração.
     [Serializable]
     public class ExpeditionState
     {
         public string planetId;
         public List<string> memberIds = new List<string>();
+        // DateTime.Ticks (UTC) do envio. 1 tick = 100 nanossegundos; um long cabe qualquer data.
         public long startUtcTicks;
         public int durationSeconds;
         public int seed;                          // sorteio fixado no envio (GDD §2)
@@ -947,16 +969,21 @@ namespace StarExpedition.Core
         public int notificationId = -1;           // Fase 10
     }
 
+    // POR QUE: o inventário é "tantos de tal Item"; esta classe é uma linha disso (itemId + quantidade).
+    // ESTRATÉGIA: usamos List<ItemStack> e não Dictionary porque o JsonUtility não serializa Dictionary.
     [Serializable]
     public class ItemStack
     {
         public string itemId;
         public int quantity;
 
+        // Construtor vazio: o JsonUtility precisa dele para criar o objeto ao ler o arquivo.
         public ItemStack() { }
         public ItemStack(string itemId, int quantity) { this.itemId = itemId; this.quantity = quantity; }
     }
 
+    // POR QUE: as preferências do jogador (volumes, idioma, notificações) também precisam ser salvas.
+    // ESTRATÉGIA: fica dentro do SaveData para ir no mesmo arquivo; quem aplica é o SettingsService (Fase 13).
     [Serializable]
     public class SettingsState
     {
@@ -980,6 +1007,11 @@ using UnityEngine;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: separar "onde e como o arquivo é gravado" de "o que é gravado". O SaveService
+    // cuida do conteúdo (JSON, versão); esta classe só mexe em arquivos no disco.
+    // ESTRATÉGIA: classe C# pura (sem MonoBehaviour), recebe a pasta no construtor — assim os
+    // testes podem apontar para uma pasta temporária. Usa três arquivos: save.json (atual),
+    // save.json.tmp (gravação em andamento) e save.json.bak (cópia anterior).
     /// Lê e grava o save.json com gravação atômica e cópia de segurança.
     public class SaveStorage
     {
@@ -987,6 +1019,7 @@ namespace StarExpedition.Core
         private readonly string _tempPath;
         private readonly string _backupPath;
 
+        // Construtor: monta os três caminhos uma vez só. Path.Combine junta pasta + arquivo com a barra certa em cada sistema.
         public SaveStorage(string directory)
         {
             _path = Path.Combine(directory, "save.json");
@@ -998,6 +1031,8 @@ namespace StarExpedition.Core
 
         /// Devolve os conteúdos possíveis, do mais confiável para o menos:
         /// o save atual, o temporário (se a troca foi interrompida) e a cópia anterior.
+        // "IEnumerable" + "yield return" = devolve os itens um a um, sob demanda. Quem lê (SaveService.Load)
+        // para no primeiro que funcionar, sem precisar ler os outros arquivos.
         public IEnumerable<string> ReadCandidates()
         {
             foreach (var path in new[] { _path, _tempPath, _backupPath })
@@ -1007,6 +1042,7 @@ namespace StarExpedition.Core
             }
         }
 
+        // Grava o JSON de forma atômica (ver os 3 passos abaixo). Chamado pelo SaveService.SaveNow.
         public void Write(string json)
         {
             // 1. Grava tudo no temporário. Se o app morrer aqui, o save atual está intacto.
@@ -1024,12 +1060,15 @@ namespace StarExpedition.Core
             File.Move(_tempPath, _path);
         }
 
+        // Apaga os três arquivos. Usado para "resetar o jogo" (DevPanel, Fase 14).
         public void DeleteAll()
         {
             foreach (var path in new[] { _path, _tempPath, _backupPath })
                 if (File.Exists(path)) File.Delete(path);
         }
 
+        // Lê um arquivo sem deixar um erro de disco derrubar o jogo: em caso de falha, devolve null
+        // e o ReadCandidates simplesmente pula para o próximo arquivo.
         private static string TryRead(string path)
         {
             if (!File.Exists(path)) return null;
@@ -1054,16 +1093,27 @@ using UnityEngine;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: é o dono do SaveData em memória. Carrega ao abrir o jogo, grava quando algo muda
+    // e converte saves antigos quando o formato evoluir.
+    // ESTRATÉGIA: classe pura que recebe um SaveStorage (injeção de dependência: o service não sabe
+    // onde fica o arquivo). Usa o padrão "marcar sujo": os services chamam MarkDirty() depois de mudar
+    // algo, e o AppLifecycle grava no máximo uma vez por frame (evita dezenas de gravações seguidas).
     public class SaveService
     {
         private readonly SaveStorage _storage;
+        // "Sujo" = há mudanças em memória que ainda não foram para o disco.
         private bool _dirty;
 
         public SaveData Data { get; private set; } = new SaveData();
+        // true quando não havia save nenhum: o jogo começa do zero (Starter Pick, tutorial...).
         public bool IsNewGame { get; private set; }
 
+        // Construtor com "=>" (expression body): forma curta de um método de uma linha só.
         public SaveService(SaveStorage storage) => _storage = storage;
 
+        // Tenta cada arquivo candidato (atual → temporário → backup). O primeiro que virar um SaveData
+        // válido é usado. JsonUtility.FromJson converte texto JSON de volta em objeto C#.
+        // Se todos falharem, começa um jogo novo em vez de travar.
         public void Load()
         {
             foreach (string json in _storage.ReadCandidates())
@@ -1089,11 +1139,13 @@ namespace StarExpedition.Core
         /// Marca que algo mudou. O AppLifecycle grava no fim do frame (uma vez só).
         public void MarkDirty() => _dirty = true;
 
+        // Chamado pelo AppLifecycle a cada frame: só grava se houve mudança.
         public void SaveIfDirty()
         {
             if (_dirty) SaveNow();
         }
 
+        // Grava agora, sem esperar o fim do frame. JsonUtility.ToJson transforma o SaveData em texto.
         public void SaveNow()
         {
             _dirty = false;
@@ -1118,6 +1170,8 @@ namespace StarExpedition.Core
             IsNewGame = true;
         }
 
+        // Ajusta um save lido do disco para o formato atual. "static" porque não usa nenhum campo
+        // do service — só transforma o objeto recebido. "??=" = "se for null, atribua isto".
         private static SaveData Migrate(SaveData data)
         {
             if (data.version > SaveData.CurrentVersion)
@@ -1146,6 +1200,10 @@ using System;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: vários sistemas precisam da "hora atual" (timers das Expeditions), e nos testes
+    // queremos controlar essa hora. Uma interface define O QUE um relógio oferece, sem dizer COMO.
+    // ESTRATÉGIA: o jogo usa TrustedClock; os testes (Fase 14) podem usar um relógio falso.
+    // Quem depende de IClock não sabe (nem precisa saber) qual dos dois está usando.
     public interface IClock
     {
         /// Hora atual (UTC) que o jogo deve usar para os timers.
@@ -1163,6 +1221,12 @@ using System;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: o jogo é idle — as Expeditions terminam com o app fechado, usando a hora do aparelho.
+    // Sem proteção, o jogador poderia voltar o relógio do celular para trapacear.
+    // ESTRATÉGIA: guarda no save a maior hora já vista (lastSeenUtcTicks). Se o aparelho informar
+    // uma hora menor que essa, devolve a última vista (o tempo "congela") até o relógio real alcançar.
+    // Implementa IClock para ser trocável nos testes. Usa sempre UTC (hora universal), nunca a hora
+    // local: fuso horário e horário de verão mudariam a hora local e bagunçariam os timers.
     /// Relógio que nunca anda para trás (GDD §4.4).
     /// Se o aparelho voltar a hora, o jogo "congela" na última hora vista
     /// até o relógio real alcançá-la de novo.
@@ -1174,12 +1238,15 @@ namespace StarExpedition.Core
         public bool IsRolledBack { get; private set; }
 
         /// systemUtcNow é o relógio de verdade; nos testes (Fase 14) passamos um relógio falso.
+        // Construtor. Func<DateTime> é "uma função que devolve uma data": no jogo passamos
+        // () => DateTime.UtcNow; nos testes, uma função que devolve a hora que quisermos.
         public TrustedClock(SaveService save, Func<DateTime> systemUtcNow)
         {
             _save = save;
             _systemUtcNow = systemUtcNow;
         }
 
+        // Propriedade calculada a cada leitura: compara a hora real com a última vista e decide qual usar.
         public DateTime UtcNow
         {
             get
@@ -1210,19 +1277,28 @@ using UnityEngine;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: services em C# puro não recebem "eventos de frame" da Unity (Update, pausa, saída).
+    // Alguém precisa avisar a hora de gravar. Este componente é essa ponte.
+    // ESTRATÉGIA: MonoBehaviour = script que vive num GameObject e recebe callbacks da Unity.
+    // Fica no objeto "[Services]", que nunca é destruído (DontDestroyOnLoad no GameBootstrap).
     /// Grava o save no fim de cada frame em que algo mudou, e sempre ao ir para segundo plano.
     public class AppLifecycle : MonoBehaviour
     {
+        // LateUpdate: chamado todo frame, DEPOIS de todos os Update. Bom momento para gravar:
+        // todas as mudanças do frame já aconteceram. "?." = só chama se Services.Save não for null.
         private void LateUpdate() => Services.Save?.SaveIfDirty();
 
+        // Callback da Unity chamado quando o app vai para (paused = true) ou volta do segundo plano.
         private void OnApplicationPause(bool paused)
         {
             // No Android, "pausa" = o app foi para segundo plano. Pode ser a última chance de gravar.
             if (paused) SaveNow();
         }
 
+        // Callback chamado ao fechar o app (no Android nem sempre é chamado — por isso gravamos também na pausa).
         private void OnApplicationQuit() => SaveNow();
 
+        // Grava imediatamente, atualizando antes a "última hora vista" do relógio.
         private static void SaveNow()
         {
             if (Services.Save == null) return;
@@ -1242,19 +1318,28 @@ using UnityEngine;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: os services precisam existir ANTES de qualquer cena rodar, numa ordem conhecida
+    // (o relógio depende do save, a tripulação depende do inventário...). Isto é o "main" do jogo.
+    // ESTRATÉGIA: classe static com um método marcado [RuntimeInitializeOnLoadMethod]: a Unity
+    // chama sozinha, antes da primeira cena. Cria tudo em CreateServices e guarda em Services.
     public static class GameBootstrap
     {
+        // BeforeSceneLoad = roda antes do Awake de qualquer objeto da primeira cena.
+        // Ponto de entrada: fixa 60 FPS, cria o GameObject "[Services]" e monta os services.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
             Application.targetFrameRate = 60;
 
+            // DontDestroyOnLoad: o objeto sobrevive à troca de cena (Boot → Main). Sem isso, o
+            // AppLifecycle seria destruído ao carregar a cena Main.
             var host = new GameObject("[Services]");
             UnityEngine.Object.DontDestroyOnLoad(host);
 
             CreateServices(host);
         }
 
+        // Cria os services na ordem de dependência. Cada fase acrescenta os seus aqui.
         private static void CreateServices(GameObject host)
         {
             // --- Núcleo ---
@@ -1293,14 +1378,19 @@ using UnityEngine.Localization.Settings;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: buscar um texto traduzido na Localization é verboso; a UI faz isso o tempo todo.
+    // ESTRATÉGIA: classe static de atalho com nome de 1 letra para o código de UI ficar curto:
+    // L.Get("chave"). Não guarda estado nenhum, só repassa a chamada à Localization.
     /// Atalho para textos da tabela "UI". Ex.: L.Get("planet.send"), L.Get("top.cycle", 2).
     public static class L
     {
         public const string UiTable = "UI";
 
+        // Texto simples da tabela "UI" no idioma atual.
         public static string Get(string key)
             => LocalizationSettings.StringDatabase.GetLocalizedString(UiTable, key);
 
+        // Texto com valores no meio (ex.: "Cycle {0}"). "params object[]" = aceita quantos argumentos quiser.
         public static string Get(string key, params object[] args)
             => LocalizationSettings.StringDatabase.GetLocalizedString(UiTable, key, args);
     }
@@ -1318,12 +1408,21 @@ using UnityEngine.SceneManagement;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: a cena Boot mostra o logo enquanto coisas lentas ficam prontas (textos traduzidos,
+    // e depois consentimento/anúncios/compras) e só então abre a cena Main.
+    // ESTRATÉGIA: MonoBehaviour com Start em forma de coroutine (ver abaixo), que espera cada etapa
+    // em sequência sem travar a tela.
     /// Mostra o logo enquanto prepara textos (e, a partir da Fase 11, consentimento,
     /// anúncios e compras), depois carrega a cena Main.
     public class BootSequence : MonoBehaviour
     {
+        // [SerializeField] em campo privado = aparece e é editável no Inspector, mas outros scripts
+        // não conseguem mexer nele. Tempo mínimo que o logo fica na tela, mesmo se tudo carregar rápido.
         [SerializeField] private float _minimumLogoSeconds = 1.2f;
 
+        // Start roda uma vez, no primeiro frame em que o objeto está ativo (depois de todos os Awake).
+        // Retornando IEnumerator, vira uma COROUTINE: uma função que pode "pausar" com yield return
+        // e continuar em frames seguintes, sem congelar o jogo. Time.realtimeSinceStartup ignora pausa/timeScale.
         private IEnumerator Start()
         {
             float started = Time.realtimeSinceStartup;
@@ -1388,6 +1487,11 @@ using System;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: Crew Classes e Equipment dão os mesmos seis tipos de bônus. Em vez de seis variáveis
+    // soltas espalhadas pelo código, agrupamos tudo num só tipo.
+    // ESTRATÉGIA: "struct" (tipo de valor: é copiado ao atribuir, como um int) em vez de class, porque
+    // é pequeno e só guarda números. O operador + permite somar a Squad inteira com "a + b".
+    // [Serializable] faz os campos aparecerem no Inspector dos ScriptableObjects que o usam.
     /// Bônus de uma Crew Class ou de um Equipment (GDD §3.1). Todos os valores em pontos inteiros.
     [Serializable]
     public struct CrewBonus
@@ -1399,6 +1503,8 @@ namespace StarExpedition.Data
         public int lossReduction;    // − pontos percentuais na chance de Member Loss
         public int durationPercent;  // − % na duração da Expedition
 
+        // Sobrecarga do operador "+": ensina o C# a somar dois CrewBonus campo a campo.
+        // O ExpeditionResolver (Fase 4) usa isso para juntar bônus de classe + Equipment de cada membro.
         public static CrewBonus operator +(CrewBonus a, CrewBonus b) => new CrewBonus
         {
             success = a.success + b.success,
@@ -1422,18 +1528,30 @@ using UnityEngine.Localization;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: cada Crew Class (Scout, Engineer...) tem nome, bônus, custo e retratos. Esses dados
+    // precisam ser editáveis sem recompilar, para balancear o jogo.
+    // ESTRATÉGIA: ScriptableObject = um asset de dados (arquivo .asset no Project) que o código lê.
+    // [CreateAssetMenu] adiciona a opção "Create → Star Expedition → Crew Class" no menu do Project.
+    // Um asset por classe (Class_scout.asset...); o DatabaseSeeder cria todos de uma vez.
     [CreateAssetMenu(menuName = "Star Expedition/Crew Class")]
     public class CrewClassDefinition : ScriptableObject
     {
+        // Id estável ("scout"): é o que vai para o save, porque o nome traduzido muda com o idioma.
         public string id;
+        // LocalizedString aponta para uma entrada da tabela "Content"; o texto sai no idioma atual.
         public LocalizedString displayName;
         public CrewBonus bonus;
         public int hireBaseCost;
+        // Cor de destaque da classe na UI (bordas de card etc.).
         public Color accent = Color.white;
+        // Os 3 visuais possíveis desta classe; CrewMemberState.variant escolhe um deles.
         public PortraitVariant[] variants = new PortraitVariant[3];
 
+        // Propriedade de atalho: devolve o nome já traduzido.
         public string DisplayName => displayName.GetLocalizedString();
 
+        // Devolve os quadros da animação do retrato para a variante pedida. Protege contra índice
+        // inválido (Mathf.Clamp) e array vazio, devolvendo um array vazio em vez de null (evita erro na UI).
         public Sprite[] PortraitFrames(int variant)
         {
             if (variants == null || variants.Length == 0) return Array.Empty<Sprite>();
@@ -1442,6 +1560,8 @@ namespace StarExpedition.Data
         }
     }
 
+    // POR QUE: um retrato animado é uma lista de sprites; o Inspector não mostra "array de arrays",
+    // então embrulhamos cada lista numa classe [Serializable].
     [Serializable]
     public class PortraitVariant
     {
@@ -1458,8 +1578,14 @@ using UnityEngine.Localization;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: enum = lista fechada de opções com nome. As 4 categorias de Item do glossário.
+    // ESTRATÉGIA: a UI e o CraftingService decidem o comportamento pela categoria (ex.: só Equipment equipa).
     public enum ItemCategory { RawMaterial, Component, RareItem, Equipment }
 
+    // POR QUE: cada Item (Raw Material, Component, Rare Item, Equipment) precisa de nome, ícone,
+    // preço de venda e, se for Equipment, tier e bônus.
+    // ESTRATÉGIA: um ScriptableObject por Item (ver CrewClassDefinition). Equipment usa a mesma
+    // classe com campos extras em vez de uma classe separada — simplifica inventário e Loot.
     [CreateAssetMenu(menuName = "Star Expedition/Item")]
     public class ItemDefinition : ScriptableObject
     {
@@ -1468,13 +1594,18 @@ namespace StarExpedition.Data
         public ItemCategory category;
         public Sprite icon;
         public int sellPrice;
+        // [Tooltip] mostra essa dica ao passar o mouse sobre o campo no Inspector.
         [Tooltip("Só Equipment: Tech Tier de 1 a 4.")] public int tier;
         [Tooltip("Só Equipment: bônus ao equipar.")] public CrewBonus equipBonus;
 
         public string DisplayName => displayName.GetLocalizedString();
+        // Atalho usado pela UI de equipar e pelo CrewService.
         public bool IsEquipment => category == ItemCategory.Equipment;
     }
 
+    // POR QUE: Recipes e o Loot do tutorial precisam dizer "N unidades de tal Item".
+    // ESTRATÉGIA: aqui guardamos a REFERÊNCIA ao asset (não o id), porque isto vive dentro de outros
+    // ScriptableObjects, e assets podem apontar para assets. (No save usamos ItemStack, com id.)
     [Serializable]
     public class ItemAmount
     {
@@ -1491,10 +1622,13 @@ using UnityEngine;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: cada Recipe diz "estes Items entram, este Item sai". O CraftingService (Fase 5) lê isto.
+    // ESTRATÉGIA: ScriptableObject só com dados; a regra de craftar mora no service, não aqui.
     [CreateAssetMenu(menuName = "Star Expedition/Recipe")]
     public class RecipeDefinition : ScriptableObject
     {
         public string id;
+        // [Range] vira um slider no Inspector e impede valores fora de 1..4.
         [Range(1, 4)] public int tier = 1;
         public List<ItemAmount> inputs = new List<ItemAmount>();
         public ItemDefinition output;
@@ -1511,6 +1645,9 @@ using UnityEngine;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: cada Planet tem Risk, duração, Loot Table, textura e posição no mapa.
+    // ESTRATÉGIA: ScriptableObject de dados, lido pelo ExpeditionService (regras) e pelo MapView (UI).
+    // O nome não usa LocalizedString porque é nome próprio, igual em todos os idiomas.
     [CreateAssetMenu(menuName = "Star Expedition/Planet")]
     public class PlanetDefinition : ScriptableObject
     {
@@ -1519,11 +1656,14 @@ namespace StarExpedition.Data
         [Range(0, 100)] public int baseRisk;
         public int durationSeconds;
         public List<LootEntry> lootTable = new List<LootEntry>();
+        // Texture2D (e não Sprite) porque o shader PlanetSphere (Fase 6) a enrola numa esfera.
         [Tooltip("Textura plana e repetível da superfície (Fase 6).")] public Texture2D surface;
         [Tooltip("Posição no mapa da Galaxy, de (0,0) embaixo à esquerda a (1,1) em cima à direita.")]
         public Vector2 mapPosition;
     }
 
+    // POR QUE: uma linha da Loot Table: qual Item, com que chance cai e quantos (entre min e max).
+    // ESTRATÉGIA: classe [Serializable] para editar a lista direto no Inspector do Planet.
     [Serializable]
     public class LootEntry
     {
@@ -1543,6 +1683,9 @@ using UnityEngine.Localization;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: uma Galaxy agrupa Planets em ordem e tem fundo/cor próprios no mapa.
+    // ESTRATÉGIA: a ORDEM da lista "planets" é a ordem de desbloqueio; o GameDatabase junta as
+    // Galaxies numa sequência única de 18 Planets.
     [CreateAssetMenu(menuName = "Star Expedition/Galaxy")]
     public class GalaxyDefinition : ScriptableObject
     {
@@ -1566,6 +1709,10 @@ using UnityEngine;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: os números de balanceamento (§16.2) não podem ficar espalhados pelo código como
+    // "números mágicos"; mudar um valor não deve exigir recompilar.
+    // ESTRATÉGIA: um único ScriptableObject com todas as constantes, agrupadas por [Header]
+    // (cria títulos no Inspector). Os services recebem este asset e leem os valores dele.
     /// Todas as constantes da §16.2 num único asset.
     [CreateAssetMenu(menuName = "Star Expedition/Game Balance")]
     public class GameBalance : ScriptableObject
@@ -1593,8 +1740,11 @@ namespace StarExpedition.Data
         [Header("Tripulação")]
         public int minSquadSize = 1;
         public int maxSquadSize = 3;
+        // Multiplicador do custo de Hire a cada nova contratação da mesma classe (1.25 = +25%).
         public float hireCostGrowth = 1.25f;
+        // As 3 classes oferecidas no Starter Pick.
         public List<CrewClassDefinition> starterClasses = new List<CrewClassDefinition>();
+        // Classe do Emergency Recruit (Scout, pelo glossário).
         public CrewClassDefinition emergencyClass;
 
         [Header("Tech Tiers: [0] = Planet que libera o Tier 1 ... [3] = Tier 4")]
@@ -1619,6 +1769,11 @@ using UnityEngine;
 
 namespace StarExpedition.Data
 {
+    // POR QUE: os services precisam achar um Item/Planet/Crew Class a partir do id gravado no save.
+    // Sem um índice central, cada service teria que procurar em listas por conta própria.
+    // ESTRATÉGIA: um ScriptableObject "raiz" que referencia todos os outros assets e, ao iniciar,
+    // monta Dictionaries (busca rápida por chave). Fica em Resources/ para o GameBootstrap carregá-lo
+    // por nome com Resources.Load, antes de existir qualquer cena.
     /// Todos os dados do jogo. Fica em Resources/GameDatabase.asset.
     [CreateAssetMenu(menuName = "Star Expedition/Game Database")]
     public class GameDatabase : ScriptableObject
@@ -1629,6 +1784,8 @@ namespace StarExpedition.Data
         public List<RecipeDefinition> recipes = new List<RecipeDefinition>();
         public List<GalaxyDefinition> galaxies = new List<GalaxyDefinition>();
 
+        // Dictionary<chave, valor>: busca por id em tempo constante, sem percorrer a lista.
+        // São privados e não serializados: são reconstruídos a cada Initialize.
         private Dictionary<string, CrewClassDefinition> _classById;
         private Dictionary<string, ItemDefinition> _itemById;
         private Dictionary<string, PlanetDefinition> _planetById;
@@ -1636,6 +1793,8 @@ namespace StarExpedition.Data
         private List<PlanetDefinition> _planetsInOrder;
 
         /// Monta os índices. Chamado uma vez pelo GameBootstrap (e pelos testes).
+        // Monta os dicionários a partir das listas. Precisa ser chamado antes de qualquer Get*,
+        // senão os dicionários estão null. Percorre Galaxy por Galaxy para manter a ordem de desbloqueio.
         public void Initialize()
         {
             _classById = new Dictionary<string, CrewClassDefinition>();
@@ -1656,6 +1815,8 @@ namespace StarExpedition.Data
             }
         }
 
+        // Busca por id; devolve null se o id não existir (ex.: save antigo com Item removido).
+        // TryGetValue evita a exceção que o acesso direto dict[id] lançaria.
         public CrewClassDefinition GetClass(string id) => id != null && _classById.TryGetValue(id, out var c) ? c : null;
         public ItemDefinition GetItem(string id) => id != null && _itemById.TryGetValue(id, out var i) ? i : null;
         public PlanetDefinition GetPlanet(string id) => id != null && _planetById.TryGetValue(id, out var p) ? p : null;
@@ -1664,7 +1825,9 @@ namespace StarExpedition.Data
         public IReadOnlyList<PlanetDefinition> Planets => _planetsInOrder;
         public int PlanetCount => _planetsInOrder.Count;
         public int IndexOf(PlanetDefinition planet) => _planetsInOrder.IndexOf(planet);
+        // Planet pelo índice global (0..17). O Clamp evita erro se o índice passar do fim.
         public PlanetDefinition PlanetAt(int index) => _planetsInOrder[Mathf.Clamp(index, 0, _planetsInOrder.Count - 1)];
+        // Galaxy à qual o Planet pertence (para fundo e cor do mapa).
         public GalaxyDefinition GalaxyOf(PlanetDefinition planet) => _galaxyOfPlanet.TryGetValue(planet, out var g) ? g : null;
     }
 }
@@ -1675,12 +1838,15 @@ namespace StarExpedition.Data
 Em `Services.cs`, acrescente (e o `using StarExpedition.Data;` no topo):
 
 ```csharp
+        // Novo: o GameDatabase fica acessível para todos os services e a UI.
         public static GameDatabase Database { get; internal set; }
 ```
 
 Em `GameBootstrap.CreateServices`, **antes** de criar o save:
 
 ```csharp
+            // Resources.Load procura "GameDatabase" dentro de qualquer pasta "Resources" do projeto.
+            // Se não achar, paramos aqui com um erro claro em vez de deixar tudo quebrar depois.
             var database = Resources.Load<GameDatabase>("GameDatabase");
             if (database == null)
             {
@@ -1712,15 +1878,25 @@ using UnityEngine.Localization.Tables;
 
 namespace StarExpedition.EditorTools
 {
+    // POR QUE: o jogo tem 6 Crew Classes, 38 Items, 16 Recipes, 3 Galaxies e 18 Planets. Criar e
+    // preencher cada asset à mão no Inspector seria lento e cheio de erros de digitação.
+    // ESTRATÉGIA: script de Editor (fica na pasta Editor/, com asmdef só para Editor, e NÃO entra no
+    // jogo final). As tabelas da §16 viram arrays de "tuplas" no código; cada linha vira um asset.
+    // É "idempotente": rodar de novo reaproveita os assets existentes (LoadOrCreate) e só reescreve
+    // os valores, então as referências entre assets não quebram. Também escreve os textos pt-BR/en.
     /// Cria/atualiza todos os ScriptableObjects do jogo a partir das tabelas da §16 do GDD.
     public static class DatabaseSeeder
     {
+        // Caminhos fixos das pastas; "const" porque nunca mudam.
         private const string DataRoot = "Assets/_Project/Data";
         private const string ArtRoot = "Assets/_Project/Art";
         private const string DatabasePath = "Assets/_Project/Resources/GameDatabase.asset";
         private const string BalancePath = DataRoot + "/GameBalance.asset";
 
         // ---------- §16.1 Crew Classes ----------
+        // Tupla nomeada: (string id, string pt, ...) é um "registro rápido" sem precisar criar uma classe.
+        // "static readonly" = criado uma vez e nunca reatribuído. O bônus vem como texto ("success=12")
+        // e é convertido por ParseBonus, para a tabela ficar parecida com a do GDD.
         private static readonly (string id, string pt, string en, string bonus, int cost, string color)[] ClassRows =
         {
             ("scout",     "Batedor",    "Scout",     "success=12",  60, "#5EC46B"),
@@ -1759,6 +1935,7 @@ namespace StarExpedition.EditorTools
         };
 
         // ---------- §16.5 Recipes (cada uma cria um Equipment) ----------
+        // Preço de venda do Equipment por Tech Tier (índice 0 não é usado: tiers vão de 1 a 4).
         private static readonly int[] EquipmentSellByTier = { 0, 30, 90, 250, 600 };
 
         private static readonly (int tier, string id, string pt, string en, string inputs, string bonus)[] RecipeRows =
@@ -1819,14 +1996,20 @@ namespace StarExpedition.EditorTools
             new Vector2(0.68f, 0.58f), new Vector2(0.30f, 0.74f), new Vector2(0.62f, 0.90f),
         };
 
+        // [MenuItem] cria o item de menu "Star Expedition → Seed Database" no topo do Editor.
+        // O método precisa ser static. Seed é o ponto de entrada: confirma, cria pastas, gera cada
+        // tipo de asset na ordem de dependência (Items antes de Recipes e Planets, que apontam para eles)
+        // e por fim preenche o GameDatabase.
         [MenuItem("Star Expedition/Seed Database (GDD §16)")]
         public static void Seed()
         {
+            // EditorUtility.DisplayDialog mostra uma janela de Sim/Não; devolve true se clicar em "Gerar".
             if (!EditorUtility.DisplayDialog("Seed Database",
                     "Criar/atualizar todos os dados com os valores da §16 do GDD?\n\n" +
                     "Valores editados à mão nos assets serão SOBRESCRITOS.", "Gerar", "Cancelar"))
                 return;
 
+            // Busca a tabela de textos "Content" criada na Fase 1 (Passo 8).
             var content = LocalizationEditorSettings.GetStringTableCollection("Content");
             if (content == null)
             {
@@ -1850,6 +2033,8 @@ namespace StarExpedition.EditorTools
             db.items = items.Values.ToList();
             db.recipes = recipes;
             db.galaxies = galaxies;
+            // SetDirty avisa a Unity "este asset mudou, grave no disco". Sem isso, mudanças feitas por código
+            // em assets podem se perder ao fechar o Editor. SaveAssets (abaixo) efetivamente grava.
             EditorUtility.SetDirty(db);
 
             LinkArt();
@@ -1858,6 +2043,8 @@ namespace StarExpedition.EditorTools
                       $"{galaxies.Sum(g => g.planets.Count)} planets.");
         }
 
+        // Religa os sprites/texturas pelo NOME do arquivo (convenção SPR_...), sem tocar nos números.
+        // Existe separado do Seed para você poder importar arte nova (Fase 6) sem perder balanceamento.
         /// Liga sprites e texturas da pasta Art aos assets pelo nome do arquivo, sem mexer em números.
         [MenuItem("Star Expedition/Link Art")]
         public static void LinkArt()
@@ -1872,6 +2059,8 @@ namespace StarExpedition.EditorTools
                 c.variants = new PortraitVariant[3];
                 for (int v = 0; v < 3; v++)
                 {
+                    // LoadAllAssetsAtPath devolve todos os sub-assets de um PNG (os quadros fatiados de um sprite
+                    // sheet). OrderBy por nome com StringComparer.Ordinal garante a ordem _0, _1, _2, _3 dos quadros.
                     var frames = AssetDatabase.LoadAllAssetsAtPath($"{ArtRoot}/Crew/SPR_Crew_{en}_{v + 1}.png")
                         .OfType<Sprite>().OrderBy(s => s.name, StringComparer.Ordinal).ToArray();
                     if (frames.Length == 0) missing++;
@@ -1907,6 +2096,7 @@ namespace StarExpedition.EditorTools
 
         // ------------------------------------------------------------------
 
+        // Cria/atualiza um CrewClassDefinition por linha de ClassRows.
         private static List<CrewClassDefinition> SeedClasses(StringTableCollection content)
         {
             var list = new List<CrewClassDefinition>();
@@ -1917,6 +2107,7 @@ namespace StarExpedition.EditorTools
                 c.displayName = SetText(content, $"class.{r.id}", r.pt, r.en);
                 c.bonus = ParseBonus(r.bonus);
                 c.hireBaseCost = r.cost;
+                // Converte "#5EC46B" em Color. "out c.accent" escreve direto no campo do asset.
                 ColorUtility.TryParseHtmlString(r.color, out c.accent);
                 EditorUtility.SetDirty(c);
                 list.Add(c);
@@ -1924,6 +2115,8 @@ namespace StarExpedition.EditorTools
             return list;
         }
 
+        // Cria os Items comuns e depois um Item de Equipment para cada Recipe. Devolve um Dictionary
+        // por id, porque Recipes e Loot Tables precisam achar Items pelo id logo em seguida.
         private static Dictionary<string, ItemDefinition> SeedItems(StringTableCollection content)
         {
             var items = new Dictionary<string, ItemDefinition>();
@@ -1954,6 +2147,8 @@ namespace StarExpedition.EditorTools
             return items;
         }
 
+        // Cria as Recipes. Converte o texto "iron_ore:6,circuit_board:1" em lista de ItemAmount.
+        // ".Split(',').Select(...).ToList()" é LINQ: divide o texto, transforma cada parte e junta numa lista.
         private static List<RecipeDefinition> SeedRecipes(StringTableCollection content, Dictionary<string, ItemDefinition> items)
         {
             var list = new List<RecipeDefinition>();
@@ -1975,6 +2170,7 @@ namespace StarExpedition.EditorTools
             return list;
         }
 
+        // Cria as 3 Galaxies e, dentro de cada uma, seus 6 Planets na ordem da tabela.
         private static List<GalaxyDefinition> SeedGalaxies(StringTableCollection content, Dictionary<string, ItemDefinition> items)
         {
             var galaxies = new List<GalaxyDefinition>();
@@ -1998,6 +2194,7 @@ namespace StarExpedition.EditorTools
                     planet.durationSeconds = r.seconds;
                     planet.lootTable = ParseLoot(r.loot, items);
                     var pos = MapPath[i];
+                    // Galaxies de índice ímpar espelham o caminho do mapa (x → 1 - x) para o zigue-zague variar.
                     planet.mapPosition = g % 2 == 1 ? new Vector2(1f - pos.x, pos.y) : pos;
                     EditorUtility.SetDirty(planet);
                     galaxy.planets.Add(planet);
@@ -2008,14 +2205,19 @@ namespace StarExpedition.EditorTools
             return galaxies;
         }
 
+        // Preenche o GameBalance: primeiro zera para os valores padrão do código (que são os da §16.2),
+        // depois liga as referências a classes, Planets e Items que só existem depois de gerados.
         private static GameBalance SeedBalance(List<CrewClassDefinition> classes, Dictionary<string, ItemDefinition> items,
                                                List<GalaxyDefinition> galaxies)
         {
             var b = LoadOrCreate<GameBalance>(BalancePath);
+            // CreateInstance cria um GameBalance "novo" em memória; CopySerialized copia todos os seus
+            // campos para o asset existente, restaurando os padrões. DestroyImmediate apaga o temporário.
             var fresh = ScriptableObject.CreateInstance<GameBalance>();   // valores padrão = §16.2
             EditorUtility.CopySerialized(fresh, b);
             UnityEngine.Object.DestroyImmediate(fresh);
 
+            // Funções locais (declaradas dentro do método): atalhos para achar uma classe/Planet por id.
             CrewClassDefinition Class(string id) => classes.First(c => c.id == id);
             PlanetDefinition Planet(string id) => galaxies.SelectMany(g => g.planets).First(p => p.id == id);
 
@@ -2034,12 +2236,16 @@ namespace StarExpedition.EditorTools
 
         // ------------------------------------------------------------------
 
+        // Converte "loot=50;rare=2" num CrewBonus. Lança erro com mensagem clara se o texto tiver
+        // um nome de bônus desconhecido (erro de digitação na tabela aparece na hora, no Console).
         private static CrewBonus ParseBonus(string text)
         {
             var b = new CrewBonus();
             foreach (var part in text.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 var kv = part.Split('=');
+                // CultureInfo.InvariantCulture: lê números sempre no formato inglês, independente do idioma do
+                // Windows (em pt-BR, "0.7" seria lido errado porque o separador decimal é vírgula).
                 int v = int.Parse(kv[1], CultureInfo.InvariantCulture);
                 switch (kv[0])
                 {
@@ -2055,6 +2261,7 @@ namespace StarExpedition.EditorTools
             return b;
         }
 
+        // Converte "iron_ore:1:3-5,..." em lista de LootEntry (Item, chance, mínimo-máximo).
         private static List<LootEntry> ParseLoot(string text, Dictionary<string, ItemDefinition> items)
         {
             return text.Split(',').Select(part =>
@@ -2071,6 +2278,8 @@ namespace StarExpedition.EditorTools
             }).ToList();
         }
 
+        // Escreve (ou atualiza) a chave nas tabelas pt-BR e en da coleção, e devolve um LocalizedString
+        // apontando para ela — é isso que vai no campo displayName do asset.
         private static LocalizedString SetText(StringTableCollection collection, string key, string pt, string en)
         {
             foreach (var (code, text) in new[] { ("pt-BR", pt), ("en", en) })
@@ -2086,6 +2295,8 @@ namespace StarExpedition.EditorTools
             return new LocalizedString(collection.TableCollectionName, key);
         }
 
+        // Genérico <T>: funciona para qualquer tipo de ScriptableObject. Se o asset já existe no caminho,
+        // devolve ele (mantendo as referências que outros assets têm para ele); senão, cria um novo.
         private static T LoadOrCreate<T>(string path) where T : ScriptableObject
         {
             var asset = AssetDatabase.LoadAssetAtPath<T>(path);
@@ -2095,6 +2306,8 @@ namespace StarExpedition.EditorTools
             return asset;
         }
 
+        // Cria a pasta e, recursivamente, as pastas-mãe que faltarem. AssetDatabase.CreateFolder
+        // (e não System.IO) para a Unity registrar a pasta e gerar o .meta.
         private static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path)) return;
@@ -2151,17 +2364,27 @@ using StarExpedition.Core;
 
 namespace StarExpedition.Economy
 {
+    // POR QUE: Credits entram (venda, Founder Pack) e saem (Hire) de vários lugares. Se cada tela
+    // mexesse em save.Data.credits direto, um bug de saldo poderia estar em qualquer lugar.
+    // ESTRATÉGIA: "service de domínio" = classe C# pura que é a ÚNICA a alterar credits. Valida
+    // (não gasta o que não tem), marca o save como sujo e dispara o evento Changed para a UI.
     /// Dono único dos Credits (GDD §7).
     public class WalletService
     {
         private readonly SaveService _save;
 
+        // Evento C#: "event Action<int>" é uma lista de funções interessadas em saber quando o saldo
+        // muda. A TopBar se inscreve com "+=" e recebe o saldo novo. O service não sabe quem ouve.
         public event Action<int> Changed;
 
+        // Recebe o SaveService pelo construtor (injeção de dependência): fica explícito do que depende.
         public WalletService(SaveService save) => _save = save;
 
+        // Leitura do saldo. Só "get": ninguém de fora consegue atribuir Credits.
         public int Credits => _save.Data.credits;
 
+        // Soma Credits. Ignora valores <= 0 para um bug em outro lugar não conseguir "tirar" por aqui.
+        // "Changed?.Invoke" = dispara o evento só se houver alguém inscrito (senão seria null).
         public void Add(int amount)
         {
             if (amount <= 0) return;
@@ -2170,6 +2393,8 @@ namespace StarExpedition.Economy
             Changed?.Invoke(Credits);
         }
 
+        // Padrão "Try": devolve false em vez de lançar erro quando não dá (saldo insuficiente).
+        // Quem chama decide o que mostrar ao jogador. Só desconta se tiver o valor inteiro.
         public bool TrySpend(int amount)
         {
             if (amount < 0 || _save.Data.credits < amount) return false;
@@ -2194,6 +2419,10 @@ using StarExpedition.Data;
 
 namespace StarExpedition.Items
 {
+    // POR QUE: Items entram (Loot) e saem (crafting, venda, equipar); o inventário precisa de um dono.
+    // ESTRATÉGIA: service de domínio (ver WalletService) sobre a lista de ItemStack do save.
+    // Recebe o GameDatabase para recusar ids que não existem. Evento Changed sem parâmetro:
+    // a UI simplesmente redesenha a lista inteira.
     /// Dono único do inventário. Equipment equipado NÃO está aqui: está no Crew Member.
     public class InventoryService
     {
@@ -2208,14 +2437,19 @@ namespace StarExpedition.Items
             _db = db;
         }
 
+        // IReadOnlyList: a UI pode ler a lista, mas não pode dar Add/Remove nela (tem que passar pelo service).
         public IReadOnlyList<ItemStack> Stacks => _save.Data.inventory;
 
+        // Quantas unidades o jogador tem de um Item (0 se não tiver). FirstOrDefault devolve null se não
+        // achar; "?.quantity ?? 0" transforma esse null em 0.
         public int Count(string itemId)
             => _save.Data.inventory.FirstOrDefault(s => s.itemId == itemId)?.quantity ?? 0;
 
+        // true se o inventário cobre todos os ingredientes pedidos (usado pelo CraftingService, Fase 5).
         public bool HasAll(IEnumerable<ItemAmount> required)
             => required.All(r => Count(r.item.id) >= r.amount);
 
+        // Adiciona unidades: se já existe uma pilha do Item, soma nela; senão cria uma pilha nova.
         public void Add(string itemId, int amount)
         {
             if (amount <= 0 || _db.GetItem(itemId) == null) return;
@@ -2226,6 +2460,8 @@ namespace StarExpedition.Items
             Changed?.Invoke();
         }
 
+        // Remove unidades se houver o suficiente. Quando a pilha zera, ela é apagada da lista
+        // (assim o save não guarda linhas "0 unidades").
         public bool TryRemove(string itemId, int amount)
         {
             var stack = _save.Data.inventory.FirstOrDefault(s => s.itemId == itemId);
@@ -2238,6 +2474,8 @@ namespace StarExpedition.Items
         }
 
         /// Equipments soltos no inventário (para o painel de equipar).
+        // Lista os Equipments do inventário, do tier mais baixo ao mais alto (LINQ: Select transforma,
+        // Where filtra, OrderBy ordena). Devolve IEnumerable: é calculado na hora em que a UI percorre.
         public IEnumerable<ItemDefinition> OwnedEquipment()
             => _save.Data.inventory
                 .Select(s => _db.GetItem(s.itemId))
@@ -2259,6 +2497,10 @@ using System.Linq;
 
 namespace StarExpedition.Crew
 {
+    // POR QUE: cada Crew Member novo precisa de um nome, e repetir nomes no Roster confunde o jogador.
+    // ESTRATÉGIA: classe pequena e pura, separada do CrewService para ele não ficar gigante.
+    // Recebe um System.Random pelo construtor: nos testes passamos um Random com semente fixa,
+    // e os nomes saem sempre iguais (resultado previsível = teste confiável).
     public class NameGenerator
     {
         private static readonly string[] FirstNames =
@@ -2279,6 +2521,8 @@ namespace StarExpedition.Crew
         public NameGenerator(Random rng) => _rng = rng;
 
         /// Um nome que ainda não existe no Roster, se possível.
+        // Sorteia "Nome Sobrenome" até achar um que não está em uso (máximo 50 tentativas).
+        // HashSet torna o "já existe?" instantâneo. Se esgotar, usa "Nome 42" como plano B.
         public string Next(IEnumerable<string> namesInUse)
         {
             var used = new HashSet<string>(namesInUse ?? Enumerable.Empty<string>());
@@ -2307,6 +2551,12 @@ using StarExpedition.Items;
 
 namespace StarExpedition.Crew
 {
+    // POR QUE: é o coração da tripulação: Starter Pick, Hire, Equip, Member Loss e Emergency
+    // Recruit mexem no Roster e precisam respeitar regras do GDD (§3, §6, §7).
+    // ESTRATÉGIA: service de domínio dono do Roster. Usa o WalletService para cobrar e o
+    // InventoryService para mover Equipment — nunca mexe em credits/inventory direto.
+    // Tem vários eventos específicos (Hired, Lost...) para o tutorial e o analytics reagirem a
+    // cada ação, e um genérico (RosterChanged) para a UI simplesmente redesenhar.
     /// Dono único do Roster (GDD §3).
     public class CrewService
     {
@@ -2316,15 +2566,19 @@ namespace StarExpedition.Crew
         private readonly InventoryService _inventory;
         private readonly NameGenerator _names;
         private readonly Random _rng;
+        // Função que responde "este membro está em Expedition?". Começa com "ninguém está"
+        // (_ => false) e é trocada pelo ExpeditionService na Fase 4 (ver SetBusyCheck).
         private Func<string, bool> _isBusy = _ => false;
 
         public event Action RosterChanged;
         public event Action<CrewMemberState> StarterPicked;
         public event Action<CrewMemberState> Hired;
         public event Action<CrewMemberState> Equipped;
+        // Action com dois parâmetros: o membro perdido e o id do Equipment que foi junto.
         public event Action<CrewMemberState, string> Lost;          // membro, id do Equipment perdido junto
         public event Action<CrewMemberState> EmergencyRecruited;
 
+        // Recebe tudo de que depende pelo construtor. O mesmo Random é repassado ao NameGenerator.
         public CrewService(SaveService save, GameDatabase db, WalletService wallet, InventoryService inventory, Random rng)
         {
             _save = save;
@@ -2336,8 +2590,12 @@ namespace StarExpedition.Crew
         }
 
         /// Quem sabe se um membro está em Expedition é o ExpeditionService (Fase 4).
+        // Por que não receber o ExpeditionService no construtor? Porque o ExpeditionService também
+        // depende do CrewService (dependência circular). Solução: ele "pluga" aqui uma função depois.
+        // Assim a informação "ocupado" continua morando só nas Expeditions ativas (ver SaveData).
         public void SetBusyCheck(Func<string, bool> isBusy) => _isBusy = isBusy;
 
+        // Atalhos de leitura (expression-bodied, "=>"): Roster inteiro, busca por id, disponíveis, classe e Equipment.
         public IReadOnlyList<CrewMemberState> Roster => _save.Data.roster;
         public CrewMemberState Get(string memberId) => _save.Data.roster.FirstOrDefault(m => m.id == memberId);
         public bool IsBusy(CrewMemberState member) => _isBusy(member.id);
@@ -2346,6 +2604,8 @@ namespace StarExpedition.Crew
         public ItemDefinition EquipmentOf(CrewMemberState member) => _db.GetItem(member.equippedItemId);
 
         /// Bônus da Crew Class + do Equipment do membro.
+        // Soma o bônus da Crew Class com o do Equipment (usa o operador + do CrewBonus).
+        // "?? default" = se a classe não for encontrada, começa de um bônus zerado.
         public CrewBonus BonusOf(CrewMemberState member)
         {
             var bonus = ClassOf(member)?.bonus ?? default;
@@ -2356,8 +2616,11 @@ namespace StarExpedition.Crew
 
         // ---------- Starter Pick (GDD §3.3) ----------
 
+        // true enquanto o jogador ainda não fez a escolha inicial (o StarterPickPanel da Fase 9 usa isso).
         public bool NeedsStarterPick => !_save.Data.starterPicked;
 
+        // Cria o Crew Member grátis do início. Recusa se já escolheu ou se a classe não é uma das
+        // 3 permitidas (proteção contra a UI mandar a classe errada). Devolve null quando recusa.
         public CrewMemberState PickStarter(CrewClassDefinition crewClass)
         {
             if (!NeedsStarterPick || !_db.balance.starterClasses.Contains(crewClass)) return null;
@@ -2372,6 +2635,8 @@ namespace StarExpedition.Crew
         // ---------- Hire (GDD §7) ----------
 
         /// preço = base × crescimento^(tamanho do Roster − 1), arredondado para múltiplo de 5.
+        // Preço de Hire que cresce com o tamanho do Roster (quanto mais gente, mais caro).
+        // Math.Pow = potência. Arredonda para múltiplo de 5 para o preço ficar "bonito" na UI.
         public int HireCost(CrewClassDefinition crewClass)
         {
             int rosterSize = Roster.Count;
@@ -2379,8 +2644,12 @@ namespace StarExpedition.Crew
             return (int)(Math.Round(cost / 5.0) * 5);
         }
 
+        // O Hire mais barato entre todas as classes; usado pelo Emergency Recruit. "Min(HireCost)" passa o
+        // próprio método como função para o LINQ calcular o preço de cada classe.
         public int CheapestHireCost => _db.classes.Min(HireCost);
 
+        // Tenta contratar: primeiro cobra (TrySpend). Se não tiver Credits, nada acontece e devolve false.
+        // "out member" = segundo valor de retorno: o membro criado, para a UI poder mostrá-lo.
         public bool TryHire(CrewClassDefinition crewClass, out CrewMemberState member)
         {
             member = null;
@@ -2401,8 +2670,11 @@ namespace StarExpedition.Crew
 
         // ---------- Equipment (GDD §6) ----------
 
+        // Regra do GDD §3.2: quem está em Expedition não troca de Equipment.
         public bool CanChangeEquipment(CrewMemberState member) => member != null && !IsBusy(member);
 
+        // Equipa: tira 1 unidade do inventário, devolve o Equipment anterior (se houver) e grava o novo.
+        // A ordem importa: primeiro TryRemove, para não perder nada se o inventário não tiver o Item.
         public bool TryEquip(CrewMemberState member, ItemDefinition equipment)
         {
             if (!CanChangeEquipment(member) || equipment == null || !equipment.IsEquipment) return false;
@@ -2418,6 +2690,7 @@ namespace StarExpedition.Crew
             return true;
         }
 
+        // Desequipa: o Equipment volta para o inventário; "" = sem Equipment.
         public bool TryUnequip(CrewMemberState member)
         {
             if (!CanChangeEquipment(member) || string.IsNullOrEmpty(member.equippedItemId)) return false;
@@ -2431,6 +2704,7 @@ namespace StarExpedition.Crew
         // ---------- Member Loss e Emergency Recruit (GDD §3.4, §3.5) ----------
 
         /// Remove o membro para sempre. O Equipment dele se perde junto.
+        // Member Loss: chamado pelo ExpeditionService numa Failure. O Equipment não volta ao inventário.
         public void RemoveLost(string memberId)
         {
             var member = Get(memberId);
@@ -2443,6 +2717,8 @@ namespace StarExpedition.Crew
         }
 
         /// Se o Roster ficou vazio e os Credits não pagam ninguém, dá um Scout grátis.
+        // Emergency Recruit (GDD §3.5): impede o jogo de travar sem ninguém para enviar e sem Credits.
+        // Chamado depois de cada Member Loss e ao abrir o jogo. Devolve null quando não se aplica.
         public CrewMemberState EnsureEmergencyRecruit()
         {
             if (NeedsStarterPick || Roster.Count > 0) return null;
@@ -2456,6 +2732,8 @@ namespace StarExpedition.Crew
 
         // ------------------------------------------------------------------
 
+        // Único lugar que cria um Crew Member: gera id sequencial ("m1", "m2"...), sorteia variante
+        // visual (0..2) e nome, adiciona ao Roster e marca o save. Os métodos públicos disparam os eventos.
         private CrewMemberState CreateMember(CrewClassDefinition crewClass)
         {
             var member = new CrewMemberState
@@ -2486,11 +2764,18 @@ using StarExpedition.Data;
 
 namespace StarExpedition.Progress
 {
+    // POR QUE: o desbloqueio linear de Planets, os Tech Tiers e os Cycles são regras que várias telas
+    // consultam ("este Planet está liberado?"). Centralizar evita cada tela calcular do seu jeito.
+    // ESTRATÉGIA: service de domínio (ver WalletService) dono de unlockedPlanetIndex,
+    // bestUnlockedPlanetIndex, cycle e cycleCompleted. Trabalha com o ÍNDICE global do Planet
+    // (0..17) do GameDatabase, o que transforma "liberado?" numa simples comparação de números.
     /// Dono do desbloqueio de Planets, Tech Tiers e Cycles (GDD §4.1, §6, §8).
     public class ProgressService
     {
         private readonly SaveService _save;
         private readonly GameDatabase _db;
+        // Pergunta "há Expeditions ativas?" — plugada pelo ExpeditionService (mesmo truque do
+        // SetBusyCheck do CrewService, para evitar dependência circular).
         private Func<bool> _hasActiveExpeditions = () => false;
 
         public event Action<PlanetDefinition> PlanetUnlocked;
@@ -2503,27 +2788,34 @@ namespace StarExpedition.Progress
             _db = db;
         }
 
+        // Liga a função acima. Chamado pelo ExpeditionService no bootstrap (Fase 4).
         public void SetActiveExpeditionCheck(Func<bool> hasActiveExpeditions) => _hasActiveExpeditions = hasActiveExpeditions;
 
         public int Cycle => _save.Data.cycle;
         public int UnlockedIndex => _save.Data.unlockedPlanetIndex;
+        // O Planet mais avançado liberado neste Cycle (a "fronteira" do mapa).
         public PlanetDefinition FrontierPlanet => _db.PlanetAt(UnlockedIndex);
 
+        // Liberado = está no índice da fronteira ou antes dela. index -1 = Planet desconhecido.
         public bool IsUnlocked(PlanetDefinition planet)
         {
             int index = _db.IndexOf(planet);
             return index >= 0 && index <= UnlockedIndex;
         }
 
+        // Sobrecarga (mesmo nome, parâmetro diferente): uma Galaxy está liberada se o 1º Planet dela está.
         public bool IsUnlocked(GalaxyDefinition galaxy) => galaxy.planets.Count > 0 && IsUnlocked(galaxy.planets[0]);
 
         /// Tech Tiers dependem do Planet MAIS AVANÇADO já alcançado em qualquer Cycle.
+        // Tier liberado se o melhor Planet já alcançado (em QUALQUER Cycle) passou do Planet que o libera.
+        // Por isso usa bestUnlockedPlanetIndex: começar um Cycle novo não tranca Recipes de novo.
         public bool IsTierUnlocked(int tier)
         {
             var planet = TierUnlockPlanet(tier);
             return planet == null || _save.Data.bestUnlockedPlanetIndex >= _db.IndexOf(planet);
         }
 
+        // Qual Planet libera o tier (1..4), lido do GameBalance; null se o tier não existir.
         public PlanetDefinition TierUnlockPlanet(int tier)
         {
             var list = _db.balance.tierUnlockPlanets;
@@ -2532,6 +2824,8 @@ namespace StarExpedition.Progress
         }
 
         /// Chamado pelo ExpeditionService em todo Claim (Success ou Failure).
+        // Avança a fronteira quando o Claim é do Planet mais avançado. Claim num Planet antigo não faz nada.
+        // No último Planet, em vez de liberar outro, marca o Cycle como completo.
         public void RegisterClaim(PlanetDefinition planet)
         {
             int index = _db.IndexOf(planet);
@@ -2555,8 +2849,12 @@ namespace StarExpedition.Progress
         // ---------- Cycles (GDD §8) ----------
 
         public bool IsCycleCompleted => _save.Data.cycleCompleted;
+        // Só pode começar um Cycle novo com o atual completo e sem Expeditions em andamento
+        // (senão uma Expedition antiga seria resolvida com o Cycle errado).
         public bool CanStartNewCycle => IsCycleCompleted && !_hasActiveExpeditions();
 
+        // Começa o Cycle seguinte: zera só a fronteira (o resto — Roster, inventário, Credits — fica).
+        // Usa SaveNow em vez de MarkDirty porque perder esse passo num crash seria bem visível ao jogador.
         public bool TryStartNewCycle()
         {
             if (!CanStartNewCycle) return false;
@@ -2576,6 +2874,7 @@ namespace StarExpedition.Progress
 Em `Services.cs`, acrescente (com os `using` de `StarExpedition.Economy`, `.Items`, `.Crew` e `.Progress`):
 
 ```csharp
+        // Novos: os quatro services da Fase 3 ficam acessíveis pelo Services.
         public static WalletService Wallet { get; internal set; }
         public static InventoryService Inventory { get; internal set; }
         public static CrewService Crew { get; internal set; }
@@ -2585,6 +2884,8 @@ Em `Services.cs`, acrescente (com os `using` de `StarExpedition.Economy`, `.Item
 Em `GameBootstrap.CreateServices`, depois do relógio:
 
 ```csharp
+            // Um único Random compartilhado para nomes e variantes. Ordem de criação = ordem de dependência:
+            // wallet e inventory antes de crew, porque o CrewService os recebe no construtor.
             var rng = new System.Random();
             var wallet = new WalletService(save);
             var inventory = new InventoryService(save, database);
@@ -2612,6 +2913,8 @@ Ainda sem UI; confirme pelo Console. Crie um script temporário `Phase3Probe.cs`
 using StarExpedition.Core;
 using UnityEngine;
 
+// POR QUE: script TEMPORÁRIO só para testar os services pelo Console, antes de existir UI.
+// ESTRATÉGIA: Start roda uma vez ao dar Play; aqui simula Starter Pick, Hire e um Claim.
 public class Phase3Probe : MonoBehaviour
 {
     private void Start()
@@ -2657,6 +2960,10 @@ public class Phase3Probe : MonoBehaviour
 namespace StarExpedition.Expeditions
 {
     /// O que o jogador vê antes de enviar (GDD §11.2): chances e duração final.
+    // POR QUE: a tela do Planet precisa mostrar chances e duração ANTES do envio, e o Resolver precisa
+    // dos mesmos números no Claim. Esta struct carrega esses números calculados de um para o outro.
+    // ESTRATÉGIA: "readonly struct": depois de criada, nenhum valor muda (dados imutáveis não
+    // podem ser alterados por engano no caminho). Os valores entram só pelo construtor.
     public readonly struct ExpeditionOdds
     {
         public readonly int PlanetRisk;       // Risk base + Cycle
@@ -2665,6 +2972,7 @@ namespace StarExpedition.Expeditions
         public readonly float LossChance;     // 0..1, só se aplica numa Failure
         public readonly int DurationSeconds;
 
+        // Construtor: único jeito de preencher os campos readonly.
         public ExpeditionOdds(int planetRisk, int effectiveRisk, float successChance, float lossChance, int durationSeconds)
         {
             PlanetRisk = planetRisk;
@@ -2684,6 +2992,10 @@ using StarExpedition.Core;
 
 namespace StarExpedition.Expeditions
 {
+    // POR QUE: o Claim produz vários resultados de uma vez (Success, Loot, quem se perdeu, Planet
+    // liberado...), e a tela de resultado (ResultPanel, Fase 8) precisa de todos eles.
+    // ESTRATÉGIA: classe só de dados. O Resolver preenche a parte "sorteio" (success, loot,
+    // lostMemberId); o ExpeditionService completa o resto ao aplicar o resultado.
     /// O resultado de um Claim.
     public class ExpeditionOutcome
     {
@@ -2714,12 +3026,20 @@ using StarExpedition.Data;
 
 namespace StarExpedition.Expeditions
 {
+    // POR QUE: as fórmulas de chance, duração e Loot (§16.2) são a regra mais importante do jogo e
+    // precisam ser testáveis e previsíveis.
+    // ESTRATÉGIA: classe static com FUNÇÕES PURAS: recebem tudo por parâmetro, devolvem um resultado
+    // e não leem nem alteram nada de fora (nem save, nem Services). Com a mesma semente (seed), o
+    // System.Random sorteia sempre a mesma sequência — então o mesmo envio sempre dá o mesmo resultado.
     /// Fórmulas da §16.2. Função pura: mesmos parâmetros + mesma semente = mesmo resultado.
     public static class ExpeditionResolver
     {
+        // Risk do Planet no Cycle atual: base + um passo fixo por Cycle acima do 1º.
         public static int PlanetRisk(PlanetDefinition planet, int cycle, GameBalance b)
             => planet.baseRisk + b.cycleRiskStep * Math.Max(0, cycle - 1);
 
+        // Calcula as chances mostradas ao jogador: Risk efetivo (menos a redução da Squad), chance de
+        // Success limitada entre min e max, chance de Member Loss e a duração final.
         public static ExpeditionOdds ComputeOdds(PlanetDefinition planet, int cycle, CrewBonus squad, GameBalance b)
         {
             int planetRisk = PlanetRisk(planet, cycle, b);
@@ -2732,6 +3052,7 @@ namespace StarExpedition.Expeditions
                                       ComputeDuration(planet, squad, b));
         }
 
+        // Duração com a redução da Squad (Pilot, Equipment), limitada a um máximo de % e a um mínimo de segundos.
         public static int ComputeDuration(PlanetDefinition planet, CrewBonus squad, GameBalance b)
         {
             int reduction = Math.Min(b.maxDurationReductionPercent, Math.Max(0, squad.durationPercent));
@@ -2740,6 +3061,8 @@ namespace StarExpedition.Expeditions
         }
 
         /// Sorteia o resultado. Não altera nada: quem aplica é o ExpeditionService.
+        // Faz o sorteio do Claim com um Random criado a partir da semente salva no envio.
+        // Primeiro Success/Failure; se Success, o Loot; se Failure, talvez um Member Loss.
         public static ExpeditionOutcome Resolve(PlanetDefinition planet, int cycle, IReadOnlyList<string> squadIds,
                                                 CrewBonus squad, GameBalance b, int seed)
         {
@@ -2763,6 +3086,8 @@ namespace StarExpedition.Expeditions
             return outcome;
         }
 
+        // Sorteia cada linha da Loot Table. O Cycle e a Squad aumentam quantidade e chance de Rare Item.
+        // Rare Items ficam mais prováveis em Planets de Risk alto; sempre vêm 1 por vez.
         private static void RollLoot(PlanetDefinition planet, int cycle, CrewBonus squad, GameBalance b,
                                      ExpeditionOdds odds, Random rng, List<ItemStack> loot)
         {
@@ -2779,6 +3104,7 @@ namespace StarExpedition.Expeditions
 
                 if (rng.NextDouble() >= chance) continue;
 
+                // rng.Next(min, max + 1): o limite de cima do Next é exclusivo, por isso o "+ 1".
                 int quantity = isRare ? 1 : (int)Math.Round(rng.Next(entry.min, entry.max + 1) * lootMultiplier);
                 if (quantity > 0) loot.Add(new ItemStack(entry.item.id, quantity));
             }
@@ -2791,6 +3117,8 @@ namespace StarExpedition.Expeditions
             }
         }
 
+        // Clamp de inteiros escrito à mão para esta classe não depender da UnityEngine (Mathf):
+        // assim ela roda em testes puros de C#.
         private static int Clamp(int value, int min, int max) => value < min ? min : value > max ? max : value;
     }
 }
@@ -2813,8 +3141,16 @@ using StarExpedition.Progress;
 
 namespace StarExpedition.Expeditions
 {
+    // POR QUE: quando o envio não é possível, a UI precisa saber O MOTIVO para mostrar a mensagem certa.
+    // ESTRATÉGIA: um enum com cada motivo (em vez de só true/false) — o PlanetPanel traduz cada valor num texto.
     public enum StartCheck { Ok, PlanetLocked, PlanetBusy, InvalidSquadSize, MemberUnavailable }
 
+    // POR QUE: é o coração do jogo: enviar a Squad, contar o tempo real, fazer o Claim e aplicar tudo
+    // (Loot, Member Loss, desbloqueio, Emergency Recruit, Double Loot).
+    // ESTRATÉGIA: service de domínio dono da lista de Expeditions ativas do save. NÃO sorteia nada
+    // sozinho: pede o sorteio ao ExpeditionResolver (função pura) e só APLICA o resultado, chamando
+    // os outros services (CrewService, InventoryService, ProgressService) — cada um mexe no que é seu.
+    // Usa IClock em vez de DateTime.UtcNow direto, para ser protegido contra relógio voltado e testável.
     /// Dono das Expeditions ativas (GDD §2, §4).
     public class ExpeditionService
     {
@@ -2824,6 +3160,7 @@ namespace StarExpedition.Expeditions
         private readonly CrewService _crew;
         private readonly InventoryService _inventory;
         private readonly ProgressService _progress;
+        // Random usado só para sortear a SEMENTE de cada Expedition no envio.
         private readonly Random _seedSource;
 
         public event Action<ExpeditionState> Started;
@@ -2842,28 +3179,38 @@ namespace StarExpedition.Expeditions
             _seedSource = seedSource;
         }
 
+        // Lista de Expeditions em andamento; Get acha a de um Planet (no máximo uma por Planet).
         public IReadOnlyList<ExpeditionState> Active => _save.Data.expeditions;
         public ExpeditionState Get(PlanetDefinition planet) => _save.Data.expeditions.FirstOrDefault(e => e.planetId == planet.id);
+        // Um membro está ocupado se o id dele aparece em alguma Expedition ativa (única fonte da verdade).
         public bool IsMemberBusy(string memberId) => _save.Data.expeditions.Any(e => e.memberIds.Contains(memberId));
 
         // ---------- Tempo ----------
 
+        // Momento de término = início + duração. Calculado na hora; nada "conta" em segundo plano.
         public DateTime EndUtc(ExpeditionState e)
             => new DateTime(e.startUtcTicks, DateTimeKind.Utc).AddSeconds(e.durationSeconds);
 
+        // Tempo que falta (nunca negativo). Como usa o relógio atual, funciona mesmo depois de o
+        // app ficar fechado por horas: o tempo "passou" sozinho.
         public TimeSpan Remaining(ExpeditionState e)
         {
             var remaining = EndUtc(e) - _clock.UtcNow;
             return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
         }
 
+        // Completa = tempo restante chegou a zero. Não sorteia nada: só o Claim sorteia (glossário).
         public bool IsComplete(ExpeditionState e) => Remaining(e) == TimeSpan.Zero;
 
         // ---------- Envio ----------
 
+        // Soma o bônus de todos os membros. Aggregate é o "fold" do LINQ: começa em default(CrewBonus)
+        // (tudo zero) e vai somando o bônus de cada membro.
         public CrewBonus SquadBonus(IEnumerable<CrewMemberState> squad)
             => squad.Aggregate(default(CrewBonus), (sum, m) => sum + _crew.BonusOf(m));
 
+        // Chances e duração mostradas no PlanetPanel antes do envio. Na 1ª Expedition do jogo (tutorial)
+        // mostra 100% de Success, 0% de Member Loss e a duração curta do tutorial.
         public ExpeditionOdds PreviewOdds(PlanetDefinition planet, IReadOnlyList<CrewMemberState> squad)
         {
             var odds = ExpeditionResolver.ComputeOdds(planet, _progress.Cycle, SquadBonus(squad), _db.balance);
@@ -2872,6 +3219,8 @@ namespace StarExpedition.Expeditions
             return odds;
         }
 
+        // Valida o envio e devolve o motivo do problema (ou Ok). A UI chama isso para habilitar o botão;
+        // o Start chama de novo por segurança (nunca confie só na UI).
         public StartCheck CanStart(PlanetDefinition planet, IReadOnlyList<CrewMemberState> squad)
         {
             if (!_progress.IsUnlocked(planet)) return StartCheck.PlanetLocked;
@@ -2883,6 +3232,8 @@ namespace StarExpedition.Expeditions
             return StartCheck.Ok;
         }
 
+        // Envia a Squad: cria o ExpeditionState com início, duração, semente e Cycle já fixados.
+        // Fixar a semente AGORA garante que fechar e reabrir o app não muda o resultado.
         public ExpeditionState Start(PlanetDefinition planet, IReadOnlyList<CrewMemberState> squad)
         {
             if (CanStart(planet, squad) != StartCheck.Ok) return null;
@@ -2906,10 +3257,14 @@ namespace StarExpedition.Expeditions
             return expedition;
         }
 
+        // Propriedade privada: a próxima Expedition é o tutorial se nenhuma foi enviada ainda.
         private bool IsTutorialNext => _save.Data.totalExpeditionsStarted == 0;
 
         // ---------- Claim ----------
 
+        // Claim: sorteia (ou usa o resultado fixo do tutorial), tira a Expedition da lista, entrega o Loot,
+        // aplica Ad-Free, Member Loss, desbloqueio e Emergency Recruit, grava e avisa quem estiver ouvindo.
+        // Devolve null se ainda não terminou (proteção contra a UI chamar cedo demais).
         public ExpeditionOutcome Claim(PlanetDefinition planet)
         {
             var expedition = Get(planet);
@@ -2955,6 +3310,7 @@ namespace StarExpedition.Expeditions
 
         // ---------- Double Loot (GDD §13.1) ----------
 
+        // Double Loot só vale para Success e uma vez só por resultado.
         public bool CanDoubleLoot(ExpeditionOutcome outcome) => outcome != null && outcome.success && !outcome.lootDoubled;
 
         /// Chamado quando o anúncio recompensado termina.
@@ -2967,6 +3323,7 @@ namespace StarExpedition.Expeditions
             LootDoubled?.Invoke(outcome);
         }
 
+        // Resultado fixo da 1ª Expedition: sempre Success com o Loot definido no GameBalance.
         private ExpeditionOutcome TutorialOutcome(PlanetDefinition planet)
         {
             var outcome = new ExpeditionOutcome { planetId = planet.id, success = true };
@@ -2985,12 +3342,16 @@ namespace StarExpedition.Expeditions
 Em `Services.cs` (com `using StarExpedition.Expeditions;`):
 
 ```csharp
+        // Novo: acesso às Expeditions pelo Services.
         public static ExpeditionService Expeditions { get; internal set; }
 ```
 
 Em `GameBootstrap.CreateServices`, depois do `progress`:
 
 ```csharp
+            // Aqui acontece a "ligação tardia": depois de criar o ExpeditionService, entregamos ao
+            // CrewService e ao ProgressService as funções que perguntam sobre Expeditions ativas.
+            // "expeditions.IsMemberBusy" (sem parênteses) passa o MÉTODO como valor, não o resultado dele.
             var expeditions = new ExpeditionService(save, database, clock, crew, inventory, progress, rng);
             crew.SetBusyCheck(expeditions.IsMemberBusy);
             progress.SetActiveExpeditionCheck(() => expeditions.Active.Count > 0);
@@ -3015,6 +3376,9 @@ using System.Linq;
 using StarExpedition.Core;
 using UnityEngine;
 
+// POR QUE: script TEMPORÁRIO para ver o timer e o Claim funcionando antes de existir UI.
+// ESTRATÉGIA: Start envia uma Expedition para Kora; Update (roda todo frame) verifica se
+// terminou e faz o Claim sozinho, mostrando o resultado no Console.
 public class Phase4Probe : MonoBehaviour
 {
     private void Start()
@@ -3073,6 +3437,11 @@ using StarExpedition.Progress;
 
 namespace StarExpedition.Crafting
 {
+    // POR QUE: craftar mexe em vários Items de uma vez e depende do Tech Tier liberado; essa regra
+    // não pode ficar na tela da Oficina (WorkshopView).
+    // ESTRATÉGIA: service de domínio que NÃO é dono de dados próprios: usa o InventoryService para
+    // consumir/entregar Items e o ProgressService para saber se o tier está liberado.
+    // Operação "tudo ou nada": confere tudo antes (CanCraft) e só então remove.
     /// Recipes (GDD §6).
     public class CraftingService
     {
@@ -3091,10 +3460,15 @@ namespace StarExpedition.Crafting
             _progress = progress;
         }
 
+        // Recipes de um tier (a WorkshopView mostra uma seção por tier).
         public IEnumerable<RecipeDefinition> RecipesOfTier(int tier) => _db.recipes.Where(r => r.tier == tier);
+        // Liberada se o Tech Tier dela está liberado (regra do ProgressService).
         public bool IsUnlocked(RecipeDefinition recipe) => _progress.IsTierUnlocked(recipe.tier);
+        // Pode craftar = liberada + tem todos os ingredientes. A UI usa isso para habilitar o botão.
         public bool CanCraft(RecipeDefinition recipe) => IsUnlocked(recipe) && _inventory.HasAll(recipe.inputs);
 
+        // Consome os ingredientes, entrega o produto e grava na hora (SaveNow): craftar é uma ação
+        // "cara" para o jogador, não queremos perdê-la num crash.
         public bool TryCraft(RecipeDefinition recipe)
         {
             if (!CanCraft(recipe)) return false;
@@ -3123,12 +3497,19 @@ using StarExpedition.Items;
 
 namespace StarExpedition.Economy
 {
+    // POR QUE: os ids dos produtos da loja da Google Play aparecem em vários lugares (ShopService,
+    // UnityPurchaseService). Escrever o texto "ad_free" solto em cada um é pedir erro de digitação.
+    // ESTRATÉGIA: constantes num único lugar; o compilador avisa se um nome estiver errado.
     public static class ProductIds
     {
         public const string AdFree = "ad_free";
         public const string FounderPack = "founder_pack";
     }
 
+    // POR QUE: vender Items por Credits e entregar o conteúdo das compras (Ad-Free, Founder Pack)
+    // são regras de jogo — não devem depender de qual biblioteca de pagamento é usada.
+    // ESTRATÉGIA: service de domínio que usa Inventory, Wallet e Crew. A loja real (Fase 11) só
+    // avisa "o jogador tem o produto X" chamando GrantEntitlement; o QUE isso dá ao jogador é decidido aqui.
     /// Venda de Items (GDD §7) e conteúdo das compras (GDD §13.2).
     public class ShopService
     {
@@ -3138,6 +3519,7 @@ namespace StarExpedition.Economy
         private readonly WalletService _wallet;
         private readonly CrewService _crew;
 
+        // Action com 3 parâmetros: qual Item, quantas unidades e quantos Credits rendeu (para Toast/analytics).
         public event Action<ItemDefinition, int, int> Sold;   // item, quantidade, Credits recebidos
         public event Action<string> EntitlementGranted;
 
@@ -3150,6 +3532,7 @@ namespace StarExpedition.Economy
             _crew = crew;
         }
 
+        // Vende: primeiro tira do inventário (se não tiver, nada acontece), depois paga os Credits.
         public bool TrySell(ItemDefinition item, int quantity)
         {
             if (item == null || quantity <= 0) return false;
@@ -3165,6 +3548,8 @@ namespace StarExpedition.Economy
         public bool IsAdFree => _save.Data.adFree;
         public bool IsFounderPackGranted => _save.Data.founderPackGranted;
 
+        // Idempotente = pode ser chamado várias vezes com o mesmo resultado. Importante porque a loja
+        // reenvia compras ao "restaurar" (reinstalação, outro aparelho); os ifs impedem entregar duas vezes.
         /// Chamado pela loja (Fase 11) para cada compra confirmada ou restaurada.
         /// Idempotente: chamar duas vezes não entrega em dobro.
         public void GrantEntitlement(string productId)
@@ -3199,6 +3584,7 @@ namespace StarExpedition.Economy
 Em `Services.cs` (com `using StarExpedition.Crafting;`):
 
 ```csharp
+        // Novos: Crafting e Shop no Services.
         public static CraftingService Crafting { get; internal set; }
         public static ShopService Shop { get; internal set; }
 ```
@@ -3225,6 +3611,8 @@ Script temporário na cena `Main`:
 using StarExpedition.Core;
 using UnityEngine;
 
+// POR QUE: script TEMPORÁRIO: testa craftar, equipar, vender e o bloqueio do Tier 2 pelo Console.
+// ESTRATÉGIA: chama os services direto no Start. List.Find(r => ...) procura o primeiro elemento que satisfaz a condição.
 public class Phase5Probe : MonoBehaviour
 {
     private void Start()
@@ -3348,6 +3736,11 @@ As superfícies dos Planets e os fundos ficam **fora** do atlas (são texturas g
 
 ```hlsl
 // Caminho: Assets/_Project/Shaders/PlanetSphere.shader
+// POR QUE: desenhar cada Planet girando como animação quadro a quadro exigiria dezenas de
+// sprites por Planet. Com um shader, uma única textura plana "enrola" numa esfera e gira sozinha.
+// ESTRATÉGIA: shader de UI (funciona num RawImage dentro do Canvas). O fragment shader (frag)
+// roda para cada pixel: decide se está dentro do círculo, calcula onde cair na textura e aplica
+// luz em 3 faixas. Tudo é arredondado para a grade de pixels, para continuar parecendo pixel art.
 Shader "StarExpedition/UI/PlanetSphere"
 {
     Properties
@@ -3461,10 +3854,17 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: o shader PlanetSphere precisa receber a textura do Planet e parâmetros (velocidade,
+    // tamanho, longitude inicial). Este componente faz essa ponte entre o PlanetDefinition e o material.
+    // ESTRATÉGIA: MonoBehaviour que fica no mesmo GameObject de um RawImage ([RequireComponent] faz a
+    // Unity adicionar o RawImage automaticamente e impede removê-lo). Cria uma CÓPIA do material
+    // para cada Planet, senão mudar _Offset num Planet mudaria em todos (o material seria compartilhado).
     /// Mostra um Planet girando com o shader PlanetSphere num RawImage.
     [RequireComponent(typeof(RawImage))]
     public class PlanetSurface : MonoBehaviour
     {
+        // Shader.PropertyToID converte o nome "_Offset" num número uma vez só; usar o número em
+        // SetFloat é mais rápido que procurar pelo texto toda vez.
         private static readonly int Offset = Shader.PropertyToID("_Offset");
         private static readonly int Speed = Shader.PropertyToID("_Speed");
         private static readonly int Pixels = Shader.PropertyToID("_Pixels");
@@ -3477,6 +3877,8 @@ namespace StarExpedition.UI
         private RawImage _image;
         private Material _material;
 
+        // Awake: roda uma vez quando o objeto é criado, ANTES do Start e antes de qualquer outro script
+        // chamar Show. Lugar certo para pegar componentes (GetComponent) e preparar o material.
         private void Awake()
         {
             _image = GetComponent<RawImage>();
@@ -3487,6 +3889,7 @@ namespace StarExpedition.UI
             _image.material = _material;
         }
 
+        // Chamado pela UI (PlanetNode, PlanetPanel) para mostrar um Planet. Travado = cor escurecida.
         public void Show(PlanetDefinition planet, bool locked)
         {
             _image.texture = planet.surface;
@@ -3494,6 +3897,8 @@ namespace StarExpedition.UI
             _material.SetFloat(Offset, StableFraction(planet.id));
         }
 
+        // OnDestroy: chamado quando o GameObject é destruído. Materiais criados com "new Material" não
+        // são apagados sozinhos; sem este Destroy, cada tela aberta vazaria memória.
         private void OnDestroy()
         {
             if (_material != null) Destroy(_material);
@@ -3502,6 +3907,8 @@ namespace StarExpedition.UI
         /// Um número de 0 a 1 que depende só do id (string.GetHashCode pode variar entre execuções).
         private static float StableFraction(string id)
         {
+            // "unchecked" deixa a conta estourar o limite do int sem erro (é o esperado num hash).
+            // "& 0x7FFF" pega só os 15 bits de baixo (0..32767) e a divisão vira um número de 0 a 1.
             unchecked
             {
                 int hash = 17;
@@ -3552,20 +3959,33 @@ using System;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: notificações, anúncios, compras e analytics dependem de SDKs que só funcionam no
+    // celular. Se a UI chamasse o SDK direto, nada funcionaria no Editor e trocar de SDK seria doloroso.
+    // ESTRATÉGIA: uma INTERFACE por serviço de plataforma (ver IClock): define só o que o jogo precisa.
+    // Existem duas implementações de cada: uma "Null" (falsa, para o Editor) e uma real (Fases 10–12).
+    // O GameBootstrap escolhe qual usar; a UI nunca sabe a diferença.
+    // POR QUE (INotificationService): avisar que a Squad voltou mesmo com o app fechado.
+    // ESTRATÉGIA: permissão, agendar para uma hora UTC (devolve um id) e cancelar pelo id.
     /// Notificações locais (Fase 10).
     public interface INotificationService
     {
+        // Permissão de notificação: o Android 13+ exige perguntar ao jogador.
         bool IsPermissionGranted { get; }
         void Initialize();
+        // Action<bool> onAnswered = "callback": uma função que será chamada DEPOIS, quando o jogador
+        // responder. Não dá para devolver o resultado na hora porque a janela do sistema é assíncrona.
         void RequestPermission(Action<bool> onAnswered);
         int Schedule(string title, string body, DateTime fireUtc);   // devolve o id, ou -1
         void Cancel(int id);
         void OpenSystemSettings();
     }
 
+    // POR QUE (IAdService): o Double Loot precisa mostrar um anúncio recompensado e saber se foi assistido.
+    // ESTRATÉGIA: só 3 coisas: está pronto? inicializar; mostrar e avisar o resultado por callback.
     /// Anúncio recompensado (Fase 11).
     public interface IAdService
     {
+        // true quando há um anúncio carregado; o botão de Double Loot só aparece/liga se for true.
         bool IsRewardedReady { get; }
         event Action ReadyChanged;
         void Initialize();
@@ -3573,9 +3993,12 @@ namespace StarExpedition.Platform
         void ShowRewarded(Action<bool> onFinished);
     }
 
+    // POR QUE (IPurchaseService): Ad-Free e Founder Pack são comprados na loja do Google.
+    // ESTRATÉGIA: a interface só fala com a loja (preço, comprar, eventos); o conteúdo é do ShopService.
     /// Compras no app (Fase 11). Quem entrega o conteúdo é o ShopService.
     public interface IPurchaseService
     {
+        // true quando a loja carregou os produtos e os preços.
         bool IsReady { get; }
         event Action ProductsChanged;
         event Action<string> Purchased;
@@ -3585,10 +4008,13 @@ namespace StarExpedition.Platform
         void Buy(string productId);
     }
 
+    // POR QUE (IAnalyticsService): medir o que os jogadores fazem (§13.6) sem amarrar o jogo ao Firebase.
+    // ESTRATÉGIA: um método para ligar (com consentimento) e um para registrar eventos com parâmetros.
     /// Analytics (Fase 12).
     public interface IAnalyticsService
     {
         void Initialize(bool consentGranted);
+        // Parâmetros como tuplas (chave, valor) em número variável: Log("claim", ("success", true)).
         void Log(string eventName, params (string key, object value)[] parameters);
     }
 }
@@ -3602,6 +4028,10 @@ using UnityEngine;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: no Editor não existe Google Play nem AdMob, mas queremos testar o jogo inteiro.
+    // ESTRATÉGIA: padrão "Null Object": implementações que cumprem a interface fazendo o mínimo —
+    // escrever no Console e responder "sim" na hora. Assim o fluxo inteiro da UI funciona no Editor
+    // sem nenhum "if (Application.isEditor)" espalhado pelo código.
     /// Versões usadas no Editor: fazem o jogo funcionar sem SDKs nem celular.
     public class NullNotificationService : INotificationService
     {
@@ -3609,6 +4039,7 @@ namespace StarExpedition.Platform
         public bool IsPermissionGranted => true;
         public void Initialize() { }
         public void RequestPermission(Action<bool> onAnswered) => onAnswered?.Invoke(true);
+        // Finge agendar: só registra no Console o horário (convertido para hora local) e devolve um id.
         public int Schedule(string title, string body, DateTime fireUtc)
         {
             Debug.Log($"[Notificação falsa #{_nextId}] {fireUtc.ToLocalTime():HH:mm:ss} — {title}: {body}");
@@ -3618,9 +4049,12 @@ namespace StarExpedition.Platform
         public void OpenSystemSettings() => Debug.Log("[Notificação falsa] abriria as configurações do sistema");
     }
 
+    // POR QUE: testar o Double Loot no Editor. ESTRATÉGIA: anúncio falso, sempre pronto e sempre "assistido até o fim".
     public class NullAdService : IAdService
     {
         public bool IsRewardedReady => true;
+        // Evento com "add { } remove { }" vazios: aceita inscrições mas nunca dispara (a versão falsa
+        // nunca muda de estado). Evita o aviso do compilador de "evento nunca usado".
         public event Action ReadyChanged { add { } remove { } }
         public void Initialize() { }
         public void ShowRewarded(Action<bool> onFinished)
@@ -3630,6 +4064,8 @@ namespace StarExpedition.Platform
         }
     }
 
+    // POR QUE: testar as ofertas no Editor. ESTRATÉGIA: loja falsa; "comprar" entrega o conteúdo na hora
+    // pelo ShopService, como a loja real faria.
     public class NullPurchaseService : IPurchaseService
     {
         private readonly ShopService _shop;
@@ -3649,11 +4085,13 @@ namespace StarExpedition.Platform
         }
     }
 
+    // POR QUE: ver os eventos de analytics no Editor. ESTRATÉGIA: analytics falso, só escreve no Console.
     public class NullAnalyticsService : IAnalyticsService
     {
         public void Initialize(bool consentGranted) { }
         public void Log(string eventName, params (string key, object value)[] parameters)
         {
+// "#if UNITY_EDITOR" é compilação condicional: este trecho só existe no Editor e some da build.
 #if UNITY_EDITOR
             var args = string.Join(", ", Array.ConvertAll(parameters, p => $"{p.key}={p.value}"));
             Debug.Log($"[Analytics] {eventName} {args}");
@@ -3666,6 +4104,8 @@ namespace StarExpedition.Platform
 Em `Services.cs` (com `using StarExpedition.Platform;`):
 
 ```csharp
+        // Os services de plataforma são guardados pelo TIPO DA INTERFACE, não pela classe concreta:
+        // é isso que permite trocar a versão falsa pela real sem mudar quem usa.
         public static INotificationService Notifications { get; internal set; }
         public static IAdService Ads { get; internal set; }
         public static IPurchaseService Purchases { get; internal set; }
@@ -3691,6 +4131,11 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: pixel art só fica nítida se cada pixel da arte virar um número INTEIRO de pixels da
+    // tela. O CanvasScaler padrão escala por fatores quebrados (ex.: 2,7×) e deforma a arte.
+    // ESTRATÉGIA: fica ao lado do CanvasScaler e força o modo "tamanho constante", calculando o fator
+    // inteiro pela largura da tela. [ExecuteAlways] faz o script rodar também fora do Play, para a
+    // escala certa já aparecer na Game view enquanto você monta a tela.
     /// Escala a UI por um fator INTEIRO baseado na largura da tela (GDD §10.2):
     /// 720 px → 2×, 1080 px → 3×, 1440 px → 4×. A largura útil fica ≥ 360 unidades.
     [ExecuteAlways]
@@ -3700,8 +4145,11 @@ namespace StarExpedition.UI
         [SerializeField] private int _referenceWidth = 360;
 
         private CanvasScaler _scaler;
+        // Largura da última vez que calculou; evita recalcular todo frame sem necessidade.
         private int _lastScreenWidth = -1;
 
+        // OnEnable: chamado sempre que o componente é ativado (inclusive ao entrar na cena).
+        // Diferente do Awake, roda de novo se o objeto for desativado e ativado.
         private void OnEnable()
         {
             _scaler = GetComponent<CanvasScaler>();
@@ -3709,11 +4157,13 @@ namespace StarExpedition.UI
             Apply();
         }
 
+        // Update roda todo frame; aqui só age se a largura da tela mudou (rotação, redimensionar a Game view).
         private void Update()
         {
             if (Screen.width != _lastScreenWidth) Apply();
         }
 
+        // Fator = quantas vezes 360 cabe na largura, arredondado para baixo, no mínimo 1.
         private void Apply()
         {
             _lastScreenWidth = Screen.width;
@@ -3729,6 +4179,10 @@ using UnityEngine;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: celulares com notch ou barra de gestos escondem partes da tela; botões ali ficariam
+    // inacessíveis.
+    // ESTRATÉGIA: ajusta as âncoras do RectTransform deste objeto para cobrir só a Screen.safeArea
+    // (a área visível garantida). Todo o conteúdo da UI fica como filho dele.
     /// Mantém a UI fora do notch e da barra de gestos.
     [RequireComponent(typeof(RectTransform))]
     public class SafeAreaFitter : MonoBehaviour
@@ -3736,17 +4190,21 @@ namespace StarExpedition.UI
         private RectTransform _rect;
         private Rect _lastSafeArea;
 
+        // Pega o RectTransform e aplica já na criação.
         private void Awake()
         {
             _rect = GetComponent<RectTransform>();
             Apply();
         }
 
+        // Reaplica se a safe area mudar (ex.: o aparelho girou).
         private void Update()
         {
             if (Screen.safeArea != _lastSafeArea) Apply();
         }
 
+        // Converte a safe area (em pixels) em âncoras de 0 a 1, que é o que o RectTransform entende,
+        // e zera os offsets para o retângulo encostar exatamente nas âncoras.
         private void Apply()
         {
             _lastSafeArea = Screen.safeArea;
@@ -3775,8 +4233,14 @@ using UnityEngine.Localization.Settings;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: várias telas mostram tempo, porcentagem, números e bônus; cada uma formatando do seu
+    // jeito deixaria a UI inconsistente.
+    // ESTRATÉGIA: classe static de funções utilitárias, sem estado. Uma única regra de formatação
+    // para o jogo todo; mudar aqui muda em todas as telas.
     public static class Format
     {
+        // "1h 05m", "3m 07s" ou "42s". Arredonda para CIMA (Math.Ceiling) para nunca mostrar "0s" enquanto
+        // ainda falta uma fração de segundo.
         public static string Duration(TimeSpan t)
         {
             t = TimeSpan.FromSeconds(Math.Ceiling(Math.Max(0, t.TotalSeconds)));
@@ -3785,10 +4249,13 @@ namespace StarExpedition.UI
             return $"{t.Seconds}s";
         }
 
+        // Sobrecarga que aceita segundos inteiros.
         public static string Duration(int seconds) => Duration(TimeSpan.FromSeconds(seconds));
 
+        // 0.873 → "87%".
         public static string Percent(float chance01) => $"{Math.Round(chance01 * 100)}%";
 
+        // Número com separador de milhar no formato do idioma atual (1.200 em pt-BR, 1,200 em inglês).
         public static string Number(int value)
         {
             var culture = LocalizationSettings.SelectedLocale?.Identifier.CultureInfo;
@@ -3796,6 +4263,7 @@ namespace StarExpedition.UI
         }
 
         /// "Sucesso +12%\nRisco −10" — só as linhas diferentes de zero.
+        // Monta o texto de bônus, uma linha por tipo, traduzido pela tabela UI.
         public static string Bonus(CrewBonus b)
         {
             var lines = new List<string>();
@@ -3818,6 +4286,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: os retratos da tripulação têm um "idle" de 4 quadros. Dentro da UI, um Animator
+    // completo seria pesado demais para uma troca simples de sprite.
+    // ESTRATÉGIA: MonoBehaviour que troca o sprite da Image com base no tempo. Recebe os quadros
+    // por SetFrames (quem chama é MemberCard/StarterOption etc.).
     /// Anima uma Image trocando de sprite (idle dos retratos, GDD §10.3).
     [RequireComponent(typeof(Image))]
     public class UIFlipbook : MonoBehaviour
@@ -3828,8 +4300,11 @@ namespace StarExpedition.UI
         private Sprite[] _frames;
         private float _offset;
 
+        // Awake com "=>": só guarda a Image.
         private void Awake() => _image = GetComponent<Image>();
 
+        // Define os quadros da animação. Pega a Image de novo se SetFrames for chamado antes do Awake
+        // (pode acontecer quando o objeto acabou de ser instanciado e ainda está inativo).
         public void SetFrames(Sprite[] frames)
         {
             if (_image == null) _image = GetComponent<Image>();
@@ -3839,6 +4314,8 @@ namespace StarExpedition.UI
             if (_image.enabled) _image.sprite = frames[0];
         }
 
+        // Escolhe o quadro pelo relógio: tempo × quadros por segundo, com "%" para voltar ao início.
+        // Time.unscaledTime ignora pausa (timeScale), então a animação nunca congela.
         private void Update()
         {
             if (_frames == null || _frames.Length < 2) return;
@@ -3858,6 +4335,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: "ícone de Item + quantidade" aparece no resultado, nas Recipes, na Loja e no equipar.
+    // ESTRATÉGIA: um componente de Prefab reutilizável. As referências (_icon, _quantity...) são
+    // arrastadas no Inspector uma vez no Prefab; as telas só chamam Bind com os dados.
     /// Um ícone de Item com quantidade. Usado no Loot, nas Recipes e na Loja.
     public class ItemSlotView : MonoBehaviour
     {
@@ -3867,6 +4347,7 @@ namespace StarExpedition.UI
         [SerializeField] private Color _enoughColor = new Color32(0xE8, 0xEC, 0xF5, 0xFF);
         [SerializeField] private Color _missingColor = new Color32(0xE0, 0x52, 0x4A, 0xFF);
 
+        // Mostra Item e quantidade ("x3"; nada quando é 1). O brilho só aparece em Rare Items.
         public void Bind(ItemDefinition item, int quantity)
         {
             _icon.sprite = item.icon;
@@ -3897,19 +4378,28 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: todos os painéis do jogo (Planet, Resultado, membro, Settings, confirmação) abrem e
+    // fecham do mesmo jeito: sobem de baixo, têm fundo escuro, fecham no X, no fundo ou no "voltar".
+    // ESTRATÉGIA: classe BASE (herança). Cada painel concreto herda dela ("class PlanetPanel :
+    // BottomSheet") e ganha tudo isso de graça. Métodos "virtual" podem ser substituídos ("override")
+    // pelas filhas para acrescentar comportamento. A animação é feita com coroutine (ver BootSequence).
     /// Painel que sobe da parte de baixo da tela. Base de todos os painéis do jogo.
     public class BottomSheet : MonoBehaviour
     {
         [SerializeField] private RectTransform _panel;           // âncora e pivô embaixo no centro
         [SerializeField] private Button _backdrop;               // área escura atrás do painel
         [SerializeField] private Button _closeButton;
+        // Se false, tocar no fundo escuro não fecha (usado em painéis que exigem uma escolha).
         [SerializeField] private bool _closeOnBackdrop = true;
         [SerializeField] private float _slideSeconds = 0.15f;
 
+        // "virtual": uma filha pode dizer que o "voltar" do Android NÃO fecha ela (ex.: Starter Pick).
         public bool IsOpen { get; private set; }
         public virtual bool CanCloseWithBack => true;
         public event Action Closed;
 
+        // "protected virtual": as filhas podem estender o Awake chamando base.Awake() primeiro.
+        // Liga os botões (AddListener registra a função chamada no clique) e começa escondido.
         protected virtual void Awake()
         {
             if (_backdrop) _backdrop.onClick.AddListener(() => { if (_closeOnBackdrop) Close(); });
@@ -3917,6 +4407,8 @@ namespace StarExpedition.UI
             if (!IsOpen) gameObject.SetActive(false);
         }
 
+        // Abre: ativa o objeto, coloca por cima dos irmãos (SetAsLastSibling = desenhado por último),
+        // registra na pilha de painéis do UIRoot (para o "voltar") e anima a subida.
         public void Open()
         {
             if (IsOpen) return;
@@ -3928,6 +4420,8 @@ namespace StarExpedition.UI
             StartCoroutine(Slide(opening: true));
         }
 
+        // Fecha: sai da pilha do UIRoot, anima a descida (se o objeto estiver visível) e avisa as filhas
+        // (OnClosed) e quem estiver ouvindo (evento Closed).
         public void Close()
         {
             if (!IsOpen) return;
@@ -3940,8 +4434,12 @@ namespace StarExpedition.UI
             Closed?.Invoke();
         }
 
+        // Gancho vazio que as filhas podem sobrescrever para reagir ao fechamento.
         protected virtual void OnClosed() { }
 
+        // Coroutine da animação: a cada frame (yield return null = "espere o próximo frame") move o painel
+        // um pouco. A curva 1 - (1 - t)^3 começa rápida e desacelera. Mathf.Round mantém a posição em
+        // pixels inteiros (pixel art). ForceUpdateCanvases garante que a altura do painel já foi calculada.
         private IEnumerator Slide(bool opening)
         {
             Canvas.ForceUpdateCanvases();
@@ -3972,6 +4470,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: várias perguntas de sim/não (sair do jogo, Novo Cycle, permissão de notificação)
+    // precisam do mesmo painel com textos diferentes.
+    // ESTRATÉGIA: herda de BottomSheet e recebe os textos e as ações (callbacks) em Ask. Um único
+    // ConfirmSheet na cena, acessado por UIRoot.Instance.Confirm.
     /// Pergunta genérica de sim/não (sair do jogo, Novo Ciclo, permissão de notificação).
     public class ConfirmSheet : BottomSheet
     {
@@ -3982,9 +4484,12 @@ namespace StarExpedition.UI
         [SerializeField] private Button _noButton;
         [SerializeField] private TMP_Text _noLabel;
 
+        // Funções a chamar quando o jogador escolher "sim" ou "não".
         private Action _onYes;
         private Action _onNo;
 
+        // "override" substitui o Awake da base; "base.Awake()" executa o original antes.
+        // No "sim": guarda a ação, anula o "não" (fechar conta como "não"), fecha e só então executa.
         protected override void Awake()
         {
             base.Awake();
@@ -3992,6 +4497,7 @@ namespace StarExpedition.UI
             _noButton.onClick.AddListener(Close);
         }
 
+        // Preenche os textos, guarda as ações e abre. "Action onNo = null" = parâmetro opcional.
         public void Ask(string title, string body, string yes, string no, Action onYes, Action onNo = null)
         {
             _title.text = title;
@@ -4027,8 +4533,14 @@ using UnityEngine.InputSystem;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: as 4 abas do jogo. Enum para o compilador impedir abas inexistentes.
     public enum Tab { Map, Crew, Workshop, Shop }
 
+    // POR QUE: alguém precisa decidir qual aba está visível, lembrar quais painéis estão abertos
+    // (em ordem) e tratar o botão "voltar" do Android.
+    // ESTRATÉGIA: MonoBehaviour na raiz do Canvas, com um "singleton de cena" (Instance): a única
+    // referência estática da UI, porque os painéis (BottomSheet) precisam achá-la para se registrar.
+    // Diferente dos services, ela vive na cena e morre com ela (por isso limpa Instance no OnDestroy).
     /// Troca de abas, pilha de painéis abertos e o botão voltar do Android (GDD §11.1).
     public class UIRoot : MonoBehaviour
     {
@@ -4042,6 +4554,7 @@ namespace StarExpedition.UI
         [SerializeField] private TabBar _tabBar;
         [SerializeField] private ConfirmSheet _confirm;
 
+        // Pilha de painéis abertos: o último da lista é o que está por cima.
         private readonly List<BottomSheet> _openSheets = new List<BottomSheet>();
 
         public Tab CurrentTab { get; private set; }
@@ -4049,10 +4562,12 @@ namespace StarExpedition.UI
         public bool HasOpenSheet => _openSheets.Count > 0;
         public event Action<Tab> TabChanged;
 
+        // Awake registra a instância; Start (depois de todos os Awake) mostra a aba inicial.
         private void Awake() => Instance = this;
         private void OnDestroy() { if (Instance == this) Instance = null; }
         private void Start() => ShowTab(Tab.Map);
 
+        // Liga só a view da aba escolhida, atualiza a marcação na TabBar e avisa (tutorial usa TabChanged).
         public void ShowTab(Tab tab)
         {
             CurrentTab = tab;
@@ -4064,6 +4579,7 @@ namespace StarExpedition.UI
             TabChanged?.Invoke(tab);
         }
 
+        // "internal": só código deste assembly chama. Remove antes de adicionar para não duplicar.
         internal void PushSheet(BottomSheet sheet)
         {
             _openSheets.Remove(sheet);
@@ -4072,6 +4588,7 @@ namespace StarExpedition.UI
 
         internal void PopSheet(BottomSheet sheet) => _openSheets.Remove(sheet);
 
+        // Checa a tecla Escape todo frame (Input System novo: Keyboard.current).
         private void Update()
         {
             // No Android, o botão/gesto "voltar" chega como a tecla Escape.
@@ -4079,6 +4596,7 @@ namespace StarExpedition.UI
             if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame) HandleBack();
         }
 
+        // Ordem do "voltar": 1) fecha o painel do topo; 2) volta para a aba Mapa; 3) pergunta se quer sair.
         private void HandleBack()
         {
             if (_openSheets.Count > 0)
@@ -4108,8 +4626,13 @@ using StarExpedition.Core;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a barra de abas embaixo da tela: troca de aba no toque e marca a aba atual.
+    // ESTRATÉGIA: MonoBehaviour com uma lista de botões configurada no Inspector. A decisão de trocar
+    // fica no UIRoot; a TabBar só repassa o clique e desenha a seleção.
     public class TabBar : MonoBehaviour
     {
+        // POR QUE: cada botão de aba precisa de vários dados (aba, botão, rótulo, marca de seleção).
+        // ESTRATÉGIA: classe aninhada [Serializable]: cada item da lista aparece no Inspector como um grupo de campos.
         [Serializable]
         private class TabButton
         {
@@ -4123,6 +4646,7 @@ namespace StarExpedition.UI
         [SerializeField] private TabButton[] _buttons;
         [SerializeField] private UIRoot _root;
 
+        // Liga cada botão à sua aba. A cópia "var tab = b.tab" garante que cada lambda guarde a própria aba.
         private void Awake()
         {
             foreach (var b in _buttons)
@@ -4132,11 +4656,13 @@ namespace StarExpedition.UI
             }
         }
 
+        // Atualiza os rótulos traduzidos sempre que a barra é ativada (pega troca de idioma).
         private void OnEnable()
         {
             foreach (var b in _buttons) b.label.text = L.Get(b.labelKey);
         }
 
+        // Mostra a marca de seleção só na aba atual.
         public void SetSelected(Tab tab)
         {
             foreach (var b in _buttons) b.selectedMark.SetActive(b.tab == tab);
@@ -4158,6 +4684,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a barra de cima mostra Credits, Cycle, o aviso de relógio voltado e o botão de Settings.
+    // ESTRATÉGIA: "view reativa": não pergunta o saldo todo frame; se INSCREVE nos eventos dos
+    // services (Wallet.Changed, Progress.CycleStarted) e só redesenha quando algo muda.
     /// Credits, Cycle, aviso de relógio e engrenagem de Settings (GDD §11.1).
     public class TopBar : MonoBehaviour
     {
@@ -4167,11 +4696,13 @@ namespace StarExpedition.UI
         [SerializeField] private Button _settingsButton;
         [SerializeField] private BottomSheet _settingsPanel;   // ligado na Fase 13
 
+        // Liga o botão de engrenagem ao painel de Settings (que só existe a partir da Fase 13).
         private void Awake()
         {
             _settingsButton.onClick.AddListener(() => { if (_settingsPanel) _settingsPanel.Open(); });
         }
 
+        // OnEnable: inscreve nos eventos ("+=") e desenha o estado atual uma vez.
         private void OnEnable()
         {
             Services.Wallet.Changed += HandleCreditsChanged;
@@ -4180,14 +4711,17 @@ namespace StarExpedition.UI
             HandleCycleStarted(Services.Progress.Cycle);
         }
 
+        // OnDisable: desinscreve ("-=") — sempre em par com o OnEnable (ver nota abaixo).
         private void OnDisable()
         {
             Services.Wallet.Changed -= HandleCreditsChanged;
             Services.Progress.CycleStarted -= HandleCycleStarted;
         }
 
+        // O aviso de relógio é checado todo frame porque IsRolledBack não tem evento.
         private void Update() => _clockWarning.SetActive(Services.Clock.IsRolledBack);
 
+        // Handlers: recebem o valor novo e atualizam o texto.
         private void HandleCreditsChanged(int credits) => _credits.text = Format.Number(credits);
         private void HandleCycleStarted(int cycle) => _cycle.text = L.Get("top.cycle", cycle);
     }
@@ -4209,8 +4743,13 @@ using UnityEngine.Localization.Tables;
 
 namespace StarExpedition.EditorTools
 {
+    // POR QUE: a UI tem ~100 textos em dois idiomas. Digitar um por um na janela de Localization é
+    // lento e fácil de esquecer um idioma.
+    // ESTRATÉGIA: script de Editor igual ao DatabaseSeeder (ver lá): a lista de (chave, pt, en) fica no
+    // código e um item de menu escreve tudo na tabela "UI". A chave ("tab.map") é o que o código usa em L.Get.
     public static class UiTextSeeder
     {
+        // "{0}" nos textos é onde entra o valor passado em L.Get("chave", valor).
         private static readonly (string key, string pt, string en)[] Rows =
         {
             ("tab.map", "Mapa", "Map"),
@@ -4334,6 +4873,8 @@ namespace StarExpedition.EditorTools
             ("category.Equipment", "Equipamento", "Equipment"),
         };
 
+        // Item de menu: grava cada linha nas tabelas pt-BR e en (AddEntry cria ou atualiza a entrada),
+        // marca as tabelas como alteradas e salva.
         [MenuItem("Star Expedition/Seed UI Texts")]
         public static void Seed()
         {
@@ -4346,6 +4887,7 @@ namespace StarExpedition.EditorTools
 
             var pt = collection.GetTable("pt-BR") as StringTable;
             var en = collection.GetTable("en") as StringTable;
+            // "foreach (var (key, ptText, enText) in Rows)" desmonta cada tupla em três variáveis.
             foreach (var (key, ptText, enText) in Rows)
             {
                 pt.AddEntry(key, ptText);
@@ -4450,6 +4992,11 @@ using UnityEngine;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: muitas ações precisam de um retorno rápido e não bloqueante ("criado!", "contratado!")
+    // sem abrir um painel que o jogador precise fechar.
+    // ESTRATÉGIA: um único Toast na cena, acessado por um método static (Toast.Show("...")) para qualquer
+    // tela chamar sem referência no Inspector. O "_instance" privado é preenchido no Awake.
+    // CanvasGroup controla a transparência de tudo que está dentro dele de uma vez.
     /// Mensagem curta que aparece e some ("Kit de Coleta criado!").
     public class Toast : MonoBehaviour
     {
@@ -4459,6 +5006,7 @@ namespace StarExpedition.UI
         [SerializeField] private TMP_Text _label;
         [SerializeField] private float _visibleSeconds = 1.8f;
 
+        // Guarda a instância e começa invisível; blocksRaycasts = false deixa os toques "atravessarem" o aviso.
         private void Awake()
         {
             _instance = this;
@@ -4468,6 +5016,7 @@ namespace StarExpedition.UI
 
         private void OnDestroy() { if (_instance == this) _instance = null; }
 
+        // Mostra a mensagem. Se já havia outra na tela, StopAllCoroutines interrompe a anterior.
         public static void Show(string message)
         {
             if (_instance == null) return;
@@ -4475,6 +5024,7 @@ namespace StarExpedition.UI
             _instance.StartCoroutine(_instance.Run(message));
         }
 
+        // Coroutine: mostra, espera (WaitForSecondsRealtime ignora pausa) e some em 0,2 s (fade-out).
         private IEnumerator Run(string message)
         {
             _label.text = message;
@@ -4504,6 +5054,11 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a aba Mapa mostra uma Galaxy por vez, com seus Planets posicionados e setas para
+    // navegar entre Galaxies liberadas.
+    // ESTRATÉGIA: "view que só lê e chama": lê GameDatabase/ProgressService para desenhar e cria um
+    // PlanetNode (Prefab) por Planet. Não guarda dados do jogo; redesenha ao ouvir PlanetUnlocked e
+    // CycleStarted. O clique num Planet é repassado ao PlanetPanel.
     /// Mapa da Galaxy com os Planets posicionados (GDD §11.2).
     public class MapView : MonoBehaviour
     {
@@ -4515,18 +5070,23 @@ namespace StarExpedition.UI
         [SerializeField] private TMP_Text _galaxyName;
         [SerializeField] private PlanetPanel _planetPanel;
 
+        // Nodes criados na Galaxy atual (para destruir ao trocar de Galaxy e para o tutorial achar Kora).
         private readonly List<PlanetNode> _nodes = new List<PlanetNode>();
+        // -1 = ainda não mostrou nada; na primeira vez abre na Galaxy da fronteira.
         private int _galaxyIndex = -1;
 
+        // Atalhos de leitura: o banco de dados e o índice da Galaxy mais avançada liberada.
         private GameDatabase Db => Services.Database;
         private int FrontierGalaxyIndex => Db.galaxies.IndexOf(Db.GalaxyOf(Services.Progress.FrontierPlanet));
 
+        // Liga as setas. Os lambdas "() => ShowGalaxy(...)" leem _galaxyIndex no momento do clique.
         private void Awake()
         {
             _previousGalaxy.onClick.AddListener(() => ShowGalaxy(_galaxyIndex - 1));
             _nextGalaxy.onClick.AddListener(() => ShowGalaxy(_galaxyIndex + 1));
         }
 
+        // Inscreve nos eventos e desenha. Fica no OnEnable porque a view é ligada/desligada ao trocar de aba.
         private void OnEnable()
         {
             Services.Progress.PlanetUnlocked += HandlePlanetUnlocked;
@@ -4540,8 +5100,12 @@ namespace StarExpedition.UI
             Services.Progress.CycleStarted -= HandleCycleStarted;
         }
 
+        // Usado pelo tutorial (Fase 9) para apontar a seta para um Planet específico.
         public PlanetNode NodeFor(PlanetDefinition planet) => _nodes.Find(n => n.Planet == planet);
 
+        // Desenha a Galaxy: limita o índice às liberadas, atualiza fundo/nome/setas, destrói os nodes
+        // antigos e cria um node por Planet. Instantiate cria uma cópia do Prefab como filho de _planetArea.
+        // A posição usa ÂNCORAS (0..1) iguais a mapPosition: o Planet fica no mesmo lugar em qualquer tela.
         public void ShowGalaxy(int index)
         {
             _galaxyIndex = Mathf.Clamp(index, 0, FrontierGalaxyIndex);   // só Galaxies liberadas
@@ -4562,14 +5126,17 @@ namespace StarExpedition.UI
                 var rect = (RectTransform)node.transform;
                 rect.anchorMin = rect.anchorMax = planet.mapPosition;
                 rect.anchoredPosition = Vector2.zero;
+                // "_planetPanel.Show" (sem parênteses) passa o método como callback de clique.
                 node.Bind(planet, _planetPanel.Show);
                 _nodes.Add(node);
             }
         }
 
+        // Quando um Planet é liberado, pula para a Galaxy dele (pode ser a próxima Galaxy).
         private void HandlePlanetUnlocked(PlanetDefinition planet)
             => ShowGalaxy(Db.galaxies.IndexOf(Db.GalaxyOf(planet)));
 
+        // Novo Cycle: tudo volta a trancar, então mostra a primeira Galaxy.
         private void HandleCycleStarted(int cycle) => ShowGalaxy(0);
     }
 }
@@ -4586,6 +5153,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: cada Planet no mapa mostra a esfera, nome, cadeado, timer, a nave orbitando e o "!"
+    // de pronto para Claim — e isso muda com o tempo.
+    // ESTRATÉGIA: componente do Prefab PlanetNode. Recebe o Planet em Bind e se atualiza sozinho em
+    // Update, mas só mexe no que mudou (_lastUnlocked, _lastSeconds) para não gerar lixo de memória.
     /// Um Planet no mapa: nome, cadeado, timer, "!" de Claim e a navezinha (GDD §10.3, §11.2).
     public class PlanetNode : MonoBehaviour
     {
@@ -4597,11 +5168,14 @@ namespace StarExpedition.UI
         [SerializeField] private GameObject _readyBadge;
         [SerializeField] private OrbitingShip _ship;
 
+        // "bool?" = bool que também pode ser null. null significa "ainda não desenhei", forçando o 1º desenho.
         private bool? _lastUnlocked;
         private int _lastSeconds = -1;
 
         public PlanetDefinition Planet { get; private set; }
 
+        // Liga o node a um Planet e à ação de clique. RemoveAllListeners evita acumular cliques se Bind
+        // for chamado de novo no mesmo node.
         public void Bind(PlanetDefinition planet, Action<PlanetDefinition> onClick)
         {
             Planet = planet;
@@ -4612,8 +5186,11 @@ namespace StarExpedition.UI
             Refresh();
         }
 
+        // Update todo frame: o timer precisa andar sozinho.
         private void Update() => Refresh();
 
+        // Atualiza cadeado/esfera só quando o estado de liberado muda, e o texto do timer só quando o
+        // segundo muda (trocar texto todo frame gera lixo de memória e engasgos no celular).
         private void Refresh()
         {
             if (Planet == null) return;
@@ -4651,6 +5228,10 @@ using UnityEngine;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: dar vida ao mapa: uma nave girando em volta do Planet mostra que há Expedition ativa.
+    // ESTRATÉGIA: calcula a posição numa elipse (cos/sin do ângulo) a partir do tempo, arredondando
+    // para pixels inteiros. Para a nave passar "atrás" do Planet, muda a ordem do objeto na hierarquia
+    // (na UI, quem vem depois é desenhado por cima).
     /// A navezinha que orbita o Planet com Expedition ativa, em passos de 1 pixel.
     public class OrbitingShip : MonoBehaviour
     {
@@ -4659,6 +5240,8 @@ namespace StarExpedition.UI
         [SerializeField] private float _flatten = 0.45f;       // órbita "deitada"
         [SerializeField] private float _secondsPerOrbit = 6f;
 
+        // Todo frame: ângulo pelo tempo, posição na elipse, espelha o sprite conforme a direção e
+        // decide se desenha atrás (índice 0) ou na frente (último índice) dos irmãos.
         private void Update()
         {
             float angle = Time.unscaledTime / _secondsPerOrbit * Mathf.PI * 2f;
@@ -4702,6 +5285,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: na montagem da Squad, cada Crew Member aparece como uma linha marcável (retrato, nome,
+    // bônus) — ou desabilitada se estiver em outra Expedition.
+    // ESTRATÉGIA: componente de Prefab com um Toggle. Não decide nada: avisa o PlanetPanel pelo
+    // callback onChanged, e o painel decide se aceita (ex.: limite de 3 membros).
     /// Um Crew Member na lista de montagem da Squad.
     public class SquadMemberToggle : MonoBehaviour
     {
@@ -4712,6 +5299,8 @@ namespace StarExpedition.UI
 
         public CrewMemberState Member { get; private set; }
 
+        // Preenche a linha. busyAtPlanet = nome do Planet onde o membro está (null se livre).
+        // SetIsOnWithoutNotify muda o Toggle SEM disparar o evento, evitando chamadas de callback falsas.
         public void Bind(CrewMemberState member, string busyAtPlanet, Action<SquadMemberToggle, bool> onChanged)
         {
             Member = member;
@@ -4728,6 +5317,7 @@ namespace StarExpedition.UI
             _toggle.onValueChanged.AddListener(on => onChanged(this, on));
         }
 
+        // Usado pelo painel para desmarcar quando recusa a seleção.
         public void SetOn(bool on) => _toggle.SetIsOnWithoutNotify(on);
     }
 }
@@ -4747,6 +5337,11 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: é a tela principal de decisão: ver Risk, duração e Loot do Planet, montar a Squad,
+    // ver as chances e enviar — ou, se já há Expedition, acompanhar o timer e fazer o Claim.
+    // ESTRATÉGIA: herda de BottomSheet (abre/fecha/voltar prontos). Tem dois "modos" (grupos de
+    // objetos): Planejamento e Em andamento; Rebuild liga um ou outro conforme exista Expedition.
+    // Toda regra (chances, validação, envio, Claim) é pedida ao ExpeditionService; o painel só desenha.
     /// Painel do Planet: montar a Squad e enviar, ou acompanhar e fazer o Claim (GDD §11.2).
     public class PlanetPanel : BottomSheet
     {
@@ -4775,17 +5370,22 @@ namespace StarExpedition.UI
 
         [SerializeField] private ResultPanel _resultPanel;
 
+        // Membros marcados para a Squad (só existe enquanto o painel está aberto; não vai para o save).
         private readonly List<CrewMemberState> _selected = new List<CrewMemberState>();
         private readonly List<SquadMemberToggle> _toggles = new List<SquadMemberToggle>();
+        // -2 = "nunca desenhei o status"; -1 é usado para "completa". Força o 1º desenho do texto.
         private int _lastSeconds = -2;
 
         public PlanetDefinition Planet { get; private set; }
+        // Evento para o tutorial saber que o painel abriu (e em qual Planet).
         public event Action<PlanetDefinition> Shown;
 
+        // Retângulos dos botões para o tutorial (Fase 9) desenhar a seta em cima deles.
         public RectTransform SendButtonRect => (RectTransform)_sendButton.transform;
         public RectTransform ClaimButtonRect => (RectTransform)_claimButton.transform;
         public RectTransform FirstToggleRect => _toggles.Count > 0 ? (RectTransform)_toggles[0].transform : null;
 
+        // Estende o Awake da base (ver BottomSheet) ligando os botões de enviar e de Claim.
         protected override void Awake()
         {
             base.Awake();
@@ -4793,6 +5393,7 @@ namespace StarExpedition.UI
             _claimButton.onClick.AddListener(Claim);
         }
 
+        // Ponto de entrada: chamado pelo PlanetNode (via MapView). Limpa a seleção, abre e desenha tudo.
         public void Show(PlanetDefinition planet)
         {
             Planet = planet;
@@ -4803,6 +5404,8 @@ namespace StarExpedition.UI
             Shown?.Invoke(planet);
         }
 
+        // Parte fixa do painel: nome, Risk do Cycle atual, duração base e os Items possíveis.
+        // "foreach (Transform child in _lootContainer)" percorre os filhos; destrói os ícones antigos.
         private void BuildHeader()
         {
             var db = Services.Database;
@@ -4815,6 +5418,7 @@ namespace StarExpedition.UI
                 Instantiate(_slotPrefab, _lootContainer).Bind(entry.item, 1);
         }
 
+        // Decide o modo (planejar x em andamento) e desenha o conteúdo de cada um.
         private void Rebuild()
         {
             var expedition = Services.Expeditions.Get(Planet);
@@ -4834,6 +5438,7 @@ namespace StarExpedition.UI
             }
         }
 
+        // Recria uma linha (SquadMemberToggle) por membro do Roster, marcando quem está ocupado e onde.
         private void BuildToggles()
         {
             foreach (var t in _toggles) Destroy(t.gameObject);
@@ -4851,6 +5456,7 @@ namespace StarExpedition.UI
             _noFreeMembers.SetActive(!Services.Crew.Available.Any());
         }
 
+        // Callback dos toggles: aceita a marcação até o limite da Squad; acima disso, desfaz a marcação.
         private void HandleToggle(SquadMemberToggle toggle, bool on)
         {
             if (on)
@@ -4867,6 +5473,7 @@ namespace StarExpedition.UI
             RefreshOdds();
         }
 
+        // Atualiza chances e duração com a Squad atual e habilita "Enviar" só se o CanStart disser Ok.
         private void RefreshOdds()
         {
             if (_selected.Count == 0)
@@ -4885,6 +5492,7 @@ namespace StarExpedition.UI
             _sendButton.interactable = Services.Expeditions.CanStart(Planet, _selected) == StartCheck.Ok;
         }
 
+        // Envia; se deu certo, o painel passa para o modo "em andamento".
         private void Send()
         {
             if (Services.Expeditions.Start(Planet, _selected) == null) return;
@@ -4892,6 +5500,8 @@ namespace StarExpedition.UI
             Rebuild();
         }
 
+        // Todo frame, com o painel aberto e Expedition ativa: mostra o botão de Claim quando termina e
+        // atualiza o texto do timer só quando o segundo muda (ver PlanetNode).
         private void Update()
         {
             if (!IsOpen || Planet == null) return;
@@ -4907,6 +5517,8 @@ namespace StarExpedition.UI
             _status.text = complete ? L.Get("planet.ready") : L.Get("planet.returns_in", Format.Duration(seconds));
         }
 
+        // Claim: pede o resultado ao service, fecha este painel e abre o ResultPanel com o resultado.
+        // Guarda o Planet numa variável local antes, porque Close() poderia mudar o estado do painel.
         private void Claim()
         {
             var planet = Planet;
@@ -4959,6 +5571,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: depois do Claim o jogador precisa ver o que aconteceu (Success/Failure, Loot, perdas,
+    // desbloqueio, Emergency Recruit) e ter a chance de dobrar o Loot com um anúncio.
+    // ESTRATÉGIA: herda de BottomSheet e recebe o ExpeditionOutcome pronto (não calcula nada).
+    // O anúncio é pedido pela interface IAdService (Services.Ads), sem saber se é o falso ou o AdMob.
     /// Resultado do Claim, com o Double Loot (GDD §11.2, §13.1).
     public class ResultPanel : BottomSheet
     {
@@ -4973,11 +5589,14 @@ namespace StarExpedition.UI
         [SerializeField] private TMP_Text _doubledLabel;
         [SerializeField] private Button _continueButton;
 
+        // true enquanto o anúncio está passando: esconde o botão para evitar toque duplo.
         private ExpeditionOutcome _outcome;
         private bool _adInProgress;
 
+        // Para o tutorial apontar o botão Continuar.
         public RectTransform ContinueButtonRect => (RectTransform)_continueButton.transform;
 
+        // Estende o Awake da base: botão de dobrar e botão Continuar (que só fecha).
         protected override void Awake()
         {
             base.Awake();
@@ -4985,9 +5604,11 @@ namespace StarExpedition.UI
             _continueButton.onClick.AddListener(Close);
         }
 
+        // Escuta quando um anúncio fica pronto/indisponível para mostrar ou esconder o botão de dobrar.
         private void OnEnable() => Services.Ads.ReadyChanged += RefreshDouble;
         private void OnDisable() => Services.Ads.ReadyChanged -= RefreshDouble;
 
+        // Ponto de entrada: chamado pelo PlanetPanel com o resultado do Claim. Monta título, mensagens e Loot.
         public void Show(PlanetDefinition planet, ExpeditionOutcome outcome)
         {
             _outcome = outcome;
@@ -5016,6 +5637,7 @@ namespace StarExpedition.UI
             RefreshDouble();
         }
 
+        // Recria os ícones do Loot; se já foi dobrado, mostra as quantidades × 2.
         private void BuildLoot()
         {
             foreach (Transform child in _lootContainer) Destroy(child.gameObject);
@@ -5024,6 +5646,7 @@ namespace StarExpedition.UI
                 Instantiate(_slotPrefab, _lootContainer).Bind(Services.Database.GetItem(stack.itemId), stack.quantity * multiplier);
         }
 
+        // Mostra o botão de dobrar só se pode dobrar, há anúncio pronto e nenhum está passando.
         private void RefreshDouble()
         {
             if (_outcome == null) return;
@@ -5034,6 +5657,8 @@ namespace StarExpedition.UI
             _doubledLabel.text = L.Get(_outcome.doubledByAdFree ? "result.doubled_adfree" : "result.doubled");
         }
 
+        // Mostra o anúncio. O código dentro de "rewarded => { ... }" (lambda) só roda DEPOIS, quando o
+        // anúncio terminar — é o callback. Só aplica o Double Loot se o jogador assistiu até o fim.
         private void WatchAdToDouble()
         {
             _adInProgress = true;
@@ -5067,6 +5692,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: ao completar o último Planet, o jogador precisa de um jeito visível de começar o
+    // próximo Cycle — e de entender quando ainda não pode (há Expeditions voltando).
+    // ESTRATÉGIA: view reativa (ver TopBar): escuta eventos de Cycle e de Expeditions e só liga/desliga
+    // o banner. A confirmação usa o ConfirmSheet compartilhado; a regra fica no ProgressService.
     /// Banner "Novo Ciclo" no Mapa (GDD §8).
     public class NewCycleBanner : MonoBehaviour
     {
@@ -5074,8 +5703,10 @@ namespace StarExpedition.UI
         [SerializeField] private Button _startButton;
         [SerializeField] private TMP_Text _blockedLabel;
 
+        // Liga o botão à pergunta de confirmação.
         private void Awake() => _startButton.onClick.AddListener(AskToStart);
 
+        // Inscreve em 4 eventos: qualquer um deles pode mudar se o banner aparece ou se o botão libera.
         private void OnEnable()
         {
             Services.Progress.CycleCompleted += Refresh;
@@ -5093,10 +5724,12 @@ namespace StarExpedition.UI
             Services.Expeditions.Claimed -= HandleExpeditionClaimed;
         }
 
+        // Adaptadores: os eventos têm parâmetros diferentes, mas todos só precisam chamar Refresh().
         private void HandleCycleStarted(int cycle) => Refresh();
         private void HandleExpeditionStarted(ExpeditionState e) => Refresh();
         private void HandleExpeditionClaimed(ExpeditionState e, ExpeditionOutcome o) => Refresh();
 
+        // Mostra o banner se o Cycle está completo; o botão só liga se não houver Expeditions ativas.
         private void Refresh()
         {
             _root.SetActive(Services.Progress.IsCycleCompleted);
@@ -5105,6 +5738,7 @@ namespace StarExpedition.UI
             _blockedLabel.gameObject.SetActive(!canStart);
         }
 
+        // Pergunta antes: começar um Cycle tranca os Planets de novo, é uma decisão importante.
         private void AskToStart()
         {
             int next = Services.Progress.Cycle + 1;
@@ -5128,6 +5762,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: cada Crew Member aparece na aba Tripulação como um card (retrato, nome, classe,
+    // Equipment, livre/ocupado).
+    // ESTRATÉGIA: componente de Prefab só de exibição; o clique é repassado por callback (onClick)
+    // para a CrewView decidir o que fazer (abrir o MemberPanel).
     public class MemberCard : MonoBehaviour
     {
         [SerializeField] private Button _button;
@@ -5139,6 +5777,7 @@ namespace StarExpedition.UI
 
         public CrewMemberState Member { get; private set; }
 
+        // Preenche o card. Procura em qual Expedition o membro está para mostrar "Em expedição: Kora".
         public void Bind(CrewMemberState member, Action<CrewMemberState> onClick)
         {
             Member = member;
@@ -5173,6 +5812,9 @@ using UnityEngine;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a aba Tripulação lista o Roster inteiro.
+    // ESTRATÉGIA: "lista reconstruída": a cada mudança, destrói e recria todos os cards (listas curtas,
+    // mais simples que atualizar um a um). Redesenha quando o Roster muda ou uma Expedition sai/volta.
     /// Aba Tripulação (GDD §11.2).
     public class CrewView : MonoBehaviour
     {
@@ -5183,6 +5825,7 @@ namespace StarExpedition.UI
 
         private readonly List<MemberCard> _cards = new List<MemberCard>();
 
+        // Para o tutorial apontar o primeiro card.
         public RectTransform FirstCardRect => _cards.Count > 0 ? (RectTransform)_cards[0].transform : null;
 
         private void OnEnable()
@@ -5200,9 +5843,11 @@ namespace StarExpedition.UI
             Services.Expeditions.Claimed -= HandleClaimed;
         }
 
+        // Adaptadores de evento → Rebuild (ver NewCycleBanner).
         private void HandleStarted(ExpeditionState e) => Rebuild();
         private void HandleClaimed(ExpeditionState e, ExpeditionOutcome o) => Rebuild();
 
+        // Destrói os cards antigos e cria um por membro; mostra o aviso de "vazio" se não houver ninguém.
         private void Rebuild()
         {
             foreach (var card in _cards) Destroy(card.gameObject);
@@ -5231,6 +5876,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: no MemberPanel, cada Equipment do inventário vira uma linha com bônus e botão "Equipar".
+    // ESTRATÉGIA: componente de Prefab que reaproveita o ItemSlotView para o ícone e repassa o
+    // clique por callback. canEquip vem de fora (quem está em Expedition não troca de Equipment).
     /// Um Equipment do inventário na lista de equipar.
     public class EquipOptionRow : MonoBehaviour
     {
@@ -5242,6 +5890,7 @@ namespace StarExpedition.UI
         public ItemDefinition Item { get; private set; }
         public RectTransform EquipButtonRect => (RectTransform)_equipButton.transform;
 
+        // Preenche a linha e liga o botão; o bônus em várias linhas vira uma linha só com " · ".
         public void Bind(ItemDefinition item, bool canEquip, Action<ItemDefinition> onEquip)
         {
             Item = item;
@@ -5266,6 +5915,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: tocar num Crew Member abre o detalhe: bônus total, Equipment atual e opções para trocar.
+    // ESTRATÉGIA: herda de BottomSheet. Guarda só QUAL membro está aberto (_member) e redesenha
+    // tudo quando o Roster ou o inventário mudam. Equipar/desequipar é pedido ao CrewService.
     /// Painel do Crew Member: bônus total e troca de Equipment (GDD §6).
     public class MemberPanel : BottomSheet
     {
@@ -5284,15 +5936,18 @@ namespace StarExpedition.UI
         private readonly List<EquipOptionRow> _rows = new List<EquipOptionRow>();
         private CrewMemberState _member;
 
+        // Para o tutorial achar o botão "Equipar" de um Item específico. "?." devolve null se não achar.
         public RectTransform EquipButtonFor(string itemId)
             => _rows.Find(r => r.Item.id == itemId)?.EquipButtonRect;
 
+        // Estende o Awake da base ligando o botão de desequipar.
         protected override void Awake()
         {
             base.Awake();
             _unequipButton.onClick.AddListener(() => Services.Crew.TryUnequip(_member));
         }
 
+        // Escuta mudanças de Roster e inventário enquanto o painel está ativo.
         private void OnEnable()
         {
             Services.Crew.RosterChanged += Refresh;
@@ -5305,6 +5960,7 @@ namespace StarExpedition.UI
             Services.Inventory.Changed -= Refresh;
         }
 
+        // Ponto de entrada: chamado pela CrewView ao tocar num card.
         public void Show(CrewMemberState member)
         {
             _member = member;
@@ -5312,6 +5968,7 @@ namespace StarExpedition.UI
             Refresh();
         }
 
+        // Redesenha tudo. Se o membro foi perdido (Member Loss) com o painel aberto, fecha o painel.
         private void Refresh()
         {
             if (_member == null || !IsOpen) return;
@@ -5360,6 +6017,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: cada Recipe na Oficina mostra o produto, o bônus, os ingredientes (tem/precisa) e o botão Criar.
+    // ESTRATÉGIA: componente de Prefab. Os ingredientes usam ItemSlotView.BindRequirement (vermelho
+    // quando falta). Craftar é pedido ao CraftingService; o Toast confirma.
     public class RecipeCard : MonoBehaviour
     {
         [SerializeField] private ItemSlotView _output;
@@ -5372,6 +6032,7 @@ namespace StarExpedition.UI
         public RecipeDefinition Recipe { get; private set; }
         public RectTransform CraftButtonRect => (RectTransform)_craftButton.transform;
 
+        // Preenche o card e liga o botão. A WorkshopView chama Bind de novo quando o inventário muda.
         public void Bind(RecipeDefinition recipe)
         {
             Recipe = recipe;
@@ -5407,6 +6068,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a aba Oficina mostra as Recipes separadas por Tech Tier, com os tiers trancados
+    // indicando qual Planet os libera.
+    // ESTRATÉGIA: view com "lista reconstruída" (ver CrewView). 4 botões de tier fixos na cena
+    // (arrays no Inspector); o conteúdo é recriado a cada mudança de inventário ou desbloqueio.
     /// Aba Oficina: Recipes por Tech Tier (GDD §6, §11.2).
     public class WorkshopView : MonoBehaviour
     {
@@ -5418,11 +6083,15 @@ namespace StarExpedition.UI
         [SerializeField] private TMP_Text _lockedLabel;
 
         private readonly List<RecipeCard> _cards = new List<RecipeCard>();
+        // Tier selecionado agora (1..4).
         private int _tier = 1;
 
+        // Para o tutorial achar o botão "Criar" de uma Recipe.
         public RectTransform CraftButtonFor(string recipeId)
             => _cards.FirstOrDefault(c => c.Recipe.id == recipeId)?.CraftButtonRect;
 
+        // Liga cada botão de tier. A cópia "int tier = i + 1" dentro do laço é essencial: sem ela, todos
+        // os lambdas veriam o valor final de i (armadilha clássica de closures em laços "for").
         private void Awake()
         {
             for (int i = 0; i < _tierButtons.Length; i++)
@@ -5432,6 +6101,7 @@ namespace StarExpedition.UI
             }
         }
 
+        // Inscreve nos eventos, traduz os rótulos dos tiers e desenha.
         private void OnEnable()
         {
             Services.Inventory.Changed += Rebuild;
@@ -5446,14 +6116,17 @@ namespace StarExpedition.UI
             Services.Progress.PlanetUnlocked -= HandlePlanetUnlocked;
         }
 
+        // Um Planet novo pode liberar um Tech Tier: redesenha.
         private void HandlePlanetUnlocked(PlanetDefinition p) => Rebuild();
 
+        // Chamado pelos botões de tier (e pelo tutorial) para trocar o tier mostrado.
         public void ShowTier(int tier)
         {
             _tier = tier;
             Rebuild();
         }
 
+        // Marca o tier selecionado; se trancado, mostra "Libera ao alcançar X"; senão, um card por Recipe.
         private void Rebuild()
         {
             for (int i = 0; i < _tierSelectedMarks.Length; i++) _tierSelectedMarks[i].SetActive(i + 1 == _tier);
@@ -5492,6 +6165,9 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: na Loja, cada pilha do inventário vira uma linha com preço e botões "Vender 1" e "Tudo".
+    // ESTRATÉGIA: componente de Prefab; a venda é pedida ao ShopService. Não redesenha a si mesma:
+    // a ShopView reconstrói a lista ao ouvir Inventory.Changed.
     public class SellRow : MonoBehaviour
     {
         [SerializeField] private ItemSlotView _slot;
@@ -5501,6 +6177,8 @@ namespace StarExpedition.UI
         [SerializeField] private Button _sellOne;
         [SerializeField] private Button _sellAll;
 
+        // Preenche a linha e liga os dois botões. A categoria vira chave de texto "category.RawMaterial" etc.
+        // "Tudo" lê a quantidade na hora do clique (e não a do Bind), para vender o que houver de fato.
         public void Bind(ItemDefinition item, int quantity)
         {
             _slot.Bind(item, quantity);
@@ -5527,6 +6205,8 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: na Loja, cada Crew Class aparece com retrato, bônus e preço de Hire.
+    // ESTRATÉGIA: componente de Prefab; o botão só liga se houver Credits e o Hire é pedido ao CrewService.
     public class HireCard : MonoBehaviour
     {
         [SerializeField] private UIFlipbook _portrait;
@@ -5535,6 +6215,7 @@ namespace StarExpedition.UI
         [SerializeField] private TMP_Text _cost;
         [SerializeField] private Button _hireButton;
 
+        // Preenche o card com a variante 0 do retrato e o preço atual (que sobe a cada contratação).
         public void Bind(CrewClassDefinition crewClass)
         {
             _portrait.SetFrames(crewClass.PortraitFrames(0));
@@ -5565,6 +6246,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: as duas ofertas pagas (Ad-Free e Founder Pack) têm o mesmo layout: título, descrição,
+    // preço e botão Comprar (ou "Adquirido").
+    // ESTRATÉGIA: um componente configurado no Inspector com o id do produto e as chaves de texto;
+    // o mesmo script serve às duas ofertas. A compra vai para IPurchaseService (falso ou real).
     /// Uma oferta de compra (Ad-Free ou Founder Pack).
     public class OfferCard : MonoBehaviour
     {
@@ -5577,8 +6262,10 @@ namespace StarExpedition.UI
         [SerializeField] private Button _buyButton;
         [SerializeField] private GameObject _ownedLabel;
 
+        // Liga o botão de compra ao id configurado no Inspector.
         private void Awake() => _buyButton.onClick.AddListener(() => Services.Purchases.Buy(_productId));
 
+        // Redesenha: "Adquirido" se já tem; senão preço vindo da loja (ou "Loja indisponível").
         public void Refresh(bool owned)
         {
             _title.text = L.Get(_titleKey);
@@ -5602,6 +6289,9 @@ using UnityEngine;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a aba Loja junta três seções: vender Items, contratar e ofertas pagas.
+    // ESTRATÉGIA: view com lista reconstruída; escuta tudo que muda o conteúdo (inventário, Credits,
+    // Roster, compras) e redesenha. Guarda os objetos criados numa lista só (_spawned) para destruí-los.
     /// Aba Loja: vender, contratar e ofertas (GDD §7, §13.2).
     public class ShopView : MonoBehaviour
     {
@@ -5636,10 +6326,13 @@ namespace StarExpedition.UI
             Services.Purchases.PurchaseFailed -= HandlePurchaseFailed;
         }
 
+        // Adaptadores de evento → Rebuild; falha de compra vira um Toast.
         private void HandleCreditsChanged(int credits) => Rebuild();
         private void HandleEntitlement(string productId) => Rebuild();
         private void HandlePurchaseFailed(string productId) => Toast.Show(L.Get("shop.purchase_failed"));
 
+        // Monta a lista de venda ordenada por categoria e preço (LINQ com tuplas), um HireCard por classe
+        // e atualiza as duas ofertas.
         private void Rebuild()
         {
             foreach (var go in _spawned) Destroy(go);
@@ -5729,6 +6422,8 @@ using StarExpedition.Items;
 
 namespace StarExpedition.Onboarding
 {
+    // POR QUE: os passos do tutorial em ordem. Como enum, cada passo tem um número (0, 1, 2...) —
+    // é esse número que vai para o save (tutorialStep) — e dá para comparar "Step < Done".
     public enum TutorialStep
     {
         StarterPick,       // escolher o primeiro Crew Member
@@ -5742,9 +6437,15 @@ namespace StarExpedition.Onboarding
         Done,
     }
 
+    // POR QUE: o tutorial precisa saber em que passo o jogador está, avançar quando ele FAZ a ação
+    // e sobreviver a fechar o app no meio.
+    // ESTRATÉGIA: service de domínio dono de tutorialStep (e da dica de contratação). Não tem UI:
+    // no construtor se inscreve nos eventos dos outros services (StarterPicked, Started, Claimed,
+    // Crafted, Equipped) e avança sozinho. A seta na tela é problema do TutorialOverlay.
     /// Passos do tutorial (GDD §9) e a dica de contratação.
     public class TutorialService
     {
+        // A Recipe que o tutorial ensina a craftar (Kit de Coleta).
         public const string TutorialRecipeId = "salvage_kit";
 
         private readonly SaveService _save;
@@ -5756,6 +6457,8 @@ namespace StarExpedition.Onboarding
 
         public event Action<TutorialStep> StepChanged;
 
+        // Guarda as dependências e liga cada evento ao passo que ele completa. "_ =>" e "(_, __) =>"
+        // são lambdas que ignoram os parâmetros do evento (o "_" é o nome convencional de "não uso").
         public TutorialService(SaveService save, GameDatabase db, CrewService crew, InventoryService inventory,
                                ExpeditionService expeditions, CraftingService crafting)
         {
@@ -5773,9 +6476,12 @@ namespace StarExpedition.Onboarding
             crew.Equipped += _ => CompleteThrough(TutorialStep.Equip);
         }
 
+        // Converte o número salvo de volta para o enum (cast "(TutorialStep)").
         public TutorialStep Step => (TutorialStep)_save.Data.tutorialStep;
         public bool IsActive => Step < TutorialStep.Done;
 
+        // Completa o passo indicado E todos os anteriores (salta para o seguinte). Se o jogador já está
+        // além desse passo, não faz nada — por isso fazer as coisas fora de ordem não trava o tutorial.
         public void CompleteThrough(TutorialStep step)
         {
             if (!IsActive || Step > step) return;
@@ -5784,6 +6490,8 @@ namespace StarExpedition.Onboarding
             StepChanged?.Invoke(Step);
         }
 
+        // Chamado todo frame pelo TutorialOverlay: se a situação real já tornou um passo impossível ou
+        // desnecessário (ex.: vendeu o Minério), pula o passo em vez de deixar o jogador preso.
         /// Pula passos que ficaram impossíveis (ex.: o jogador vendeu o Minério antes de craftar).
         public void SkipImpossibleSteps()
         {
@@ -5804,6 +6512,7 @@ namespace StarExpedition.Onboarding
                 CompleteThrough(TutorialStep.Equip);
         }
 
+        // Resposta ao pedido de notificação (sim ou não): registra e avança o passo.
         public void MarkNotificationPromptAnswered()
         {
             _save.Data.notificationPromptAnswered = true;
@@ -5812,9 +6521,12 @@ namespace StarExpedition.Onboarding
 
         // ---------- Dica de contratação (GDD §9, passo 7) ----------
 
+        // Mostra a bolinha na aba Loja uma única vez: fora do tutorial, sem ter visto antes e com
+        // Credits suficientes para algum Hire.
         public bool ShouldShowHireHint(int credits, int cheapestHireCost)
             => !IsActive && !_save.Data.hireHintSeen && credits >= cheapestHireCost;
 
+        // Registra que o jogador já viu a dica (não aparece mais).
         public void MarkHireHintSeen()
         {
             if (_save.Data.hireHintSeen) return;
@@ -5828,18 +6540,21 @@ namespace StarExpedition.Onboarding
 Em `Services.cs` (com `using StarExpedition.Onboarding;`):
 
 ```csharp
+        // Novo: o tutorial acessível pelo Services.
         public static TutorialService Tutorial { get; internal set; }
 ```
 
 Em `GameBootstrap.CreateServices`, depois de `Services.Shop`:
 
 ```csharp
+            // Criado depois de Crafting porque recebe o CraftingService no construtor.
             Services.Tutorial = new TutorialService(save, database, crew, inventory, expeditions, Services.Crafting);
 ```
 
 E acrescente ao `PlanetPanel` (Fase 8) a propriedade que o tutorial consulta:
 
 ```csharp
+        // Novo no PlanetPanel: quantos membros estão marcados (o tutorial decide para onde apontar a seta).
         public int SelectedCount => _selected.Count;
 ```
 
@@ -5856,6 +6571,8 @@ using UnityEngine.UI;
 
 namespace StarExpedition.Onboarding
 {
+    // POR QUE: cada uma das 3 opções do Starter Pick (retrato, classe, bônus, botão Escolher).
+    // ESTRATÉGIA: componente de Prefab; o clique é repassado por callback ao StarterPickPanel.
     public class StarterOption : MonoBehaviour
     {
         [SerializeField] private UIFlipbook _portrait;
@@ -5863,6 +6580,7 @@ namespace StarExpedition.Onboarding
         [SerializeField] private TMP_Text _bonus;
         [SerializeField] private Button _pickButton;
 
+        // Preenche a opção com a Crew Class e liga o botão Escolher.
         public void Bind(CrewClassDefinition crewClass, Action<CrewClassDefinition> onPick)
         {
             _portrait.SetFrames(crewClass.PortraitFrames(0));
@@ -5885,11 +6603,15 @@ using UnityEngine;
 
 namespace StarExpedition.Onboarding
 {
+    // POR QUE: a primeira tela do jogo: escolher 1 Crew Member grátis entre Scout, Engineer e Guard.
+    // ESTRATÉGIA: herda de BottomSheet, mas proíbe fechar pelo "voltar" (override de CanCloseWithBack).
+    // As 3 classes vêm do GameBalance; a regra (PickStarter) fica no CrewService.
     /// Primeira tela do jogo: 1 Crew Member grátis entre 3 (GDD §3.3).
     public class StarterPickPanel : BottomSheet
     {
         [SerializeField] private StarterOption[] _options = new StarterOption[3];
 
+        // "override" de uma propriedade virtual da base (ver BottomSheet).
         public override bool CanCloseWithBack => false;   // não dá para fugir da escolha
 
         /// Chamado pelo TutorialOverlay no passo StarterPick.
@@ -5905,6 +6627,7 @@ namespace StarExpedition.Onboarding
             }
         }
 
+        // Só fecha se o CrewService aceitou a escolha.
         private void Pick(CrewClassDefinition crewClass)
         {
             if (Services.Crew.PickStarter(crewClass) != null) Close();
@@ -5928,6 +6651,12 @@ using UnityEngine;
 
 namespace StarExpedition.Onboarding
 {
+    // POR QUE: o tutorial precisa mostrar ONDE tocar (seta) e O QUE fazer (frase), apontando para
+    // botões reais de várias telas diferentes.
+    // ESTRATÉGIA: um MonoBehaviour por cima de toda a UI, com o CanvasGroup sem bloquear toques
+    // (o jogador toca "através" da seta, direto no botão real). A cada frame (LateUpdate) olha o passo
+    // atual e o estado das telas e decide para onde apontar. As telas expõem os RectTransforms dos
+    // seus botões (SendButtonRect, CraftButtonFor...) para o overlay achar os alvos.
     /// Seta + frase do tutorial, apontando para o botão real (GDD §9).
     public class TutorialOverlay : MonoBehaviour
     {
@@ -5947,17 +6676,22 @@ namespace StarExpedition.Onboarding
         [SerializeField] private MemberPanel _memberPanel;
         [SerializeField] private StarterPickPanel _starterPick;
 
+        // Chave do texto atual: só troca o texto quando a chave muda (ver PlanetNode).
         private string _currentKey;
+        // Evita abrir o pedido de notificação mais de uma vez enquanto espera a resposta.
         private bool _askingNotifications;
 
         private void OnEnable() => Services.Tutorial.StepChanged += HandleStepChanged;
         private void OnDisable() => Services.Tutorial.StepChanged -= HandleStepChanged;
 
+        // Ao terminar o tutorial, mostra a frase final como Toast.
         private void HandleStepChanged(TutorialStep step)
         {
             if (step == TutorialStep.Done) Toast.Show(L.Get("tutorial.done"));
         }
 
+        // LateUpdate (ver AppLifecycle): roda depois dos Update, quando as telas já se atualizaram neste
+        // frame. Um switch por passo decide o alvo da seta e a frase.
         private void LateUpdate()
         {
             var tutorial = Services.Tutorial;
@@ -6020,6 +6754,7 @@ namespace StarExpedition.Onboarding
             }
         }
 
+        // Alvo "Planet no mapa": se o jogador não está na aba Mapa, aponta primeiro a aba Mapa.
         private RectTransform NodeRect(StarExpedition.Data.PlanetDefinition planet)
         {
             if (_root.CurrentTab != Tab.Map) return _tabBar.RectOf(Tab.Map);
@@ -6027,6 +6762,8 @@ namespace StarExpedition.Onboarding
             return node != null ? (RectTransform)node.transform : null;
         }
 
+        // Fecha o PlanetPanel e pergunta se o jogador quer notificações. Finish é uma FUNÇÃO LOCAL
+        // (declarada dentro do método, abaixo) usada tanto no "sim" (depois da resposta do sistema) quanto no "não".
         private void AskNotificationsOnce()
         {
             if (_askingNotifications) return;
@@ -6045,6 +6782,8 @@ namespace StarExpedition.Onboarding
             }
         }
 
+        // Posiciona a seta em cima do alvo (TransformPoint converte o topo do botão em posição de mundo),
+        // faz ela "quicar" com um seno e coloca a frase acima, sem sair da tela. Sem alvo, só a frase.
         private void Point(RectTransform target, string textKey)
         {
             _group.alpha = 1f;
@@ -6077,6 +6816,7 @@ namespace StarExpedition.Onboarding
             _bubble.anchoredPosition = new Vector2(Mathf.Round(x), Mathf.Round(y));
         }
 
+        // Esconde a seta e a frase (alpha 0) sem desativar o objeto, para o LateUpdate continuar rodando.
         private void Hide()
         {
             _group.alpha = 0f;
@@ -6086,7 +6826,7 @@ namespace StarExpedition.Onboarding
 }
 ```
 
-**Montagem:** `TutorialOverlay` é o **último filho** de `SafeArea` (depois de `Sheets` e `Toast`), esticado, com `CanvasGroup` (**Interactable** e **Blocks Raycasts** desligados). Filhos: `Arrow` (Image `SPR_UI_Arrow`, âncora e pivô no centro-baixo) e `Bubble` (painel Slate 700 com borda âmbar, largura 200, `ContentSizeFitter` vertical, TMP 8 px; âncora no centro). Ligue todas as telas no Inspector.
+**Montagem:** `TutorialOverlay` é o **último filho** de `SafeArea` (depois de `Sheets` e `Toast`), esticado, com `CanvasGroup` (**Interactable** e **Blocks Raycasts** desligados). Filhos: `Arrow` (Image `SPR_UI_Arrow`, âncora no centro, pivô no centro-baixo — a ponta da seta) e `Bubble` (painel Slate 700 com borda âmbar, largura 200, `ContentSizeFitter` vertical, TMP 8 px; âncora no centro). Ligue todas as telas no Inspector.
 
 #### Passo 4 — Dica da Loja: `HireHintBadge`
 
@@ -6098,6 +6838,9 @@ using UnityEngine;
 
 namespace StarExpedition.Onboarding
 {
+    // POR QUE: depois do tutorial, avisar uma única vez que já dá para contratar, sem forçar nada.
+    // ESTRATÉGIA: view reativa (ver TopBar) no botão da aba Loja: escuta Credits, passos do tutorial
+    // e troca de aba; a decisão de mostrar fica no TutorialService (ShouldShowHireHint).
     /// Bolinha na aba Loja na primeira vez em que os Credits pagam uma contratação (GDD §9).
     public class HireHintBadge : MonoBehaviour
     {
@@ -6122,12 +6865,14 @@ namespace StarExpedition.Onboarding
         private void HandleCreditsChanged(int credits) => Refresh();
         private void HandleStepChanged(TutorialStep step) => Refresh();
 
+        // Ao entrar na Loja com a bolinha visível, marca como vista.
         private void HandleTabChanged(Tab tab)
         {
             if (tab == Tab.Shop && _badge.activeSelf) Services.Tutorial.MarkHireHintSeen();
             Refresh();
         }
 
+        // Liga/desliga a bolinha conforme a regra do TutorialService.
         private void Refresh()
             => _badge.SetActive(Services.Tutorial.ShouldShowHireHint(Services.Wallet.Credits, Services.Crew.CheapestHireCost));
     }
@@ -6184,6 +6929,8 @@ Apague o `save.json` e dê Play na `Boot`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Platform/AndroidNotificationService.cs
+// "#if UNITY_ANDROID ... #endif" (ver NullAnalyticsService): o arquivo inteiro só compila na
+// plataforma Android, porque o pacote de notificações Android não existe nas outras.
 #if UNITY_ANDROID
 using System;
 using System.Collections;
@@ -6193,13 +6940,20 @@ using UnityEngine;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: é a versão REAL de INotificationService para Android: cria o canal, pede permissão,
+    // agenda e cancela notificações locais no sistema.
+    // ESTRATÉGIA: implementa a mesma interface da NullNotificationService (Fase 7), então nada no jogo
+    // muda ao trocar uma pela outra. Classe C# pura; como pedir permissão exige esperar vários
+    // frames, recebe um MonoBehaviour "hospedeiro" só para rodar a coroutine.
     public class AndroidNotificationService : INotificationService
     {
         private const string ChannelId = "expeditions";
+        // Classes C# puras não podem chamar StartCoroutine; pegamos emprestado o de um MonoBehaviour.
         private readonly MonoBehaviour _coroutineHost;
 
         public AndroidNotificationService(MonoBehaviour coroutineHost) => _coroutineHost = coroutineHost;
 
+        // UserPermissionToPost diz se o jogador permitiu notificações (Android 13+).
         public bool IsPermissionGranted => AndroidNotificationCenter.UserPermissionToPost == PermissionStatus.Allowed;
 
         /// Chamado no Boot, depois de a Localization estar pronta (o nome do canal é traduzido).
@@ -6214,9 +6968,11 @@ namespace StarExpedition.Platform
             });
         }
 
+        // Pede a permissão: inicia a coroutine abaixo no hospedeiro.
         public void RequestPermission(Action<bool> onAnswered)
             => _coroutineHost.StartCoroutine(Request(onAnswered));
 
+        // Cria o pedido (o Android mostra a janela) e espera, frame a frame, até o jogador responder.
         private static IEnumerator Request(Action<bool> onAnswered)
         {
             // Abaixo do Android 13 o status já volta "Allowed" sem mostrar nada.
@@ -6225,6 +6981,8 @@ namespace StarExpedition.Platform
             onAnswered?.Invoke(request.Status == PermissionStatus.Allowed);
         }
 
+        // Agenda a notificação para o fim da Expedition. O pacote espera hora LOCAL, por isso ToLocalTime().
+        // Devolve o id do sistema (guardado no ExpeditionState para poder cancelar) ou -1 sem permissão.
         public int Schedule(string title, string body, DateTime fireUtc)
         {
             if (!IsPermissionGranted) return -1;
@@ -6239,11 +6997,13 @@ namespace StarExpedition.Platform
             return AndroidNotificationCenter.SendNotification(notification, ChannelId);
         }
 
+        // Cancela uma notificação agendada (ex.: o jogador fez o Claim antes de ela disparar).
         public void Cancel(int id)
         {
             if (id >= 0) AndroidNotificationCenter.CancelNotification(id);
         }
 
+        // Abre a tela de notificações do app nas configurações do Android (quando o jogador bloqueou).
         public void OpenSystemSettings() => AndroidNotificationCenter.OpenNotificationSettings();
     }
 }
@@ -6262,6 +7022,10 @@ using StarExpedition.Expeditions;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: alguém precisa agendar uma notificação quando uma Expedition começa e cancelá-la no Claim.
+    // ESTRATÉGIA: o ExpeditionService NÃO sabe que notificações existem (regra de jogo não depende de
+    // plataforma). Este "ouvinte" se inscreve nos eventos Started e Claimed e fala com INotificationService.
+    // Guarda o id da notificação no próprio ExpeditionState (campo notificationId do save).
     /// Agenda uma notificação por Expedition e cancela no Claim (GDD §13.4).
     public class NotificationScheduler
     {
@@ -6278,10 +7042,12 @@ namespace StarExpedition.Platform
             _expeditions = expeditions;
             _notifications = notifications;
 
+            // "expeditions.Started += ScheduleFor": o próprio método vira o handler (assinatura compatível).
             expeditions.Started += ScheduleFor;
             expeditions.Claimed += (e, _) => CancelFor(e);
         }
 
+        // Respeita a opção de notificações das Settings.
         private bool Enabled => _save.Data.settings.notificationsEnabled;
 
         /// Liga/desliga pelas Settings (Fase 13).
@@ -6294,11 +7060,13 @@ namespace StarExpedition.Platform
             }
         }
 
+        // Cancela todas (quando o jogador desliga as notificações nas Settings).
         public void CancelAll()
         {
             foreach (var e in _expeditions.Active) CancelFor(e);
         }
 
+        // Agenda a notificação desta Expedition para o horário de término e guarda o id no save.
         private void ScheduleFor(ExpeditionState e)
         {
             if (!Enabled) return;
@@ -6310,6 +7078,7 @@ namespace StarExpedition.Platform
             _save.MarkDirty();
         }
 
+        // Cancela a notificação (se houver) e marca o id como -1 ("nenhuma").
         private void CancelFor(ExpeditionState e)
         {
             if (e.notificationId < 0) return;
@@ -6328,6 +7097,9 @@ namespace StarExpedition.Platform
 Em `GameBootstrap.CreateServices`, o `AppLifecycle` passa a ser criado **no início** (ele também serve de "hospedeiro" de corrotinas), e a plataforma real entra no Android:
 
 ```csharp
+            // O AppLifecycle é um MonoBehaviour: serve de hospedeiro de coroutines para o AndroidNotificationService.
+            // "#if UNITY_ANDROID && !UNITY_EDITOR": no celular usa o real; no Editor (mesmo com a plataforma
+            // Android ativa) continua usando o falso.
             var lifecycle = host.AddComponent<AppLifecycle>();   // movido para o início do método
             // ...
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -6341,12 +7113,14 @@ Em `GameBootstrap.CreateServices`, o `AppLifecycle` passa a ser criado **no iní
 Em `Services.cs`:
 
 ```csharp
+        // Novo: o agendador fica acessível para as Settings (Fase 13) chamarem RescheduleAll/CancelAll.
         public static NotificationScheduler NotificationScheduler { get; internal set; }
 ```
 
 Em `BootSequence.Start`, logo depois de `yield return LocalizationSettings.InitializationOperation;`:
 
 ```csharp
+            // Novo: cria o canal de notificação só agora, porque o nome do canal é traduzido (precisa da Localization pronta).
             Services.Notifications.Initialize();
 ```
 
@@ -6412,14 +7186,23 @@ using GoogleMobileAds.Ump.Api;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: leis de privacidade (GDPR na Europa, LGPD no Brasil) exigem pedir consentimento antes
+    // de anúncios personalizados. O Google UMP decide se precisa perguntar e mostra o formulário.
+    // ESTRATÉGIA: uma classe só, com duas versões escolhidas por "#if": no celular Android usa o UMP de
+    // verdade; no Editor, uma versão falsa que sempre libera. Sem interface aqui porque só existe um
+    // fornecedor (Google) e ninguém de fora precisa trocá-la. O BootSequence chama Gather antes dos anúncios.
     /// Consentimento GDPR/LGPD pelo Google UMP (GDD §13.3). No Editor, sempre "pode".
     public class ConsentService
     {
 #if UNITY_ANDROID && !UNITY_EDITOR
+        // true quando o UMP permite pedir anúncios (consentimento dado ou não necessário na região).
         public bool CanRequestAds => ConsentInformation.CanRequestAds();
+        // true quando a região exige um botão "Opções de privacidade" nas Settings (GDD §13.3).
         public bool PrivacyOptionsRequired
             => ConsentInformation.PrivacyOptionsRequirementStatus == PrivacyOptionsRequirementStatus.Required;
 
+        // Atualiza o status de consentimento e, se necessário, mostra o formulário. As duas etapas são
+        // assíncronas (callbacks aninhados). Em qualquer erro, segue o jogo mesmo assim (onDone).
         public void Gather(Action onDone)
         {
             var request = new ConsentRequestParameters();
@@ -6443,6 +7226,7 @@ namespace StarExpedition.Platform
             });
         }
 
+        // Reabre o formulário de privacidade (botão das Settings).
         public void ShowPrivacyOptions(Action onDone)
             => ConsentForm.ShowPrivacyOptionsForm(error => onDone?.Invoke());
 #else
@@ -6471,9 +7255,16 @@ using UnityEngine;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: é a versão REAL do IAdService: carrega e mostra o anúncio recompensado do Double Loot.
+    // ESTRATÉGIA: implementa a mesma interface do NullAdService (Fase 7). Mantém sempre UM anúncio
+    // carregado de antemão (carregar na hora faria o jogador esperar). Se o carregamento falhar, tenta
+    // de novo com espera crescente (2, 4, 8... s) para não martelar o servidor.
+    // Só compila no Android fora do Editor (#if no topo do arquivo).
     /// Anúncio recompensado do Double Loot (GDD §13.1).
     public class AdMobAdService : IAdService
     {
+// DEVELOPMENT_BUILD é definido pela Unity quando a opção "Development Build" está marcada:
+// nessas builds usamos o id de TESTE do Google (clicar em anúncio real do próprio app dá banimento).
 #if DEVELOPMENT_BUILD
         private const string RewardedUnitId = "ca-app-pub-3940256099942544/5224354917";   // teste do Google
 #else
@@ -6481,22 +7272,29 @@ namespace StarExpedition.Platform
 #endif
 
         private readonly MonoBehaviour _coroutineHost;
+        // Anúncio carregado e pronto (null = nenhum).
         private RewardedAd _ad;
         private bool _loading;
+        // Contador de falhas seguidas, usado no cálculo da espera antes de tentar de novo.
         private int _failedLoads;
 
         public event Action ReadyChanged;
 
         public AdMobAdService(MonoBehaviour coroutineHost) => _coroutineHost = coroutineHost;
 
+        // Pronto = há anúncio carregado e o SDK diz que ele pode ser mostrado.
         public bool IsRewardedReady => _ad != null && _ad.CanShowAd();
 
+        // Inicializa o SDK do AdMob e, quando terminar, carrega o primeiro anúncio.
+        // RaiseAdEventsOnUnityMainThread: sem isso, os callbacks chegariam em outra thread, onde não se
+        // pode mexer em objetos da Unity (UI) com segurança.
         public void Initialize()
         {
             MobileAds.RaiseAdEventsOnUnityMainThread = true;   // callbacks na thread da Unity
             MobileAds.Initialize(_ => Load());
         }
 
+        // Pede um anúncio ao AdMob (se já não estiver carregando ou pronto). O resultado chega no callback.
         private void Load()
         {
             if (_loading || IsRewardedReady) return;
@@ -6518,12 +7316,15 @@ namespace StarExpedition.Platform
             });
         }
 
+        // Coroutine de espera antes de tentar carregar de novo (hospedada no AppLifecycle).
         private IEnumerator RetryAfter(float seconds)
         {
             yield return new WaitForSecondsRealtime(seconds);
             Load();
         }
 
+        // Mostra o anúncio. Tira-o de _ad antes (um anúncio só pode ser mostrado uma vez) e avisa a UI.
+        // "rewarded" vira true no callback do Show; o resultado só é entregue quando o anúncio FECHA.
         public void ShowRewarded(Action<bool> onFinished)
         {
             if (!IsRewardedReady)
@@ -6571,11 +7372,18 @@ using UnityEngine.Purchasing;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: é a versão REAL do IPurchaseService: conversa com a Google Play pelo Unity IAP 5
+    // (preços, compra, confirmação e restauração de compras).
+    // ESTRATÉGIA: implementa a mesma interface da NullPurchaseService. Não decide o que a compra dá:
+    // para cada produto comprado ou restaurado, chama ShopService.GrantEntitlement (idempotente).
+    // Só confirma a compra com a loja DEPOIS de gravar o save — se o app morrer no meio, a loja
+    // reenvia a compra pendente na próxima abertura e nada se perde.
     /// Ad-Free e Founder Pack pela Google Play, com Unity IAP 5 (GDD §13.2).
     /// Quem entrega o conteúdo é o ShopService; aqui só se fala com a loja.
     public class UnityPurchaseService : IPurchaseService
     {
         private readonly ShopService _shop;
+        // Produtos carregados da loja, por id (para preço e compra).
         private readonly Dictionary<string, Product> _products = new Dictionary<string, Product>();
         private StoreController _store;
 
@@ -6586,6 +7394,9 @@ namespace StarExpedition.Platform
 
         public UnityPurchaseService(ShopService shop) => _shop = shop;
 
+        // "async void" + "await": o método pode esperar a conexão com a loja (Connect) sem travar o jogo;
+        // o resto do método continua quando a conexão termina. O try/catch evita que uma loja indisponível
+        // derrube o jogo. Registra os handlers de eventos da loja e pede os dois produtos.
         public async void Initialize()
         {
             try
@@ -6611,9 +7422,11 @@ namespace StarExpedition.Platform
             }
         }
 
+        // Preço já formatado pela loja na moeda do jogador ("R$ 14,90").
         public string PriceText(string productId)
             => _products.TryGetValue(productId, out var p) ? p.metadata.localizedPriceString : "";
 
+        // Inicia a compra; se a loja não está pronta ou o produto não existe, avisa falha na hora.
         public void Buy(string productId)
         {
             if (!IsReady || !_products.TryGetValue(productId, out var product))
@@ -6624,6 +7437,7 @@ namespace StarExpedition.Platform
             _store.PurchaseProduct(product);
         }
 
+        // A loja devolveu os produtos: guarda, marca como pronta e pede as compras já feitas (restauração).
         private void HandleProductsFetched(List<Product> products)
         {
             foreach (var p in products) _products[p.definition.id] = p;
@@ -6632,6 +7446,7 @@ namespace StarExpedition.Platform
             _store.FetchPurchases();   // restaura compras de reinstalações e de outros aparelhos
         }
 
+        // Compras já confirmadas antes (outro aparelho, reinstalação): entrega de novo o conteúdo.
         private void HandlePurchasesFetched(Orders orders)
         {
             foreach (var order in orders.ConfirmedOrders)
@@ -6639,6 +7454,7 @@ namespace StarExpedition.Platform
                 _shop.GrantEntitlement(item.Product.definition.id);   // idempotente: não entrega em dobro
         }
 
+        // Compra nova aguardando confirmação: entrega (gravando o save) e só então confirma com a loja.
         private void HandlePurchasePending(PendingOrder order)
         {
             foreach (var item in order.CartOrdered.Items())
@@ -6650,6 +7466,7 @@ namespace StarExpedition.Platform
             _store.ConfirmPurchase(order);
         }
 
+        // Compra falhou ou foi cancelada: registra e avisa a UI (a ShopView mostra um Toast).
         private void HandlePurchaseFailed(FailedOrder order)
         {
             string id = order.CartOrdered.Items().FirstOrDefault()?.Product.definition.id;
@@ -6667,12 +7484,14 @@ namespace StarExpedition.Platform
 Em `Services.cs`:
 
 ```csharp
+        // Novo: consentimento acessível pelo BootSequence e pelas Settings.
         public static ConsentService Consent { get; internal set; }
 ```
 
 Em `GameBootstrap.CreateServices`, troque as linhas de anúncio e compras da Fase 7:
 
 ```csharp
+            // Mesmo padrão da Fase 10: no celular os serviços reais; no Editor, os falsos da Fase 7.
             Services.Consent = new ConsentService();
 #if UNITY_ANDROID && !UNITY_EDITOR
             Services.Ads = new AdMobAdService(lifecycle);
@@ -6686,6 +7505,9 @@ Em `GameBootstrap.CreateServices`, troque as linhas de anúncio e compras da Fas
 E o `BootSequence.Start` completo passa a ser:
 
 ```csharp
+        // Versão completa do Start (ver BootSequence na Fase 1). O que mudou: depois da Localization,
+        // inicializa as notificações e espera o consentimento (a flag consentDone vira true no callback,
+        // e o laço "while ... yield return null" espera frame a frame); só então inicia anúncios e loja.
         private IEnumerator Start()
         {
             float started = Time.realtimeSinceStartup;
@@ -6767,14 +7589,23 @@ using UnityEngine;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: é a versão REAL do IAnalyticsService: envia eventos ao Firebase Analytics e liga o
+    // Crashlytics (relatório de crashes) no celular.
+    // ESTRATÉGIA: implementa a mesma interface do NullAnalyticsService. O Firebase demora para ficar
+    // pronto (inicialização assíncrona), então eventos que chegam antes disso vão para uma FILA
+    // (até 50) e são enviados assim que ele estiver pronto. Respeita o consentimento do jogador.
     public class FirebaseAnalyticsService : IAnalyticsService
     {
         private const int MaxQueued = 50;
 
+        // Fila de eventos esperando o Firebase: cada item é (nome, parâmetros).
         private readonly List<(string name, (string key, object value)[] parameters)> _queue
             = new List<(string, (string, object)[])>();
         private bool _ready;
 
+        // Verifica/instala as dependências do Google Play services (assíncrono). ContinueWithOnMainThread
+        // garante que o código de depois rode na thread principal da Unity. Aplica o consentimento,
+        // liga a coleta só se houver consentimento e esvazia a fila.
         public void Initialize(bool consentGranted)
         {
             FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
@@ -6804,15 +7635,19 @@ namespace StarExpedition.Platform
             });
         }
 
+        // Envia agora se pronto; senão guarda na fila (descarta acima do limite para não crescer sem fim).
         public void Log(string eventName, params (string key, object value)[] parameters)
         {
             if (_ready) Send(eventName, parameters);
             else if (_queue.Count < MaxQueued) _queue.Add((eventName, parameters));
         }
 
+        // Converte as tuplas em Parameter do Firebase e registra o evento.
         private static void Send(string name, (string key, object value)[] parameters)
             => FirebaseAnalytics.LogEvent(name, parameters.Select(ToParameter).ToArray());
 
+        // "switch expression" com padrões de tipo: escolhe o construtor de Parameter certo conforme o tipo
+        // do valor (int, long, float...). bool vira 1/0 porque o Firebase não tem parâmetro booleano.
         private static Parameter ToParameter((string key, object value) p) => p.value switch
         {
             int i => new Parameter(p.key, i),
@@ -6836,9 +7671,14 @@ using StarExpedition.Core;
 
 namespace StarExpedition.Platform
 {
+    // POR QUE: decidir QUAIS eventos de jogo viram eventos de analytics, e com quais parâmetros (§13.6).
+    // ESTRATÉGIA: "reporter por eventos" (como o NotificationScheduler): classe static que só se
+    // inscreve nos eventos dos services, uma vez, no bootstrap. Nenhum service de regra sabe que o
+    // analytics existe; trocar o Firebase por outro não muda nada aqui (usa IAnalyticsService).
     /// Transforma os eventos dos services em eventos de analytics (GDD §13.6).
     public static class AnalyticsReporter
     {
+        // Liga cada evento a um analytics.Log. Precisa ser chamado DEPOIS de todos os services existirem.
         public static void Attach(IAnalyticsService analytics)
         {
             var db = Services.Database;
@@ -6850,9 +7690,11 @@ namespace StarExpedition.Platform
                 var planet = db.GetPlanet(e.planetId);
                 var squad = e.memberIds.Select(Services.Crew.Get).Where(m => m != null).ToList();
                 var odds = Services.Expeditions.PreviewOdds(planet, squad);
+                // Depois do envio, PreviewOdds já não sabe que esta era a do tutorial (100% fixo).
+                int successChance = e.isTutorial ? 100 : (int)(odds.SuccessChance * 100);
                 analytics.Log("expedition_start",
                     ("planet", e.planetId), ("cycle", e.cycle), ("squad_size", squad.Count),
-                    ("success_chance", (int)(odds.SuccessChance * 100)), ("duration", e.durationSeconds));
+                    ("success_chance", successChance), ("duration", e.durationSeconds));
             };
 
             Services.Expeditions.Claimed += (e, o) => analytics.Log("expedition_claim",
@@ -6883,6 +7725,7 @@ Em `GameBootstrap.CreateServices`, troque a linha do analytics da Fase 7 e ligue
 
 ```csharp
 #if UNITY_ANDROID && !UNITY_EDITOR
+            // Mesmo padrão das Fases 10 e 11: real no celular, falso no Editor. O reporter é ligado em seguida.
             Services.Analytics = new FirebaseAnalyticsService();
 #else
             Services.Analytics = new NullAnalyticsService();
@@ -6893,6 +7736,7 @@ Em `GameBootstrap.CreateServices`, troque a linha do analytics da Fase 7 e ligue
 Em `BootSequence.Start`, no lugar do comentário `// Fase 12`:
 
 ```csharp
+            // Novo: inicia o analytics usando a resposta do consentimento (UMP) como consentimento de coleta.
             Services.Analytics.Initialize(Services.Consent.CanRequestAds);
 ```
 
@@ -6934,6 +7778,8 @@ using UnityEngine;
 
 namespace StarExpedition.Audio
 {
+    // POR QUE: nomear cada som do jogo com um enum evita erros de digitação ("ClaimSucess") e deixa
+    // o compilador listar todos os sons possíveis.
     /// Os eventos sonoros da 1.0 (GDD §12).
     public enum SfxId
     {
@@ -6942,10 +7788,16 @@ namespace StarExpedition.Audio
         Craft, Equip, Sell, Hire, NewCycle, Purchase,
     }
 
+    // POR QUE: o código precisa tocar "o som de Claim com Success" sem saber qual arquivo é — e o
+    // áudio ainda está "Em aberto" (GDD §12): os arquivos chegam depois.
+    // ESTRATÉGIA: ScriptableObject (ver CrewClassDefinition) que liga cada SfxId a uma lista de clipes.
+    // Com a lista vazia o jogo fica em silêncio sem erro; escolher os sons = arrastar arquivos no Inspector.
     /// Fica em Resources/AudioLibrary.asset. Arquivos: Audio/SFX/SFX_<Id>.ogg e Audio/Music/MUS_Ambient.ogg.
     [CreateAssetMenu(menuName = "Star Expedition/Audio Library")]
     public class AudioLibrary : ScriptableObject
     {
+        // POR QUE: uma linha da biblioteca: qual som e quais arquivos (clipes) podem tocar para ele.
+        // ESTRATÉGIA: classe aninhada [Serializable] para a lista ser editável no Inspector.
         [Serializable]
         public class Entry
         {
@@ -6956,6 +7808,7 @@ namespace StarExpedition.Audio
         public AudioClip music;
         public List<Entry> sfx = new List<Entry>();
 
+        // Clipes de um som, ou null se ainda não houver linha para ele.
         public AudioClip[] Get(SfxId id) => sfx.Find(e => e.id == id)?.clips;
     }
 }
@@ -6969,16 +7822,26 @@ using UnityEngine;
 
 namespace StarExpedition.Audio
 {
+    // POR QUE: tocar música ambiente e efeitos, com volumes das Settings, e avisar com som quando uma
+    // Expedition termina com o app aberto.
+    // ESTRATÉGIA: MonoBehaviour (precisa de AudioSource, que é componente) que vive no objeto
+    // [Services] — assim a música não reinicia ao recarregar a cena Main. Duas AudioSources: uma para
+    // música em loop, outra para efeitos curtos. Criado e configurado pelo GameBootstrap (Setup).
     /// Música ambiente e efeitos. Vive no [Services] (sobrevive às trocas de cena).
     public class AudioService : MonoBehaviour
     {
         private AudioLibrary _library;
         private AudioSource _music;
         private AudioSource _sfx;
+        // Expeditions cujo retorno já foi anunciado com som (chave: Planet + início), para não repetir.
         private readonly HashSet<string> _announcedReturns = new HashSet<string>();
+        // Próximo instante em que Update vai conferir os retornos (1 vez por segundo, não todo frame).
         private float _nextReturnCheck;
+        // false até a primeira checagem: o que já tinha voltado antes de abrir o app não toca som.
         private bool _returnsPrimed;
 
+        // Faz o papel de construtor (MonoBehaviours não usam construtor): cria as duas AudioSources,
+        // aplica os volumes e começa a música se houver uma.
         public void Setup(AudioLibrary library, float musicVolume, float sfxVolume)
         {
             _library = library;
@@ -6998,9 +7861,12 @@ namespace StarExpedition.Audio
             }
         }
 
+        // Volumes 0..1, chamados pelo SettingsService. "if (_music)" protege caso Setup não tenha rodado.
         public void SetMusicVolume(float volume) { if (_music) _music.volume = volume; }
         public void SetSfxVolume(float volume) { if (_sfx) _sfx.volume = volume; }
 
+        // Toca um efeito sorteando um dos clipes (Random.Range com int exclui o máximo). PlayOneShot não
+        // corta o som anterior da mesma fonte.
         public void Play(SfxId id)
         {
             var clips = _library != null ? _library.Get(id) : null;
@@ -7033,9 +7899,13 @@ using StarExpedition.Data;
 
 namespace StarExpedition.Audio
 {
+    // POR QUE: vários momentos do jogo precisam de som (enviar, Claim, craftar, contratar...).
+    // ESTRATÉGIA: mesmo padrão do AnalyticsReporter: classe static que só liga eventos dos services
+    // a audio.Play. Os services não sabem que existe áudio.
     /// Liga os eventos dos services aos sons (mesmo padrão do AnalyticsReporter).
     public static class AudioReactor
     {
+        // Liga cada evento ao som correspondente. Os "_" são parâmetros ignorados.
         public static void Attach(AudioService audio)
         {
             var db = Services.Database;
@@ -7066,13 +7936,18 @@ using UnityEngine.UI;
 
 namespace StarExpedition.Audio
 {
+    // POR QUE: todo botão deve fazer um "clique" sonoro, sem precisar ligar o som em cada onClick.
+    // ESTRATÉGIA: componente colocado nos Prefabs de botão. Implementa IPointerClickHandler: uma
+    // interface do sistema de eventos da UI — a Unity chama OnPointerClick sozinha quando o objeto é tocado.
     /// Coloque nos prefabs de botão: toca o som de toque.
     [RequireComponent(typeof(Selectable))]
     public class UIButtonSound : MonoBehaviour, IPointerClickHandler
     {
         private Selectable _selectable;
+        // Guarda o Selectable (Button, Toggle, Slider... todos herdam dele) para checar se está habilitado.
         private void Awake() => _selectable = GetComponent<Selectable>();
 
+        // Chamado pela Unity no toque. Só toca se o botão estiver habilitado (IsInteractable).
         public void OnPointerClick(PointerEventData eventData)
         {
             if (_selectable.IsInteractable()) Services.Audio?.Play(SfxId.ButtonTap);
@@ -7101,6 +7976,10 @@ using UnityEngine.Localization.Settings;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: as preferências (volumes, idioma, notificações) precisam ser salvas E aplicadas nos
+    // sistemas certos (AudioService, Localization, NotificationScheduler) — isso não é trabalho da tela.
+    // ESTRATÉGIA: service C# puro, dono de save.Data.settings (SettingsState). A SettingsPanel só chama
+    // os métodos Set*; cada um grava o valor e repassa ao sistema responsável.
     /// Volumes, idioma e notificações (GDD §11.2).
     public class SettingsService
     {
@@ -7115,13 +7994,16 @@ namespace StarExpedition.Core
             _scheduler = scheduler;
         }
 
+        // Atalho privado para o bloco de configurações dentro do save.
         private SettingsState State => _save.Data.settings;
 
         public float MusicVolume => State.musicVolume;
         public float SfxVolume => State.sfxVolume;
         public bool NotificationsEnabled => State.notificationsEnabled;
+        // Idioma realmente em uso agora ("pt-BR", "en"), perguntado à Localization.
         public string LocaleCode => LocalizationSettings.SelectedLocale?.Identifier.Code;
 
+        // Grava o volume (Mathf.Clamp01 limita entre 0 e 1) e aplica na hora na fonte de música.
         public void SetMusicVolume(float volume)
         {
             State.musicVolume = Mathf.Clamp01(volume);
@@ -7129,6 +8011,7 @@ namespace StarExpedition.Core
             _save.MarkDirty();
         }
 
+        // Mesmo que o anterior, para os efeitos.
         public void SetSfxVolume(float volume)
         {
             State.sfxVolume = Mathf.Clamp01(volume);
@@ -7136,6 +8019,7 @@ namespace StarExpedition.Core
             _save.MarkDirty();
         }
 
+        // Liga/desliga notificações: grava e reagenda (ou cancela) as das Expeditions em andamento.
         public void SetNotificationsEnabled(bool enabled)
         {
             State.notificationsEnabled = enabled;
@@ -7144,6 +8028,7 @@ namespace StarExpedition.Core
             else _scheduler.CancelAll();
         }
 
+        // Troca o idioma da Localization e guarda a escolha no save. Devolve false se o código não existir.
         public bool SetLocale(string code)
         {
             var locale = LocalizationSettings.AvailableLocales.GetLocale(code);
@@ -7177,6 +8062,10 @@ using UnityEngine.UI;
 
 namespace StarExpedition.UI
 {
+    // POR QUE: a tela de Settings (GDD §11.2): volumes, idioma, notificações, privacidade e versão.
+    // ESTRATÉGIA: herda de BottomSheet. Cada controle chama um método do SettingsService (ou do
+    // Consent/Notifications); Refresh redesenha tudo a partir do estado real. Usa SetValueWithoutNotify
+    // para desenhar sem disparar os eventos de mudança (senão desenhar gravaria o save de novo).
     public class SettingsPanel : BottomSheet
     {
         private const string PrivacyPolicyUrl = "https://manguebytegames.com/privacidade/starexpeditionco";
@@ -7192,8 +8081,10 @@ namespace StarExpedition.UI
         [SerializeField] private Button _versionButton;
         [SerializeField] private TMP_Text _versionLabel;
 
+        // Contador de toques no número da versão (5 toques abrem o DevPanel em builds de desenvolvimento).
         private int _versionTaps;
 
+        // Liga cada controle ao seu método. Sliders e Toggles usam onValueChanged (recebe o valor novo).
         protected override void Awake()
         {
             base.Awake();
@@ -7208,8 +8099,11 @@ namespace StarExpedition.UI
             _versionButton.onClick.AddListener(HandleVersionTap);
         }
 
+        // Toda vez que o painel abre, redesenha com os valores atuais.
         private void OnEnable() => Refresh();
 
+        // Desenha: volumes, qual botão de idioma está ativo, estado das notificações, se o aviso de
+        // "bloqueadas no sistema" aparece, se o botão de privacidade é exigido e a versão do app.
         private void Refresh()
         {
             var settings = Services.Settings;
@@ -7223,6 +8117,7 @@ namespace StarExpedition.UI
             _versionLabel.text = L.Get("settings.version", Application.version);
         }
 
+        // Ligar notificações sem permissão: pede a permissão primeiro e só então liga e redesenha.
         private void HandleNotificationsToggle(bool on)
         {
             if (on && !Services.Notifications.IsPermissionGranted)
@@ -7239,6 +8134,8 @@ namespace StarExpedition.UI
             Refresh();
         }
 
+        // Troca o idioma, grava na hora e recarrega a cena Main: todas as telas nascem de novo já no
+        // idioma novo. Os services continuam vivos (estão no objeto [Services], que não é destruído).
         private void ChangeLocale(string code)
         {
             if (!Services.Settings.SetLocale(code)) return;
@@ -7246,6 +8143,7 @@ namespace StarExpedition.UI
             SceneManager.LoadScene("Main");   // redesenha todos os textos no novo idioma
         }
 
+        // Atalho escondido de desenvolvedor; o "#if" faz o código sumir da build de produção.
         private void HandleVersionTap()
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -7279,6 +8177,8 @@ using StarExpedition.Progress;
 
 namespace StarExpedition.Core
 {
+    // POR QUE / ESTRATÉGIA: ver Services na Fase 1. Versão final: o que mudou é só a lista de propriedades — uma por
+    // service criado nas Fases 2 a 13, agrupadas por área.
     /// Acesso central a todos os services. Preenchido só pelo GameBootstrap.
     public static class Services
     {
@@ -7325,6 +8225,11 @@ using UnityEngine;
 
 namespace StarExpedition.Core
 {
+    // POR QUE / ESTRATÉGIA: ver GameBootstrap na Fase 1. Versão final. O que mudou em relação às fases anteriores:
+    // o AppLifecycle é criado primeiro (hospedeiro de coroutines), os services seguem a ordem de
+    // dependência (dados → núcleo → regras → plataforma → áudio/Settings), a escolha real/falso da
+    // plataforma fica num único bloco "#if", e os "ouvintes" (NotificationScheduler, AnalyticsReporter,
+    // AudioReactor) são ligados só depois de todos os services existirem.
     public static class GameBootstrap
     {
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -7366,6 +8271,7 @@ namespace StarExpedition.Core
             var crew = new CrewService(save, database, wallet, inventory, rng);
             var progress = new ProgressService(save, database);
             var expeditions = new ExpeditionService(save, database, clock, crew, inventory, progress, rng);
+            // "Ligação tardia" das funções de ocupado/Expeditions ativas (ver Fase 4).
             crew.SetBusyCheck(expeditions.IsMemberBusy);
             progress.SetActiveExpeditionCheck(() => expeditions.Active.Count > 0);
             var crafting = new CraftingService(save, database, inventory, progress);
@@ -7397,12 +8303,14 @@ namespace StarExpedition.Core
             AnalyticsReporter.Attach(Services.Analytics);
 
             // --- Áudio e Settings ---
+            // AddComponent: o AudioService é um MonoBehaviour e precisa viver num GameObject — o mesmo [Services].
             var audio = host.AddComponent<AudioService>();
             audio.Setup(Resources.Load<AudioLibrary>("AudioLibrary"), save.Data.settings.musicVolume, save.Data.settings.sfxVolume);
             Services.Audio = audio;
             AudioReactor.Attach(audio);
             Services.Settings = new SettingsService(save, audio, Services.NotificationScheduler);
 
+// O DevPanel (Fase 14) só existe no Editor e em builds de desenvolvimento.
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             host.AddComponent<DevPanel>();
 #endif
@@ -7417,6 +8325,8 @@ namespace StarExpedition.Core
 E o `BootSequence.Start` final:
 
 ```csharp
+        // Versão final do Start da BootSequence. Novo em relação à Fase 11: aplica o idioma salvo antes
+        // de tudo e inicializa o analytics depois do consentimento.
         private IEnumerator Start()
         {
             float started = Time.realtimeSinceStartup;
@@ -7486,6 +8396,10 @@ using UnityEngine;
 
 namespace StarExpedition.Tests
 {
+    // POR QUE: os testes precisam de dados (classes, Items, 18 Planets) sem depender dos assets do
+    // projeto — se alguém mudar um valor no Inspector, o teste da fórmula não deve quebrar por isso.
+    // ESTRATÉGIA: classe static de "fábrica": monta um GameDatabase pequeno em memória com
+    // ScriptableObject.CreateInstance (cria o objeto sem arquivo .asset) e os números da §16.
     /// Banco de dados mínimo em memória, com os números da §16.
     public static class TestData
     {
@@ -7493,6 +8407,8 @@ namespace StarExpedition.Tests
         private static readonly int[] Durations =
             { 60, 120, 240, 360, 600, 900, 900, 1200, 1800, 2400, 3000, 3600, 3600, 5400, 7200, 9000, 10800, 14400 };
 
+        // Monta o banco de teste: 5 Items, 5 classes e 3 Galaxies × 6 Planets com os Risks e durações
+        // reais. Chama Initialize() para montar os índices, como o GameBootstrap faz no jogo.
         public static GameDatabase CreateDatabase()
         {
             var iron = Item("iron_ore", ItemCategory.RawMaterial, 2);
@@ -7548,6 +8464,8 @@ namespace StarExpedition.Tests
             return db;
         }
 
+        // Cria um SaveService numa pasta temporária única (Guid = identificador aleatório), para cada
+        // teste ter um save limpo e nunca tocar no save de verdade.
         /// Save numa pasta temporária própria (os testes nunca tocam no save de verdade).
         public static SaveService CreateSave()
         {
@@ -7556,6 +8474,7 @@ namespace StarExpedition.Tests
             return new SaveService(new SaveStorage(dir));
         }
 
+        // Soma os bônus de várias classes (atalho para montar uma Squad nos testes).
         public static CrewBonus Bonus(GameDatabase db, params string[] classIds)
         {
             var sum = default(CrewBonus);
@@ -7563,6 +8482,7 @@ namespace StarExpedition.Tests
             return sum;
         }
 
+        // Atalhos privados para criar um Item e uma Crew Class em memória.
         private static ItemDefinition Item(string id, ItemCategory category, int sell, CrewBonus bonus = default)
         {
             var item = ScriptableObject.CreateInstance<ItemDefinition>();
@@ -7597,13 +8517,20 @@ using UnityEngine;
 
 namespace StarExpedition.Tests
 {
+    // POR QUE: as fórmulas do ExpeditionResolver são a regra mais importante do jogo; cada teste
+    // prova uma frase da §16 do GDD.
+    // ESTRATÉGIA: teste EditMode com NUnit: cada método [Test] é um teste independente que roda no
+    // Test Runner, sem cena e sem Play. [SetUp] roda antes de CADA teste, criando dados novos.
+    // Assert.AreEqual(esperado, obtido, tolerância) falha o teste se os valores diferirem.
     public class ExpeditionResolverTests
     {
         private GameDatabase _db;
+        // Atalho para o GameBalance do banco de teste.
         private GameBalance B => _db.balance;
 
         [SetUp] public void SetUp() => _db = TestData.CreateDatabase();
 
+        // Nome do teste = o que ele prova. Kora (Risk 5) sem bônus: 95 − 5 = 90%.
         [Test]
         public void Kora_SemBonus_Da90PorCento()
         {
@@ -7611,6 +8538,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(0.90f, odds.SuccessChance, 0.0001f);
         }
 
+        // Exemplo da §16.6: Risk 90 − 10 (Guard) = 80; 95 − 80 + 12 + 12 (dois Scouts) = 39%.
         [Test]
         public void Gate_ScoutGuardScout_Da39PorCento()   // GDD §16.6
         {
@@ -7620,10 +8548,12 @@ namespace StarExpedition.Tests
             Assert.AreEqual(0.39f, odds.SuccessChance, 0.0001f);
         }
 
+        // Cycle 2 soma um passo de Risk: 5 + 8 = 13.
         [Test]
         public void Cycle2_SomaOitoDeRisk()
             => Assert.AreEqual(13, ExpeditionResolver.PlanetRisk(_db.PlanetAt(0), 2, B));
 
+        // A chance nunca passa de 98% nem cai abaixo de 5%, mesmo com valores absurdos.
         [Test]
         public void ChanceDeSuccess_RespeitaOsLimites()
         {
@@ -7633,6 +8563,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(0.05f, low.SuccessChance, 0.0001f);
         }
 
+        // Member Loss: 25 + 0,4 × 90 = 61%; com Medic (−20) cai para 41%.
         [Test]
         public void MemberLoss_SegueAFormula()
         {
@@ -7642,6 +8573,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(0.41f, medic.LossChance, 0.0001f);
         }
 
+        // Pilot reduz 25%; a redução para em 60%; a duração nunca fica abaixo de 30 s.
         [Test]
         public void Duracao_PilotReduzComTetoEPiso()
         {
@@ -7651,6 +8583,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(30, ExpeditionResolver.ComputeDuration(_db.PlanetAt(0), new CrewBonus { durationPercent = 60 }, B)); // piso 30 s
         }
 
+        // A garantia do GDD §2: mesma semente = mesmo resultado (fechar o app não muda nada).
         [Test]
         public void MesmaSemente_MesmoResultado()
         {
@@ -7662,6 +8595,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(a.loot.Count, b.loot.Count);
         }
 
+        // Com Loot Table de chance 0, um Success ainda entrega o 1º Item com a quantidade mínima.
         [Test]
         public void Success_SempreEntregaPeloMenosUmItem()
         {
@@ -7683,6 +8617,7 @@ namespace StarExpedition.Tests
             Assert.Greater(successes, 150);
         }
 
+        // Rare Items vêm sempre 1 por vez, mesmo com bônus de Loot enorme.
         [Test]
         public void RareItem_VemSempreEmQuantidadeUm()
         {
@@ -7711,10 +8646,14 @@ using StarExpedition.Core;
 
 namespace StarExpedition.Tests
 {
+    // POR QUE: provar que voltar o relógio do aparelho não "desfaz" o tempo (GDD §4.4).
+    // ESTRATÉGIA: é aqui que a injeção do relógio (Func<DateTime>) paga: passamos "() => now" e
+    // mudamos a variável "now" à vontade, simulando o jogador mexendo no relógio.
     public class TrustedClockTests
     {
         private static readonly DateTime T0 = new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
+        // Avança, volta (congela na última hora vista) e avança além dela (volta ao normal).
         [Test]
         public void RelogioVoltando_CongelaEDepoisRecupera()
         {
@@ -7748,12 +8687,16 @@ using StarExpedition.Progress;
 
 namespace StarExpedition.Tests
 {
+    // POR QUE: provar as regras de desbloqueio linear e de Cycle (GDD §4.1, §8).
+    // ESTRATÉGIA: cria um ProgressService real com save e banco de teste; mexe direto no SaveData
+    // para montar a situação (ex.: "já está no último Planet") e confere o resultado.
     public class ProgressServiceTests
     {
         private GameDatabase _db;
         private SaveService _save;
         private ProgressService _progress;
 
+        // Roda antes de cada teste: banco, save e service novinhos.
         [SetUp]
         public void SetUp()
         {
@@ -7762,6 +8705,7 @@ namespace StarExpedition.Tests
             _progress = new ProgressService(_save, _db);
         }
 
+        // Claim no Planet da fronteira libera o próximo; Claim de novo num Planet antigo não muda nada.
         [Test]
         public void ClaimNaFronteira_LiberaOProximo_ClaimAntigoNao()
         {
@@ -7771,6 +8715,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(1, _progress.UnlockedIndex);
         }
 
+        // Claim no último Planet marca o Cycle como completo.
         [Test]
         public void UltimoPlanet_CompletaOCycle()
         {
@@ -7779,6 +8724,7 @@ namespace StarExpedition.Tests
             Assert.IsTrue(_progress.IsCycleCompleted);
         }
 
+        // Com Expedition ativa, não dá para começar um Cycle novo.
         [Test]
         public void NovoCiclo_BloqueadoComExpeditionAtiva()
         {
@@ -7787,6 +8733,7 @@ namespace StarExpedition.Tests
             Assert.IsFalse(_progress.TryStartNewCycle());
         }
 
+        // Começar um Cycle zera só a fronteira; Credits, melhor Planet e Tech Tiers ficam.
         [Test]
         public void NovoCiclo_ZeraSoODesbloqueio()   // GDD §8
         {
@@ -7817,6 +8764,11 @@ using StarExpedition.Items;
 
 namespace StarExpedition.Tests
 {
+    // POR QUE: provar as regras de Roster: preço de Hire crescente, Emergency Recruit, troca de
+    // Equipment e Member Loss (GDD §3, §6, §7).
+    // ESTRATÉGIA: monta o CrewService com seus colaboradores reais (Wallet, Inventory) sobre save e
+    // banco de teste. System.Random(1) = semente fixa: nomes e variantes saem sempre iguais.
+    // SetBusyCheck permite simular "membro em Expedition" sem criar um ExpeditionService.
     public class CrewServiceTests
     {
         private GameDatabase _db;
@@ -7824,6 +8776,7 @@ namespace StarExpedition.Tests
         private InventoryService _inventory;
         private CrewService _crew;
 
+        // Antes de cada teste: tudo novo e já com o Scout do Starter Pick no Roster.
         [SetUp]
         public void SetUp()
         {
@@ -7835,6 +8788,7 @@ namespace StarExpedition.Tests
             _crew.PickStarter(_db.GetClass("scout"));
         }
 
+        // 60 × 1,25⁰ = 60; depois 60 × 1,25 = 75; depois 60 × 1,25² = 93,75 → arredonda para 95.
         [Test]
         public void PrecoDeHire_CresceComORoster()   // GDD §7
         {
@@ -7847,6 +8801,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(95, _crew.HireCost(engineer));
         }
 
+        // Sem ninguém mas com Credits: nada de graça. Sem ninguém e sem Credits: ganha um Scout.
         [Test]
         public void EmergencyRecruit_SoQuandoRosterVazioESemCredits()   // GDD §3.5
         {
@@ -7860,6 +8815,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual("scout", recruit.classId);
         }
 
+        // Trocar de Equipment devolve o anterior ao inventário e consome o novo.
         [Test]
         public void Equipar_DevolveOAnteriorAoInventario()
         {
@@ -7872,6 +8828,7 @@ namespace StarExpedition.Tests
             Assert.AreEqual(0, _inventory.Count("field_scanner"));
         }
 
+        // Com o membro "ocupado", equipar é recusado.
         [Test]
         public void MembroEmExpedition_NaoTrocaEquipment()
         {
@@ -7880,6 +8837,7 @@ namespace StarExpedition.Tests
             Assert.IsFalse(_crew.TryEquip(_crew.Roster[0], _db.GetItem("salvage_kit")));
         }
 
+        // Member Loss: o Equipment some junto (não volta ao inventário).
         [Test]
         public void MemberLoss_LevaOEquipmentJunto()   // GDD §3.4
         {
@@ -7909,20 +8867,31 @@ using UnityEngine.SceneManagement;
 
 namespace StarExpedition.Core
 {
+    // POR QUE: testar um jogo idle "de verdade" levaria horas (timers reais, 18 Planets). O DevPanel
+    // dá atalhos: Credits, Items, concluir Expeditions, liberar tudo, pular tutorial, apagar save.
+    // ESTRATÉGIA: MonoBehaviour no objeto [Services] que desenha com IMGUI (OnGUI + GUILayout): o
+    // sistema de UI antigo da Unity, feio mas que não precisa de Prefab nem Canvas — ideal para
+    // ferramenta interna. O arquivo todo fica dentro de "#if": não existe em builds de release.
     /// Painel de atalhos: F1 no Editor, ou 5 toques na versão (Settings) no celular.
     /// Não existe em builds de release.
     public class DevPanel : MonoBehaviour
     {
+        // "static" para o SettingsPanel conseguir abrir/fechar sem ter referência ao componente.
         private static bool _visible;
 
+        // Mostra/esconde o painel (F1 no Editor ou 5 toques na versão).
         public static void Toggle() => _visible = !_visible;
 
+        // Checa a tecla F1 todo frame.
         private void Update()
         {
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.f1Key.wasPressedThisFrame) Toggle();
         }
 
+        // OnGUI: chamado pela Unity (várias vezes por frame) para desenhar IMGUI. Cada GUILayout.Button
+        // desenha o botão E devolve true no frame em que foi clicado — por isso o "if" em volta.
+        // GUI.matrix escala tudo por um fator inteiro para ficar legível no celular.
         private void OnGUI()
         {
             if (!_visible || Services.Save == null) return;

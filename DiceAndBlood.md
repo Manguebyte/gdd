@@ -160,7 +160,7 @@ Instale:
 - **2D Tilemap Editor** — para montar o tabuleiro 8x8.
 - **2D Pixel Perfect** — para manter a nitidez do pixel art em diferentes resoluções de tela mobile.
 - **TextMeshPro** (importe os TMP Essentials quando solicitado) — textos de UI (vida, atributos, resultado de dado).
-- Input via toque: `Input.GetMouseButtonDown`/`Input.mousePosition` já funcionam com toque único em builds mobile sem pacote adicional — não é necessário o pacote **Input System** para o MVP (ver Fase 6). Se o jogo evoluir para multitoque/gestos, reavaliar.
+- Input via toque: `Input.GetMouseButtonDown`/`Input.mousePosition` já funcionam com toque único em builds mobile sem pacote adicional — não é necessário o pacote **Input System** para o MVP (ver Fase 6). Atenção: projetos novos no Unity 6 já vêm com **Edit > Project Settings > Player > Active Input Handling** em "Input System Package (New)", e aí `Input.GetMouseButtonDown` dá erro (`InvalidOperationException`) — mude para **Both** (ou "Input Manager (Old)") e reinicie o Editor. Se o jogo evoluir para multitoque/gestos, reavaliar.
 - Firebase (Firestore + Auth) só é necessário a partir da Fase 7 — não instale ainda para não carregar o projeto sem necessidade nas fases anteriores.
 
 ### 0.4 Câmera
@@ -198,41 +198,67 @@ Próxima fase: **Fase 1 (Tabuleiro 8x8)** — cria o grid de batalha e o script 
 Crie em `Assets/_Project/Scripts/Board/GridManager.cs`:
 
 ```csharp
-using System.Collections.Generic;
-using UnityEngine;
+using System.Collections.Generic; // Dictionary e HashSet (coleções do C#)
+using UnityEngine;                // tudo que é da Unity: MonoBehaviour, Vector2Int, Mathf...
 
+// POR QUE: o tabuleiro 8x8 é a "verdade" do jogo — quem está em qual casa, quais casas
+// estão bloqueadas, e onde cada casa fica no mundo. Sem um dono único dessa informação,
+// cada script (movimento, IA, input, combate) teria sua própria cópia e elas iam divergir.
+// Quem usa: MovementController (Fase 3), EnemyAI (Fase 5), TileSelector (Fase 6).
+// ESTRATÉGIA: é um MonoBehaviour (precisa existir na cena para ter valores ajustáveis no
+// Inspector) com um "singleton" simples — a propriedade estática Instance — para que
+// qualquer script acesse com GridManager.Instance, sem precisar arrastar referência.
+// O tabuleiro é guardado como DADOS (dicionário de ocupantes + conjunto de obstáculos),
+// não como GameObjects: a Tilemap é só o desenho; a lógica consulta este script.
+// MonoBehaviour = classe base de todo script que vai "grudado" num GameObject da cena;
+// ela é que dá acesso aos callbacks da Unity (Awake, Start, Update...) e a transform.
 public class GridManager : MonoBehaviour
 {
+    // Singleton: guarda "a" instância da cena. { get; private set; } = qualquer um lê,
+    // só esta classe escreve. Funciona porque só existe 1 GridManager por cena.
     public static GridManager Instance { get; private set; }
 
+    // [SerializeField] faz um campo private aparecer (e ser salvo) no Inspector.
+    // Preferimos isso a "public" porque outros scripts não conseguem alterar sem querer.
     [SerializeField] private int width = 8;
     [SerializeField] private int height = 8;
-    [SerializeField] private float tileSize = 1f;
-    [SerializeField] private Vector3 origin = Vector3.zero;
+    [SerializeField] private float tileSize = 1f;              // deve bater com o Cell Size do componente Grid
+    [SerializeField] private Vector3 origin = Vector3.zero;    // posição no mundo do CENTRO da casa (0,0)
 
+    // Casa (x,y) → unidade que está nela. Dicionário = busca instantânea por coordenada.
     private readonly Dictionary<Vector2Int, Unit> _occupants = new();
+    // Casas bloqueadas por terreno (paredes, pedras). HashSet = só responde "contém ou não".
     private readonly HashSet<Vector2Int> _obstacles = new();
 
+    // Leitura pública do tamanho, sem expor os campos para escrita.
     public int Width => width;
     public int Height => height;
 
+    // Awake: a Unity chama 1 vez quando o objeto é criado/carregado, ANTES de qualquer Start.
+    // Por isso é o lugar certo para registrar o singleton: quando os outros scripts
+    // rodarem o Start deles, GridManager.Instance já estará preenchido.
     private void Awake()
     {
         Instance = this;
     }
 
+    // A casa existe dentro do 8x8? Evita acessar coordenadas negativas ou fora do tabuleiro.
     public bool InBounds(Vector2Int cell) =>
         cell.x >= 0 && cell.x < width && cell.y >= 0 && cell.y < height;
 
+    // A casa não pode ser ocupada? (obstáculo OU já tem unidade — regra de 1 unidade por casa).
     public bool IsBlocked(Vector2Int cell) =>
         _obstacles.Contains(cell) || _occupants.ContainsKey(cell);
 
+    // Marca/desmarca uma casa como obstáculo. Chamado ao montar a cena (ex.: lendo a Tilemap Obstacles).
     public void SetObstacle(Vector2Int cell, bool blocked)
     {
         if (blocked) _obstacles.Add(cell);
         else _obstacles.Remove(cell);
     }
 
+    // Coloca uma unidade no tabuleiro pela primeira vez (início da batalha):
+    // registra nos dados E teleporta o GameObject para o centro da casa.
     public void PlaceUnit(Unit unit, Vector2Int cell)
     {
         _occupants[cell] = unit;
@@ -240,6 +266,8 @@ public class GridManager : MonoBehaviour
         unit.transform.position = CellToWorld(cell);
     }
 
+    // Atualiza só os DADOS de uma unidade que mudou de casa. Não mexe na posição visual —
+    // quem anima o deslocamento é o MovementController (Fase 3), que chama isto ao terminar.
     public void MoveUnit(Unit unit, Vector2Int newCell)
     {
         _occupants.Remove(unit.Cell);
@@ -247,12 +275,17 @@ public class GridManager : MonoBehaviour
         unit.Cell = newCell;
     }
 
+    // Quem está nesta casa? Retorna null se estiver vazia (usado para achar alvo de ataque).
+    // TryGetValue evita erro de "chave não encontrada" quando a casa está vazia.
     public Unit GetUnitAt(Vector2Int cell) =>
         _occupants.TryGetValue(cell, out var unit) ? unit : null;
 
+    // Converte coordenada de tabuleiro (ex.: 3,5) em posição no mundo (onde desenhar a unidade).
     public Vector3 CellToWorld(Vector2Int cell) =>
         origin + new Vector3(cell.x * tileSize, cell.y * tileSize, 0f);
 
+    // O inverso: posição no mundo (ex.: onde o dedo tocou) → casa do tabuleiro.
+    // RoundToInt arredonda para a casa mais próxima — funciona porque origin é o CENTRO da casa (0,0).
     public Vector2Int WorldToCell(Vector3 world)
     {
         Vector3 local = world - origin;
@@ -266,11 +299,11 @@ public class GridManager : MonoBehaviour
 ### 1.3 Configurar no Inspector
 
 1. Crie um GameObject vazio `GridManager` na cena `Battle` e arraste o script.
-2. Ajuste `width`/`height` para 8/8, `tileSize` igual ao tamanho de célula usado na Tilemap, e `origin` para a posição do canto (0,0) do tabuleiro no mundo.
+2. Ajuste `width`/`height` para 8/8, `tileSize` igual ao tamanho de célula usado na Tilemap, e `origin` para a posição do **centro** da casa (0,0) do tabuleiro no mundo (com o `Grid` na posição padrão e `Cell Size` 1, isso é `(0.5, 0.5, 0)` — o centro do tile, não o canto; senão as unidades ficam meio tile deslocadas e `WorldToCell` arredonda para a casa errada).
 
 ### ✅ Checkpoint da Fase 1
 - Tabuleiro 8x8 visível na cena `Battle`.
-- `GridManager.Instance.CellToWorld(new Vector2Int(0,0))` retorna a posição correta do canto do tabuleiro (testável via um script temporário ou breakpoint).
+- `GridManager.Instance.CellToWorld(new Vector2Int(0,0))` retorna a posição do centro da casa do canto do tabuleiro (testável via um script temporário ou breakpoint).
 - `InBounds`/`IsBlocked` respondem corretamente para células dentro e fora do grid.
 
 #### Problemas comuns
@@ -293,27 +326,45 @@ Crie em `Assets/_Project/Scripts/Units/Unit.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: saber de que lado cada unidade está (herói ou monstro). A IA usa isso para
+// escolher alvo e o TurnManager para separar as fases.
+// ESTRATÉGIA: enum em vez de string ("Player"/"Enemy") — o compilador acusa erro de
+// digitação e o Inspector mostra um dropdown com as opções.
 public enum UnitFaction { Player, Enemy }
 
+// POR QUE: heróis e monstros compartilham as mesmas regras (vida, ataque, defesa, parry,
+// ocupar uma casa). Um único componente para os dois evita duplicar código.
+// ESTRATÉGIA: MonoBehaviour colocado no prefab de cada unidade — os atributos ficam
+// editáveis no Inspector por prefab (um monstro forte = mesmo script, números diferentes).
+// A classe só GUARDA estado e aplica mudanças simples; quem DECIDE ataque/parry é o
+// CombatSystem (Fase 4) e quem decide a vez é o TurnManager (Fase 2).
 public class Unit : MonoBehaviour
 {
+    // Campos public aparecem no Inspector automaticamente (aqui é aceitável: são dados
+    // simples que vários scripts leem e o GridManager escreve Cell).
     public string UnitName;
     public UnitFaction Faction;
-    public Vector2Int Cell;
+    public Vector2Int Cell;   // casa atual no tabuleiro — mantida em dia pelo GridManager
 
+    // [Header] só desenha um título no Inspector para organizar os campos; não muda a lógica.
     [Header("Atributos (placeholder de MVP — ver Parte 1 §2/§9, Em aberto)")]
     public int Vida = 10;
     public int Ataque = 12;   // valor-alvo para o roll-under de ataque
-    public int Defesa = 2;    // reduz o valor-alvo do atacante enquanto Parry ativo
+    public int Defesa = 2;    // subtraída do valor-alvo de quem ataca esta unidade (e o Parry soma a ela)
 
+    // Bônus temporário de defesa do Parry; 0 quando não há parry ativo.
     private int _parryBonus;
 
+    // Propriedades calculadas (=>): sempre refletem o valor atual, sem precisar atualizar à mão.
     public bool IsAlive => Vida > 0;
-    public int DefesaEfetiva => Defesa + _parryBonus;
+    public int DefesaEfetiva => Defesa + _parryBonus;   // é esta que o CombatSystem usa
 
+    // Liga o bônus de parry (chamado por CombatSystem.ResolveParry).
     public void ApplyParry(int bonus) => _parryBonus = bonus;
+    // Desliga o bônus — chamado pelo TurnManager quando a vez desta unidade COMEÇA de novo.
     public void ClearParry() => _parryBonus = 0;
 
+    // Aplica dano sem deixar a vida ficar negativa (Mathf.Max escolhe o maior: 0 ou o resultado).
     public void TakeDamage(int amount) => Vida = Mathf.Max(0, Vida - amount);
 }
 ```
@@ -328,6 +379,13 @@ Crie em `Assets/_Project/Scripts/Turns/TurnManager.cs`:
 using System.Collections.Generic;
 using UnityEngine;
 
+// POR QUE: num jogo por turnos alguém precisa saber "de quem é a vez agora" e passar a vez
+// para o próximo. Sem um dono único disso, UI, IA e input poderiam agir fora de hora.
+// ESTRATÉGIA: MonoBehaviour singleton (mesmo padrão do GridManager) com duas listas
+// preenchidas no Inspector. Implementa o placeholder de MVP: todos os heróis vivos agem
+// em ordem, depois todos os monstros vivos, e repete. Quem termina uma ação avisa com
+// EndCurrentUnitTurn(); o TurnManager então escolhe a próxima unidade. Na vez de um
+// monstro, ele mesmo dispara a IA (EnemyAI, Fase 5); na vez de um herói, espera a UI.
 public class TurnManager : MonoBehaviour
 {
     public static TurnManager Instance { get; private set; }
@@ -335,14 +393,24 @@ public class TurnManager : MonoBehaviour
     [SerializeField] private List<Unit> playerUnits = new();
     [SerializeField] private List<Unit> enemyUnits = new();
 
-    private int _turnIndex;
-    private bool _isPlayerPhase = true;
+    private int _turnIndex;              // posição atual dentro da lista da fase corrente
+    private bool _isPlayerPhase = true;  // true = vez dos heróis; false = vez dos monstros
 
+    // Unidade que está agindo agora (a UI/BattleController lê isto). null = batalha acabou.
     public Unit CurrentUnit { get; private set; }
 
+    // Batalha acabou quando um dos lados não tem mais ninguém vivo.
+    // O BattleController (Fase 6) consulta isto para mostrar vitória/derrota e enviar o score (Fase 7).
+    public bool IsBattleOver => !HasLivingUnit(playerUnits) || !HasLivingUnit(enemyUnits);
+
+    // Awake registra o singleton (ver GridManager).
     private void Awake() => Instance = this;
+    // Start: a Unity chama 1 vez, depois de TODOS os Awake da cena e logo antes do primeiro
+    // Update. Começamos a batalha aqui (e não no Awake) para que os outros scripts já
+    // estejam prontos (GridManager.Instance preenchido, etc.).
     private void Start() => StartPlayerPhase();
 
+    // Começa uma nova rodada pela fase dos heróis, a partir do primeiro da lista.
     private void StartPlayerPhase()
     {
         _isPlayerPhase = true;
@@ -350,15 +418,35 @@ public class TurnManager : MonoBehaviour
         AdvanceToNextLivingUnit();
     }
 
+    // Chamado por quem termina uma ação (BattleController para heróis, EnemyAI para monstros).
+    // É a única porta de entrada pública para "passar a vez".
     public void EndCurrentUnitTurn()
     {
-        CurrentUnit?.ClearParry();
         _turnIndex++;
         AdvanceToNextLivingUnit();
     }
 
+    // Retorna true se a lista tiver pelo menos uma unidade viva.
+    private static bool HasLivingUnit(List<Unit> units)
+    {
+        foreach (var u in units)
+            if (u.IsAlive) return true;
+        return false;
+    }
+
+    // Coração do script: pula unidades mortas, troca de fase quando a lista acaba e
+    // define CurrentUnit. É recursivo (chama a si mesmo ao trocar de fase).
     private void AdvanceToNextLivingUnit()
     {
+        // Proteção: se um lado inteiro morreu, para aqui. Sem isso, com todos os heróis
+        // mortos a troca de fase heróis ↔ monstros chamaria a si mesma para sempre
+        // (StackOverflowException) e o Unity travaria no fim da batalha.
+        if (IsBattleOver)
+        {
+            CurrentUnit = null;
+            return;
+        }
+
         var list = _isPlayerPhase ? playerUnits : enemyUnits;
 
         while (_turnIndex < list.Count && !list[_turnIndex].IsAlive)
@@ -381,8 +469,14 @@ public class TurnManager : MonoBehaviour
 
         CurrentUnit = list[_turnIndex];
 
+        // O Parry dura "até o começo do próximo turno da unidade" (Parte 1 §2.4), então é
+        // limpo aqui, quando a vez dela COMEÇA — e não quando termina (se fosse no fim, o
+        // bônus sumiria antes de os inimigos atacarem e o Parry nunca teria efeito).
+        CurrentUnit.ClearParry();
+
         if (!_isPlayerPhase)
             EnemyAI.TakeTurn(CurrentUnit, this); // implementado na Fase 5
+        // Na fase do jogador não fazemos nada: esperamos o toque na tela (Fase 6).
     }
 }
 ```
@@ -415,10 +509,19 @@ Crie em `Assets/_Project/Scripts/Core/Dice.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: o dado é o centro do jogo (movimento e ataque). Centralizar a rolagem num lugar
+// só garante que todo mundo rola do mesmo jeito, e facilita no futuro trocar a fonte de
+// aleatoriedade (ex.: semente fixa para replays/testes) mexendo num arquivo só.
+// ESTRATÉGIA: classe "static" pura — não é MonoBehaviour, não vai em GameObject nenhum e
+// não guarda estado. Só funções utilitárias chamadas com Dice.Roll(6).
 public static class Dice
 {
+    // Rola 1 dado de N lados. Atenção: Random.Range com int EXCLUI o valor máximo,
+    // por isso sides + 1 (Random.Range(1, 7) sorteia de 1 a 6).
     public static int Roll(int sides) => Random.Range(1, sides + 1);
 
+    // Rola vários dados e soma (ex.: 2d6 = RollSum(2, 6)). Ainda não é usado no MVP,
+    // mas já fica pronto para quando o mapeamento de dados for decidido (Parte 1 §2.3).
     public static int RollSum(int count, int sides)
     {
         int total = 0;
@@ -435,20 +538,36 @@ public static class Dice
 Crie em `Assets/_Project/Scripts/Board/MovementController.cs`:
 
 ```csharp
-using System.Collections;
+using System.Collections;          // IEnumerator (necessário para coroutines)
 using System.Collections.Generic;
 using UnityEngine;
 
+// POR QUE: mover uma unidade envolve 3 perguntas — "quanto posso andar?" (dado),
+// "para onde posso ir?" (casas alcançáveis) e "como chego lá na tela?" (animação).
+// Heróis (via UI) e monstros (via IA) respondem essas perguntas do mesmo jeito,
+// então a lógica mora num lugar só.
+// ESTRATÉGIA: MonoBehaviour na cena (1 só, compartilhado por todas as unidades) para ter
+// moveSpeed/dado ajustáveis no Inspector e poder rodar coroutines. Não usa física
+// (Rigidbody2D): num jogo de grid por turnos basta interpolar a posição (ver nota da Fase 0).
+// Consulta o GridManager para limites/obstáculos e avisa ele quando a unidade chega.
 public class MovementController : MonoBehaviour
 {
     [SerializeField] private int movementDieSides = 6; // placeholder — Em aberto (Parte 1 §2.2)
-    [SerializeField] private float moveSpeed = 4f;
+    [SerializeField] private float moveSpeed = 4f;     // velocidade da animação, em unidades de mundo por segundo
 
+    // Rola o alcance do turno (quantas casas a unidade pode andar).
     public int RollMovementRange() => Dice.Roll(movementDieSides);
 
+    // Descobre todas as casas que a unidade alcança com "range" passos (só cima/baixo/
+    // esquerda/direita, sem atravessar obstáculos nem outras unidades).
+    // Algoritmo: busca em largura (BFS / "flood fill"). Começa na origem, visita os vizinhos
+    // (custo 1), depois os vizinhos dos vizinhos (custo 2)... até o custo chegar ao range.
+    // Por ser em largura, a primeira vez que chegamos numa casa já é pelo caminho mais curto.
     public HashSet<Vector2Int> GetReachableCells(Vector2Int origin, int range)
     {
+        // casa → quantos passos custou chegar nela
         var visited = new Dictionary<Vector2Int, int> { [origin] = 0 };
+        // fila de casas a expandir (fila = primeiro que entra, primeiro que sai → ordem por distância)
         var frontier = new Queue<Vector2Int>();
         frontier.Enqueue(origin);
 
@@ -458,39 +577,48 @@ public class MovementController : MonoBehaviour
         {
             var current = frontier.Dequeue();
             int cost = visited[current];
-            if (cost >= range) continue;
+            if (cost >= range) continue; // já gastou todos os passos: não expande mais a partir daqui
 
             foreach (var dir in directions)
             {
                 var next = current + dir;
-                if (!GridManager.Instance.InBounds(next)) continue;
-                if (GridManager.Instance.IsBlocked(next)) continue;
-                if (visited.ContainsKey(next)) continue;
+                if (!GridManager.Instance.InBounds(next)) continue;   // fora do tabuleiro
+                if (GridManager.Instance.IsBlocked(next)) continue;   // obstáculo ou unidade
+                if (visited.ContainsKey(next)) continue;              // já visitada por caminho igual ou mais curto
 
                 visited[next] = cost + 1;
                 frontier.Enqueue(next);
             }
         }
 
-        visited.Remove(origin);
+        visited.Remove(origin); // a casa onde a unidade já está não conta como destino
         return new HashSet<Vector2Int>(visited.Keys);
     }
 
+    // Anima a unidade até a casa de destino e, ao chegar, atualiza o GridManager.
+    // É uma COROUTINE: função que retorna IEnumerator e pode "pausar" com yield return,
+    // continuando no frame seguinte. Assim a animação acontece ao longo de vários frames
+    // sem travar o jogo. Deve ser iniciada com StartCoroutine(...) — chamar direto não faz nada.
+    // Obs.: o caminho visual é uma linha reta até o destino (placeholder de MVP); a regra de
+    // não atravessar obstáculos já foi garantida por GetReachableCells.
     public IEnumerator MoveUnitTo(Unit unit, Vector2Int destination)
     {
         Vector3 start = unit.transform.position;
         Vector3 end = GridManager.Instance.CellToWorld(destination);
-        float duration = Vector3.Distance(start, end) / moveSpeed;
+        float duration = Vector3.Distance(start, end) / moveSpeed; // tempo = distância / velocidade
         float t = 0f;
 
         while (t < duration)
         {
+            // Time.deltaTime = segundos desde o último frame; somar isso mede tempo real,
+            // independente de o celular rodar a 30 ou 60 FPS.
             t += Time.deltaTime;
+            // Lerp: mistura start e end pela fração t/duration (0 = início, 1 = chegou).
             unit.transform.position = Vector3.Lerp(start, end, duration > 0 ? t / duration : 1f);
-            yield return null;
+            yield return null; // pausa até o próximo frame
         }
 
-        unit.transform.position = end;
+        unit.transform.position = end; // garante posição exata (o último passo pode passar um pouco)
         GridManager.Instance.MoveUnit(unit, destination);
     }
 }
@@ -528,20 +656,33 @@ Crie em `Assets/_Project/Scripts/Combat/CombatSystem.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: as regras de combate (roll-under, dano, parry) são as mais prováveis de mudar
+// enquanto o design está "Em aberto". Deixá-las num arquivo só, separadas de UI e IA,
+// permite ajustar a regra sem mexer em quem a usa (BattleController e EnemyAI).
+// ESTRATÉGIA: classe static pura (como Dice) — recebe as duas unidades, calcula, aplica o
+// resultado e devolve um relatório (AttackResult) para a UI mostrar. Não sabe nada de
+// tela, toque ou turnos.
 public static class CombatSystem
 {
+    // const = valor fixo no código. Ficam no topo para ser fácil achar e ajustar no balanceamento.
     private const int AttackDieSides = 20; // placeholder — Em aberto (Parte 1 §2.3)
     private const int BaseDamage = 3;      // placeholder — Em aberto (Parte 1 §2.3)
     private const int DefaultParryBonus = 3; // placeholder — Em aberto (Parte 1 §2.4)
 
+    // POR QUE: a UI precisa mostrar "Rolou 14 (alvo ≤ 12) — Errou", então o ataque devolve
+    // todos os números envolvidos, não só "acertou/errou".
+    // ESTRATÉGIA: struct (tipo de valor, leve, sem comportamento) — é só um pacote de dados.
     public struct AttackResult
     {
-        public bool Hit;
-        public int Roll;
-        public int Target;
-        public int Damage;
+        public bool Hit;     // acertou?
+        public int Roll;     // número que saiu no dado
+        public int Target;   // valor-alvo: acerta se Roll <= Target
+        public int Damage;   // dano causado (0 se errou)
     }
 
+    // Resolve um ataque por roll-under: alvo = Ataque do atacante − Defesa efetiva do
+    // defensor (mínimo 1, para sempre haver alguma chance). Rola 1d20; se sair <= alvo, acerta
+    // e aplica o dano direto no defensor.
     public static AttackResult ResolveAttack(Unit attacker, Unit defender)
     {
         int target = Mathf.Max(1, attacker.Ataque - defender.DefesaEfetiva);
@@ -559,6 +700,10 @@ public static class CombatSystem
         return result;
     }
 
+    // Ação de Parry: dá à unidade um bônus de defesa até o começo do próximo turno dela
+    // (quem limpa é o TurnManager). Existe aqui, e não só em Unit.ApplyParry, para que a
+    // REGRA (qual bônus, se tem custo — Em aberto) fique junto das outras regras de combate.
+    // "int bonus = DefaultParryBonus" = parâmetro opcional: se não passar nada, usa 3.
     public static void ResolveParry(Unit unit, int bonus = DefaultParryBonus)
     {
         unit.ApplyParry(bonus);
@@ -570,7 +715,7 @@ public static class CombatSystem
 
 1. No início do turno de uma unidade do jogador, apresente 3 opções (ver UI na Fase 6): **Mover**, **Atacar**, **Parry**.
 2. **Atacar:** ao tocar num inimigo adjacente/alcançável, chame `CombatSystem.ResolveAttack(unitAtual, inimigoAlvo)` e mostre o resultado (`Roll`, `Target`, `Hit`, `Damage`) na UI antes de encerrar o turno.
-3. **Parry:** chame `CombatSystem.ResolveParry(unitAtual)` e encerre o turno — o bônus é limpo automaticamente no início do próximo turno da unidade (`Unit.ClearParry()`, já chamado por `TurnManager.EndCurrentUnitTurn()`).
+3. **Parry:** chame `CombatSystem.ResolveParry(unitAtual)` e encerre o turno — o bônus é limpo automaticamente no início do próximo turno da unidade (`Unit.ClearParry()`, já chamado pelo `TurnManager` quando a vez da unidade começa, em `AdvanceToNextLivingUnit()`).
 4. Após qualquer ação, chame `TurnManager.Instance.EndCurrentUnitTurn()`.
 
 ### ✅ Checkpoint da Fase 4
@@ -598,20 +743,33 @@ Crie em `Assets/_Project/Scripts/AI/EnemyAI.cs`:
 using System.Collections;
 using UnityEngine;
 
+// POR QUE: na vez de um monstro não há jogador tocando na tela — alguém precisa decidir
+// sozinho o que ele faz. O TurnManager chama isto automaticamente na fase inimiga.
+// ESTRATÉGIA: classe static com uma regra simples (placeholder de MVP): achar o herói vivo
+// mais próximo; se estiver colado, atacar; senão, rolar o dado de movimento e ir para a
+// casa alcançável que mais se aproxima dele. Reaproveita as MESMAS peças que o jogador
+// usa (MovementController e CombatSystem), então o monstro segue exatamente as mesmas regras.
+// Por ser static, não pode rodar coroutine sozinha — pega emprestado o próprio monstro
+// (um MonoBehaviour) para isso.
 public static class EnemyAI
 {
+    // Executa o turno inteiro de um monstro e, no fim, devolve a vez ao TurnManager.
     public static void TakeTurn(Unit enemy, TurnManager turnManager)
     {
+        // FindFirstObjectByType / FindObjectsByType procuram componentes na cena inteira.
+        // São lentos para usar todo frame, mas aqui rodam 1 vez por turno de monstro — aceitável no MVP.
         var movement = Object.FindFirstObjectByType<MovementController>();
         var allUnits = Object.FindObjectsByType<Unit>(FindObjectsSortMode.None);
 
         Unit nearest = null;
-        int bestDistance = int.MaxValue;
+        int bestDistance = int.MaxValue; // começa "infinito" para qualquer distância real ser menor
 
+        // 1) Achar o herói vivo mais próximo.
         foreach (var unit in allUnits)
         {
             if (unit.Faction != UnitFaction.Player || !unit.IsAlive) continue;
 
+            // Distância de Manhattan: |dx| + |dy| = número de passos em grid sem diagonal.
             int dist = Mathf.Abs(unit.Cell.x - enemy.Cell.x) + Mathf.Abs(unit.Cell.y - enemy.Cell.y);
             if (dist < bestDistance)
             {
@@ -620,12 +778,14 @@ public static class EnemyAI
             }
         }
 
+        // Nenhum herói vivo: nada a fazer, passa a vez.
         if (nearest == null)
         {
             turnManager.EndCurrentUnitTurn();
             return;
         }
 
+        // 2) Herói colado (1 passo): ataca em vez de se mover.
         if (bestDistance == 1)
         {
             CombatSystem.ResolveAttack(enemy, nearest);
@@ -633,12 +793,15 @@ public static class EnemyAI
             return;
         }
 
+        // 3) Longe: rola o dado e lista as casas alcançáveis (mesma regra do jogador).
         int range = movement.RollMovementRange();
         var reachable = movement.GetReachableCells(enemy.Cell, range);
 
+        // Se nenhuma casa for melhor, fica parado (bestCell começa na casa atual).
         Vector2Int bestCell = enemy.Cell;
         int bestCellDistance = bestDistance;
 
+        // Escolhe a casa alcançável que deixa o monstro mais perto do herói.
         foreach (var cell in reachable)
         {
             int dist = Mathf.Abs(nearest.Cell.x - cell.x) + Mathf.Abs(nearest.Cell.y - cell.y);
@@ -649,9 +812,14 @@ public static class EnemyAI
             }
         }
 
+        // O movimento é animado (coroutine, ver MovementController), então a vez só pode
+        // passar DEPOIS que o monstro chegar. StartCoroutine precisa de um MonoBehaviour
+        // "dono": usamos o próprio monstro (Unit é um MonoBehaviour).
         enemy.StartCoroutine(MoveThenEndTurn(movement, enemy, bestCell, turnManager));
     }
 
+    // Coroutine auxiliar: espera a animação de movimento terminar e só então encerra o turno.
+    // "yield return <outra coroutine>" faz esta pausar até a outra acabar.
     private static IEnumerator MoveThenEndTurn(
         MovementController movement, Unit enemy, Vector2Int destination, TurnManager turnManager)
     {
@@ -691,19 +859,36 @@ Crie em `Assets/_Project/Scripts/UI/TileSelector.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: traduzir "o dedo tocou no pixel (540, 1200) da tela" em "o jogador tocou na casa
+// (3,5) do tabuleiro". Só isso — ele não decide o que o toque significa.
+// ESTRATÉGIA: MonoBehaviour que lê o input a cada frame e dispara um EVENTO C#
+// (OnCellTapped). Quem se importa (BattleController) se inscreve no evento. Assim o
+// TileSelector não precisa conhecer o BattleController — os dois ficam desacoplados e dá
+// para testar o input sozinho (ex.: um script de debug que só loga a casa tocada).
 public class TileSelector : MonoBehaviour
 {
-    [SerializeField] private Camera mainCamera;
+    [SerializeField] private Camera mainCamera; // arraste a Main Camera aqui no Inspector
 
+    // Evento: lista de funções a avisar quando uma casa válida for tocada.
+    // Quem quer ouvir faz: tileSelector.OnCellTapped += MinhaFuncao;  (e -= para parar).
     public event System.Action<Vector2Int> OnCellTapped;
 
+    // Update: a Unity chama 1 vez por frame. É onde se lê input, porque um toque que
+    // acontece entre dois frames aparece exatamente no frame seguinte.
     private void Update()
     {
+        // GetMouseButtonDown(0) é true só no frame em que o toque/clique começou.
+        // Usa o Input Manager antigo: em projetos Unity 6 deixe Project Settings > Player >
+        // Active Input Handling em "Both" ou "Input Manager (Old)" (ver Fase 0 §0.3).
         if (!Input.GetMouseButtonDown(0)) return; // toque único mapeia para botão 0 em builds mobile
 
+        // Pixel da tela → posição no mundo (a câmera ortográfica faz a conversão).
         Vector3 worldPoint = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+        // Posição no mundo → casa do tabuleiro.
         Vector2Int cell = GridManager.Instance.WorldToCell(worldPoint);
 
+        // Só avisa se o toque foi dentro do tabuleiro. "?.Invoke" = só dispara se alguém
+        // estiver inscrito (evita erro de null quando ninguém escuta).
         if (GridManager.Instance.InBounds(cell))
             OnCellTapped?.Invoke(cell);
     }
@@ -754,35 +939,55 @@ Crie em `Assets/_Project/Scripts/Firebase/LeaderboardService.cs`, adaptando a es
 
 ```csharp
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Firebase.Firestore;
+using System.Threading.Tasks;   // Task: representa uma operação que termina "no futuro" (rede)
+using Firebase.Firestore;       // SDK do Firestore (instalado na Fase 7)
 
+// POR QUE: a UI do ranking precisa de uma linha "pronta para mostrar" (nome, score, data),
+// sem lidar com os tipos do Firebase.
+// ESTRATÉGIA: struct simples só com dados, preenchida pelo GetTopRuns.
 public struct RunEntry
 {
     public string Nome;
     public int Score;
-    public string Data;
+    public string Data;   // data em texto ISO 8601 (ex.: 2026-09-25T14:03:00Z)
 }
 
+// POR QUE: esconder do resto do jogo COMO o ranking é salvo. O jogo só diz "envie esta run"
+// ou "me dê o top 10"; caminhos do Firestore, formato dos documentos e regra de "só grava se
+// for melhor" ficam aqui dentro. Se o backend mudar, só este arquivo muda.
+// ESTRATÉGIA: classe static (não precisa estar na cena) que usa o FirebaseBootstrap da
+// Rally (FirebaseBootstrap.Db / .Auth / .IsReady) já inicializado. As funções são async
+// porque falar com a internet demora — ver comentário em SubmitRun.
 public static class LeaderboardService
 {
-    private const string GameId = "diceandblood";
+    private const string GameId = "diceandblood"; // segmento {jogo} do caminho /leaderboards/{jogo}/...
 
+    // Envia o score de uma run; grava só se for melhor que o recorde do próprio jogador.
+    // async/await: "await" espera a resposta do servidor SEM travar o jogo (o frame continua
+    // rodando); quando a resposta chega, a função continua da linha seguinte.
+    // Retorna Task para quem chama também poder dar await (ou ignorar, "dispara e esquece").
     public static async Task SubmitRun(string modo, int score, string playerName)
     {
+        // Login anônimo ainda não terminou → o Firestore recusaria (PERMISSION_DENIED). Sai sem erro.
         if (!FirebaseBootstrap.IsReady) return;
 
+        // uid = id único do jogador anônimo; usado como id do documento, então cada jogador
+        // tem no máximo 1 linha por modo (o seu melhor).
         string uid = FirebaseBootstrap.Auth.CurrentUser.UserId;
+        // Monta o caminho /leaderboards/diceandblood/{modo}/{uid} (coleção/documento alternados).
         DocumentReference docRef = FirebaseBootstrap.Db
             .Collection("leaderboards")
             .Document(GameId)
             .Collection(modo)
             .Document(uid);
 
+        // Lê o recorde atual (se existir) para comparar.
         var snapshot = await docRef.GetSnapshotAsync();
         if (snapshot.Exists && snapshot.GetValue<int>("score") >= score)
             return; // só sobrescreve se o novo score for melhor
 
+        // SetAsync grava (ou substitui) o documento inteiro. O Firestore aceita um
+        // Dictionary campo → valor como corpo do documento.
         await docRef.SetAsync(new Dictionary<string, object>
         {
             { "score", score },
@@ -791,11 +996,16 @@ public static class LeaderboardService
         });
     }
 
+    // Busca os "limit" melhores scores de um modo, do maior para o menor, para a tela de ranking.
+    // Task<List<RunEntry>> = "no futuro, vai entregar uma lista" — quem chama faz:
+    //   var top = await LeaderboardService.GetTopRuns("padrao");
     public static async Task<List<RunEntry>> GetTopRuns(string modo, int limit = 10)
     {
         var result = new List<RunEntry>();
-        if (!FirebaseBootstrap.IsReady) return result;
+        if (!FirebaseBootstrap.IsReady) return result; // sem login: devolve lista vazia em vez de erro
 
+        // Query = consulta: ordena pelo campo "score" decrescente e pega só os primeiros.
+        // A ordenação é feita no servidor, então só os top N trafegam pela rede.
         Query query = FirebaseBootstrap.Db
             .Collection("leaderboards")
             .Document(GameId)
@@ -804,6 +1014,7 @@ public static class LeaderboardService
             .Limit(limit);
 
         var snapshot = await query.GetSnapshotAsync();
+        // Converte cada documento do Firestore numa RunEntry simples para a UI.
         foreach (var doc in snapshot.Documents)
         {
             result.Add(new RunEntry
@@ -829,6 +1040,10 @@ Estrutura de dados resultante:
 Ao fim de uma run (herói morreu, ou objetivo de vitória do MVP foi cumprido — eliminar todos os monstros do tabuleiro fixo), chame:
 
 ```csharp
+// Só compila dentro de um método marcado "async" (ex.: private async void OnRunEnded()
+// no BattleController) — "await" exige isso. "async void" é aceitável aqui por ser um
+// "dispara e esquece" chamado pela Unity/UI; nos demais casos prefira async Task.
+// Chame UMA vez por run (ex.: quando TurnManager.Instance.IsBattleOver virar true).
 await LeaderboardService.SubmitRun("padrao", scoreDaRun, nomeDoJogador);
 ```
 

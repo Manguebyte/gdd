@@ -931,23 +931,31 @@ using System.Collections.Generic;
 
 namespace Armageddon.Core
 {
-    // Dados salvos do jogador. É um objeto de dados puro, lido e gravado pelo SaveService em JSON.
+    // POR QUE: o jogo precisa lembrar coisas entre uma sessão e outra (Stardust, Perks comprados,
+    // Planet Cores e Skins liberados, qual Core está selecionado). Esta classe é "a ficha do jogador":
+    // tudo o que é salvo em disco mora aqui, e nada mais.
+    // ESTRATÉGIA: é um objeto de dados puro (não é MonoBehaviour, não fica em cena, não tem lógica).
+    // Quem lê e grava é o SaveService, convertendo para JSON com o JsonUtility da Unity.
     // O JsonUtility só grava campos públicos de tipos simples, List e classes/structs [Serializable]:
-    // Dictionary NÃO é suportado, por isso os níveis de Perk são uma lista de pares.
+    // Dictionary NÃO é suportado, por isso os níveis de Perk são uma lista de pares (PerkLevel).
     // Exceção à convenção de nomes: por ser um objeto de dados, os campos são públicos em camelCase,
     // e esses nomes viram as chaves do JSON. Renomear um campo é uma mudança de versão do save.
+    // [Serializable] = "este tipo pode ser convertido em texto/bytes"; sem ele o JsonUtility ignora a classe.
     [Serializable]
     public sealed class PlayerProfile
     {
-        public int version;
-        public int launchCount;
-        public int stardust;
+        public int version;          // versão do FORMATO do save (não do jogo); usada pelo SaveService.Migrate
+        public int launchCount;      // quantas vezes o jogo foi aberto (incrementado pelo GameBootstrap)
+        public int stardust;         // moeda permanente
         public List<PerkLevel> perkLevels = new List<PerkLevel>();
-        public List<string> unlockedCoreIds = new List<string>();
-        public List<string> unlockedSkinIds = new List<string>();
+        public List<string> unlockedCoreIds = new List<string>();   // ids dos Planet Cores liberados
+        public List<string> unlockedSkinIds = new List<string>();   // ids no formato "<Core>_<Skin>"
         public string selectedCoreId;
         public string selectedSkinId;
 
+        // Cria a ficha de um jogador que acabou de instalar o jogo.
+        // POR QUE um método "fábrica" em vez de valores no construtor: deixa explícito, num lugar só,
+        // qual é o estado inicial, e o SaveService usa o mesmo método no "Resetar progresso".
         public static PlayerProfile CreateNew()
         {
             return new PlayerProfile
@@ -962,6 +970,9 @@ namespace Armageddon.Core
         }
     }
 
+    // POR QUE: guardar "Perk X está no nível N". Seria um Dictionary<string,int>, mas o JsonUtility
+    // não sabe gravar Dictionary.
+    // ESTRATÉGIA: um struct (tipo de valor, leve, sem lógica) com [Serializable], guardado numa List.
     [Serializable]
     public struct PerkLevel
     {
@@ -984,7 +995,11 @@ using UnityEngine;
 
 namespace Armageddon.Core
 {
-    // Onde o JSON do save mora. O SaveService não sabe se é arquivo ou navegador: só usa esta interface.
+    // POR QUE: o JSON do save mora em lugares diferentes conforme a plataforma (arquivo no Android/Editor,
+    // armazenamento do navegador na Web). O SaveService não deveria ter "if Web / if Android" espalhado.
+    // ESTRATÉGIA: uma interface (um "contrato": lista de métodos sem implementação). O SaveService só
+    // conhece ISaveStorage; cada plataforma entrega uma classe que cumpre o contrato do seu jeito.
+    // Bônus: num teste dá para passar um armazenamento falso, em memória.
     public interface ISaveStorage
     {
         string Read();          // null se ainda não existe save
@@ -993,25 +1008,36 @@ namespace Armageddon.Core
         void Delete();
     }
 
+    // POR QUE: alguém precisa decidir QUAL implementação de ISaveStorage usar nesta plataforma.
+    // ESTRATÉGIA: classe estática com um método "fábrica". A escolha é feita em tempo de compilação
+    // com #if (diretivas de pré-processador): o código do outro ramo nem entra no build.
+    // UNITY_WEBGL = build Web; !UNITY_EDITOR = "não estou rodando dentro do Editor".
     public static class SaveStorage
     {
+        // Devolve o armazenamento certo para a plataforma atual. Chamado uma vez, pelo GameBootstrap.
         public static ISaveStorage CreateForPlatform()
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
             return new PlayerPrefsSaveStorage();
 #else
+            // Application.persistentDataPath = pasta que a Unity garante que sobrevive entre sessões
+            // (no Android, dentro dos dados do app; entra no Auto Backup).
             return new FileSaveStorage(Application.persistentDataPath);
 #endif
         }
     }
 
-    // Android, iOS, desktop e Editor: arquivo com escrita atômica e uma cópia de backup.
+    // POR QUE: Android, iOS, desktop e Editor gravam o save num arquivo. Se o celular desligar no meio
+    // da gravação, um arquivo pela metade apagaria o progresso do jogador.
+    // ESTRATÉGIA: escrita atômica (grava num .tmp e troca de uma vez) + uma cópia .bak do save anterior.
+    // Classe C# pura: não precisa de cena, só de System.IO.
     public sealed class FileSaveStorage : ISaveStorage
     {
-        private readonly string _path;
-        private readonly string _tempPath;
-        private readonly string _backupPath;
+        private readonly string _path;        // profile.json — o save "de verdade"
+        private readonly string _tempPath;    // profile.json.tmp — rascunho durante a escrita
+        private readonly string _backupPath;  // profile.json.bak — o save anterior, se o principal corromper
 
+        // Monta os três caminhos uma vez só. Path.Combine usa a barra certa para cada sistema operacional.
         public FileSaveStorage(string folder)
         {
             _path = Path.Combine(folder, "profile.json");
@@ -1019,20 +1045,25 @@ namespace Armageddon.Core
             _backupPath = _path + ".bak";
         }
 
+        // Lê o save principal (ou null se o jogador é novo).
         public string Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;
 
+        // Lê o backup; o SaveService só chama se o principal estiver corrompido.
         public string ReadBackup() => File.Exists(_backupPath) ? File.ReadAllText(_backupPath) : null;
 
+        // Grava o JSON de forma atômica.
         public void Write(string json)
         {
             // 1) escreve tudo num arquivo temporário; 2) troca de uma vez só, guardando o anterior como .bak.
+            // File.Replace é uma operação única do sistema de arquivos: ou acontece inteira, ou não acontece.
             File.WriteAllText(_tempPath, json);
             if (File.Exists(_path))
                 File.Replace(_tempPath, _path, _backupPath);
             else
-                File.Move(_tempPath, _path);
+                File.Move(_tempPath, _path);   // primeiro save: não há o que substituir
         }
 
+        // Apaga tudo (usado em testes e ferramentas de desenvolvimento).
         public void Delete()
         {
             foreach (var path in new[] { _path, _tempPath, _backupPath })
@@ -1042,20 +1073,26 @@ namespace Armageddon.Core
         }
     }
 
-    // Web: PlayerPrefs, que a Unity grava no IndexedDB do navegador.
+    // POR QUE: no navegador não existe sistema de arquivos persistente acessível pelo jogo.
+    // ESTRATÉGIA: usar PlayerPrefs (o "dicionário de chave → valor" da Unity), que na Web a Unity grava
+    // no IndexedDB do navegador. Guardamos a versão anterior numa segunda chave, imitando o .bak.
     public sealed class PlayerPrefsSaveStorage : ISaveStorage
     {
         private const string Key = "profile";
         private const string BackupKey = "profile.bak";
 
+        // Mesmo contrato do FileSaveStorage, mas lendo/gravando chaves do PlayerPrefs.
         public string Read() => PlayerPrefs.HasKey(Key) ? PlayerPrefs.GetString(Key) : null;
 
         public string ReadBackup() => PlayerPrefs.HasKey(BackupKey) ? PlayerPrefs.GetString(BackupKey) : null;
 
+        // Copia o save atual para o backup e grava o novo.
         public void Write(string json)
         {
             if (PlayerPrefs.HasKey(Key)) PlayerPrefs.SetString(BackupKey, PlayerPrefs.GetString(Key));
             PlayerPrefs.SetString(Key, json);
+            // PlayerPrefs.Save força a gravação agora; sem isso a Unity só grava ao fechar,
+            // e na Web o jogador pode fechar a aba sem que isso aconteça.
             PlayerPrefs.Save();
         }
 
@@ -1078,7 +1115,12 @@ using UnityEngine;
 
 namespace Armageddon.Core
 {
-    // Carrega, migra e grava o PlayerProfile. Não é MonoBehaviour: não precisa de cena nem de Update.
+    // POR QUE: alguém precisa carregar o PlayerProfile ao abrir o jogo, recuperar de um save corrompido,
+    // converter saves antigos (migração) e gravar quando algo muda. Sem um dono único, cada tela
+    // gravaria o save do seu jeito.
+    // ESTRATÉGIA: um serviço (ver "Conceitos novos"): vive o jogo inteiro, acessado por Services.Save.
+    // Não é MonoBehaviour: não precisa de cena nem de Update, então é uma classe C# comum criada com `new`.
+    // Recebe o ISaveStorage pronto no construtor (não sabe se é arquivo ou navegador).
     public sealed class SaveService
     {
         // Suba este número quando o formato do save mudar de um jeito que exija migração (ver Migrate).
@@ -1086,9 +1128,12 @@ namespace Armageddon.Core
 
         private readonly ISaveStorage _storage;
 
+        // O perfil carregado. "private set" = qualquer um lê, só o SaveService troca o objeto inteiro.
         public PlayerProfile Profile { get; private set; }
 
         // Disparado depois de "Resetar progresso" (Settings, Fase 11): quem guarda dados do perfil em cache deve recarregar.
+        // "event Action" é um evento C#: outros scripts se inscrevem com += e são avisados quando ele é
+        // disparado (Invoke). Quem dispara não precisa saber quem está ouvindo — isso desacopla os sistemas.
         public event Action ProfileReset;
 
         public SaveService(ISaveStorage storage)
@@ -1096,6 +1141,9 @@ namespace Armageddon.Core
             _storage = storage;
         }
 
+        // Carrega o perfil ao abrir o jogo (chamado pelo GameBootstrap).
+        // Ordem de tentativa: save principal → backup → perfil novo. O operador ?? significa
+        // "se o da esquerda for null, usa o da direita".
         public void Load()
         {
             Profile = TryParse(_storage.Read(), "principal")
@@ -1104,6 +1152,7 @@ namespace Armageddon.Core
             Migrate(Profile);
         }
 
+        // Grava o perfil atual. Quem muda o perfil (compra de Perk, fim de run...) chama este método.
         public void Save()
         {
             try
@@ -1117,19 +1166,24 @@ namespace Armageddon.Core
             }
         }
 
+        // "Resetar progresso" das Settings: troca por um perfil novo, grava e avisa os interessados.
         public void ResetProgress()
         {
             Profile = PlayerProfile.CreateNew();
             Save();
+            // ?. = só chama Invoke se houver alguém inscrito (senão o evento é null).
             ProfileReset?.Invoke();
         }
 
+        // Converte o texto JSON em PlayerProfile, devolvendo null se o texto não existe ou está corrompido.
+        // POR QUE separado: Load chama duas vezes (principal e backup) com a mesma lógica.
         private static PlayerProfile TryParse(string json, string source)
         {
             if (string.IsNullOrEmpty(json)) return null;
             try
             {
                 var profile = JsonUtility.FromJson<PlayerProfile>(json);
+                // version > 0 confirma que era um save de verdade (um JSON vazio "{}" viria com version 0).
                 if (profile != null && profile.version > 0) return profile;
             }
             catch (Exception e)
@@ -1139,6 +1193,8 @@ namespace Armageddon.Core
             return null;
         }
 
+        // Traz um save antigo para o formato atual, um passo de versão por vez (1→2, 2→3...).
+        // POR QUE um passo por vez: cada migração só precisa saber converter da versão anterior.
         private static void Migrate(PlayerProfile profile)
         {
             if (profile.version > CurrentVersion)
@@ -1171,18 +1227,26 @@ using UnityEngine;
 
 namespace Armageddon.Core
 {
+    // POR QUE: a pausa pode ter mais de um motivo ao mesmo tempo, e cada um precisa sair separadamente.
+    // ESTRATÉGIA: um enum (lista fechada de nomes) em vez de strings: o compilador pega erros de digitação.
     public enum PauseReason
     {
         Manual,   // botão de pausa, botão "voltar" ou o app perdeu o foco
         Modal,    // uma janela que congela o jogo sem ser a pausa (ex.: oferta de Revive, Fase 8)
     }
 
-    // Dono do Time.timeScale. Nenhum outro script deve alterar Time.timeScale diretamente.
+    // POR QUE: se vários scripts mexessem em Time.timeScale, um "despausaria" o que o outro pausou.
+    // ESTRATÉGIA: um único dono do Time.timeScale. Nenhum outro script deve alterar Time.timeScale diretamente.
+    // Guarda um conjunto (HashSet) de motivos de pausa: o jogo só volta a andar quando o conjunto esvazia.
+    // É MonoBehaviour (um componente preso a um GameObject) e o GameBootstrap o adiciona ao objeto
+    // [Services]. Hoje não usa Update, mas fica junto dos serviços de cena e aparece na Hierarchy durante o Play.
+    // "sealed" = ninguém pode herdar desta classe (deixa a intenção clara e o código um pouco mais rápido).
     public sealed class GameClock : MonoBehaviour
     {
+        // HashSet: coleção sem repetição. Pausar duas vezes pelo mesmo motivo conta como uma.
         private readonly HashSet<PauseReason> _reasons = new HashSet<PauseReason>();
-        private float _timeScale = 1f;
-        private bool _wasPaused;
+        private float _timeScale = 1f;   // escala "quando não está pausado" (câmera lenta futura)
+        private bool _wasPaused;         // último estado avisado, para disparar PauseChanged só quando muda
 
         public bool IsPaused => _reasons.Count > 0;
 
@@ -1201,18 +1265,22 @@ namespace Armageddon.Core
             Apply();
         }
 
+        // Pergunta se um motivo específico está ativo (ex.: a PauseView só aparece na pausa Manual).
         public bool IsPausedBy(PauseReason reason) => _reasons.Contains(reason);
 
+        // Adiciona um motivo de pausa. HashSet.Add devolve false se já existia: aí não há o que reaplicar.
         public void Pause(PauseReason reason)
         {
             if (_reasons.Add(reason)) Apply();
         }
 
+        // Remove um motivo. O jogo só volta se não sobrar nenhum outro.
         public void Resume(PauseReason reason)
         {
             if (_reasons.Remove(reason)) Apply();
         }
 
+        // Botão de pausa / tecla "voltar": alterna a pausa Manual.
         public void TogglePause()
         {
             if (_reasons.Contains(PauseReason.Manual)) Resume(PauseReason.Manual);
@@ -1233,6 +1301,7 @@ namespace Armageddon.Core
             if (IsGameplayActive) Pause(PauseReason.Manual);
         }
 
+        // Único lugar que escreve Time.timeScale. Também avisa (evento) quando o estado pausado muda.
         private void Apply()
         {
             Time.timeScale = IsPaused ? 0f : _timeScale;
@@ -1257,43 +1326,60 @@ using UnityEngine.UI;
 
 namespace Armageddon.Core
 {
+    // POR QUE: trocar de cena por texto ("Gameplay") espalha strings pelo código, e um erro de digitação
+    // só aparece rodando. O enum dá autocompletar e erro de compilação.
     // Os nomes precisam ser IGUAIS aos nomes dos arquivos de cena (Fase 0, Passo 8).
     public enum GameScene { Boot, MainMenu, Gameplay }
 
-    // Troca de cena com fade para preto. Cria o próprio Canvas de transição: não precisa de prefab.
+    // POR QUE: toda troca de cena precisa do mesmo ritual: escurecer a tela, carregar sem travar,
+    // clarear, e avisar o resto do jogo qual cena entrou (o GameClock precisa saber se é a Gameplay).
+    // ESTRATÉGIA: um serviço MonoBehaviour no [Services] (sobrevive às trocas de cena).
+    // É MonoBehaviour porque precisa de coroutines (StartCoroutine só existe em MonoBehaviour).
+    // Cria o próprio Canvas de transição por código: não precisa de prefab.
     public sealed class SceneLoader : MonoBehaviour
     {
-        private const float FadeDuration = 0.25f;
+        private const float FadeDuration = 0.25f;   // segundos de cada metade do fade
 
-        private CanvasGroup _fade;
+        private CanvasGroup _fade;   // CanvasGroup controla a transparência (alpha) de toda a tela preta de uma vez
 
         public bool IsLoading { get; private set; }
 
+        // Avisado depois que uma cena termina de carregar (quem precisar reagir se inscreve).
         public event Action<GameScene> SceneLoaded;
 
+        // Awake: método que a Unity chama UMA vez, assim que o componente é criado (antes de Start).
+        // Regra deste projeto: no Awake, só configure a si mesmo (ver a nota depois do GameBootstrap).
+        // Aqui: cria a tela preta e se inscreve no evento da Unity que avisa "uma cena carregou".
         private void Awake()
         {
             _fade = CreateFadeOverlay();
             SceneManager.sceneLoaded += HandleSceneLoaded;
         }
 
+        // OnDestroy: chamado quando o objeto é destruído. Toda inscrição (+=) precisa de uma
+        // desinscrição (-=), senão o evento continua apontando para um objeto morto.
         private void OnDestroy()
         {
             SceneManager.sceneLoaded -= HandleSceneLoaded;
         }
 
+        // O único método que o resto do jogo chama: Services.Scenes.Load(GameScene.MainMenu).
         public void Load(GameScene scene)
         {
             if (IsLoading) return;   // ignora cliques repetidos durante a transição
             StartCoroutine(LoadRoutine(scene));
         }
 
+        // Coroutine: um método que retorna IEnumerator e pode "pausar" no meio com yield return,
+        // continuando no próximo frame (ou depois de outra coroutine). É como escrever uma sequência
+        // no tempo ("escurece, depois carrega, depois clareia") sem travar o jogo e sem Update.
         private IEnumerator LoadRoutine(GameScene scene)
         {
             IsLoading = true;
-            _fade.blocksRaycasts = true;
+            _fade.blocksRaycasts = true;   // bloqueia toques enquanto a tela escurece
             yield return Fade(0f, 1f);
 
+            // LoadSceneAsync carrega em segundo plano; yield return null espera um frame por vez até terminar.
             var operation = SceneManager.LoadSceneAsync(scene.ToString());
             while (!operation.isDone) yield return null;
 
@@ -1303,6 +1389,7 @@ namespace Armageddon.Core
         }
 
         // Roda em TODA cena carregada, inclusive a primeira quando você aperta Play direto numa cena.
+        // Converte o nome da cena no enum; cenas que não estão no enum são ignoradas.
         private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (!Enum.TryParse(scene.name, out GameScene gameScene)) return;
@@ -1310,20 +1397,26 @@ namespace Armageddon.Core
             SceneLoaded?.Invoke(gameScene);
         }
 
+        // Anima o alpha da tela preta de "from" até "to" ao longo de FadeDuration.
         private IEnumerator Fade(float from, float to)
         {
             // Tempo "unscaled": o fade funciona mesmo com o jogo pausado (timeScale = 0).
             for (float t = 0f; t < FadeDuration; t += Time.unscaledDeltaTime)
             {
+                // Mathf.Lerp(a, b, x) = valor entre a e b na proporção x (0 → a, 1 → b).
                 _fade.alpha = Mathf.Lerp(from, to, t / FadeDuration);
                 yield return null;
             }
-            _fade.alpha = to;
+            _fade.alpha = to;   // garante o valor final exato
         }
 
+        // Monta por código: Canvas → Image preta esticada na tela toda → CanvasGroup para o alpha.
+        // POR QUE por código: o SceneLoader nasce antes de qualquer cena, então não há prefab na cena para arrastar.
         private CanvasGroup CreateFadeOverlay()
         {
+            // new GameObject(nome, componentes...) cria o objeto já com esses componentes.
             var root = new GameObject("SceneFade", typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasGroup));
+            // SetParent(..., false): vira filho do [Services] (e portanto também sobrevive às trocas de cena).
             root.transform.SetParent(transform, false);
 
             var canvas = root.GetComponent<Canvas>();
@@ -1333,6 +1426,7 @@ namespace Armageddon.Core
             var image = new GameObject("Black", typeof(Image)).GetComponent<Image>();
             image.transform.SetParent(root.transform, false);
             image.color = Color.black;
+            // Âncoras de 0 a 1 com offsets zero = o retângulo ocupa o pai inteiro (a tela toda).
             var rect = image.rectTransform;
             rect.anchorMin = Vector2.zero;
             rect.anchorMax = Vector2.one;
@@ -1358,16 +1452,21 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Core
 {
-    // Reage aos eventos do sistema: segundo plano, perda de foco, fechar o app e o botão "voltar".
+    // POR QUE: no celular o jogador troca de app, apaga a tela ou fecha o jogo a qualquer momento.
+    // Se isso acontecer no meio da run, o jogo precisa salvar e pausar; e o botão "voltar" do Android
+    // precisa fazer algo sensato.
+    // ESTRATÉGIA: um MonoBehaviour no [Services] que só escuta as mensagens de sistema que a Unity manda
+    // para todo MonoBehaviour (OnApplicationPause/Focus/Quit) e repassa para o SaveService e o GameClock.
+    // Ele não decide nada sobre a pausa: quem decide é o GameClock.
     public sealed class AppLifecycle : MonoBehaviour
     {
-        // Android: o app foi para segundo plano (o jogador trocou de app ou apagou a tela).
+        // Mensagem da Unity. Android: o app foi para segundo plano (o jogador trocou de app ou apagou a tela).
         private void OnApplicationPause(bool paused)
         {
             if (paused) Suspend();
         }
 
-        // Web e desktop: a aba ou a janela perdeu o foco.
+        // Mensagem da Unity. Web e desktop: a aba ou a janela perdeu o foco.
         private void OnApplicationFocus(bool focused)
         {
             // No Editor, clicar no Inspector tira o foco do Game view: pausar aí atrapalharia o desenvolvimento.
@@ -1375,14 +1474,18 @@ namespace Armageddon.Core
             if (!focused) Suspend();
         }
 
+        // Mensagem da Unity ao fechar o app. No Android ela nem sempre chega (o sistema pode matar o app),
+        // por isso o save principal acontece em Suspend. O ?. evita erro se os serviços já não existirem.
         private void OnApplicationQuit()
         {
             Services.Save?.Save();
         }
 
+        // Update: chamado pela Unity uma vez a cada frame. É o lugar de ler input.
         private void Update()
         {
             // O botão "voltar" do Android chega como a tecla Escape no Input System. No Editor, é o próprio Esc.
+            // Keyboard.current é null quando não há teclado (ex.: alguns celulares), por isso a checagem.
             var keyboard = Keyboard.current;
             if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame) return;
 
@@ -1390,6 +1493,8 @@ namespace Armageddon.Core
             if (Services.Clock.IsGameplayActive) Services.Clock.TogglePause();
         }
 
+        // O que fazer ao sair de cena por qualquer motivo: salvar e pedir pausa.
+        // "static" porque não usa nenhum campo deste objeto, só os Services.
         private static void Suspend()
         {
             if (!Services.IsReady) return;
@@ -1406,16 +1511,23 @@ namespace Armageddon.Core
 // Caminho: Assets/_Project/Scripts/Core/Services.cs
 namespace Armageddon.Core
 {
-    // Acesso central aos serviços do jogo. Preenchido pelo GameBootstrap antes da primeira cena carregar.
+    // POR QUE: qualquer script precisa chegar ao save, à troca de cena ou à pausa sem ter que procurar
+    // objetos na cena (FindObjectOfType é lento e frágil) nem arrastar referências no Inspector em toda cena.
+    // ESTRATÉGIA: Service Locator — uma classe estática com uma propriedade por serviço.
+    // "static" = existe uma só, sem precisar de instância: qualquer script escreve Services.Save.Profile.
+    // Preenchida pelo GameBootstrap antes da primeira cena carregar.
     // É "partial": fases seguintes acrescentam serviços em arquivos próprios (ex.: Services.Ads.cs, Fase 8).
     public static partial class Services
     {
+        // "private set": só esta classe troca os serviços; o resto do jogo apenas lê.
         public static SaveService Save { get; private set; }
         public static SceneLoader Scenes { get; private set; }
         public static GameClock Clock { get; private set; }
 
+        // true depois que o GameBootstrap registrou tudo. Quem pode rodar antes disso confere aqui.
         public static bool IsReady { get; private set; }
 
+        // Chamado uma vez pelo GameBootstrap. "internal" = só código da mesma assembly (Armageddon) enxerga.
         internal static void Register(SaveService save, SceneLoader scenes, GameClock clock)
         {
             Save = save;
@@ -1424,6 +1536,7 @@ namespace Armageddon.Core
             IsReady = true;
         }
 
+        // Zera tudo no começo de cada Play no Editor (ver GameBootstrap.ResetStatics).
         internal static void Clear()
         {
             Save = null;
@@ -1441,15 +1554,21 @@ Enquanto os menus não existem, precisamos de um jeito de trocar de cena e testa
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Core/DevShortcuts.cs
+// Todo o arquivo fica dentro deste #if: no build final (sem "Development Build") ele simplesmente não existe.
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace Armageddon.Core
 {
+    // POR QUE: enquanto os menus não existem, precisamos trocar de cena e mexer no save para testar.
+    // ESTRATÉGIA: um MonoBehaviour no [Services] (o GameBootstrap só o adiciona em Editor/dev build)
+    // que lê teclas no Update e chama os serviços. Nada de gameplay depende dele.
     // F1 = MainMenu · F2 = Gameplay · F5 = +10 Stardust e salva · F9 = apaga o progresso.
     public sealed class DevShortcuts : MonoBehaviour
     {
+        // Lê as teclas de teste a cada frame. wasPressedThisFrame = true só no frame em que a tecla desceu
+        // (segurar a tecla não repete a ação).
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -1484,30 +1603,41 @@ using UnityEngine;
 
 namespace Armageddon.Core
 {
-    // Primeiro código do jogo a rodar, antes de qualquer cena. Cria o objeto [Services] e registra os serviços.
+    // POR QUE: os serviços precisam existir ANTES de qualquer cena, inclusive quando você aperta Play
+    // direto na cena Gameplay (sem passar pela Boot). Se dependessem de um objeto na cena Boot,
+    // testar a Gameplay sozinha quebraria.
+    // ESTRATÉGIA: classe estática com [RuntimeInitializeOnLoadMethod], que a Unity chama sozinha antes
+    // da primeira cena. Ela cria o objeto [Services], marca para não ser destruído, cria cada serviço
+    // na ordem certa e registra tudo no Services. É o único lugar que "monta" o jogo.
     public static class GameBootstrap
     {
         // Com "Enter Play Mode Options" ligado (sem recarregar o domínio), variáveis estáticas sobrevivem
         // entre um Play e outro. Este método zera tudo no começo de cada Play.
+        // SubsystemRegistration é o momento mais cedo possível, antes do Initialize abaixo.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             Services.Clear();
         }
 
+        // BeforeSceneLoad: roda depois do ResetStatics e antes de a primeira cena carregar.
+        // Cria e registra todos os serviços.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void Initialize()
         {
-            if (Services.IsReady) return;
+            if (Services.IsReady) return;   // proteção: nunca montar duas vezes
 
             var root = new GameObject("[Services]");
+            // DontDestroyOnLoad: o objeto sobrevive às trocas de cena (fica numa "cena" especial na Hierarchy).
             Object.DontDestroyOnLoad(root);
 
+            // O save vem primeiro: os outros serviços podem querer ler o perfil.
             var save = new SaveService(SaveStorage.CreateForPlatform());
             save.Load();
             save.Profile.launchCount++;
             save.Save();
 
+            // AddComponent cria o componente no objeto e já chama o Awake dele nesta mesma linha.
             var clock = root.AddComponent<GameClock>();
             var scenes = root.AddComponent<SceneLoader>();
             root.AddComponent<AppLifecycle>();
@@ -1533,14 +1663,21 @@ using UnityEngine;
 
 namespace Armageddon.Core
 {
-    // Fica na cena Boot: mostra o logo por um tempo mínimo e passa para o Main Menu.
+    // POR QUE: a cena Boot precisa mostrar o logo por um tempo mínimo (senão ele pisca e some) e depois
+    // seguir para o Main Menu. Os serviços já existem (GameBootstrap), então só falta a sequência visual.
+    // ESTRATÉGIA: um MonoBehaviour pequeno, colocado na cena Boot, que usa Start como coroutine.
     // A tela de consentimento (Fase 10) entra entre o logo e o menu.
     public sealed class BootSequence : MonoBehaviour
     {
+        // [SerializeField]: mostra um campo privado no Inspector para você ajustar sem mexer no código
+        // (ver a convenção da Seção 10.1). O valor digitado no Inspector vence o valor do código.
         [SerializeField] private float _minimumLogoTime = 1f;
 
+        // Start: chamado pela Unity uma vez, no primeiro frame em que o objeto está ativo, DEPOIS de todos
+        // os Awake da cena. Se Start retorna IEnumerator, a Unity o roda como coroutine automaticamente.
         private IEnumerator Start()
         {
+            // Realtime: espera segundos de verdade, mesmo que o timeScale esteja em 0.
             yield return new WaitForSecondsRealtime(_minimumLogoTime);
             Services.Scenes.Load(GameScene.MainMenu);
         }
@@ -1607,6 +1744,10 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
+    // POR QUE: raio do planeta, raio da órbita e distância de spawn são usados por vários scripts
+    // (Satellites, inimigos, Waves, gizmos). Se cada um tivesse o seu "1.75f", mudar a órbita exigiria
+    // caçar números mágicos pelo projeto.
+    // ESTRATÉGIA: classe estática só com constantes e um utilitário. Não guarda estado nem fica em cena.
     // Medidas do mundo em unidades (u). 1 u = 16 px (Seções 4 e 6.1). O planeta fica sempre na origem.
     public static class WorldLayout
     {
@@ -1615,9 +1756,11 @@ namespace Armageddon.World
         public const float OrbitRadius = 1.75f;   // órbita dos Satellites (Seção 4.1)
         public const float SpawnRadius = 12f;     // onde os inimigos nascem (Seção 4.3)
 
+        // static readonly em vez de const: const só aceita tipos simples (números, strings), e Vector2 não é um deles.
         public static readonly Vector2 PlanetCenter = Vector2.zero;
 
         // Arredonda uma posição para a grade de pixels (1/16 u).
+        // POR QUE: em pixel art, um objeto parado em "meio pixel" fica tremido/borrado; prender à grade evita isso.
         public static float SnapToPixel(float value) => Mathf.Round(value * PixelsPerUnit) / PixelsPerUnit;
     }
 }
@@ -1631,6 +1774,10 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
+    // POR QUE: a regra central do combate é "um Satellite só atira no Quadrant onde está".
+    // Precisamos de um nome para cada Quadrant em vez de números soltos.
+    // ESTRATÉGIA: enum com valores 0–3 na ordem anti-horária; assim o número do enum × 90° é o ângulo
+    // onde o Quadrant começa (usado em StartAngle).
     // Os 4 Quadrants da tela, centrados no planeta (Seção 4.1), na ordem anti-horária da órbita.
     public enum Quadrant
     {
@@ -1640,6 +1787,9 @@ namespace Armageddon.World
         BottomRight = 3,  // 270° a 360°
     }
 
+    // POR QUE: a pergunta "em qual Quadrant está esta posição/ângulo?" é feita pelo Satellite, pelo
+    // TargetSelector e pelas ferramentas de teste. A resposta precisa ser idêntica em todos.
+    // ESTRATÉGIA: classe estática de funções puras (entrada → saída, sem estado). Fácil de testar.
     public static class Quadrants
     {
         // Ângulo em graus: 0° = direita, crescendo no sentido anti-horário (o mesmo da órbita).
@@ -1647,16 +1797,23 @@ namespace Armageddon.World
         // assim ele pertence a um só Quadrant, como pede a Seção 4.1.
         public static Quadrant FromAngle(float degrees)
         {
+            // Mathf.Repeat traz qualquer ângulo (ex.: -30° ou 400°) para o intervalo [0, 360).
             float angle = Mathf.Repeat(degrees, 360f);
+            // Dividir por 90 e arredondar para baixo dá 0, 1, 2 ou 3. O Min(3, ...) é uma proteção
+            // contra erro de arredondamento muito perto de 360°.
             return (Quadrant)Mathf.Min(3, Mathf.FloorToInt(angle / 90f));
         }
 
+        // Converte uma posição do mundo em Quadrant, calculando o ângulo dela em volta do planeta.
         public static Quadrant FromPosition(Vector2 position)
         {
             Vector2 offset = position - WorldLayout.PlanetCenter;
+            // Atan2(y, x) devolve o ângulo do vetor em radianos (-π a π); Rad2Deg converte para graus.
             return FromAngle(Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg);
         }
 
+        // Ângulo (em graus) onde o Quadrant começa (TopRight = 0°, TopLeft = 90°...). Utilitário para quem
+        // precisar posicionar ou desenhar algo alinhado a um Quadrant.
         public static float StartAngle(Quadrant quadrant) => (int)quadrant * 90f;
     }
 }
@@ -1671,34 +1828,45 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
+    // POR QUE: planeta, estrelas, inimigos e explosões são loops simples de frames. O Animator da Unity
+    // resolve isso, mas exige um controller por objeto e custa caro com 150 inimigos na tela.
+    // ESTRATÉGIA: um componente minúsculo que avança um relógio próprio e escolhe o frame = tempo × fps.
     // Troca o sprite do SpriteRenderer a uma taxa fixa (os fps da Seção 6.4).
-    // Usa o tempo normal: pausa junto com o jogo.
+    // Usa o tempo normal (Time.deltaTime): pausa junto com o jogo.
+    // [RequireComponent]: ao adicionar este script num objeto, a Unity adiciona um SpriteRenderer junto
+    // (e não deixa removê-lo). Garante que o GetComponent do Awake nunca volte null.
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class SpriteAnimator : MonoBehaviour
     {
         [SerializeField] private Sprite[] _frames;
         [SerializeField] private float _fps = 8f;
-        [SerializeField] private bool _loop = true;
-        [SerializeField] private bool _randomStartFrame;
+        [SerializeField] private bool _loop = true;             // false = toca uma vez e para (explosões)
+        [SerializeField] private bool _randomStartFrame;        // cada inimigo começa num frame diferente
 
         private SpriteRenderer _renderer;
-        private float _time;
+        private float _time;   // há quanto tempo a animação está tocando (em segundos de jogo)
 
         public bool IsPlaying { get; private set; }
 
         // Só para animações "uma vez" (explosões): avisa quando o último frame terminou.
         public event Action Finished;
 
+        // Cache do componente: GetComponent procura entre os componentes do objeto e tem custo.
+        // Fazer uma vez no Awake e guardar num campo é muito mais barato que chamar todo frame.
         private void Awake()
         {
             _renderer = GetComponent<SpriteRenderer>();
         }
 
+        // OnEnable: chamado sempre que o objeto é ativado (inclusive ao ser reaproveitado de um pool
+        // com SetActive(true)). Por isso a animação recomeça aqui, e não só no Start.
         private void OnEnable()
         {
             Play();
         }
 
+        // Troca a animação por código (ex.: o SpaceBackground cria estrelas sem Inspector; o inimigo
+        // recebe os frames da sua definição). Já começa a tocar.
         public void SetFrames(Sprite[] frames, float fps, bool loop)
         {
             _frames = frames;
@@ -1707,32 +1875,38 @@ namespace Armageddon.World
             Play();
         }
 
+        // (Re)começa do início, ou de um frame sorteado. Se não houver frames, fica parado sem erro.
         public void Play()
         {
             IsPlaying = _frames != null && _frames.Length > 0 && _fps > 0f;
             if (!IsPlaying) return;
+            // UnityEngine.Random por extenso: "Random" sozinho seria ambíguo com System.Random (using System).
             _time = _randomStartFrame ? UnityEngine.Random.Range(0, _frames.Length) / _fps : 0f;
             Show(Mathf.FloorToInt(_time * _fps));
         }
 
+        // Avança o relógio e mostra o frame correspondente.
         private void Update()
         {
             if (!IsPlaying) return;
 
+            // Time.deltaTime = segundos desde o último frame (0 quando o jogo está pausado).
             _time += Time.deltaTime;
             int frame = Mathf.FloorToInt(_time * _fps);
 
             if (!_loop && frame >= _frames.Length)
             {
-                Show(_frames.Length - 1);
+                Show(_frames.Length - 1);   // para no último frame
                 IsPlaying = false;
                 Finished?.Invoke();
                 return;
             }
 
+            // % (resto da divisão) faz o índice dar a volta: 0,1,2,3,0,1,...
             Show(frame % _frames.Length);
         }
 
+        // Troca o sprite exibido. Único lugar que mexe no SpriteRenderer.
         private void Show(int frame)
         {
             _renderer.sprite = _frames[frame];
@@ -1752,29 +1926,37 @@ using UnityEngine;
 
 namespace Armageddon.Planets
 {
-    // HP do planeta: dano com a fórmula de defesa, regeneração, morte e Revive.
+    // POR QUE: o planeta é o "jogador" deste jogo: quando o HP zera, a run acaba. Dano, defesa,
+    // regeneração e Revive precisam de uma regra única, que a HUD, os inimigos e a run consultam.
+    // ESTRATÉGIA: um componente só de "vida", separado do Planet (visual/posição). Guarda os números,
+    // aplica a fórmula da Seção 4.2 e AVISA por eventos (Damaged, HealthChanged, Died) em vez de
+    // chamar a HUD ou o RunController diretamente: quem se interessa se inscreve.
+    // Os valores vêm do Inspector por enquanto; a Fase 6 passa a chamar os métodos Set….
     public sealed class PlanetHealth : MonoBehaviour
     {
         public const float MaxDefenseRelative = 0.75f;   // teto do Stat (Seção 4.2)
 
         [SerializeField] private float _maxHitpoints = 100f;
         [SerializeField] private float _regeneration;            // HP por segundo
-        [SerializeField] private float _defenseAbsolute;
-        [SerializeField, Range(0f, MaxDefenseRelative)] private float _defenseRelative;
+        [SerializeField] private float _defenseAbsolute;         // subtraído de cada golpe
+        // [Range] mostra um slider no Inspector e impede valores fora do intervalo ali.
+        [SerializeField, Range(0f, MaxDefenseRelative)] private float _defenseRelative;   // % do golpe ignorada
 
         public float Current { get; private set; }
         public float Max => _maxHitpoints;
         public bool IsDead { get; private set; }
 
         public event Action<float> Damaged;   // recebe o dano FINAL, depois da defesa
-        public event Action HealthChanged;
+        public event Action HealthChanged;    // qualquer mudança de HP (dano, regeneração, upgrade, Revive)
         public event Action Died;
 
+        // Começa a run com HP cheio.
         private void Awake()
         {
             Current = _maxHitpoints;
         }
 
+        // Regeneração contínua: soma "HP por segundo × segundos deste frame".
         private void Update()
         {
             if (IsDead || _regeneration <= 0f || Current >= _maxHitpoints) return;
@@ -1783,11 +1965,14 @@ namespace Armageddon.Planets
         }
 
         // Fórmula da Seção 4.2: max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative)).
+        // "public static": não depende de um planeta específico, então a gaveta de upgrades pode usar
+        // a mesma fórmula para mostrar previsões, e fica fácil de testar.
         public static float ComputeDamage(float raw, float defenseAbsolute, float defenseRelative)
         {
             return Mathf.Max(1f, (raw - defenseAbsolute) * (1f - defenseRelative));
         }
 
+        // Chamado por quem acerta o planeta (inimigos, laser da Mothership) com o dano BRUTO.
         public void TakeDamage(float raw)
         {
             if (IsDead || raw <= 0f) return;
@@ -1800,7 +1985,7 @@ namespace Armageddon.Planets
             if (Current <= 0f)
             {
                 IsDead = true;
-                Died?.Invoke();
+                Died?.Invoke();   // o RunController (Fase 8) decide se oferece Revive ou encerra a run
             }
         }
 
@@ -1814,11 +1999,13 @@ namespace Armageddon.Planets
             HealthChanged?.Invoke();
         }
 
+        // Chamado quando o Stat de regeneração muda (Fase 6).
         public void SetRegeneration(float hpPerSecond)
         {
             _regeneration = Mathf.Max(0f, hpPerSecond);
         }
 
+        // Chamado quando os Stats de defesa mudam (Fase 6). O Clamp respeita o teto de 75%.
         public void SetDefense(float absolute, float relative)
         {
             _defenseAbsolute = Mathf.Max(0f, absolute);
@@ -1845,20 +2032,25 @@ using UnityEngine;
 
 namespace Armageddon.Planets
 {
-    // O planeta no centro do mundo. A skin (sprites da rotação) é trocada pela Core Select na Fase 9.
+    // POR QUE: outros sistemas precisam de "o planeta" como um ponto de referência (onde está, qual o
+    // raio, qual a vida). Este é o componente que eles procuram.
+    // ESTRATÉGIA: uma "fachada" fina: expõe o PlanetHealth e as medidas do WorldLayout, e garante que o
+    // objeto fica na origem. A lógica de vida continua no PlanetHealth; a skin é trocada pela Core Select na Fase 9.
     [RequireComponent(typeof(PlanetHealth))]
     public sealed class Planet : MonoBehaviour
     {
         public PlanetHealth Health { get; private set; }
-        public Vector2 Center => WorldLayout.PlanetCenter;
+        public Vector2 Center => WorldLayout.PlanetCenter;   // "=>" aqui é uma propriedade só de leitura calculada
         public float Radius => WorldLayout.PlanetRadius;
 
+        // Guarda o PlanetHealth (cache) e prende o planeta na origem, mesmo que alguém o arraste na cena.
         private void Awake()
         {
             Health = GetComponent<PlanetHealth>();
             transform.position = WorldLayout.PlanetCenter;
         }
 
+        // OnDrawGizmos: a Unity chama no Editor para desenhar ajudas visuais na janela Scene (não entra no jogo).
         // Na janela Scene: o raio do planeta, a órbita dos Satellites, os eixos dos Quadrants e o alcance base (4 u).
         private void OnDrawGizmos()
         {
@@ -1886,7 +2078,11 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
-    // Cobre a área visível com os tiles de fundo sorteados (Seção 6.4) e espalha estrelas piscando por cima.
+    // POR QUE: o fundo de espaço precisa cobrir qualquer tela (16:9, 20:9, tablets) sem que alguém
+    // monte tiles à mão na cena, e sem parecer repetido.
+    // ESTRATÉGIA: no Start, calcula quantos tiles cabem na visão da câmera (mais uma margem) e cria um
+    // SpriteRenderer por tile, sorteando qual dos 4 desenhos usar. O sorteio usa uma semente fixa
+    // (_seed): o fundo é sempre igual, o que ajuda a comparar screenshots e testar.
     // Cobre também uma margem: a câmera desce com a gaveta aberta, e telas mais largas que 16:9 mostram mais espaço.
     public sealed class SpaceBackground : MonoBehaviour
     {
@@ -1896,18 +2092,23 @@ namespace Armageddon.World
         [SerializeField] private Sprite[] _twinkleFrames;   // as 4 células de SPR_Background_StarTwinkle
         [SerializeField] private float _twinkleFps = 4f;
         [SerializeField] private int _twinkleCount = 8;
-        [SerializeField] private int _seed = 7;
-        [SerializeField] private float _margin = 3f;
+        [SerializeField] private int _seed = 7;             // mesma semente = mesmo fundo toda vez
+        [SerializeField] private float _margin = 3f;        // unidades extras além da borda da câmera
         [SerializeField] private string _sortingLayer = "Background";
 
+        // Start (e não Awake) porque depende da câmera principal já estar configurada na cena.
         private void Start()
         {
             Build(Camera.main);
         }
 
+        // Cria a grade de tiles e as estrelas piscando.
         private void Build(Camera view)
         {
+            // System.Random com semente: sequência de sorteios repetível (o UnityEngine.Random é global e
+            // seria afetado por outros sistemas).
             var random = new System.Random(_seed);
+            // Numa câmera ortográfica, orthographicSize é METADE da altura visível em unidades.
             float halfHeight = view.orthographicSize + _margin;
             float halfWidth = view.orthographicSize * view.aspect + _margin;
             int columns = Mathf.CeilToInt(halfWidth / TileSize);
@@ -1925,6 +2126,7 @@ namespace Armageddon.World
 
             for (int i = 0; i < _twinkleCount; i++)
             {
+                // NextDouble()*2-1 = número entre -1 e 1; vezes a metade da área = posição aleatória na tela.
                 var position = new Vector2(
                     WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfWidth),
                     WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfHeight));
@@ -1933,6 +2135,8 @@ namespace Armageddon.World
             }
         }
 
+        // Fábrica de um sprite filho deste objeto. Centraliza as configurações repetidas (pai, layer, ordem).
+        // "order" dentro da mesma Sorting Layer: maior é desenhado por cima (estrelas = 1, tiles = 0).
         private SpriteRenderer CreateSprite(string name, Sprite sprite, Vector2 position, int order)
         {
             var go = new GameObject(name);
@@ -1958,27 +2162,32 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
-    // Câmera da run: centrada no planeta, desliza quando a gaveta de upgrades abre (Seção 6.3).
+    // POR QUE: quando a gaveta de upgrades abre, ela cobre a parte de baixo da tela. Sem mexer na câmera,
+    // o planeta ficaria escondido atrás dela.
+    // ESTRATÉGIA: um componente na própria Main Camera que só controla a posição Y: calcula um alvo
+    // (aberta/fechada) e desliza suavemente até ele, sempre preso à grade de pixels.
     // Fica no mesmo objeto da Camera e do componente Pixel Perfect Camera (URP). O shake entra na Fase 12.
     [RequireComponent(typeof(Camera))]
     public sealed class CameraRig : MonoBehaviour
     {
-        [SerializeField, Range(0f, 0.8f)] private float _drawerScreenFraction = 0.4f;
-        [SerializeField] private float _slideTime = 0.15f;
+        [SerializeField, Range(0f, 0.8f)] private float _drawerScreenFraction = 0.4f;   // quanto da tela a gaveta ocupa
+        [SerializeField] private float _slideTime = 0.15f;                              // segundos aproximados do deslize
 
         private Camera _camera;
         private float _currentY;
         private float _targetY;
-        private float _velocity;
+        private float _velocity;   // "memória" de velocidade que o SmoothDamp precisa entre um frame e outro
 
         public bool IsDrawerOpen { get; private set; }
 
+        // Cache da Camera e posição inicial (gaveta fechada).
         private void Awake()
         {
             _camera = GetComponent<Camera>();
             ApplyPosition(0f);
         }
 
+        // Chamado pela UpgradeDrawer (Fase 6) ao abrir/fechar. Só define o alvo; o movimento é no LateUpdate.
         // A gaveta cobre a parte de baixo da tela. Para o planeta ficar no centro da área livre,
         // a câmera DESCE metade da altura da gaveta (o mundo parece subir).
         public void SetDrawerOpen(bool open)
@@ -1988,16 +2197,21 @@ namespace Armageddon.World
             _targetY = open ? -viewHeight * _drawerScreenFraction * 0.5f : 0f;
         }
 
+        // LateUpdate: chamado a cada frame DEPOIS de todos os Update. É o lugar padrão para câmeras,
+        // porque tudo o que se move no frame já se moveu.
         private void LateUpdate()
         {
+            // SmoothDamp: aproxima um valor do alvo com aceleração e desaceleração suaves (efeito "mola").
             // Tempo "unscaled": a câmera termina de deslizar mesmo se o jogo pausar no meio.
             _currentY = Mathf.SmoothDamp(_currentY, _targetY, ref _velocity, _slideTime, Mathf.Infinity, Time.unscaledDeltaTime);
             ApplyPosition(_currentY);
         }
 
+        // Move a câmera para a altura pedida.
         private void ApplyPosition(float y)
         {
             // Posição presa à grade de pixels: evita o mundo "tremer" meio pixel durante o deslize.
+            // Z = -10: a câmera 2D fica "na frente" dos sprites (que estão em Z = 0) para enxergá-los.
             transform.position = new Vector3(0f, WorldLayout.SnapToPixel(y), -10f);
         }
     }
@@ -2018,10 +2232,16 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Core
 {
+    // POR QUE (versão da Fase 2): agora há planeta e câmera para testar; os atalhos da Fase 1 continuam.
+    // O QUE MUDOU: F3 (gaveta/câmera), F4 (Quadrant sob o mouse), F6 (dano) e F7 (Revive).
+    // ESTRATÉGIA: igual à Fase 1 (ver DevShortcuts da Fase 1). Como os objetos da cena Gameplay não estão
+    // nos Services, este script os procura com FindAnyObjectByType — lento, mas aceitável numa ferramenta
+    // de teste que nem vai para o build final. Nunca use isso no código do jogo a cada frame.
     // F1 = MainMenu · F2 = Gameplay · F3 = abre/fecha a gaveta (câmera) · F4 = Quadrant sob o mouse
     // F5 = +10 Stardust e salva · F6 = 10 de dano no planeta · F7 = Revive com 50% · F9 = apaga o progresso.
     public sealed class DevShortcuts : MonoBehaviour
     {
+        // Lê as teclas de teste a cada frame (igual à Fase 1, com as teclas novas).
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -2038,6 +2258,7 @@ namespace Armageddon.Core
 
             if (keyboard.f4Key.wasPressedThisFrame && Mouse.current != null && Camera.main != null)
             {
+                // ScreenToWorldPoint: converte pixels da tela em coordenadas do mundo do jogo.
                 Vector2 world = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
                 Debug.Log($"[Dev] Mouse em {world} → {Quadrants.FromPosition(world)}");
             }
@@ -2140,14 +2361,18 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
-    // Qualquer coisa em que um Satellite pode atirar. O Enemy (Fase 4) implementa esta interface.
+    // POR QUE: os Satellites precisam atirar em "algo" — hoje num alvo de teste, na Fase 4 num Enemy,
+    // na Fase 7 na Mothership. Se o código de combate dependesse da classe Enemy, cada tipo novo de
+    // alvo exigiria mexer nele.
+    // ESTRATÉGIA: uma interface com só o que o combate precisa saber (posição, tamanho, vida, receber dano).
+    // Qualquer classe que "implementa" ITarget (class X : MonoBehaviour, ITarget) vira um alvo válido.
     public interface ITarget
     {
         Vector2 Position { get; }
         float Radius { get; }              // metade do tamanho do sprite, em u: o alcance mede até a BORDA (Seção 4.1)
-        float CurrentHitpoints { get; }
+        float CurrentHitpoints { get; }    // usado pelas Target Priorities Weakest/Strongest
         bool IsAlive { get; }
-        void TakeDamage(float amount, bool isCritical);
+        void TakeDamage(float amount, bool isCritical);   // isCritical serve para o feedback visual (número de dano)
     }
 }
 ```
@@ -2159,24 +2384,32 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
-    // Lista dos alvos vivos. Cada alvo se registra no OnEnable e sai no OnDisable.
+    // POR QUE: a cada disparo, um Satellite precisa da lista de alvos possíveis. Perguntar à física
+    // ("quem está perto?") ou procurar objetos na cena a cada tiro é caro com 150 inimigos.
+    // ESTRATÉGIA: uma lista estática e global dos alvos vivos. Cada alvo se registra no OnEnable e sai
+    // no OnDisable (combina com pooling: ligar/desligar o objeto já entra/sai da lista).
+    // Os Satellites só leem a lista (IReadOnlyList), nunca a alteram.
     public static class TargetRegistry
     {
         private static readonly List<ITarget> _alive = new List<ITarget>();
 
+        // IReadOnlyList: quem recebe pode percorrer e ler, mas não tem Add/Remove.
         public static IReadOnlyList<ITarget> Alive => _alive;
 
+        // Chamado pelo alvo ao aparecer. O Contains evita registrar duas vezes.
         public static void Register(ITarget target)
         {
             if (!_alive.Contains(target)) _alive.Add(target);
         }
 
+        // Chamado pelo alvo ao sumir (morreu, saiu da tela, voltou ao pool).
         public static void Unregister(ITarget target)
         {
             _alive.Remove(target);
         }
 
         // Com "Enter Play Mode Options" (sem recarregar o domínio), a lista estática sobreviveria entre Plays.
+        // Mesmo mecanismo do GameBootstrap.ResetStatics (ver GameBootstrap).
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
@@ -2197,22 +2430,28 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
-    // Os Stats de Offense que afetam os Satellites (Seção 4.2), com os valores base.
-    // Objeto de dados: campos públicos em camelCase, como o PlayerProfile.
+    // POR QUE: os Satellites precisam de vários números (dano, cadência, crítico, alcance...), que mudam
+    // com os Upgrades. Passar sete parâmetros soltos para cada método seria confuso.
+    // ESTRATÉGIA: um "pacote" de dados com os Stats de Offense (Seção 4.2) e a fórmula de dano junto.
+    // Objeto de dados: campos públicos em camelCase, como o PlayerProfile. [Serializable] faz o pacote
+    // aparecer inteiro (expansível) no Inspector do SatelliteOrbit, para testar antes da Fase 6.
     [Serializable]
     public sealed class SatelliteStats
     {
         public float damage = 10f;
         public float attackSpeed = 1f;          // disparos por segundo, por Satellite
-        [Range(0f, 0.8f)] public float criticalChance;
-        public float criticalFactor = 1.5f;
+        [Range(0f, 0.8f)] public float criticalChance;   // 0 a 0,8 (80%)
+        public float criticalFactor = 1.5f;     // multiplicador do dano crítico
         public float attackRange = 4f;          // em u, medido do centro do planeta
         public float impetus;                   // fração por u (0,004 = +0,4 % por u)
         public float orbitSpeed = 45f;          // graus por segundo
 
+        // Sorteia o crítico e calcula o dano de UM disparo.
         // Fórmula da Seção 4.1: Damage × (1 + Impetus × distânciaAoCentro) × (crítico ? CriticalFactor : 1).
+        // "out bool isCritical": um segundo valor de retorno — quem chama recebe o dano E se foi crítico.
         public float RollDamage(float distanceToCenter, out bool isCritical)
         {
+            // Random.value = número aleatório entre 0 e 1. Menor que a chance → crítico.
             isCritical = UnityEngine.Random.value < criticalChance;
             float value = damage * (1f + impetus * distanceToCenter);
             return isCritical ? value * criticalFactor : value;
@@ -2231,6 +2470,8 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: cada Satellite pode ter uma regra diferente de escolha de alvo (Target Priority).
+    // ESTRATÉGIA: um enum com as 4 regras; o Satellite guarda qual está usando.
     // As 4 Target Priorities (Seção 4.1). Closest é a padrão; as outras são liberadas por Perks (Fase 9).
     public enum TargetPriority
     {
@@ -2240,25 +2481,35 @@ namespace Armageddon.Combat
         Farthest,    // o mais longe do planeta (sinergia com Impetus)
     }
 
+    // POR QUE: a regra "quem é um alvo válido e qual deles é o melhor" é o coração do combate e precisa
+    // ser a mesma para todos os Satellites.
+    // ESTRATÉGIA: classe estática com uma função pura: recebe a lista, o Quadrant, o alcance e a prioridade,
+    // e devolve o alvo. Não guarda nada entre chamadas, então é fácil testar e não tem efeitos colaterais.
     public static class TargetSelector
     {
         // Só considera alvos vivos, no Quadrant pedido e com a BORDA dentro do alcance (medido do centro do planeta).
         // Devolve null se não houver ninguém válido.
+        // Estratégia: uma passada só pela lista, guardando o "melhor até agora" (menor score).
         public static ITarget Select(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority)
         {
             ITarget best = null;
-            float bestScore = float.MaxValue;
+            float bestScore = float.MaxValue;   // qualquer score real é menor que isso
 
+            // for com índice (em vez de foreach) não aloca memória numa IReadOnlyList: importante num
+            // código que roda muitas vezes por segundo.
             for (int i = 0; i < targets.Count; i++)
             {
                 var target = targets[i];
                 if (!target.IsAlive) continue;
 
+                // sqrMagnitude = distância ao quadrado (mais barata, sem raiz). Serve para comparar distâncias.
                 float distanceSquared = (target.Position - WorldLayout.PlanetCenter).sqrMagnitude;
+                // Para o alcance precisamos da distância real, menos o raio (mede até a borda do alvo).
                 if (Mathf.Sqrt(distanceSquared) - target.Radius > range) continue;
                 if (Quadrants.FromPosition(target.Position) != quadrant) continue;
 
                 // Menor "score" vence: por isso Farthest e Strongest usam o valor negativo.
+                // "switch expression" (C# 8): escolhe um valor conforme o caso; "_" é o caso padrão.
                 float score = priority switch
                 {
                     TargetPriority.Closest => distanceSquared,
@@ -2291,19 +2542,26 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
-    // Um sprite branco de 1 pixel (1/16 u), criado uma vez. A cor vem do SpriteRenderer.
+    // POR QUE: rastros de projétil, linhas de eixo e outros detalhes são feitos de pixels soltos de cor.
+    // Importar um PNG de 1×1 só para isso é burocrático.
+    // ESTRATÉGIA: classe estática que cria, na primeira vez que alguém pede, um sprite branco de 1 pixel
+    // e o reaproveita para sempre ("inicialização preguiçosa"). A cor final vem do SpriteRenderer.color,
+    // que multiplica o branco por qualquer cor.
     public static class PixelSprite
     {
-        private static Sprite _white;
+        private static Sprite _white;   // guardado depois da primeira criação
 
+        // Propriedade com "get" que cria o sprite só se ainda não existe.
         public static Sprite White
         {
             get
             {
                 if (_white != null) return _white;
+                // Textura 1×1 com filtro Point (sem borrar, como toda a pixel art do jogo).
                 var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point };
                 texture.SetPixel(0, 0, Color.white);
-                texture.Apply();
+                texture.Apply();   // envia o pixel alterado para a placa de vídeo
+                // Sprite.Create(textura, área, pivô no centro, pixels por unidade = 16): 1 pixel = 1/16 u.
                 _white = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
                 return _white;
             }
@@ -2322,15 +2580,21 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
-    // Projétil teleguiado: persegue o alvo até acertar. Se o alvo morrer antes, some (Seção 4.1).
+    // POR QUE: o dano dos Satellites precisa "viajar" até o alvo para o jogador ver o tiro; o GDD pede
+    // projétil teleguiado que nunca erra (Seção 4.1).
+    // ESTRATÉGIA: um MonoBehaviour que, a cada frame, anda em linha reta na direção da posição ATUAL do
+    // alvo; quando chega perto, aplica o dano e se devolve ao pool. Não usa física (Rigidbody/Collider):
+    // uma conta de distância é mais barata e suficiente.
+    // Nunca é destruído: quem o criou (ProjectilePool) passa uma função "release" para devolvê-lo.
+    // Se o alvo morrer antes, some (Seção 4.1).
     // Desenha atrás de si um rastro curto de 3 pixels na direção do movimento (Seção 6.2).
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class Projectile : MonoBehaviour
     {
         // Em aberto na Seção 4.1: velocidade do projétil. Valor inicial: 10 u/s.
         [SerializeField] private float _speed = 10f;
-        [SerializeField] private float _hitDistance = 0.2f;
-        [SerializeField] private Color[] _trailColors =
+        [SerializeField] private float _hitDistance = 0.2f;   // distância que já conta como "acertou"
+        [SerializeField] private Color[] _trailColors =       // um pixel de rastro por cor, do mais forte ao mais fraco
         {
             new Color32(255, 170, 40, 200),
             new Color32(214, 110, 24, 140),
@@ -2340,9 +2604,12 @@ namespace Armageddon.Combat
         private ITarget _target;
         private float _damage;
         private bool _isCritical;
+        // Action<Projectile> = uma variável que guarda uma FUNÇÃO que recebe um Projectile.
+        // Aqui guarda o "devolver ao pool", sem o projétil precisar conhecer o pool.
         private Action<Projectile> _release;
         private SpriteRenderer[] _trail;
 
+        // Cria os pixels do rastro uma vez só, como filhos do projétil (eles também são reaproveitados).
         private void Awake()
         {
             var layer = GetComponent<SpriteRenderer>().sortingLayerName;
@@ -2354,11 +2621,13 @@ namespace Armageddon.Combat
                 pixel.sprite = PixelSprite.White;
                 pixel.color = _trailColors[i];
                 pixel.sortingLayerName = layer;
-                pixel.sortingOrder = -1;
+                pixel.sortingOrder = -1;   // atrás da bolinha
                 _trail[i] = pixel;
             }
         }
 
+        // "Dispara" um projétil que acabou de sair do pool: define origem, alvo, dano e como se devolver.
+        // Faz o papel de um construtor, já que objetos reaproveitados não passam por "new".
         public void Launch(Vector2 from, ITarget target, float damage, bool isCritical, Action<Projectile> release)
         {
             transform.position = from;
@@ -2366,9 +2635,11 @@ namespace Armageddon.Combat
             _damage = damage;
             _isCritical = isCritical;
             _release = release;
+            // Esconde o rastro até o primeiro movimento, senão ele apareceria onde o projétil estava no disparo anterior.
             foreach (var pixel in _trail) pixel.enabled = false;
         }
 
+        // Persegue o alvo a cada frame.
         private void Update()
         {
             if (_target == null || !_target.IsAlive)
@@ -2379,8 +2650,9 @@ namespace Armageddon.Combat
 
             Vector2 position = transform.position;
             Vector2 toTarget = _target.Position - position;
-            float step = _speed * Time.deltaTime;
+            float step = _speed * Time.deltaTime;   // quanto anda neste frame
 
+            // Se o passo deste frame já alcança o alvo (ou está dentro da distância de acerto), acertou.
             if (toTarget.magnitude <= Mathf.Max(step, _hitDistance))
             {
                 _target.TakeDamage(_damage, _isCritical);
@@ -2388,12 +2660,14 @@ namespace Armageddon.Combat
                 return;
             }
 
+            // normalized = mesmo vetor com tamanho 1 (só a direção).
             Vector2 direction = toTarget.normalized;
             position += direction * step;
             transform.position = position;
             PlaceTrail(position, direction);
         }
 
+        // Posiciona os pixels do rastro atrás da bolinha, na direção oposta ao movimento.
         private void PlaceTrail(Vector2 head, Vector2 direction)
         {
             // Pixels atrás da bolinha (que tem 4 px), um por pixel de distância, presos à grade.
@@ -2406,6 +2680,7 @@ namespace Armageddon.Combat
             }
         }
 
+        // Devolve o projétil ao pool, garantindo que isso aconteça uma vez só.
         private void Release()
         {
             _target = null;
@@ -2424,22 +2699,28 @@ using UnityEngine.Pool;
 
 namespace Armageddon.Combat
 {
-    // Reaproveita os projéteis: nada é criado nem destruído durante a run.
+    // POR QUE: com 4 Satellites atirando várias vezes por segundo, criar (Instantiate) e destruir (Destroy)
+    // um projétil a cada tiro gera lixo de memória e engasgos do garbage collector no celular.
+    // ESTRATÉGIA: object pooling com o ObjectPool<T> pronto da Unity (UnityEngine.Pool). O pool guarda
+    // projéteis desligados; "Get" liga um, "Release" desliga e guarda de volta. Nada é criado nem
+    // destruído durante a run. Os Satellites só chamam Fire; não sabem que existe um pool.
     public sealed class ProjectilePool : MonoBehaviour
     {
-        [SerializeField] private Projectile _prefab;
-        [SerializeField] private int _prewarm = 32;
+        [SerializeField] private Projectile _prefab;   // Prefab = "molde" de objeto salvo como asset, que pode ser copiado em cena
+        [SerializeField] private int _prewarm = 32;    // quantos projéteis criar já no carregamento
 
         private ObjectPool<Projectile> _pool;
 
+        // Monta o pool e o "aquece" (prewarm).
         private void Awake()
         {
+            // Cada parâmetro é uma função curta (lambda, "x => ...") que diz ao pool como fazer cada coisa.
             _pool = new ObjectPool<Projectile>(
-                createFunc: () => Instantiate(_prefab, transform),
-                actionOnGet: p => p.gameObject.SetActive(true),
-                actionOnRelease: p => p.gameObject.SetActive(false),
-                actionOnDestroy: p => Destroy(p.gameObject),
-                collectionCheck: false,
+                createFunc: () => Instantiate(_prefab, transform),        // como criar um novo (filho deste objeto)
+                actionOnGet: p => p.gameObject.SetActive(true),          // ao pegar: liga
+                actionOnRelease: p => p.gameObject.SetActive(false),     // ao devolver: desliga
+                actionOnDestroy: p => Destroy(p.gameObject),             // se o pool passar do maxSize, destrói o excedente
+                collectionCheck: false,   // não confere devolução dupla (o Projectile já se protege); é mais rápido
                 defaultCapacity: _prewarm,
                 maxSize: 512);
 
@@ -2449,6 +2730,8 @@ namespace Armageddon.Combat
             for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
         }
 
+        // O único método público: pega um projétil e o lança. _pool.Release é passado como a função
+        // "release" que o projétil chama quando acerta ou perde o alvo.
         public void Fire(Vector2 from, ITarget target, float damage, bool isCritical)
         {
             _pool.Get().Launch(from, target, damage, isCritical, _pool.Release);
@@ -2468,14 +2751,20 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: cada Satellite é uma arma independente: tem sua posição na órbita, sua Target Priority e
+    // seu próprio tempo de recarga (cooldown).
+    // ESTRATÉGIA: o Satellite NÃO tem Update próprio. O SatelliteOrbit decide onde ele fica (SetAngle) e
+    // manda ele "pensar" a cada frame (Tick), passando os Stats, os alvos e o pool. Assim a ordem de
+    // execução é controlada num lugar só e todos compartilham os mesmos Stats.
     // Um Satellite: fica onde o SatelliteOrbit manda e atira no Quadrant onde está (Seção 4.1).
     // A orientação é fixa: o sprite nunca gira (Seção 6.2).
     public sealed class Satellite : MonoBehaviour
     {
         [SerializeField] private TargetPriority _priority = TargetPriority.Closest;
 
-        private float _cooldown;
+        private float _cooldown;   // segundos até poder atirar de novo (0 ou menos = pronto)
 
+        // Propriedade pública que lê/escreve o campo serializado: a UI (Fase 6) troca a prioridade por aqui.
         public TargetPriority Priority
         {
             get => _priority;
@@ -2485,12 +2774,16 @@ namespace Armageddon.Combat
         public float AngleDegrees { get; private set; }
         public Quadrant CurrentQuadrant => Quadrants.FromAngle(AngleDegrees);
 
+        // Avisado a cada disparo (o QuadrantView usa para piscar o Quadrant).
         public event Action<Satellite> Fired;
 
+        // Posiciona o Satellite na órbita a partir de um ângulo.
+        // Trigonometria básica: (cos θ, sin θ) é o ponto do círculo de raio 1 no ângulo θ; multiplicar
+        // pelo raio da órbita leva ao círculo certo.
         public void SetAngle(float degrees)
         {
             AngleDegrees = Mathf.Repeat(degrees, 360f);
-            float radians = AngleDegrees * Mathf.Deg2Rad;
+            float radians = AngleDegrees * Mathf.Deg2Rad;   // Cos/Sin trabalham em radianos
             Vector2 p = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * WorldLayout.OrbitRadius;
             transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
         }
@@ -2515,6 +2808,8 @@ namespace Armageddon.Combat
             float damage = stats.RollDamage(distance, out bool isCritical);
             projectiles.Fire(transform.position, target, damage, isCritical);
 
+            // "+=" em vez de "=": se o cooldown passou um pouco do zero, a sobra é descontada do próximo,
+            // e a cadência média fica exata mesmo com frames irregulares.
             _cooldown += 1f / Mathf.Max(0.01f, stats.attackSpeed);
             Fired?.Invoke(this);
         }
@@ -2530,6 +2825,11 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: todos os Satellites compartilham o mesmo círculo e precisam ficar igualmente espaçados,
+    // mesmo quando um novo é adicionado. Se cada um girasse sozinho, eles poderiam se desalinhar.
+    // ESTRATÉGIA: um "dono da órbita": guarda UM ângulo global, cria/remove os Satellites, e no Update
+    // posiciona todos (ângulo + i × espaçamento) e chama o Tick de cada um na ordem. Também guarda os
+    // SatelliteStats compartilhados e repassa o evento de disparo para quem estiver ouvindo.
     // A órbita compartilhada: todos os Satellites no mesmo círculo, igualmente espaçados,
     // girando juntos no sentido anti-horário na velocidade do Stat Orbit Speed (Seção 4.1).
     public sealed class SatelliteOrbit : MonoBehaviour
@@ -2539,7 +2839,7 @@ namespace Armageddon.Combat
         [SerializeField] private Satellite _satellitePrefab;
         [SerializeField] private ProjectilePool _projectiles;
         [SerializeField, Range(1, MaxSatellites)] private int _startingCount = 1;
-        [SerializeField] private SatelliteStats _stats = new SatelliteStats();
+        [SerializeField] private SatelliteStats _stats = new SatelliteStats();   // editável no Inspector até a Fase 6
 
         private readonly List<Satellite> _satellites = new List<Satellite>();
         private float _angle = 90f;   // o primeiro Satellite começa no topo
@@ -2547,26 +2847,31 @@ namespace Armageddon.Combat
         public IReadOnlyList<Satellite> Satellites => _satellites;
         public SatelliteStats Stats => _stats;
 
+        // Repassa o Fired de qualquer Satellite: quem ouve não precisa se inscrever em cada um.
         public event Action<Satellite> SatelliteFired;
-        public event Action CountChanged;
+        public event Action CountChanged;   // a UI (SatellitePanel) redesenha quando muda o número de Satellites
 
+        // Cria os Satellites iniciais.
         private void Start()
         {
             SetCount(_startingCount);
         }
 
+        // Troca os Stats de todos os Satellites de uma vez (chamado pela economia da run na Fase 6).
         public void SetStats(SatelliteStats stats)
         {
             _stats = stats;
         }
 
         // Perks Satellite 2/3/4 (Seção 5.2). Os novos entram já espaçados; ninguém "pula" de posição.
+        // Adiciona ou remove Satellites até chegar em "count".
         public void SetCount(int count)
         {
             count = Mathf.Clamp(count, 1, MaxSatellites);
 
             while (_satellites.Count < count)
             {
+                // Instantiate(prefab, pai): cria uma cópia do prefab como filho deste objeto.
                 var satellite = Instantiate(_satellitePrefab, transform);
                 satellite.Fired += HandleSatelliteFired;
                 _satellites.Add(satellite);
@@ -2575,7 +2880,7 @@ namespace Armageddon.Combat
             while (_satellites.Count > count)
             {
                 var last = _satellites[_satellites.Count - 1];
-                last.Fired -= HandleSatelliteFired;
+                last.Fired -= HandleSatelliteFired;   // desinscreve antes de destruir
                 _satellites.RemoveAt(_satellites.Count - 1);
                 Destroy(last.gameObject);
             }
@@ -2584,6 +2889,7 @@ namespace Armageddon.Combat
             CountChanged?.Invoke();
         }
 
+        // Um único Update move a órbita e faz todos os Satellites pensarem, na ordem.
         private void Update()
         {
             float deltaTime = Time.deltaTime;
@@ -2599,6 +2905,7 @@ namespace Armageddon.Combat
             }
         }
 
+        // Distribui os Satellites igualmente: com 3, ficam a 120° um do outro.
         private void PlaceSatellites()
         {
             if (_satellites.Count == 0) return;
@@ -2609,6 +2916,7 @@ namespace Armageddon.Combat
             }
         }
 
+        // Recebe o Fired de um Satellite e o repassa como SatelliteFired.
         private void HandleSatelliteFired(Satellite satellite)
         {
             SatelliteFired?.Invoke(satellite);
@@ -2628,29 +2936,39 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: a regra "o Satellite só atira no seu Quadrant, até o Attack Range" é invisível. O jogador
+    // precisa VER a área coberta para entender o combate e decidir os Upgrades.
+    // ESTRATÉGIA: um componente só visual. Cria por código (1) as duas linhas dos eixos e (2) quatro
+    // preenchimentos de quarto de círculo, um por Quadrant. A cada frame, liga os preenchimentos onde há
+    // Satellite e faz piscar o Quadrant que acabou de atirar (ouvindo o evento SatelliteFired).
+    // Não mexe no combate: só lê o SatelliteOrbit.
     // Desenha os eixos dos Quadrants e o preenchimento dos Quadrants cobertos (Seção 6.2).
     public sealed class QuadrantView : MonoBehaviour
     {
         [SerializeField] private SatelliteOrbit _orbit;
         [SerializeField] private Color _fillColor = new Color(1f, 0.67f, 0.24f, 0.13f);
-        [SerializeField] private float _flashAlpha = 0.3f;
-        [SerializeField] private float _flashDecayPerSecond = 4f;
+        [SerializeField] private float _flashAlpha = 0.3f;            // alpha no auge da piscada
+        [SerializeField] private float _flashDecayPerSecond = 4f;     // quão rápido a piscada apaga
         [SerializeField] private Color _axisColor = new Color(0.9f, 0.86f, 1f, 0.16f);
         [SerializeField] private string _sortingLayer = "Quadrants";
 
+        // Arrays de 4 posições, indexados pelo número do Quadrant (0–3).
         private readonly SpriteRenderer[] _fills = new SpriteRenderer[4];
-        private readonly float[] _flash = new float[4];
-        private readonly bool[] _covered = new bool[4];
+        private readonly float[] _flash = new float[4];       // 1 = acabou de piscar, 0 = normal
+        private readonly bool[] _covered = new bool[4];       // tem Satellite neste Quadrant agora?
         private Texture2D _fillTexture;
-        private float _builtRange = -1f;
+        private float _builtRange = -1f;   // alcance para o qual a textura foi desenhada (-1 = nenhum ainda)
         private bool _fillVisible = true;
 
+        // Start porque depende do _orbit (outro objeto) já ter feito seu Awake.
         private void Start()
         {
             BuildAxes();
             _orbit.SatelliteFired += HandleSatelliteFired;
         }
 
+        // Desinscreve do evento e destrói a textura criada por código. Texturas criadas com "new" não são
+        // liberadas sozinhas quando o objeto some: sem o Destroy, ficariam ocupando memória.
         private void OnDestroy()
         {
             if (_orbit != null) _orbit.SatelliteFired -= HandleSatelliteFired;
@@ -2663,8 +2981,12 @@ namespace Armageddon.Combat
             _fillVisible = visible;
         }
 
+        // LateUpdate (ver CameraRig): roda depois do Update do SatelliteOrbit, então já vê os Satellites
+        // nas posições deste frame.
         private void LateUpdate()
         {
+            // Só redesenha a textura quando o Attack Range muda (Upgrade), não todo frame.
+            // Mathf.Approximately compara floats com tolerância (floats raramente são exatamente iguais).
             float range = _orbit.Stats.attackRange;
             if (!Mathf.Approximately(range, _builtRange)) BuildFills(range);
 
@@ -2681,6 +3003,7 @@ namespace Armageddon.Combat
             }
         }
 
+        // Um disparo acende a piscada do Quadrant de quem atirou.
         private void HandleSatelliteFired(Satellite satellite)
         {
             _flash[(int)satellite.CurrentQuadrant] = 1f;
@@ -2688,33 +3011,38 @@ namespace Armageddon.Combat
 
         // Um quarto de círculo de raio = Attack Range, pixel a pixel. Girado de 90 em 90 graus para os 4 Quadrants,
         // o que não distorce os pixels.
+        // Estratégia: uma textura quadrada de "size × size" pixels; cada pixel é branco se está dentro do
+        // círculo (x² + y² ≤ r²) e transparente se está fora. A cor final vem do SpriteRenderer.color.
         private void BuildFills(float range)
         {
             _builtRange = range;
             int size = Mathf.Max(1, Mathf.CeilToInt(range * WorldLayout.PixelsPerUnit));
 
-            if (_fillTexture != null) Destroy(_fillTexture);
+            if (_fillTexture != null) Destroy(_fillTexture);   // libera a textura do alcance antigo
             _fillTexture = new Texture2D(size, size) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-            var pixels = new Color32[size * size];
+            var pixels = new Color32[size * size];   // preencher um array e enviar de uma vez é muito mais rápido que SetPixel um a um
             float radiusSquared = size * size;
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float dx = x + 0.5f, dy = y + 0.5f;
+                    float dx = x + 0.5f, dy = y + 0.5f;   // +0,5 = centro do pixel
                     pixels[y * size + x] = dx * dx + dy * dy <= radiusSquared ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
                 }
             }
             _fillTexture.SetPixels32(pixels);
             _fillTexture.Apply();
+            // Pivô Vector2.zero = canto de baixo à esquerda: esse canto fica no centro do planeta.
             var sprite = Sprite.Create(_fillTexture, new Rect(0, 0, size, size), Vector2.zero, WorldLayout.PixelsPerUnit);
 
             for (int q = 0; q < 4; q++)
             {
+                // Cria os 4 SpriteRenderers só na primeira vez; depois só troca o sprite.
                 if (_fills[q] == null)
                 {
                     _fills[q] = new GameObject($"Fill {(Quadrant)q}").AddComponent<SpriteRenderer>();
                     _fills[q].transform.SetParent(transform, false);
+                    // Quaternion.Euler(0, 0, ângulo) = rotação em volta do eixo Z (o "giro" em 2D).
                     _fills[q].transform.localRotation = Quaternion.Euler(0f, 0f, q * 90f);
                     _fills[q].sortingLayerName = _sortingLayer;
                 }
@@ -2724,6 +3052,7 @@ namespace Armageddon.Combat
         }
 
         // Duas linhas pontilhadas (1 px aceso, 2 apagados) cruzando a área do jogo.
+        // Uma textura de 1 pixel de altura, usada duas vezes: deitada (eixo X) e girada 90° (eixo Y).
         private void BuildAxes()
         {
             int length = Mathf.CeilToInt(WorldLayout.SpawnRadius * 2f * WorldLayout.PixelsPerUnit);
@@ -2741,7 +3070,7 @@ namespace Armageddon.Combat
                 axis.sprite = sprite;
                 axis.color = _axisColor;
                 axis.sortingLayerName = _sortingLayer;
-                axis.sortingOrder = 1;
+                axis.sortingOrder = 1;   // por cima dos preenchimentos
             }
         }
     }
@@ -2757,7 +3086,11 @@ using UnityEngine;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: os inimigos só chegam na Fase 4, mas já queremos ver os Satellites atirando agora.
+    // ESTRATÉGIA: o alvo mais simples possível que cumpre o contrato ITarget: fica parado, tem HP e se
+    // destrói ao morrer. Prova que o combate funciona com QUALQUER ITarget (ver ITarget).
     // Alvo parado, só para testes até os inimigos existirem (Fase 4). Some do build final.
+    // ", ITarget" depois de MonoBehaviour = "esta classe cumpre o contrato ITarget".
     public sealed class TargetDummy : MonoBehaviour, ITarget
     {
         private float _hitpoints;
@@ -2767,6 +3100,7 @@ namespace Armageddon.Combat
         public float CurrentHitpoints => _hitpoints;
         public bool IsAlive => _hitpoints > 0f;
 
+        // Fábrica estática: cria o objeto do zero por código (sem prefab) e devolve o dummy pronto.
         public static TargetDummy Spawn(Vector2 position, Sprite sprite, float hitpoints)
         {
             var go = new GameObject("TargetDummy");
@@ -2779,9 +3113,11 @@ namespace Armageddon.Combat
             return dummy;
         }
 
+        // Entra na lista de alvos ao ser ligado e sai ao ser desligado/destruído (ver TargetRegistry).
         private void OnEnable() => TargetRegistry.Register(this);
         private void OnDisable() => TargetRegistry.Unregister(this);
 
+        // Cumpre ITarget.TakeDamage: desconta o HP, mostra no Console e se destrói ao zerar.
         public void TakeDamage(float amount, bool isCritical)
         {
             if (!IsAlive) return;
@@ -2803,6 +3139,10 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Combat
 {
+    // POR QUE: testar o combate exige criar alvos, mudar o número de Satellites e trocar a Target Priority
+    // sem ter UI ainda.
+    // ESTRATÉGIA: um componente colocado na cena Gameplay (diferente do DevShortcuts, que vive no [Services])
+    // porque precisa de referências da cena (_orbit) arrastadas no Inspector.
     // Teclas de teste do combate: T = alvo de teste no mouse · 1–4 = número de Satellites · Q = troca a Target Priority.
     // A CLASSE existe em todo build (ela fica numa cena); os campos e o Update somem do build final.
     // Se a classe inteira sumisse, a cena teria um "Missing Script" no build final.
@@ -2813,6 +3153,7 @@ namespace Armageddon.Combat
         [SerializeField] private Sprite _dummySprite;
         [SerializeField] private float _dummyHitpoints = 30f;
 
+        // Lê as teclas de teste a cada frame.
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -2831,6 +3172,7 @@ namespace Armageddon.Combat
 
             if (keyboard.qKey.wasPressedThisFrame)
             {
+                // Avança para a próxima prioridade do enum; "% 4" volta para a primeira depois da última.
                 foreach (var satellite in _orbit.Satellites)
                 {
                     satellite.Priority = (TargetPriority)(((int)satellite.Priority + 1) % 4);
@@ -2909,16 +3251,24 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: tipos diferentes de inimigo andam de jeitos diferentes (reto, zigue-zague, e mais no
+    // futuro, Seção 9). Colocar um "if tipo == Scout" dentro do Enemy cresceria sem controle.
+    // ESTRATÉGIA: padrão "Strategy": o jeito de andar é um objeto separado que cumpre esta interface.
     // Todo inimigo avança em linha reta para o centro do planeta. O movimento só decide o desvio LATERAL
     // (perpendicular à direção do planeta) em função do tempo de vida do inimigo.
+    // Por ser uma função do tempo (e não "mova-se um pouco"), o movimento não precisa guardar estado.
     public interface IEnemyMovement
     {
-        float LateralOffset(float time);
+        float LateralOffset(float time);   // desvio lateral, em u, depois de "time" segundos de vida
     }
 
+    // POR QUE: o Inspector não sabe mostrar uma interface; o designer escolhe o movimento por este enum,
+    // e a EnemyDefinition converte o enum na classe certa.
     public enum MovementKind { Straight, ZigZag }
 
-    // Grunt, Swarmer e Brute (Seção 4.4). Não guarda estado: uma instância serve para todos.
+    // POR QUE: Grunt, Swarmer e Brute andam em linha reta (Seção 4.4).
+    // ESTRATÉGIA: desvio sempre 0. Não guarda estado: uma instância serve para todos ("Instance" é um
+    // singleton simples: um único objeto compartilhado, criado uma vez).
     public sealed class StraightMovement : IEnemyMovement
     {
         public static readonly StraightMovement Instance = new StraightMovement();
@@ -2926,11 +3276,13 @@ namespace Armageddon.Enemies
         public float LateralOffset(float time) => 0f;
     }
 
-    // Scout: zigue-zague leve (amplitude 0,5 u, 1,5 Hz, Seção 4.4). Também não guarda estado.
+    // POR QUE: o Scout faz um zigue-zague leve (amplitude 0,5 u, 1,5 Hz, Seção 4.4), mais difícil de acertar.
+    // ESTRATÉGIA: uma onda senoidal: amplitude × sen(2π × frequência × tempo). Os parâmetros são fixados
+    // no construtor e nunca mudam, então a instância também pode ser compartilhada.
     public sealed class ZigZagMovement : IEnemyMovement
     {
-        private readonly float _amplitude;
-        private readonly float _frequency;
+        private readonly float _amplitude;   // quanto se afasta para cada lado, em u
+        private readonly float _frequency;   // quantas idas e voltas por segundo (Hz)
 
         public ZigZagMovement(float amplitude, float frequency)
         {
@@ -2954,11 +3306,19 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: Grunt, Scout, Swarmer e Brute diferem só em números e sprites. Criar uma classe (ou um
+    // prefab) por inimigo duplicaria código; deixar os números no código obrigaria a recompilar para
+    // balancear.
+    // ESTRATÉGIA: ScriptableObject = um asset de dados que vive na pasta do projeto (não numa cena).
+    // Cada inimigo é um arquivo (Enemy_Grunt.asset...) editado no Inspector. Um único prefab de Enemy
+    // recebe a definição ao nascer. Balancear vira editar asset, sem mexer em código.
+    // [CreateAssetMenu] adiciona a opção "Create > Armageddon > Enemy Definition" no botão direito da janela Project.
     // Um inimigo comum (Seção 4.4). Os valores são os da Wave 1; a escalada por Wave (Seção 4.3) é
     // aplicada no spawn, pelos multiplicadores que a Fase 5 calcula.
     [CreateAssetMenu(menuName = "Armageddon/Enemy Definition", fileName = "Enemy_")]
     public sealed class EnemyDefinition : ScriptableObject
     {
+        // [Header] só desenha um título no Inspector para agrupar os campos.
         [Header("Valores na Wave 1 (Seção 4.4)")]
         [SerializeField] private float _hitpoints = 10f;
         [SerializeField] private float _damage = 5f;
@@ -2972,8 +3332,8 @@ namespace Armageddon.Enemies
         [SerializeField] private float _zigZagFrequency = 1.5f;
 
         [Header("Spawn (usados pelas Waves, Fase 5)")]
-        [SerializeField] private int _unlockWave = 1;
-        [SerializeField] private float _spawnWeight = 50f;
+        [SerializeField] private int _unlockWave = 1;             // a partir de qual Wave pode aparecer
+        [SerializeField] private float _spawnWeight = 50f;        // peso no sorteio: maior = aparece mais
         [SerializeField] private int _clusterSize = 1;            // Swarmer: 8
         [SerializeField] private float _clusterSpread = 0.6f;     // raio do cacho, em u
 
@@ -2982,8 +3342,12 @@ namespace Armageddon.Enemies
         [SerializeField] private float _fps = 6f;
         [SerializeField] private ExplosionKind _explosion = ExplosionKind.Small;
 
+        // [NonSerialized]: cache só em memória, nunca salvo no asset. Criado na primeira vez que alguém pede.
+        // Atenção: por ficar em cache, mudar a amplitude/frequência no Inspector DURANTE o Play não tem efeito
+        // até o próximo Play.
         [NonSerialized] private IEnemyMovement _movementInstance;
 
+        // Propriedades só de leitura: o resto do jogo lê os valores, mas só o Inspector os altera.
         public float Hitpoints => _hitpoints;
         public float Damage => _damage;
         public float Speed => _speed;
@@ -2997,6 +3361,7 @@ namespace Armageddon.Enemies
         public float Fps => _fps;
         public ExplosionKind Explosion => _explosion;
 
+        // Converte o enum do Inspector no objeto de movimento, uma vez só.
         // Os movimentos não guardam estado, então todos os inimigos do mesmo tipo usam a mesma instância.
         public IEnemyMovement Movement
         {
@@ -3013,8 +3378,9 @@ namespace Armageddon.Enemies
         }
     }
 
+    // POR QUE: um inimigo pode ter várias versões visuais (cores/desenhos), sorteadas no spawn.
     // Uma variação visual: os frames de uma linha da spritesheet (Grunt), ou uma célula só (Brute).
-    // O Unity não serializa Sprite[][], por isso cada variação é um objeto com a sua lista.
+    // ESTRATÉGIA: o Unity não serializa Sprite[][], por isso cada variação é um objeto com a sua lista.
     [Serializable]
     public sealed class SpriteVariant
     {
@@ -3033,11 +3399,17 @@ using UnityEngine.Pool;
 
 namespace Armageddon.World
 {
+    // POR QUE: cada inimigo tem um tamanho de explosão; o enum dá nome a cada um.
     public enum ExplosionKind { Small, Big, Mothership }
 
+    // POR QUE: dezenas de inimigos morrem por segundo nas Waves altas; criar e destruir um objeto de
+    // explosão por morte seria o mesmo problema dos projéteis (ver ProjectilePool).
+    // ESTRATÉGIA: pool de objetos com SpriteAnimator em modo "uma vez". Cada explosão se devolve ao pool
+    // sozinha quando o animator avisa Finished. Quem chama só diz "tipo + posição".
     // Toca uma explosão (animação "uma vez", Seção 6.4) e devolve o objeto ao pool quando ela termina.
     public sealed class ExplosionPool : MonoBehaviour
     {
+        // Classe aninhada (dentro da outra) e privada: só existe para organizar o Inspector deste componente.
         [Serializable]
         private sealed class ExplosionFrames
         {
@@ -3052,6 +3424,7 @@ namespace Armageddon.World
 
         private ObjectPool<SpriteAnimator> _pool;
 
+        // Monta e aquece o pool (mesma estratégia do ProjectilePool).
         private void Awake()
         {
             _pool = new ObjectPool<SpriteAnimator>(
@@ -3068,16 +3441,20 @@ namespace Armageddon.World
             for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
         }
 
+        // Chamado pelo EnemyPool (e pela Mothership): toca a explosão do tipo pedido na posição.
         public void Play(ExplosionKind kind, Vector2 position)
         {
             var explosion = Find(kind);
-            if (explosion == null) return;
+            if (explosion == null) return;   // tipo sem frames configurados no Inspector: ignora sem erro
 
             var animator = _pool.Get();
             animator.transform.position = new Vector3(WorldLayout.SnapToPixel(position.x), WorldLayout.SnapToPixel(position.y), 0f);
-            animator.SetFrames(explosion.frames, explosion.fps, false);
+            animator.SetFrames(explosion.frames, explosion.fps, false);   // false = toca uma vez
         }
 
+        // Como o pool cria uma explosão nova: objeto vazio + SpriteRenderer + SpriteAnimator.
+        // A inscrição no Finished é feita UMA vez, na criação: toda vez que a animação terminar,
+        // o objeto volta ao pool sozinho.
         private SpriteAnimator Create()
         {
             var go = new GameObject("Explosion");
@@ -3088,6 +3465,7 @@ namespace Armageddon.World
             return animator;
         }
 
+        // Procura a configuração do tipo pedido. Lista pequena (3 itens): um laço simples basta.
         private ExplosionFrames Find(ExplosionKind kind)
         {
             foreach (var explosion in _explosions)
@@ -3111,6 +3489,8 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: o jogo precisa distinguir COMO o inimigo saiu, porque cada saída tem consequência diferente
+    // (Shards, dano, nada).
     // Como um inimigo saiu de cena.
     public enum EnemyExit
     {
@@ -3119,33 +3499,41 @@ namespace Armageddon.Enemies
         Removed,         // apagado por um efeito (onda de choque do Revive, Fase 8): sem Shards e sem dano
     }
 
+    // POR QUE: é o inimigo "vivo" na tela: anda até o planeta, recebe tiros e morre.
+    // ESTRATÉGIA: um único prefab serve para todos os tipos: os números vêm da EnemyDefinition
+    // (ScriptableObject) e o jeito de andar vem do IEnemyMovement. Implementa ITarget para os Satellites
+    // poderem mirar nele. Vive num pool (EnemyPool): Spawn faz o papel de "construtor" e Die devolve ao pool.
+    // O Enemy não conhece Shards, estatísticas nem conquistas: só avisa o pool, que dispara os eventos.
     // Um inimigo comum vivo. Recebe a EnemyDefinition ao nascer (um prefab serve para todos os tipos).
     [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator))]
     public sealed class Enemy : MonoBehaviour, ITarget
     {
         private EnemyDefinition _definition;
         private IEnemyMovement _movement;
-        private PlanetHealth _planet;
-        private EnemyPool _pool;
+        private PlanetHealth _planet;      // a quem causar dano ao chegar
+        private EnemyPool _pool;           // a quem avisar ao sair de cena
         private SpriteAnimator _animator;
         private Vector2 _radialPosition;   // a posição "na linha reta" até o planeta, sem o desvio lateral
         private float _hitpoints;
         private float _damage;
-        private float _age;
+        private float _age;                // segundos de vida (alimenta o zigue-zague)
         private bool _alive;
 
         public EnemyDefinition Definition => _definition;
-        public Vector2 Position { get; private set; }
+        public Vector2 Position { get; private set; }   // posição real (com o desvio lateral): é para onde os projéteis vão
         public float Radius => _definition.Radius;
         public float CurrentHitpoints => _hitpoints;
         public bool IsAlive => _alive;
 
+        // Cache do SpriteAnimator (ver SpriteAnimator.Awake).
         private void Awake()
         {
             _animator = GetComponent<SpriteAnimator>();
         }
 
         // Chamado pelo EnemyPool. Os multiplicadores são a escalada por Wave (Seção 4.3); 1 = valores da Wave 1.
+        // Zera TODO o estado: o objeto pode estar sendo reaproveitado de um inimigo que já morreu.
+        // "internal": só código da assembly Armageddon chama (na prática, o EnemyPool).
         internal void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier, float damageMultiplier,
                             PlanetHealth planet, EnemyPool pool)
         {
@@ -3165,14 +3553,15 @@ namespace Armageddon.Enemies
             _animator.SetFrames(variant.frames, definition.Fps, true);
 
             ApplyPosition();
-            TargetRegistry.Register(this);
+            TargetRegistry.Register(this);   // a partir de agora os Satellites enxergam este inimigo
         }
 
+        // Anda em direção ao centro e confere se chegou ao planeta.
         private void Update()
         {
             if (!_alive) return;
             float deltaTime = Time.deltaTime;
-            if (deltaTime <= 0f) return;
+            if (deltaTime <= 0f) return;   // pausado
 
             _age += deltaTime;
             Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
@@ -3186,10 +3575,12 @@ namespace Armageddon.Enemies
                 return;
             }
 
+            // toCenter / distance = direção (vetor de tamanho 1). O Min impede de "passar do centro" num frame longo.
             _radialPosition += toCenter / distance * Mathf.Min(_definition.Speed * deltaTime, distance);
             ApplyPosition();
         }
 
+        // Cumpre ITarget.TakeDamage: chamado pelo Projectile ao acertar.
         public void TakeDamage(float amount, bool isCritical)
         {
             if (!_alive) return;
@@ -3197,10 +3588,14 @@ namespace Armageddon.Enemies
             if (_hitpoints <= 0f) Die(EnemyExit.Killed);
         }
 
+        // Calcula a posição real = posição na linha reta + desvio lateral, e move o transform (preso à grade de pixels).
+        // Estratégia: separar "avanço" (radial) de "desvio" (lateral) garante que o zigue-zague nunca atrase
+        // nem adiante a chegada ao planeta.
         private void ApplyPosition()
         {
             Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
             Vector2 forward = toCenter.sqrMagnitude > 0f ? toCenter.normalized : Vector2.zero;
+            // (-y, x) é o vetor "forward" girado 90°: a direção de lado.
             Vector2 side = new Vector2(-forward.y, forward.x);
             Position = _radialPosition + side * _movement.LateralOffset(_age);
             transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
@@ -3212,6 +3607,8 @@ namespace Armageddon.Enemies
             if (_alive) Die(EnemyExit.Removed);
         }
 
+        // Único caminho de saída: marca como morto, sai do registro de alvos e avisa o pool
+        // (que toca a explosão, dispara os eventos e desliga o objeto).
         private void Die(EnemyExit exit)
         {
             _alive = false;
@@ -3219,6 +3616,7 @@ namespace Armageddon.Enemies
             _pool.HandleEnemyGone(this, exit);
         }
 
+        // OnDisable: chamado quando o objeto é desligado ou destruído.
         // Segurança: se a cena for descarregada com o inimigo vivo, ele sai do registro.
         private void OnDisable()
         {
@@ -3242,6 +3640,11 @@ using UnityEngine.Pool;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: (1) até 150 inimigos na tela: criar/destruir cada um travaria o celular (ver ProjectilePool);
+    // (2) vários sistemas precisam saber quando um inimigo morreu (Shards, estatísticas, conquistas).
+    // ESTRATÉGIA: o pool é a "porta de entrada e de saída" dos inimigos. Spawn cria (incluindo cachos do
+    // Swarmer); HandleEnemyGone recebe o aviso do Enemy, conta, toca a explosão e dispara os eventos
+    // públicos. Assim os outros sistemas escutam UM objeto em vez de cada inimigo.
     // Cria os inimigos comuns (com cachos, no caso do Swarmer), reaproveita-os e avisa quando cada um some.
     public sealed class EnemyPool : MonoBehaviour
     {
@@ -3258,6 +3661,7 @@ namespace Armageddon.Enemies
         public event Action<Enemy> EnemyKilled;          // destruído por um Satellite: vale Shards (Fase 6)
         public event Action<Enemy> EnemyReachedPlanet;   // kamikaze: já causou o dano; não vale Shards
 
+        // Monta e aquece o pool (mesma estratégia do ProjectilePool).
         private void Awake()
         {
             _pool = new ObjectPool<Enemy>(
@@ -3275,11 +3679,13 @@ namespace Armageddon.Enemies
         }
 
         // Um "slot de spawn" (Seção 4.3): 1 inimigo, ou um cacho de ClusterSize (Swarmer = 8) espalhado em volta do ponto.
+        // Parâmetros com "= 1f" são opcionais: as ferramentas de teste chamam sem escalada.
         public void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier = 1f, float damageMultiplier = 1f)
         {
             int count = Mathf.Max(1, definition.ClusterSize);
             for (int i = 0; i < count; i++)
             {
+                // insideUnitCircle = ponto aleatório dentro de um círculo de raio 1.
                 Vector2 p = count == 1 ? position : position + UnityEngine.Random.insideUnitCircle * definition.ClusterSpread;
                 AliveCount++;
                 _pool.Get().Spawn(definition, p, hitpointsMultiplier, damageMultiplier, _planet, this);
@@ -3296,6 +3702,7 @@ namespace Armageddon.Enemies
             if (exit == EnemyExit.Killed) EnemyKilled?.Invoke(enemy);
             else if (exit == EnemyExit.ReachedPlanet) EnemyReachedPlanet?.Invoke(enemy);
 
+            // Devolve por último: os ouvintes dos eventos acima ainda podem ler os dados do inimigo.
             _pool.Release(enemy);
         }
     }
@@ -3314,6 +3721,9 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: antes das Waves (Fase 5), precisamos criar inimigos à mão para testar movimento, combate e morte.
+    // ESTRATÉGIA: componente de cena com as 4 definições arrastadas no Inspector; lê teclas e chama o
+    // EnemyPool. Também escuta os eventos do pool para mostrar no Console que eles disparam certo.
     // G = Grunt · C = Scout · V = cacho de Swarmers · B = Brute, todos no mouse · R = 10 inimigos sorteados na borda (12 u).
     // Mesma regra do CombatDevTools: a classe existe em todo build; campos e Update, só em desenvolvimento.
     public sealed class EnemyDevTools : MonoBehaviour
@@ -3325,6 +3735,8 @@ namespace Armageddon.Enemies
         [SerializeField] private EnemyDefinition _swarmer;
         [SerializeField] private EnemyDefinition _brute;
 
+        // Par OnEnable/OnDisable para inscrever/desinscrever eventos: padrão seguro para componentes de cena
+        // (se o objeto for desligado, para de ouvir).
         private void OnEnable()
         {
             _pool.EnemyKilled += HandleEnemyKilled;
@@ -3337,6 +3749,7 @@ namespace Armageddon.Enemies
             _pool.EnemyReachedPlanet -= HandleEnemyReachedPlanet;
         }
 
+        // Lê as teclas de teste.
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -3356,6 +3769,7 @@ namespace Armageddon.Enemies
                 var all = new[] { _grunt, _scout, _swarmer, _brute };
                 for (int i = 0; i < 10; i++)
                 {
+                    // Ângulo aleatório (em radianos) → ponto no círculo de spawn.
                     float angle = Random.Range(0f, 2f * Mathf.PI);
                     var edge = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * WorldLayout.SpawnRadius;
                     _pool.Spawn(all[Random.Range(0, all.Length)], edge);
@@ -3364,6 +3778,7 @@ namespace Armageddon.Enemies
             }
         }
 
+        // Respostas aos eventos do pool: só registram no Console.
         private void HandleEnemyKilled(Enemy enemy)
         {
             Debug.Log($"[Dev] {enemy.Definition.name} destruído (+{enemy.Definition.Shards} Shards na Fase 6). Vivos: {_pool.AliveCount}");
@@ -3449,6 +3864,11 @@ using UnityEngine;
 
 namespace Armageddon.Waves
 {
+    // POR QUE: o ritmo do jogo (duração das Waves, quantos inimigos, quanto eles crescem) vai ser
+    // ajustado muitas vezes depois dos dados de Analytics. Esses números não podem estar espalhados no código.
+    // ESTRATÉGIA: um ScriptableObject (ver EnemyDefinition) que guarda os números E as fórmulas pequenas
+    // que dependem deles (SlotsFor, HitpointsMultiplier...). O WaveDirector só pergunta; nunca faz conta
+    // de balanceamento sozinho.
     // Todos os números da Seção 4.3 (valores iniciais, ajustar via Analytics).
     [CreateAssetMenu(menuName = "Armageddon/Wave Balance", fileName = "WaveBalance")]
     public sealed class WaveBalance : ScriptableObject
@@ -3487,11 +3907,15 @@ namespace Armageddon.Waves
         public int MaxAlive => _maxAlive;
         public IReadOnlyList<EnemyDefinition> Enemies => _enemies;
 
+        // Wave 10, 20, 30...: "%" é o resto da divisão; resto 0 = múltiplo de _bossEvery.
         public bool IsBossWave(int wave) => wave > 0 && wave % _bossEvery == 0;
+        // Quantos slots de spawn a Wave tem (Seção 4.3): min(6 + 2·w, 60).
         public int SlotsFor(int wave) => Mathf.Min(_baseSlots + _slotsPerWave * wave, _maxSlots);
+        // Crescimento exponencial: Mathf.Pow(1,09, w−1) = 1,09 multiplicado por ele mesmo (w−1) vezes. Wave 1 = ×1.
         public float HitpointsMultiplier(int wave) => Mathf.Pow(_hitpointsGrowth, wave - 1);
         public float DamageMultiplier(int wave) => Mathf.Pow(_damageGrowth, wave - 1);
 
+        // Quantos Spawn Sectors a Wave sorteia (mais setores = ataque de mais direções).
         public int SectorCountFor(int wave)
         {
             if (wave >= _threeSectorsFromWave) return 3;
@@ -3517,37 +3941,51 @@ using UnityEngine;
 
 namespace Armageddon.Waves
 {
+    // POR QUE: a run precisa de um "maestro" que decida quando cada Wave começa, quais inimigos nascem,
+    // de onde, com que força, e quando a tela foi limpa (Wave Clear). Sem isso, o jogo é só um planeta parado.
+    // ESTRATÉGIA:
+    //  - Máquina de estados com 3 fases (Idle → Warning → Running → Warning...). O Update olha a fase atual
+    //    e decide só a regra de saída dela.
+    //  - Ao começar uma Wave, TODOS os slots são decididos de uma vez (tipo, posição, escalada, horário) e
+    //    postos numa fila; a cada frame nasce quem já está na hora e cabe no limite de 150.
+    //  - Guarda a lista de Waves "não pagas"; o Wave Clear paga todas de uma vez.
+    //  - Não cria inimigos diretamente: pede ao EnemyPool. Não paga Shards: só dispara WaveCleared
+    //    (a economia da Fase 6 escuta). Números vêm do WaveBalance.
     // Conduz a run Wave a Wave (Seção 4.3): aviso de 2 s, spawn espalhado, escalada, fim da Wave e Wave Clear.
     public sealed class WaveDirector : MonoBehaviour
     {
         public const int SectorCount = 6;          // 6 arcos de 60°
         public const float SectorArc = 60f;
 
+        // Enum privado: as fases só importam dentro desta classe.
         private enum Phase { Idle, Warning, Running }
 
         // Um slot esperando para nascer: tipo, posição e escalada já decididos quando a Wave começou.
+        // struct (tipo de valor) porque é só um pacote de dados pequeno, guardado aos montes na fila.
         private struct PendingSpawn
         {
             public EnemyDefinition Definition;
             public Vector2 Position;
             public float HitpointsMultiplier;
             public float DamageMultiplier;
-            public float DueTime;
+            public float DueTime;   // em "tempo de run" (_runTime), não em tempo da Wave
         }
 
         [SerializeField] private WaveBalance _balance;
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private bool _autoStart = true;   // a Fase 8 desliga: o RunController chama StartRun
 
+        // Queue = fila (o primeiro que entra é o primeiro que sai). Como os horários são crescentes,
+        // basta olhar a frente da fila.
         private readonly Queue<PendingSpawn> _queue = new Queue<PendingSpawn>();
-        private readonly List<int> _sectors = new List<int>();
-        private readonly List<int> _unpaidWaves = new List<int>();
-        private readonly List<EnemyDefinition> _unlocked = new List<EnemyDefinition>();
+        private readonly List<int> _sectors = new List<int>();          // Spawn Sectors sorteados para a Wave atual
+        private readonly List<int> _unpaidWaves = new List<int>();      // Waves começadas e ainda sem Wave Clear
+        private readonly List<EnemyDefinition> _unlocked = new List<EnemyDefinition>();   // reaproveitada para não alocar
         private Phase _phase = Phase.Idle;
-        private float _phaseTime;
-        private float _runTime;
-        private float _duration;
-        private int _externalAlive;
+        private float _phaseTime;   // segundos desde que a fase atual começou
+        private float _runTime;     // segundos desde o começo da run (relógio da fila de spawn)
+        private float _duration;    // duração da Wave atual (normal ou Boss)
+        private int _externalAlive; // inimigos vivos fora do EnemyPool (a Mothership)
 
         public int CurrentWave { get; private set; }
         public IReadOnlyList<int> CurrentSectors => _sectors;   // os Spawn Sectors da Wave atual (a Mothership entra por um deles)
@@ -3561,11 +3999,13 @@ namespace Armageddon.Waves
         public event Action<int> BossWaveStarted;                          // a Fase 7 cria a Mothership aqui
         public event Action<IReadOnlyList<int>, bool> WaveCleared;         // Waves pagas; true = antes do timer
 
+        // Até a Fase 8, a run começa sozinha ao abrir a cena.
         private void Start()
         {
             if (_autoStart) StartRun();
         }
 
+        // Zera o estado e começa pelo aviso da Wave 1.
         public void StartRun()
         {
             _queue.Clear();
@@ -3574,6 +4014,7 @@ namespace Armageddon.Waves
             BeginWarning(1);
         }
 
+        // Para tudo (fim de run). Os inimigos já em cena continuam; quem encerra a run cuida deles.
         public void StopRun()
         {
             _phase = Phase.Idle;
@@ -3586,6 +4027,8 @@ namespace Armageddon.Waves
             _externalAlive = Mathf.Max(0, _externalAlive + delta);
         }
 
+        // O "coração" da máquina de estados: avança relógios, faz nascer quem está na hora,
+        // confere o Wave Clear e troca de fase quando a regra de saída é cumprida.
         private void Update()
         {
             float deltaTime = Time.deltaTime;
@@ -3608,6 +4051,7 @@ namespace Armageddon.Waves
             }
         }
 
+        // Entra na fase de aviso da Wave "wave": sorteia os setores e avisa (o SpawnSectorIndicator mostra as setas).
         private void BeginWarning(int wave)
         {
             CurrentWave = wave;
@@ -3617,6 +4061,7 @@ namespace Armageddon.Waves
             WaveWarning?.Invoke(wave, _sectors);
         }
 
+        // Entra na fase Running: define a duração, marca a Wave como "não paga" e enfileira os slots.
         private void BeginWave()
         {
             _phase = Phase.Running;
@@ -3633,8 +4078,10 @@ namespace Armageddon.Waves
             if (boss) BossWaveStarted?.Invoke(wave);
         }
 
+        // Decide todos os slots da Wave e os coloca na fila, espalhados ao longo da janela de spawn (20 s).
         private void EnqueueSlots(int wave)
         {
+            // 1) Quais inimigos já foram liberados nesta Wave, e a soma dos pesos deles.
             _unlocked.Clear();
             float totalWeight = 0f;
             foreach (var definition in _balance.Enemies)
@@ -3645,11 +4092,13 @@ namespace Armageddon.Waves
             }
             if (_unlocked.Count == 0) return;
 
+            // 2) Quantos slots, de quanto em quanto tempo, e a escalada desta Wave.
             int slots = _balance.SlotsFor(wave);
             float interval = _balance.SpawnWindow / slots;
             float hitpoints = _balance.HitpointsMultiplier(wave);
             float damage = _balance.DamageMultiplier(wave);
 
+            // 3) Um PendingSpawn por slot. "new PendingSpawn { ... }" preenche os campos na criação.
             for (int i = 0; i < slots; i++)
             {
                 _queue.Enqueue(new PendingSpawn
@@ -3664,6 +4113,7 @@ namespace Armageddon.Waves
         }
 
         // Nasce quem já está na hora, respeitando o limite de inimigos na tela. Um cacho de Swarmers conta como 8.
+        // Peek olha o primeiro da fila sem tirar; Dequeue tira. Se o primeiro não pode nascer, ninguém atrás dele nasce.
         private void SpawnDue()
         {
             while (_queue.Count > 0)
@@ -3679,11 +4129,13 @@ namespace Armageddon.Waves
 
         // Wave Clear (Seção 4.3): a tela ficou vazia e não há ninguém esperando para nascer.
         // Paga TODAS as Waves pendentes, inclusive as que já tinham passado do timer.
+        // Devolve true se aconteceu (o Update então não confere mais nada neste frame).
         private bool TryWaveClear()
         {
             if (_unpaidWaves.Count == 0 || _queue.Count > 0 || AliveCount > 0) return false;
 
             bool beforeTimer = _phase == Phase.Running && _phaseTime < _duration;
+            // ToArray faz uma cópia: quem recebe o evento não é afetado pelo Clear logo abaixo.
             var paid = _unpaidWaves.ToArray();
             _unpaidWaves.Clear();
             WaveCleared?.Invoke(paid, beforeTimer);
@@ -3693,6 +4145,8 @@ namespace Armageddon.Waves
             return true;
         }
 
+        // Sorteio com pesos: sorteia um número entre 0 e a soma dos pesos e "desconta" o peso de cada tipo
+        // até o número ficar negativo. Tipos com peso maior ocupam uma faixa maior, então saem mais.
         private EnemyDefinition PickWeighted(float totalWeight)
         {
             float roll = UnityEngine.Random.value * totalWeight;
@@ -3701,18 +4155,20 @@ namespace Armageddon.Waves
                 roll -= definition.SpawnWeight;
                 if (roll < 0f) return definition;
             }
-            return _unlocked[_unlocked.Count - 1];
+            return _unlocked[_unlocked.Count - 1];   // proteção contra arredondamento
         }
 
         // Sorteia 'count' setores diferentes entre os 6 (embaralhamento parcial).
+        // Estratégia (Fisher–Yates parcial): lista 0..5; para as primeiras "count" posições, troca cada uma
+        // com uma posição aleatória à frente; depois corta o resto. Garante setores sem repetição.
         private void ChooseSectors(int count)
         {
             _sectors.Clear();
             for (int i = 0; i < SectorCount; i++) _sectors.Add(i);
             for (int i = 0; i < count; i++)
             {
-                int j = UnityEngine.Random.Range(i, SectorCount);
-                (_sectors[i], _sectors[j]) = (_sectors[j], _sectors[i]);
+                int j = UnityEngine.Random.Range(i, SectorCount);   // Range com int: o máximo NÃO é incluído
+                (_sectors[i], _sectors[j]) = (_sectors[j], _sectors[i]);   // troca os dois valores (sintaxe de tupla)
             }
             _sectors.RemoveRange(count, SectorCount - count);
         }
@@ -3749,10 +4205,16 @@ using UnityEngine;
 
 namespace Armageddon.Waves
 {
+    // POR QUE: os inimigos nascem fora da tela (12 u). Sem aviso, o jogador não teria como se preparar
+    // (ex.: trocar a Target Priority ou comprar Upgrades) para a direção do ataque.
+    // ESTRATÉGIA: componente só visual que escuta o WaveDirector. Cria de antemão uma seta por setor
+    // (6 no total) e só liga/desliga as necessárias. A posição é recalculada a cada frame porque a câmera
+    // pode deslizar (gaveta) e a tela pode ter qualquer proporção.
     // Durante os 2 s de aviso, mostra uma seta piscando na borda da tela para cada Spawn Sector sorteado (Seção 6.2).
     // A seta fica onde a linha "planeta → centro do setor" cruza a borda da tela, e acompanha a câmera.
     public sealed class SpawnSectorIndicator : MonoBehaviour
     {
+        // Pacote do Inspector: os frames de uma seta (o Unity não serializa Sprite[][], ver SpriteVariant).
         [Serializable]
         private sealed class ArrowFrames
         {
@@ -3768,6 +4230,7 @@ namespace Armageddon.Waves
 
         private readonly SpriteAnimator[] _views = new SpriteAnimator[WaveDirector.SectorCount];
 
+        // Cria as 6 setas desligadas, uma vez só.
         private void Awake()
         {
             for (int i = 0; i < _views.Length; i++)
@@ -3783,6 +4246,9 @@ namespace Armageddon.Waves
             }
         }
 
+        // Inscreve nos eventos do WaveDirector (e desinscreve no OnDisable).
+        // Funciona mesmo com a Wave 1 porque todos os OnEnable rodam antes do Start do WaveDirector,
+        // que é quem dispara o primeiro aviso.
         private void OnEnable()
         {
             _waves.WaveWarning += HandleWaveWarning;
@@ -3795,27 +4261,32 @@ namespace Armageddon.Waves
             _waves.WaveStarted -= HandleWaveStarted;
         }
 
+        // Aviso de Wave: acende só as setas dos setores sorteados.
         private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
         {
             HideAll();
             foreach (int sector in sectors) _views[sector].gameObject.SetActive(true);
         }
 
+        // A Wave começou: o aviso acabou.
         private void HandleWaveStarted(int wave)
         {
             HideAll();
         }
 
+        // Desliga todas as setas.
         private void HideAll()
         {
             foreach (var view in _views) view.gameObject.SetActive(false);
         }
 
+        // Reposiciona as setas acesas na borda da tela (LateUpdate: depois de a câmera se mover, ver CameraRig).
         private void LateUpdate()
         {
             var view = Camera.main;
             if (view == null) return;
 
+            // Retângulo visível da câmera, encolhido pela margem.
             Vector2 cameraCenter = view.transform.position;
             float halfHeight = view.orthographicSize - _edgeMargin;
             float halfWidth = view.orthographicSize * view.aspect - _edgeMargin;
@@ -3825,10 +4296,13 @@ namespace Armageddon.Waves
             {
                 if (!_views[i].gameObject.activeSelf) continue;
 
+                // Direção do centro do setor i (30°, 90°, 150°...).
                 float angle = (i * WaveDirector.SectorArc + WaveDirector.SectorArc * 0.5f) * Mathf.Deg2Rad;
                 var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
 
                 // Distância, ao longo da direção, até a primeira borda (esquerda/direita ou cima/baixo) da tela.
+                // Estratégia: calcula quanto andar até bater na borda vertical (tx) e na horizontal (ty);
+                // a menor das duas é a borda que a linha cruza primeiro.
                 float tx = direction.x > 0f ? (cameraCenter.x + halfWidth - origin.x) / direction.x
                          : direction.x < 0f ? (cameraCenter.x - halfWidth - origin.x) / direction.x
                          : float.MaxValue;
@@ -3858,12 +4332,16 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Waves
 {
+    // POR QUE: esperar 30 s por Wave para testar a Wave 15 é inviável; e o Wave Clear precisa ser testado à vontade.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools). Escuta os eventos do WaveDirector e
+    // os escreve no Console, para conferir a ordem aviso → início → clear.
     // N = acaba o timer da Wave atual · K = destrói todos os inimigos (testa o Wave Clear). Registra os eventos no Console.
     public sealed class WaveDevTools : MonoBehaviour
     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField] private WaveDirector _waves;
 
+        // Inscreve nos eventos do WaveDirector (e desinscreve no OnDisable).
         private void OnEnable()
         {
             _waves.WaveWarning += HandleWaveWarning;
@@ -3878,6 +4356,7 @@ namespace Armageddon.Waves
             _waves.WaveCleared -= HandleWaveCleared;
         }
 
+        // Lê as teclas de teste.
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -3888,10 +4367,12 @@ namespace Armageddon.Waves
             if (keyboard.kKey.wasPressedThisFrame)
             {
                 // Cópia da lista: cada alvo que morre sai do TargetRegistry durante o laço.
+                // (Alterar uma lista enquanto se percorre com foreach dá erro; ToList, do System.Linq, faz a cópia.)
                 foreach (var target in TargetRegistry.Alive.ToList()) target.TakeDamage(float.MaxValue, false);
             }
         }
 
+        // Respostas aos eventos: só escrevem no Console. string.Join junta a lista com ", ".
         private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
         {
             Debug.Log($"[Waves] Aviso: Wave {wave} vem dos setores {string.Join(", ", sectors)}");
@@ -3963,6 +4444,8 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: cada Stat precisa de um identificador que o código use sem depender de nomes de asset.
+    // ESTRATÉGIA: enum; os assets StatDefinition dizem "eu sou o Stat X" por este id.
     // Os 13 Stats da Seção 4.2.
     public enum StatId
     {
@@ -3971,11 +4454,16 @@ namespace Armageddon.Economy
         ResourceBonus, ResourcePerWave,
     }
 
+    // Em qual Track (aba da gaveta) o Stat aparece.
     public enum StatTrack { Offense, Defense, Utility }
 
     // Como o valor aparece no card.
     public enum StatFormat { Number, Percent, PerSecond, Multiplier, Units, DegreesPerSecond, PercentPerUnit }
 
+    // POR QUE: os 13 Stats seguem a mesma regra (base + incremento × nível, teto, custo crescente); só os
+    // números mudam. É a "definição" (o que o Stat É), separada do "estado" (em que nível ele está na run).
+    // ESTRATÉGIA: ScriptableObject (ver EnemyDefinition), um asset por Stat (Stat_Damage...). Nunca muda
+    // durante o jogo: quem guarda o nível é o RunStats. Também sabe se formatar para o card (Format).
     // Um Stat (Seção 4.2). Percentuais são guardados como fração: 1,5 p.p. = 0,015; 0,4 %/u = 0,004.
     [CreateAssetMenu(menuName = "Armageddon/Stat Definition", fileName = "Stat_")]
     public sealed class StatDefinition : ScriptableObject
@@ -3986,10 +4474,10 @@ namespace Armageddon.Economy
         [SerializeField] private StatTrack _track;
         [SerializeField] private string _displayName;   // a Fase 11 troca por uma chave de Localization
         [SerializeField] private Sprite _icon;
-        [SerializeField] private float _base;
-        [SerializeField] private float _perLevel;
+        [SerializeField] private float _base;           // valor no nível 0
+        [SerializeField] private float _perLevel;       // quanto cada Upgrade soma
         [SerializeField] private float _cap;            // 0 = sem teto
-        [SerializeField] private int _baseCost = 10;
+        [SerializeField] private int _baseCost = 10;    // custo do primeiro Upgrade
         [SerializeField] private StatFormat _format;
 
         public StatId Id => _id;
@@ -4002,6 +4490,8 @@ namespace Armageddon.Economy
         public float Cap => _cap;
         public int BaseCost => _baseCost;
 
+        // Transforma o número em texto para o card, conforme o formato do Stat (ex.: 0,015 → "1.5%").
+        // "{value:0.#}" = formatação do C#: até 1 casa decimal, sem zeros inúteis.
         public string Format(float value)
         {
             return _format switch
@@ -4026,6 +4516,10 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: o jogo precisa de "todos os Stats" num lugar só, numa ordem definida (a ordem dos cards
+    // na gaveta), sem procurar assets pelo projeto.
+    // ESTRATÉGIA: um ScriptableObject que é só uma lista de StatDefinition arrastada no Inspector.
+    // A ordem da lista é a ordem de exibição.
     // A lista dos 13 Stats, na ordem em que aparecem na gaveta.
     [CreateAssetMenu(menuName = "Armageddon/Stat Catalog", fileName = "StatCatalog")]
     public sealed class StatCatalog : ScriptableObject
@@ -4034,6 +4528,8 @@ namespace Armageddon.Economy
 
         public IReadOnlyList<StatDefinition> Stats => _stats;
 
+        // Os Stats de uma Track (uma aba da gaveta), mantendo a ordem do catálogo.
+        // FindAll com lambda: "s => s.Track == track" = "fique com os s cuja Track é a pedida".
         public List<StatDefinition> ForTrack(StatTrack track)
         {
             return _stats.FindAll(s => s.Track == track);
@@ -4052,6 +4548,9 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: Perks e Planet Core (Fase 9) alteram Stats sem serem Upgrades (ex.: "+10% de dano" o tempo todo).
+    // Se eles mexessem nos níveis, o custo dos Upgrades ficaria errado.
+    // ESTRATÉGIA: um ajuste separado, aplicado DEPOIS do cálculo por nível.
     // Um ajuste vindo de fora dos Upgrades: Perks "Starting X" e Planet Core (Fase 9).
     // valor final = (valor dos Upgrades + add) × multiply
     [Serializable]
@@ -4061,19 +4560,26 @@ namespace Armageddon.Economy
         public float add;
         public float multiply;
 
+        // Atalhos de criação: StatModifier.Add(StatId.Damage, 5) é mais legível que preencher os 3 campos.
         public static StatModifier Add(StatId stat, float value) => new StatModifier { stat = stat, add = value, multiply = 1f };
         public static StatModifier Multiply(StatId stat, float value) => new StatModifier { stat = stat, add = 0f, multiply = value };
     }
 
+    // POR QUE: durante a run, cada Stat tem um nível que sobe com as compras; no fim, tudo zera.
+    // ESTRATÉGIA: classe C# pura (não é MonoBehaviour: não precisa de cena nem de Update), criada pelo
+    // RunEconomy a cada run. Guarda os níveis num Dictionary (StatId → nível) e calcula valores sob
+    // demanda. Avisa por evento (StatChanged) quando algo muda, para a UI e os Satellites se atualizarem.
     // Nível e valor de cada Stat durante uma run. Zera a cada run (Seção 4.2: Upgrades valem só até o fim da run).
     public sealed class RunStats
     {
+        // Dictionary = tabela de consulta rápida "chave → valor".
         private readonly Dictionary<StatId, StatDefinition> _definitions = new Dictionary<StatId, StatDefinition>();
         private readonly Dictionary<StatId, int> _levels = new Dictionary<StatId, int>();
         private readonly List<StatModifier> _modifiers = new List<StatModifier>();
 
         public event Action<StatId> StatChanged;
 
+        // Monta as tabelas a partir das definições do catálogo, todos os níveis em 0.
         public RunStats(IEnumerable<StatDefinition> definitions)
         {
             foreach (var definition in definitions)
@@ -4083,17 +4589,20 @@ namespace Armageddon.Economy
             }
         }
 
+        // Consultas rápidas: definição, nível atual e valor atual de um Stat.
         public StatDefinition Definition(StatId id) => _definitions[id];
         public int Level(StatId id) => _levels[id];
         public float Value(StatId id) => ValueAtLevel(id, _levels[id]);
 
         // Seção 4.2: base + incremento × nível, limitado pelo teto, e DEPOIS modificado por Perks e Planet Core.
+        // Recebe o nível como parâmetro para o card poder mostrar "valor atual → valor do próximo nível".
         public float ValueAtLevel(StatId id, int level)
         {
             var definition = _definitions[id];
             float value = definition.Base + definition.PerLevel * level;
             if (definition.HasCap) value = Mathf.Min(value, definition.Cap);
 
+            // Soma todos os "add" e multiplica todos os "multiply" que se aplicam a este Stat.
             float add = 0f, multiply = 1f;
             foreach (var modifier in _modifiers)
             {
@@ -4104,6 +4613,7 @@ namespace Armageddon.Economy
             return (value + add) * multiply;
         }
 
+        // Chegou no teto? (o teto vale para o valor dos Upgrades, antes dos modificadores)
         public bool IsMaxed(StatId id)
         {
             var definition = _definitions[id];
@@ -4116,12 +4626,14 @@ namespace Armageddon.Economy
             return Mathf.RoundToInt(_definitions[id].BaseCost * Mathf.Pow(StatDefinition.CostGrowth, _levels[id]));
         }
 
+        // Sobe um nível. "internal": só o UpgradeService deve chamar (depois de cobrar os Shards).
         internal void IncreaseLevel(StatId id)
         {
             _levels[id]++;
             StatChanged?.Invoke(id);
         }
 
+        // Registra um modificador de Perk/Planet Core e avisa que o Stat mudou.
         public void AddModifier(StatModifier modifier)
         {
             _modifiers.Add(modifier);
@@ -4140,11 +4652,15 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: os Shards chegam em frações (Swarmer vale 0,5; Resource Bonus multiplica), mas o jogador
+    // vê e gasta Shards inteiros. Alguém precisa acumular as frações sem perder nada.
+    // ESTRATÉGIA: classe C# pura com o saldo inteiro (Balance) e um "resto" fracionário guardado à parte.
+    // Avisa por evento (BalanceChanged) para a UI não precisar conferir o saldo a cada frame.
     // Saldo de Shards da run. Frações (Swarmer vale 0,5; Resource Bonus multiplica) são acumuladas
     // e viram Shards inteiros quando somam 1 (Seção 4.4).
     public sealed class ShardWallet
     {
-        private float _fraction;
+        private float _fraction;   // a parte "quebrada" ainda não convertida em Shard inteiro
 
         public int Balance { get; private set; }
 
@@ -4153,6 +4669,7 @@ namespace Armageddon.Economy
 
         public event Action BalanceChanged;
 
+        // Soma Shards (inteiros ou fracionários). Só avisa quando o saldo inteiro muda de fato.
         public void Add(float amount)
         {
             if (amount <= 0f) return;
@@ -4165,6 +4682,7 @@ namespace Armageddon.Economy
             BalanceChanged?.Invoke();
         }
 
+        // Gasta se houver saldo. Padrão "Try": devolve true/false em vez de dar erro quando não pode.
         public bool TrySpend(int amount)
         {
             if (amount > Balance) return false;
@@ -4182,6 +4700,10 @@ using System;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: "comprar um Upgrade" envolve duas coisas que precisam andar juntas: cobrar os Shards e
+    // subir o nível. Se a UI fizesse isso direto, poderia cobrar e não subir (ou o contrário).
+    // ESTRATÉGIA: classe C# pura que junta RunStats e ShardWallet e oferece só duas perguntas/ações:
+    // CanPurchase (para a UI acender ou apagar o card) e TryPurchase (a compra em si).
     // Compra um nível de Stat com Shards. Nunca pausa o jogo (Pilar 1).
     public sealed class UpgradeService
     {
@@ -4190,14 +4712,17 @@ namespace Armageddon.Economy
 
         public event Action<StatId, int> Purchased;   // Stat e o nível novo (Analytics na Fase 10, dicas na Fase 13)
 
+        // As dependências chegam pelo construtor (quem cria é o RunEconomy): nada de procurar objetos.
         public UpgradeService(RunStats stats, ShardWallet wallet)
         {
             _stats = stats;
             _wallet = wallet;
         }
 
+        // Pode comprar se não está no teto e há Shards suficientes.
         public bool CanPurchase(StatId id) => !_stats.IsMaxed(id) && _wallet.Balance >= _stats.NextCost(id);
 
+        // Faz a compra completa ou nada. Devolve se deu certo.
         public bool TryPurchase(StatId id)
         {
             if (!CanPurchase(id)) return false;
@@ -4223,6 +4748,12 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: RunStats, ShardWallet e UpgradeService são classes puras: alguém precisa criá-las a cada
+    // run e ligá-las ao resto do jogo (inimigos dão Shards, Wave Clear dá Shards, Stats mudam Satellites
+    // e planeta). Sem um "ligador", esses sistemas teriam que se conhecer.
+    // ESTRATÉGIA: composição — um MonoBehaviour na cena Gameplay que (1) cria as três classes no Awake,
+    // (2) escuta os eventos do EnemyPool, do WaveDirector e do RunStats, e (3) empurra os valores novos
+    // para o SatelliteOrbit e o PlanetHealth. A UI lê Stats/Wallet/Upgrades pelas propriedades públicas.
     // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
     // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
     public sealed class RunEconomy : MonoBehaviour
@@ -4240,6 +4771,7 @@ namespace Armageddon.Economy
         public ShardWallet Wallet { get; private set; }
         public UpgradeService Upgrades { get; private set; }
 
+        // Cria a economia da run. No Awake porque outros scripts (a gaveta) leem Stats/Wallet no Start deles.
         private void Awake()
         {
             Stats = new RunStats(_catalog.Stats);
@@ -4247,6 +4779,7 @@ namespace Armageddon.Economy
             Upgrades = new UpgradeService(Stats, Wallet);
         }
 
+        // Liga os eventos (OnEnable roda depois do Awake, então Stats já existe).
         private void OnEnable()
         {
             Stats.StatChanged += HandleStatChanged;
@@ -4261,6 +4794,7 @@ namespace Armageddon.Economy
             _waves.WaveCleared -= HandleWaveCleared;
         }
 
+        // Saldo inicial e primeira aplicação dos Stats (substitui os valores provisórios do Inspector das Fases 2 e 3).
         private void Start()
         {
             Wallet.Add(_startingShards);
@@ -4273,11 +4807,13 @@ namespace Armageddon.Economy
             Stats.AddModifier(modifier);
         }
 
+        // Qualquer Stat mudou (compra ou modificador): reaplica todos.
         private void HandleStatChanged(StatId id)
         {
             ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
         }
 
+        // Copia os valores atuais dos Stats para quem os usa: Satellites (via um SatelliteStats novo) e planeta.
         private void ApplyAll()
         {
             _orbit.SetStats(new SatelliteStats
@@ -4323,6 +4859,12 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: o mundo é ampliado por um fator inteiro (Pixel Perfect Camera). Se a UI fosse ampliada por
+    // um fator quebrado (o "Scale With Screen Size" padrão do CanvasScaler), os pixels dos botões e textos
+    // ficariam de tamanhos diferentes dos pixels do mundo.
+    // ESTRATÉGIA: um componente no Canvas que coloca o CanvasScaler em "Constant Pixel Size" e define o
+    // scaleFactor como o maior inteiro que cabe (largura ÷ 320 e altura ÷ 180, o menor dos dois).
+    // Recalcula quando a janela muda de tamanho.
     // Amplia a UI pelo mesmo fator INTEIRO da Pixel Perfect Camera (6× em 1080p): 1 unidade de UI = 1 pixel do jogo.
     // Os tamanhos da UI neste guia são em pixels da tela de referência de 320×180.
     [RequireComponent(typeof(CanvasScaler))]
@@ -4332,9 +4874,10 @@ namespace Armageddon.UI
         [SerializeField] private int _referenceHeight = 180;
 
         private CanvasScaler _scaler;
-        private int _lastWidth;
+        private int _lastWidth;    // tamanho da tela na última aplicação, para detectar mudança
         private int _lastHeight;
 
+        // Força o modo de escala certo (por código, para não depender do Inspector) e aplica já.
         private void Awake()
         {
             _scaler = GetComponent<CanvasScaler>();
@@ -4342,11 +4885,13 @@ namespace Armageddon.UI
             Apply();
         }
 
+        // Conferir dois inteiros por frame é barato; evita depender de um evento de "tela mudou".
         private void Update()
         {
             if (Screen.width != _lastWidth || Screen.height != _lastHeight) Apply();   // janela redimensionada (Web)
         }
 
+        // Divisão entre inteiros no C# já descarta a parte decimal (1920 / 320 = 6). Mínimo de 1×.
         private void Apply()
         {
             _lastWidth = Screen.width;
@@ -4368,9 +4913,15 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: cada Stat aparece na gaveta como um card clicável que mostra o nível, o ganho do próximo
+    // Upgrade e o custo, e que se apaga quando não dá para comprar.
+    // ESTRATÉGIA: um prefab de card reaproveitado para qualquer Stat: Bind(stat, economia) diz "agora você
+    // mostra este Stat". O card se inscreve nos eventos StatChanged e BalanceChanged e só se redesenha
+    // quando eles disparam (UI por eventos, sem conferir nada a cada frame).
     // Um card da gaveta (Seção 6.3): ícone, nome, nível, valor atual > próximo valor, e custo. Tocar compra.
     public sealed class StatCard : MonoBehaviour
     {
+        // Referências aos filhos do prefab, arrastadas no Inspector. TMP_Text = texto do TextMeshPro.
         [SerializeField] private Image _icon;
         [SerializeField] private TMP_Text _name;
         [SerializeField] private TMP_Text _level;
@@ -4381,16 +4932,20 @@ namespace Armageddon.UI
         private RunEconomy _economy;
         private StatDefinition _stat;
 
+        // Liga o clique do botão ao método de compra. onClick.AddListener = "quando clicar, chame isto" (por código,
+        // em vez de configurar o OnClick no Inspector).
         private void Awake()
         {
             _button.onClick.AddListener(HandleClick);
         }
 
+        // Ao destruir o card, desfaz as inscrições nos eventos.
         private void OnDestroy()
         {
             Unbind();
         }
 
+        // Associa o card a um Stat. Chama Unbind antes, porque o mesmo card é reaproveitado ao trocar de aba.
         public void Bind(StatDefinition stat, RunEconomy economy)
         {
             Unbind();
@@ -4403,6 +4958,7 @@ namespace Armageddon.UI
             Refresh();
         }
 
+        // Desfaz as inscrições do Bind anterior (sem isso, um card reaproveitado ouviria dois Stats).
         private void Unbind()
         {
             if (_economy == null) return;
@@ -4411,16 +4967,19 @@ namespace Armageddon.UI
             _economy = null;
         }
 
+        // Toque no card: tenta comprar. Se der certo, os eventos disparam e o Refresh atualiza o card sozinho.
         private void HandleClick()
         {
             _economy.Upgrades.TryPurchase(_stat.Id);
         }
 
+        // StatChanged avisa qualquer Stat; o card só se redesenha se for o seu.
         private void HandleStatChanged(StatId id)
         {
             if (id == _stat.Id) Refresh();
         }
 
+        // Redesenha textos e liga/desliga o botão conforme o estado atual.
         private void Refresh()
         {
             var stats = _economy.Stats;
@@ -4439,6 +4998,7 @@ namespace Armageddon.UI
             // A fonte não tem "→" (Seção 6.3): o card usa ">".
             _value.text = $"{_stat.Format(now)} > {_stat.Format(stats.ValueAtLevel(_stat.Id, level + 1))}";
             _cost.text = stats.NextCost(_stat.Id).ToString();
+            // interactable = false deixa o botão cinza e ignora toques.
             _button.interactable = _economy.Upgrades.CanPurchase(_stat.Id);
         }
     }
@@ -4455,17 +5015,22 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: o jogador escolhe a Target Priority de cada Satellite, e só entre as que já liberou.
+    // ESTRATÉGIA: uma linha (botão) por Satellite, criada sob demanda a partir de um prefab e reaproveitada
+    // (linhas sobrando ficam escondidas). Tocar na linha avança para a próxima prioridade liberada.
+    // Redesenha quando o número de Satellites muda (evento CountChanged do SatelliteOrbit).
     // Aba Satellites (Seção 6.3): uma linha por Satellite; tocar troca a Target Priority entre as liberadas.
     public sealed class SatellitePanel : MonoBehaviour
     {
         [SerializeField] private SatelliteOrbit _orbit;
         [SerializeField] private Button _rowPrefab;
-        [SerializeField] private Transform _rows;
+        [SerializeField] private Transform _rows;   // o container (com Layout Group) onde as linhas são criadas
         // Só Closest vem liberada; os Perks do ramo Arsenal liberam as outras (Fase 9 chama SetUnlockedPriorities).
         [SerializeField] private List<TargetPriority> _unlocked = new List<TargetPriority> { TargetPriority.Closest };
 
         private readonly List<Button> _buttons = new List<Button>();
 
+        // A aba só fica ativa quando está aberta: ouvir e redesenhar só enquanto visível.
         private void OnEnable()
         {
             _orbit.CountChanged += Refresh;
@@ -4477,17 +5042,21 @@ namespace Armageddon.UI
             _orbit.CountChanged -= Refresh;
         }
 
+        // Troca a lista de prioridades liberadas (Perks, Fase 9; ou a tecla U de teste).
         public void SetUnlockedPriorities(IEnumerable<TargetPriority> priorities)
         {
             _unlocked = new List<TargetPriority>(priorities);
             Refresh();
         }
 
+        // Garante uma linha por Satellite e atualiza os textos.
         public void Refresh()
         {
             var satellites = _orbit.Satellites;
             while (_buttons.Count < satellites.Count)
             {
+                // "index" é copiado numa variável local de propósito: a lambda abaixo "captura" esse valor.
+                // Se usássemos _buttons.Count direto dentro da lambda, todas as linhas leriam o valor final.
                 int index = _buttons.Count;
                 var button = Instantiate(_rowPrefab, _rows);
                 button.onClick.AddListener(() => Cycle(index));
@@ -4502,6 +5071,8 @@ namespace Armageddon.UI
             }
         }
 
+        // Avança o Satellite "index" para a próxima prioridade liberada, voltando à primeira depois da última.
+        // Se a prioridade atual não estiver na lista (IndexOf = -1), cai na primeira.
         private void Cycle(int index)
         {
             var satellite = _orbit.Satellites[index];
@@ -4524,10 +5095,16 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: a gaveta é a interface principal do jogo: mostra o saldo e deixa comprar Upgrades sem pausar.
+    // Ela coordena várias peças (abas, cards, painel de Satellites, câmera).
+    // ESTRATÉGIA: um controlador de tela com um único estado (OpenTab). SetOpen(aba) é o único método que
+    // liga/desliga as peças; os botões só chamam SetOpen. Os cards são criados sob demanda e reaproveitados
+    // entre as abas (Bind troca o Stat de cada card). O saldo é atualizado pelo evento BalanceChanged.
     // A gaveta de upgrades (Seção 6.3). Fechada: faixa com o saldo e as 4 abas.
     // Aberta: os cards da Track tocada (ou a aba Satellites), e a câmera desliza. Nunca pausa o jogo.
     public sealed class UpgradeDrawer : MonoBehaviour
     {
+        // Os números 0–2 batem com StatTrack (Offense, Defense, Utility), o que permite converter um no outro.
         public enum Tab { None = -1, Offense = 0, Defense = 1, Utility = 2, Satellites = 3 }
 
         [SerializeField] private RunEconomy _economy;
@@ -4544,6 +5121,7 @@ namespace Armageddon.UI
 
         public Tab OpenTab { get; private set; } = Tab.None;
 
+        // Liga cada botão de aba à sua aba. A variável "tab" local é capturada pela lambda (ver SatellitePanel.Refresh).
         private void Awake()
         {
             for (int i = 0; i < _tabButtons.Length; i++)
@@ -4554,6 +5132,7 @@ namespace Armageddon.UI
         }
 
         // Start, e não Awake/OnEnable: a carteira é criada no Awake do RunEconomy, e a câmera no Awake do CameraRig.
+        // (A Unity não garante a ordem dos Awake entre objetos diferentes; no Start, todos os Awake já rodaram.)
         private void Start()
         {
             _economy.Wallet.BalanceChanged += RefreshShards;
@@ -4561,16 +5140,19 @@ namespace Armageddon.UI
             SetOpen(Tab.None);
         }
 
+        // Desinscreve do saldo. Confere null porque, ao fechar a cena, o RunEconomy pode já ter sido destruído.
         private void OnDestroy()
         {
             if (_economy != null && _economy.Wallet != null) _economy.Wallet.BalanceChanged -= RefreshShards;
         }
 
+        // Clique numa aba: abre essa aba, ou fecha se ela já estava aberta.
         private void HandleTabClicked(Tab tab)
         {
             SetOpen(OpenTab == tab ? Tab.None : tab);   // tocar na aba aberta fecha a gaveta
         }
 
+        // Único lugar que muda o que a gaveta mostra. Tab.None = fechada.
         public void SetOpen(Tab tab)
         {
             OpenTab = tab;
@@ -4585,6 +5167,7 @@ namespace Armageddon.UI
             if (open && !satellites) ShowTrack((StatTrack)(int)tab);
         }
 
+        // Mostra os cards dos Stats de uma Track, criando cards novos só se faltarem.
         private void ShowTrack(StatTrack track)
         {
             var stats = _economy.Catalog.ForTrack(track);
@@ -4598,6 +5181,7 @@ namespace Armageddon.UI
             }
         }
 
+        // Atualiza o texto do saldo (chamado pelo evento BalanceChanged).
         private void RefreshShards()
         {
             _shardsText.text = _economy.Wallet.Balance.ToString();
@@ -4619,6 +5203,9 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Economy
 {
+    // POR QUE: testar todos os Upgrades exige muitos Shards, e as Target Priorities só são liberadas na Fase 9.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que dá Shards, libera as prioridades
+    // e escreve cada compra no Console (ouvindo o evento Purchased).
     // M = +100 Shards · U = libera as 4 Target Priorities na aba Satellites. Registra as compras no Console.
     public sealed class EconomyDevTools : MonoBehaviour
     {
@@ -4626,16 +5213,19 @@ namespace Armageddon.Economy
         [SerializeField] private RunEconomy _economy;
         [SerializeField] private SatellitePanel _satellitePanel;
 
+        // Start: o UpgradeService só existe depois do Awake do RunEconomy.
         private void Start()
         {
             _economy.Upgrades.Purchased += HandlePurchased;
         }
 
+        // Desinscreve (conferindo null, como no UpgradeDrawer.OnDestroy).
         private void OnDestroy()
         {
             if (_economy != null && _economy.Upgrades != null) _economy.Upgrades.Purchased -= HandlePurchased;
         }
 
+        // Lê as teclas de teste.
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -4652,6 +5242,7 @@ namespace Armageddon.Economy
             }
         }
 
+        // Escreve cada compra no Console.
         private void HandlePurchased(StatId id, int level)
         {
             var definition = _economy.Stats.Definition(id);
@@ -4766,6 +5357,11 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: o laser é o ataque que o jogador precisa VER chegando (telegrafado). Ele tem sua própria
+    // sequência no tempo (aviso → dano → feixe → some), que não tem nada a ver com o movimento da Mothership.
+    // ESTRATÉGIA: um componente separado no mesmo objeto da Mothership, com uma pequena máquina de estados
+    // (Idle → Telegraph → Beam → Idle, ver WaveDirector). A Mothership só chama Begin(dano) e pergunta
+    // IsBusy; o LaserAttack cuida do visual (linha em modo Tiled + impacto) e aplica o dano no planeta.
     // O laser da Mothership (Seção 4.5): aviso tracejado piscando por 1,5 s, depois o feixe, que causa o dano uma vez.
     // Fica no mesmo objeto da Mothership e cria a linha e o impacto como objetos filhos.
     public sealed class LaserAttack : MonoBehaviour
@@ -4783,27 +5379,32 @@ namespace Armageddon.Enemies
 
         private SpriteRenderer _line;
         private SpriteAnimator _lineAnimator;
-        private SpriteAnimator _impact;
+        private SpriteAnimator _impact;   // a "faísca" onde o laser toca o planeta
         private PlanetHealth _planet;
         private State _state;
         private float _damage;
-        private float _time;
+        private float _time;              // segundos desde o começo do estado atual
 
+        // A Mothership não começa um laser novo enquanto este não terminou.
         public bool IsBusy => _state != State.Idle;
 
+        // Cria a linha e o impacto (escondidos) uma vez só.
         private void Awake()
         {
+            // "out _lineAnimator": o método preenche essa variável além de devolver o SpriteRenderer.
             _line = CreatePart("LaserLine", out _lineAnimator);
             _line.drawMode = SpriteDrawMode.Tiled;   // repete o tile ao longo do comprimento (precisa de Mesh Type = Full Rect)
             CreatePart("LaserImpact", out _impact);
             Hide();
         }
 
+        // Recebe o planeta alvo. Chamado pela Mothership no Spawn (o prefab não tem como arrastar o planeta da cena).
         public void Init(PlanetHealth planet)
         {
             _planet = planet;
         }
 
+        // Começa um disparo: entra no estado de aviso e mostra a linha tracejada.
         public void Begin(float damage)
         {
             _damage = damage;
@@ -4814,12 +5415,14 @@ namespace Armageddon.Enemies
             Place();
         }
 
+        // Interrompe e esconde (fim natural do feixe, ou a Mothership morreu no meio do aviso).
         public void Cancel()
         {
             _state = State.Idle;
             Hide();
         }
 
+        // Avança a máquina de estados. LateUpdate para posicionar a linha depois de a Mothership se mover neste frame.
         private void LateUpdate()
         {
             if (_state == State.Idle) return;
@@ -4827,6 +5430,7 @@ namespace Armageddon.Enemies
             _time += Time.deltaTime;
             if (_state == State.Telegraph && _time >= _telegraphTime)
             {
+                // Fim do aviso: aplica o dano UMA vez e troca o visual para o feixe.
                 _planet.TakeDamage(_damage);
                 _state = State.Beam;
                 _time = 0f;
@@ -4844,12 +5448,14 @@ namespace Armageddon.Enemies
         }
 
         // Da Mothership até a borda do planeta. A linha é girada: é a exceção de rotação da Seção 6.2.
+        // Estratégia: o centro da linha fica no meio do caminho; ela é girada para apontar ao planeta e
+        // esticada (size) até o comprimento certo — o modo Tiled repete o desenho em vez de esticá-lo.
         private void Place()
         {
             Vector2 from = transform.position;
             Vector2 toCenter = WorldLayout.PlanetCenter - from;
             Vector2 direction = toCenter.normalized;
-            Vector2 end = WorldLayout.PlanetCenter - direction * WorldLayout.PlanetRadius;
+            Vector2 end = WorldLayout.PlanetCenter - direction * WorldLayout.PlanetRadius;   // ponto na superfície do planeta
             float length = Vector2.Distance(from, end);
 
             _line.transform.position = (from + end) * 0.5f;
@@ -4858,6 +5464,7 @@ namespace Armageddon.Enemies
             _impact.transform.position = end;
         }
 
+        // Cria um filho com SpriteRenderer + SpriteAnimator. Devolve os dois (um pelo return, outro pelo out).
         private SpriteRenderer CreatePart(string name, out SpriteAnimator animator)
         {
             var go = new GameObject(name);
@@ -4868,6 +5475,7 @@ namespace Armageddon.Enemies
             return renderer;
         }
 
+        // Esconde a linha e o impacto.
         private void Hide()
         {
             _line.gameObject.SetActive(false);
@@ -4889,6 +5497,13 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: o boss se comporta de um jeito bem diferente dos inimigos comuns: não é kamikaze, entra e
+    // fica orbitando em espiral, ataca à distância (laser) e invoca Swarmers. Forçar isso no Enemy o
+    // encheria de "if boss".
+    // ESTRATÉGIA: uma classe própria que também implementa ITarget (os Satellites atiram nela sem código
+    // novo). O movimento usa coordenadas polares (ângulo + distância ao centro), que deixam a espiral
+    // trivial. O laser fica num componente à parte (LaserAttack). Não é pooled: aparece uma vez a cada
+    // 10 Waves, então Instantiate/Destroy (feitos pelo MothershipSpawner) não pesam.
     // O boss das Boss Waves (Seção 4.5). Entra em linha reta até 7 u, desce em espiral até 3,5 u,
     // e ataca com o laser e com cachos de Swarmers. Implementa ITarget: os Satellites atiram nela sem código novo.
     [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator), typeof(LaserAttack))]
@@ -4913,13 +5528,13 @@ namespace Armageddon.Enemies
         [SerializeField] private EnemyDefinition _swarmer;
 
         private LaserAttack _laser;
-        private EnemyPool _enemies;
-        private float _hitpointsMultiplier;
+        private EnemyPool _enemies;           // para soltar os Swarmers pelo mesmo caminho dos inimigos comuns
+        private float _hitpointsMultiplier;   // guardados para escalar os Swarmers que ela solta
         private float _damageMultiplier;
         private float _laserDamage;
         private float _angle;          // graus, 0 = direita, anti-horário (como a órbita dos Satellites)
         private float _distance;       // distância atual ao centro
-        private bool _inOrbit;
+        private bool _inOrbit;         // false = ainda na entrada em linha reta
         private bool _alive;
         private float _laserTimer;
         private float _swarmerTimer;
@@ -4927,18 +5542,21 @@ namespace Armageddon.Enemies
         public Vector2 Position { get; private set; }
         public float Radius => _radius;
         public float CurrentHitpoints { get; private set; }
-        public float MaxHitpoints { get; private set; }
+        public float MaxHitpoints { get; private set; }   // usado pela BossHealthBar
         public bool IsAlive => _alive;
         public float Shards => _shards;
         public int Wave { get; private set; }
 
         public event Action<Mothership> Died;
 
+        // Cache do LaserAttack (garantido pelo RequireComponent).
         private void Awake()
         {
             _laser = GetComponent<LaserAttack>();
         }
 
+        // "Construtor" chamado pelo MothershipSpawner logo depois do Instantiate: posição inicial, vida
+        // e dano já escalados pela Wave, e as referências da cena que o prefab não tem.
         public void Spawn(int wave, float angleDegrees, float hitpointsMultiplier, float damageMultiplier,
                           PlanetHealth planet, EnemyPool enemies)
         {
@@ -4958,6 +5576,7 @@ namespace Armageddon.Enemies
             TargetRegistry.Register(this);
         }
 
+        // Duas etapas de movimento: entrada (só a distância diminui) e espiral (ângulo e distância mudam).
         private void Update()
         {
             if (!_alive) return;
@@ -4978,6 +5597,7 @@ namespace Armageddon.Enemies
             else
             {
                 // Espiral: o ângulo avança e o raio encolhe 1,5 u por volta, até a órbita mínima.
+                // (_angularSpeed / 360) = voltas por segundo; × 1,5 u por volta = u por segundo de encolhimento.
                 _angle = Mathf.Repeat(_angle + _angularSpeed * deltaTime, 360f);
                 _distance = Mathf.Max(_minOrbitRadius, _distance - _shrinkPerLap * (_angularSpeed / 360f) * deltaTime);
                 UpdateAttacks(deltaTime);
@@ -4986,6 +5606,7 @@ namespace Armageddon.Enemies
             ApplyPosition();
         }
 
+        // Dois cronômetros independentes: laser a cada 8 s (se o anterior terminou) e Swarmers a cada 15 s.
         private void UpdateAttacks(float deltaTime)
         {
             _laserTimer += deltaTime;
@@ -5004,6 +5625,7 @@ namespace Armageddon.Enemies
             }
         }
 
+        // Cumpre ITarget.TakeDamage. Ao morrer: cancela o laser, sai do registro e avisa (o spawner explode e destrói).
         public void TakeDamage(float amount, bool isCritical)
         {
             if (!_alive) return;
@@ -5017,6 +5639,7 @@ namespace Armageddon.Enemies
             Died?.Invoke(this);
         }
 
+        // Converte (ângulo, distância) em posição x,y (ver Satellite.SetAngle) e prende à grade de pixels.
         private void ApplyPosition()
         {
             float radians = _angle * Mathf.Deg2Rad;
@@ -5024,6 +5647,7 @@ namespace Armageddon.Enemies
             transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
         }
 
+        // Segurança, como no Enemy: se for destruída viva (troca de cena), sai do registro de alvos.
         private void OnDisable()
         {
             if (!_alive) return;
@@ -5047,6 +5671,12 @@ using UnityEngine;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: alguém precisa ligar o evento "Boss Wave começou" à criação da Mothership, e manter o
+    // WaveDirector informado de que há um inimigo vivo fora do EnemyPool (senão ele daria Wave Clear
+    // com o boss ainda em campo).
+    // ESTRATÉGIA: faz para a Mothership o papel que o EnemyPool faz para os inimigos comuns: cria, guarda
+    // a lista das vivas, conta no WaveDirector (AddExternalAlive), toca a explosão ao morrer e dispara os
+    // eventos públicos (MothershipKilled). Sem pool: uma por Boss Wave.
     // Cria a Mothership em cada Boss Wave, conta-a como inimiga viva no WaveDirector e toca a explosão ao morrer.
     // Pode haver mais de uma: se uma sobreviver até a Boss Wave seguinte, a nova entra junto (Seção 4.5).
     public sealed class MothershipSpawner : MonoBehaviour
@@ -5060,11 +5690,12 @@ namespace Armageddon.Enemies
 
         private readonly List<Mothership> _alive = new List<Mothership>();
 
-        public IReadOnlyList<Mothership> Alive => _alive;
+        public IReadOnlyList<Mothership> Alive => _alive;   // a mais antiga é a [0] (a BossHealthBar mostra essa)
 
         public event Action<Mothership> MothershipSpawned;
         public event Action<Mothership> MothershipKilled;   // Shards (Fase 6), Stardust e conquistas (Fase 9)
 
+        // Escuta o início das Boss Waves (e para de escutar no OnDisable).
         private void OnEnable()
         {
             _waves.BossWaveStarted += Spawn;
@@ -5075,6 +5706,7 @@ namespace Armageddon.Enemies
             _waves.BossWaveStarted -= Spawn;
         }
 
+        // Cria uma Mothership para a Wave "wave". Público: a tecla de teste também chama.
         public void Spawn(int wave)
         {
             // Entra pelo centro de um dos setores do aviso da Boss Wave.
@@ -5086,10 +5718,11 @@ namespace Armageddon.Enemies
             mothership.Spawn(wave, angle, _balance.HitpointsMultiplier(wave), _balance.DamageMultiplier(wave), _planet, _enemies);
             mothership.Died += HandleDied;
             _alive.Add(mothership);
-            _waves.AddExternalAlive(1);
+            _waves.AddExternalAlive(1);   // agora o Wave Clear espera por ela
             MothershipSpawned?.Invoke(mothership);
         }
 
+        // Ao morrer: desfaz a inscrição, desconta do WaveDirector, explode, avisa e destrói o objeto.
         private void HandleDied(Mothership mothership)
         {
             mothership.Died -= HandleDied;
@@ -5114,13 +5747,18 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: o boss tem muita vida; o jogador precisa ver o progresso para saber se o dano está bastando.
+    // ESTRATÉGIA: uma Image de UI em modo "Filled" (a Unity recorta a imagem pela fração fillAmount, de 0 a 1).
+    // A cada frame, lê a vida da Mothership mais antiga no MothershipSpawner. Ler por frame aqui é simples e
+    // barato (uma divisão); a HP muda muitas vezes por segundo, então eventos não trariam ganho.
     // Barra de HP da Mothership no topo da tela (Seção 4.5). Mostra a mais antiga viva e some quando não há nenhuma.
     public sealed class BossHealthBar : MonoBehaviour
     {
         [SerializeField] private MothershipSpawner _spawner;
-        [SerializeField] private GameObject _root;
+        [SerializeField] private GameObject _root;   // o objeto que contém a barra inteira (fundo + preenchimento)
         [SerializeField] private Image _fill;
 
+        // Configura a Image por código para não depender de ajustes manuais no Inspector.
         private void Awake()
         {
             _fill.sprite = PixelSprite.White;   // a cor vem do Image (magenta, a cor dos inimigos)
@@ -5129,11 +5767,12 @@ namespace Armageddon.UI
             _root.SetActive(false);
         }
 
+        // Mostra/esconde conforme haja Mothership viva e atualiza a fração de vida.
         private void LateUpdate()
         {
             var alive = _spawner.Alive;
             bool visible = alive.Count > 0;
-            if (_root.activeSelf != visible) _root.SetActive(visible);
+            if (_root.activeSelf != visible) _root.SetActive(visible);   // só chama SetActive quando muda
             if (!visible) return;
 
             var mothership = alive[0];
@@ -5158,6 +5797,13 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
+    // POR QUE / ESTRATÉGIA: as mesmas da versão da Fase 6 (ver RunEconomy da Fase 6).
+    // O QUE MUDOU nesta versão (Fase 7):
+    //  - campo novo _motherships, e inscrição no evento MothershipKilled;
+    //  - HandleMothershipKilled paga os 50 Shards do boss;
+    //  - a regra "Shards × (1 + Resource Bonus)" foi movida para AwardKill, usada pelos dois tipos de kill.
+    //    POR QUE: com dois lugares pagando kills, a fórmula ficaria duplicada; num método só, uma mudança
+    //    futura na fórmula vale para ambos.
     // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
     // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
     public sealed class RunEconomy : MonoBehaviour
@@ -5167,7 +5813,7 @@ namespace Armageddon.Economy
         [SerializeField] private SatelliteOrbit _orbit;
         [SerializeField] private PlanetHealth _planet;
         [SerializeField] private EnemyPool _enemies;
-        [SerializeField] private MothershipSpawner _motherships;
+        [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
         [SerializeField] private WaveDirector _waves;
         [SerializeField] private int _startingShards;   // o Perk Starting Shards (Fase 9) soma aqui
 
@@ -5176,6 +5822,7 @@ namespace Armageddon.Economy
         public ShardWallet Wallet { get; private set; }
         public UpgradeService Upgrades { get; private set; }
 
+        // Cria a economia da run (igual à Fase 6).
         private void Awake()
         {
             Stats = new RunStats(_catalog.Stats);
@@ -5183,11 +5830,12 @@ namespace Armageddon.Economy
             Upgrades = new UpgradeService(Stats, Wallet);
         }
 
+        // Liga os eventos (agora também o da Mothership).
         private void OnEnable()
         {
             Stats.StatChanged += HandleStatChanged;
             _enemies.EnemyKilled += HandleEnemyKilled;
-            _motherships.MothershipKilled += HandleMothershipKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;   // NOVO
             _waves.WaveCleared += HandleWaveCleared;
         }
 
@@ -5195,10 +5843,11 @@ namespace Armageddon.Economy
         {
             Stats.StatChanged -= HandleStatChanged;
             _enemies.EnemyKilled -= HandleEnemyKilled;
-            _motherships.MothershipKilled -= HandleMothershipKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;   // NOVO
             _waves.WaveCleared -= HandleWaveCleared;
         }
 
+        // Saldo inicial e primeira aplicação dos Stats (igual à Fase 6).
         private void Start()
         {
             Wallet.Add(_startingShards);
@@ -5211,11 +5860,13 @@ namespace Armageddon.Economy
             Stats.AddModifier(modifier);
         }
 
+        // Qualquer Stat mudou: reaplica todos (igual à Fase 6).
         private void HandleStatChanged(StatId id)
         {
             ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
         }
 
+        // Copia os valores dos Stats para os Satellites e o planeta (igual à Fase 6).
         private void ApplyAll()
         {
             _orbit.SetStats(new SatelliteStats
@@ -5240,11 +5891,13 @@ namespace Armageddon.Economy
             AwardKill(enemy.Definition.Shards);
         }
 
+        // NOVO: a Mothership paga os seus Shards pela mesma regra dos inimigos comuns.
         private void HandleMothershipKilled(Mothership mothership)
         {
             AwardKill(mothership.Shards);
         }
 
+        // NOVO: a fórmula de Shards por kill, num lugar só.
         private void AwardKill(float baseShards)
         {
             Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
@@ -5274,6 +5927,9 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Enemies
 {
+    // POR QUE: esperar até a Wave 10 para ver a Mothership tornaria cada teste do boss muito lento.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que chama o mesmo Spawn que a Boss Wave
+    // usa, com a escalada da Wave atual, e registra a morte no Console.
     // X = cria uma Mothership agora, com a escalada da Wave atual. Registra a morte no Console.
     public sealed class MothershipDevTools : MonoBehaviour
     {
@@ -5281,6 +5937,7 @@ namespace Armageddon.Enemies
         [SerializeField] private MothershipSpawner _spawner;
         [SerializeField] private WaveDirector _waves;
 
+        // Escuta a morte das Motherships (e para de escutar no OnDisable).
         private void OnEnable()
         {
             _spawner.MothershipKilled += HandleKilled;
@@ -5291,12 +5948,14 @@ namespace Armageddon.Enemies
             _spawner.MothershipKilled -= HandleKilled;
         }
 
+        // Max(1, ...) evita a Wave 0 (antes de a run começar), que daria escalada abaixo da Wave 1.
         private void Update()
         {
             var keyboard = Keyboard.current;
             if (keyboard != null && keyboard.xKey.wasPressedThisFrame) _spawner.Spawn(Mathf.Max(1, _waves.CurrentWave));
         }
 
+        // Escreve a morte no Console.
         private void HandleKilled(Mothership mothership)
         {
             Debug.Log($"[Boss] Mothership da Wave {mothership.Wave} destruída (+{mothership.Shards} Shards).");
@@ -5372,17 +6031,27 @@ using UnityEngine;
 
 namespace Armageddon.Platform
 {
+    // POR QUE: cada ponto de anúncio recompensado precisa de um nome (para Analytics e para o provedor).
     // Os três momentos de anúncio recompensado (Seção 7.1).
     public enum AdPlacement { Revive, DoubleStardust, DoubleDailyReward }
 
+    // POR QUE: o Revive precisa de anúncio já nesta fase, mas os SDKs reais (LevelPlay, H5 Ads) só entram
+    // na Fase 10 e são diferentes por plataforma.
+    // ESTRATÉGIA: uma interface com só o que o jogo precisa (mesma ideia do ISaveStorage). O resto do jogo
+    // só conhece IAdService; trocar o provedor não muda nenhuma tela.
     // O que o jogo precisa de um provedor de anúncios. A Fase 10 implementa os provedores reais
     // (LevelPlay no Android, H5 Games Ads na Web). "completed" recebe true só se o anúncio foi assistido até o fim.
     public interface IAdService
     {
         bool IsRewardedReady(AdPlacement placement);
+        // Action<bool> completed = "callback": a função que o provedor chama quando o anúncio acabar.
+        // Anúncio é assíncrono (demora), por isso a resposta não vem no return.
         void ShowRewarded(AdPlacement placement, Action<bool> completed);
     }
 
+    // POR QUE: o build final antes da Fase 10 (e o itch.io) não tem anúncios; o jogo precisa funcionar sem eles.
+    // ESTRATÉGIA: padrão "Null Object": uma implementação que nunca tem anúncio. Assim ninguém precisa
+    // testar "if (ads == null)" antes de usar.
     // Build final antes da Fase 10 (e o itch.io, Seção 7.1): nunca há anúncio, então os botões de anúncio não aparecem.
     public sealed class NullAdService : IAdService
     {
@@ -5391,14 +6060,17 @@ namespace Armageddon.Platform
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // POR QUE: testar o fluxo do Revive (sucesso, falha, sem anúncio) no Editor, sem SDK.
+    // ESTRATÉGIA: um anúncio falso que responde na hora. As flags estáticas são ligadas pelas teclas do RunDevTools.
     // Editor e builds de desenvolvimento: "assiste" na hora. As flags simulam falha e falta de anúncio (RunDevTools).
     public sealed class FakeAdService : IAdService
     {
-        public static bool SimulateFailure;
-        public static bool SimulateUnavailable;
+        public static bool SimulateFailure;       // true = o anúncio "fecha antes do fim"
+        public static bool SimulateUnavailable;   // true = não há anúncio carregado
 
         public bool IsRewardedReady(AdPlacement placement) => !SimulateUnavailable;
 
+        // Chama o callback imediatamente com o resultado simulado.
         public void ShowRewarded(AdPlacement placement, Action<bool> completed)
         {
             Debug.Log($"[FakeAd] {placement}: {(SimulateFailure ? "falhou" : "assistido até o fim")}");
@@ -5415,19 +6087,27 @@ using Armageddon.Platform;
 
 namespace Armageddon.Core
 {
+    // POR QUE: o serviço de anúncios precisa ser acessível como os outros (Services.Ads), sem mexer no
+    // arquivo Services.cs da Fase 1 nem no GameBootstrap.
+    // ESTRATÉGIA: "partial class": o C# junta este arquivo com o Services.cs numa classe só (ver Services).
+    // O serviço é criado sob demanda (na primeira vez que alguém pede), escolhendo o falso ou o nulo
+    // conforme o tipo de build. A Fase 10 troca pelo provedor real com SetAds.
     // A parte dos anúncios do Services (o Services é "partial" desde a Fase 1).
     public static partial class Services
     {
         private static IAdService _ads;
 
         // Criado na primeira vez que alguém pede. A Fase 10 chama SetAds com o provedor real da plataforma.
+        // "??=" = "se _ads for null, atribui o valor da direita"; depois devolve _ads.
         public static IAdService Ads => _ads ??= CreateDefaultAds();
 
+        // Troca o provedor (Fase 10).
         public static void SetAds(IAdService ads)
         {
             _ads = ads;
         }
 
+        // Escolhe o provedor padrão em tempo de compilação (ver SaveStorage.CreateForPlatform).
         private static IAdService CreateDefaultAds()
         {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -5452,6 +6132,11 @@ using UnityEngine;
 
 namespace Armageddon.World
 {
+    // POR QUE: o Revive limpa os inimigos perto do planeta, e o jogador precisa VER isso acontecer.
+    // O anel chega a 128 px, maior que a grade de 32×32 da arte, então não há sprite pronto para ele.
+    // ESTRATÉGIA: gera os frames do anel por código uma vez (no Awake), pixel a pixel (mesma técnica do
+    // QuadrantView), e toca com o SpriteAnimator em modo "uma vez". Este componente só desenha: quem
+    // remove os inimigos é o RunController.
     // Anel que cresce do centro do planeta até o raio da onda de choque do Revive (Seção 4.6).
     public sealed class ShockwaveView : MonoBehaviour
     {
@@ -5463,6 +6148,7 @@ namespace Armageddon.World
 
         private SpriteAnimator _animator;
 
+        // Cria o objeto do anel (desligado), gera os frames e combina: quando a animação acabar, desliga o anel.
         private void Awake()
         {
             var go = new GameObject("Ring");
@@ -5476,6 +6162,7 @@ namespace Armageddon.World
             go.SetActive(false);
         }
 
+        // Toca o anel. Chamado pelo RunController no Revive.
         public void Play()
         {
             transform.position = WorldLayout.PlanetCenter;
@@ -5483,6 +6170,8 @@ namespace Armageddon.World
         }
 
         // Anéis de 2 px de espessura, do menor ao maior, cada vez mais transparentes.
+        // Para cada frame k: calcula o raio, cria uma textura quadrada e pinta os pixels cuja distância ao
+        // centro está a até 1 px do raio (isso forma o anel).
         private Sprite[] BuildFrames()
         {
             var frames = new Sprite[_frameCount];
@@ -5490,7 +6179,7 @@ namespace Armageddon.World
             {
                 int radius = Mathf.Max(2, Mathf.RoundToInt(_maxRadius * WorldLayout.PixelsPerUnit * (k + 1) / _frameCount));
                 int size = radius * 2 + 2;
-                byte alpha = (byte)Mathf.RoundToInt(255f * (1f - 0.7f * k / _frameCount));
+                byte alpha = (byte)Mathf.RoundToInt(255f * (1f - 0.7f * k / _frameCount));   // vai de 100% a ~37%
                 var texture = new Texture2D(size, size) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
                 var pixels = new Color32[size * size];
                 float center = size * 0.5f;
@@ -5520,6 +6209,10 @@ using System;
 
 namespace Armageddon.Run
 {
+    // POR QUE: no fim da run, várias partes precisam dos mesmos números (Results, Stardust e conquistas
+    // na Fase 9, Analytics na Fase 10). Passar cada número separado seria frágil.
+    // ESTRATÉGIA: um objeto de dados puro (como o PlayerProfile), criado uma vez pelo RunController e
+    // entregue no evento RunEnded. [Serializable] deixa pronto para salvar ou enviar como JSON, se preciso.
     // O que aconteceu na run. O Results mostra; a Fase 9 usa para Stardust, conquistas e Analytics.
     [Serializable]
     public sealed class RunSummary
@@ -5551,6 +6244,13 @@ using UnityEngine;
 
 namespace Armageddon.Run
 {
+    // POR QUE: a run tem regras que envolvem vários sistemas ao mesmo tempo: "quando o planeta morre,
+    // congela; se o Revive não foi usado e há anúncio, oferece; senão, para as Waves e mostra o Results".
+    // Se cada tela decidisse um pedaço, a regra "Revive só uma vez por run" poderia ser furada.
+    // ESTRATÉGIA: o único dono do estado da run (Running → ReviveOffer → Running/Ended), numa máquina de
+    // estados simples (ver WaveDirector). As telas só leem State, escutam eventos (ReviveOffered, RunEnded)
+    // e chamam métodos públicos (AcceptRevive, DeclineRevive, GiveUp...). Ele também conta kills e tempo
+    // para montar o RunSummary.
     // Ciclo de vida da run (Seção 4.6): começa, oferece o Revive na morte e termina no Results.
     public sealed class RunController : MonoBehaviour
     {
@@ -5572,11 +6272,12 @@ namespace Armageddon.Run
         public RunState State { get; private set; } = RunState.Running;
         public bool ReviveUsed { get; private set; }
         public float SurvivalSeconds { get; private set; }
-        public float ReviveOfferSeconds => _reviveOfferSeconds;
+        public float ReviveOfferSeconds => _reviveOfferSeconds;   // a ReviveOfferView lê daqui a duração da contagem
 
         public event Action ReviveOffered;
         public event Action<RunSummary> RunEnded;
 
+        // Escuta a morte do planeta e as kills (para as estatísticas).
         private void OnEnable()
         {
             _planet.Died += HandlePlanetDied;
@@ -5591,16 +6292,19 @@ namespace Armageddon.Run
             _motherships.MothershipKilled -= HandleMothershipKilled;
         }
 
+        // Começa a run. Start (e não Awake) para que todos os sistemas já tenham feito seu Awake.
         private void Start()
         {
             _waves.StartRun();   // o WaveDirector fica com "Auto Start" desligado: quem começa a run é este script
         }
 
+        // Conta o tempo de sobrevivência (Time.deltaTime é 0 na pausa, então a pausa não conta).
         private void Update()
         {
             if (State == RunState.Running) SurvivalSeconds += Time.deltaTime;   // pausado, não conta
         }
 
+        // Contadores para o RunSummary.
         private void HandleEnemyKilled(Enemy enemy) => _enemiesDestroyed++;
 
         private void HandleMothershipKilled(Mothership mothership)
@@ -5610,6 +6314,7 @@ namespace Armageddon.Run
         }
 
         // HP chegou a 0: o jogo congela e, se der, oferece o Revive (uma vez por run, só com anúncio pronto).
+        // A pausa "Modal" (ver GameClock) congela o mundo sem abrir a tela de pausa.
         private void HandlePlanetDied()
         {
             if (State != RunState.Running) return;
@@ -5626,18 +6331,21 @@ namespace Armageddon.Run
             }
         }
 
+        // Botão "assistir anúncio" da oferta. O resultado chega depois, em HandleReviveAdFinished.
         public void AcceptRevive()
         {
             if (State != RunState.ReviveOffer) return;
             Services.Ads.ShowRewarded(AdPlacement.Revive, HandleReviveAdFinished);
         }
 
+        // Botão "não, obrigado" ou fim da contagem.
         public void DeclineRevive()
         {
             if (State == RunState.ReviveOffer) EndRun(gaveUp: false);
         }
 
         // Anúncio assistido até o fim: volta com 50% e a onda de choque. Falhou ou fechou antes: Results (Seção 4.6).
+        // O "if (State != ReviveOffer)" protege contra callbacks atrasados (ex.: o anúncio responder depois de a contagem acabar).
         private void HandleReviveAdFinished(bool rewarded)
         {
             if (State != RunState.ReviveOffer) return;
@@ -5656,6 +6364,7 @@ namespace Armageddon.Run
         }
 
         // Botão "desistir" da tela de pausa.
+        // Troca a pausa Manual pela Modal: a tela de pausa some (ela só aparece na Manual), mas o mundo continua parado.
         public void GiveUp()
         {
             if (State != RunState.Running) return;
@@ -5664,10 +6373,13 @@ namespace Armageddon.Run
             EndRun(gaveUp: true);
         }
 
+        // Botões do Results. Recarregar a Gameplay recria tudo do zero (o GameClock limpa as pausas ao carregar).
         public void PlayAgain() => Services.Scenes.Load(GameScene.Gameplay);
         public void GoToMenu() => Services.Scenes.Load(GameScene.MainMenu);
 
         // Só os inimigos comuns (Seção 4.6; a Mothership fica de fora, ver o "Em aberto" da seção). Sem Shards.
+        // ToList() copia a lista porque Remove() tira o inimigo do TargetRegistry durante o laço (ver WaveDevTools).
+        // "target is not Enemy enemy": se o alvo não for um Enemy, pula; se for, já o guarda na variável "enemy".
         private void ClearEnemiesAroundPlanet()
         {
             foreach (var target in TargetRegistry.Alive.ToList())
@@ -5678,6 +6390,7 @@ namespace Armageddon.Run
             }
         }
 
+        // Encerra a run: para as Waves e entrega o resumo a quem estiver ouvindo (ResultsView, RunDevTools, Fase 9).
         private void EndRun(bool gaveUp)
         {
             State = RunState.Ended;
@@ -5711,6 +6424,10 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: o jogador precisa ver o estado da run o tempo todo (HP, Wave, tempo restante) e ter como pausar.
+    // ESTRATÉGIA: uma "view" (tela) que só LÊ o PlanetHealth e o WaveDirector a cada frame; não decide nada.
+    // O timer muda todo segundo e o HP várias vezes por segundo, então ler por frame é simples; para não
+    // gerar lixo de memória, os textos só são reescritos quando o número exibido muda.
     // HUD da run (Seção 6.3): HP do planeta, Wave e timer, e o botão de pausa.
     // A barra da Mothership é o BossHealthBar (Fase 7).
     public sealed class HudView : MonoBehaviour
@@ -5724,11 +6441,13 @@ namespace Armageddon.UI
         [SerializeField] private Button _pauseButton;
 
         // Só reescreve os textos quando o número muda: evita criar strings novas a cada frame.
+        // Os valores iniciais (-1, -2) são "impossíveis", para forçar a primeira escrita.
         private int _shownHealth = -1;
         private int _shownMaxHealth = -1;
         private int _shownWave = -1;
-        private int _shownSeconds = -2;
+        private int _shownSeconds = -2;   // -1 já tem significado (timer vazio durante o aviso)
 
+        // Configura a barra (como a BossHealthBar) e liga o botão de pausa ao GameClock.
         private void Awake()
         {
             _healthFill.sprite = PixelSprite.White;
@@ -5737,11 +6456,12 @@ namespace Armageddon.UI
             _pauseButton.onClick.AddListener(() => Services.Clock.Pause(PauseReason.Manual));
         }
 
+        // Atualiza barra e textos depois de todos os Update do frame (valores já atualizados).
         private void LateUpdate()
         {
             _healthFill.fillAmount = _planet.Max > 0f ? _planet.Current / _planet.Max : 0f;
 
-            int health = Mathf.CeilToInt(_planet.Current);
+            int health = Mathf.CeilToInt(_planet.Current);   // arredonda para cima: 0,3 HP ainda mostra "1"
             int maxHealth = Mathf.CeilToInt(_planet.Max);
             if (health != _shownHealth || maxHealth != _shownMaxHealth)
             {
@@ -5776,16 +6496,22 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: a pausa manual precisa de uma tela com "continuar" e "desistir"; sem ela, o jogador pausado
+    // não teria como sair da run.
+    // ESTRATÉGIA: a tela não guarda estado próprio: a cada frame, calcula "devo aparecer?" a partir do
+    // GameClock e do RunController, e só liga/desliga o _root quando a resposta muda. Os botões chamam
+    // o GameClock (continuar) e o RunController (desistir).
     // Tela de pausa (Seção 6.3): continuar, Settings (Fase 11) e desistir da run.
     // Aparece com a pausa MANUAL (botão, "voltar" do Android ou perda de foco) enquanto a run está rodando.
     public sealed class PauseView : MonoBehaviour
     {
         [SerializeField] private RunController _run;
-        [SerializeField] private GameObject _root;
+        [SerializeField] private GameObject _root;   // o filho com fundo escuro + painel; este objeto em si fica sempre ativo
         [SerializeField] private Button _continueButton;
         [SerializeField] private Button _settingsButton;
         [SerializeField] private Button _giveUpButton;
 
+        // Liga os botões e começa escondida.
         private void Awake()
         {
             _continueButton.onClick.AddListener(() => Services.Clock.Resume(PauseReason.Manual));
@@ -5796,6 +6522,7 @@ namespace Armageddon.UI
 
         // Verificar a cada frame (2 booleanos) é mais simples e mais seguro do que acompanhar
         // todas as combinações de pausa manual, pausa modal e estado da run.
+        // (LateUpdate continua rodando com timeScale = 0; só o deltaTime vira 0.)
         private void LateUpdate()
         {
             bool visible = Services.IsReady
@@ -5816,6 +6543,10 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: a oferta de Revive é uma decisão com prazo (5 s): o jogador vê a contagem e escolhe.
+    // ESTRATÉGIA: abre ao ouvir RunController.ReviveOffered; conta o tempo com Time.unscaledDeltaTime
+    // (o jogo está com timeScale = 0); qualquer saída (botão ou fim da contagem) fecha a tela e devolve
+    // a decisão ao RunController. A tela não sabe nada de anúncios.
     // Oferta de Revive (Seção 4.6): "assistir anúncio para reviver", com contagem regressiva de 5 s.
     // O jogo está congelado, por isso a contagem usa o tempo "unscaled".
     public sealed class ReviveOfferView : MonoBehaviour
@@ -5826,10 +6557,11 @@ namespace Armageddon.UI
         [SerializeField] private Button _watchButton;
         [SerializeField] private Button _declineButton;
 
-        private float _remaining;
-        private int _shownSeconds;
+        private float _remaining;   // segundos restantes da oferta
+        private int _shownSeconds;  // último número escrito (evita reescrever o texto a cada frame)
         private bool _open;
 
+        // Liga os botões. "() => { ...; ...; }" = lambda com mais de um comando.
         private void Awake()
         {
             _watchButton.onClick.AddListener(() => { Close(); _run.AcceptRevive(); });
@@ -5837,9 +6569,11 @@ namespace Armageddon.UI
             _root.SetActive(false);
         }
 
+        // Corpo de uma linha com "=>": inscreve/desinscreve no evento da oferta.
         private void OnEnable() => _run.ReviveOffered += Open;
         private void OnDisable() => _run.ReviveOffered -= Open;
 
+        // A oferta começou: reinicia a contagem e mostra a tela.
         private void Open()
         {
             _remaining = _run.ReviveOfferSeconds;
@@ -5848,12 +6582,14 @@ namespace Armageddon.UI
             _root.SetActive(true);
         }
 
+        // Esconde a tela e para a contagem.
         private void Close()
         {
             _open = false;
             _root.SetActive(false);
         }
 
+        // Contagem regressiva em tempo real (unscaled).
         private void Update()
         {
             if (!_open) return;
@@ -5886,6 +6622,9 @@ using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
+    // POR QUE: o fim da run precisa de um fechamento: o que o jogador conseguiu e para onde ir depois.
+    // ESTRATÉGIA: uma view que só reage ao evento RunEnded e escreve os números do RunSummary. Os botões
+    // pedem ao RunController para trocar de cena. Não calcula nada (o Stardust entra na Fase 9).
     // Results (Seção 6.3): estatísticas da run e os botões "jogar de novo" e "menu".
     // O Stardust e o botão "dobrar com anúncio" entram na Fase 9.
     public sealed class ResultsView : MonoBehaviour
@@ -5901,6 +6640,7 @@ namespace Armageddon.UI
         [SerializeField] private Button _playAgainButton;
         [SerializeField] private Button _menuButton;
 
+        // Liga os botões e começa escondida.
         private void Awake()
         {
             _playAgainButton.onClick.AddListener(() => _run.PlayAgain());
@@ -5909,14 +6649,17 @@ namespace Armageddon.UI
             _root.SetActive(false);
         }
 
+        // Aparece quando a run termina (inscreve no evento RunEnded).
         private void OnEnable() => _run.RunEnded += Show;
         private void OnDisable() => _run.RunEnded -= Show;
 
+        // Preenche os textos com o resumo e mostra a tela.
         private void Show(RunSummary summary)
         {
             int seconds = Mathf.FloorToInt(summary.survivalSeconds);
             _waveText.text = $"Wave {summary.waveReached}";
             _enemiesText.text = summary.enemiesDestroyed.ToString();
+            // m:ss — divisão inteira dá os minutos; o resto (%) dá os segundos; ":00" força 2 dígitos.
             _timeText.text = $"{seconds / 60}:{seconds % 60:00}";
             _shardsText.text = Mathf.FloorToInt(summary.shardsEarned).ToString();
             _stardustText.text = "-";   // a Fase 9 calcula o Stardust da run
@@ -5939,6 +6682,9 @@ using UnityEngine.InputSystem;
 
 namespace Armageddon.Run
 {
+    // POR QUE: testar morte, Revive e falhas de anúncio sem esperar o planeta cair de verdade.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools). Mata o planeta com um dano enorme
+    // (passa pelo mesmo caminho do dano real) e liga/desliga as flags do FakeAdService.
     // L = zera o HP do planeta · O = o próximo anúncio falha (liga/desliga) · I = sem anúncio disponível (liga/desliga).
     public sealed class RunDevTools : MonoBehaviour
     {
@@ -5946,9 +6692,11 @@ namespace Armageddon.Run
         [SerializeField] private PlanetHealth _planet;
         [SerializeField] private RunController _run;
 
+        // Escuta o fim da run para escrever o resumo no Console.
         private void OnEnable() => _run.RunEnded += HandleRunEnded;
         private void OnDisable() => _run.RunEnded -= HandleRunEnded;
 
+        // Lê as teclas de teste.
         private void Update()
         {
             var keyboard = Keyboard.current;
@@ -5969,6 +6717,7 @@ namespace Armageddon.Run
             }
         }
 
+        // Escreve o RunSummary no Console para conferir os números do Results.
         private void HandleRunEnded(RunSummary summary)
         {
             Debug.Log($"[Run] Fim: Wave {summary.waveReached}, {summary.enemiesDestroyed} inimigos, " +

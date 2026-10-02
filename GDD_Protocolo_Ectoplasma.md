@@ -210,28 +210,59 @@ Isso evita a bagunça mais comum de projeto iniciante (tudo solto na raiz de Ass
 ```csharp
 using UnityEngine;
 
+// POR QUE: o jogador precisa andar pela casa com WASD/setas. Este script é o único
+// responsável por transformar teclas apertadas em movimento do personagem.
+// ESTRATÉGIA: é um MonoBehaviour (a classe base de todo script que vai "grudado" num
+// GameObject da cena e recebe chamadas automáticas do Unity, como Awake/Update).
+// Separamos em duas etapas: Update() LÊ o input (roda todo frame, então não perde
+// nenhum toque de tecla) e FixedUpdate() APLICA o movimento no Rigidbody2D (roda no
+// ritmo fixo da física). Mira/sucção ficam em outro script (PlayerSuction) — cada
+// script cuida de uma coisa só, o que facilita achar bugs.
+//
+// ATENÇÃO (Unity 6): este script usa o sistema de input ANTIGO (classe `Input`).
+// Projetos novos no Unity 6 vêm só com o Input System novo ativado e dariam erro
+// "InvalidOperationException" ao apertar Play. Para usar o código como está, vá em
+// Edit > Project Settings > Player > Other Settings > Active Input Handling e escolha
+// "Both" (o Unity reinicia). Vale também para PlayerSuction.
 public class PlayerMovement : MonoBehaviour
 {
+    // Campo "public" aparece no Inspector: dá pra ajustar a velocidade sem mexer no código.
     public float moveSpeed = 5f;
 
+    // Referência ao componente de física do Player (guardada em Awake).
     private Rigidbody2D rb;
+    // Direção pedida pelo jogador neste frame (x = esquerda/direita, y = cima/baixo).
     private Vector2 moveInput;
 
+    // Awake: o Unity chama UMA vez, assim que o objeto é criado (antes de Start e
+    // antes do primeiro Update). É o lugar certo para pegar referências a componentes
+    // do próprio objeto. Guardamos o Rigidbody2D numa variável ("cachear") porque
+    // GetComponent faz uma busca — chamar isso todo frame é desperdício.
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
     }
 
+    // Update: chamado uma vez POR FRAME (quantas vezes por segundo depende do PC).
+    // Input deve ser lido aqui, senão um toque rápido de tecla pode ser perdido.
     void Update()
     {
-        // Le o input do teclado (WASD ou setas)
+        // Lê o input do teclado (WASD ou setas). GetAxisRaw devolve -1, 0 ou 1,
+        // sem suavização — o personagem para na hora em que a tecla é solta.
         moveInput.x = Input.GetAxisRaw("Horizontal");
         moveInput.y = Input.GetAxisRaw("Vertical");
-        moveInput.Normalize(); // evita andar mais rapido na diagonal
+        moveInput.Normalize(); // evita andar mais rápido na diagonal (vetor (1,1) teria tamanho ~1.41)
     }
 
+    // FixedUpdate: chamado em intervalos FIXOS (padrão 50x por segundo), sincronizado
+    // com o motor de física. Tudo que mexe em Rigidbody vai aqui, para o movimento
+    // ficar igual em PCs rápidos e lentos e as colisões funcionarem direito.
     void FixedUpdate()
     {
+        // MovePosition move o corpo respeitando colisões (não atravessa paredes, ao
+        // contrário de mudar transform.position direto). Multiplicamos por
+        // Time.fixedDeltaTime (duração de um passo de física) para a velocidade ser
+        // em "unidades por segundo", e não "por passo".
         rb.MovePosition(rb.position + moveInput * moveSpeed * Time.fixedDeltaTime);
     }
 }
@@ -243,15 +274,29 @@ public class PlayerMovement : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: a casa é maior que a tela; sem isso o jogador sairia do enquadramento.
+// ESTRATÉGIA: script genérico colocado na Main Camera que persegue qualquer Transform
+// (não conhece o PlayerMovement — só a posição do alvo). Assim ele pode seguir outra
+// coisa no futuro (ex.: um fantasma numa cutscene) sem mudança nenhuma.
 public class CameraFollow : MonoBehaviour
 {
     public Transform target; // arraste o Player aqui no Inspector
+    // Quão rápido a câmera alcança o alvo (maior = mais "grudada", menor = mais atrasada/suave).
     public float smoothSpeed = 5f;
+    // Distância da câmera ao alvo. O Z = -10 é obrigatório em 2D: a câmera precisa
+    // ficar "na frente" dos sprites (que estão em Z = 0), senão não enxerga nada.
     public Vector3 offset = new Vector3(0, 0, -10);
 
+    // LateUpdate: chamado todo frame, mas DEPOIS que todos os Update() rodaram.
+    // Assim a câmera se move só depois que o Player já se moveu neste frame,
+    // evitando aquela "tremidinha" de câmera atrasada um frame.
     void LateUpdate()
     {
+        // Proteção: se ninguém foi arrastado no campo target, não faz nada (evita erro).
         if (target == null) return;
+        // Lerp = "anda uma fração do caminho" entre a posição atual e a desejada a cada
+        // frame. Isso dá o efeito de câmera suave. Time.deltaTime (duração do frame)
+        // deixa a suavização parecida independente do FPS.
         Vector3 desiredPosition = target.position + offset;
         transform.position = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed * Time.deltaTime);
     }
@@ -274,13 +319,27 @@ public class CameraFollow : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: cada bairro/imóvel tem nome, nível de ameaça e cena própria. Em vez de
+// escrever esses valores dentro de código, queremos editá-los no Editor, um arquivo
+// por bairro.
+// ESTRATÉGIA: ScriptableObject = uma classe que vira um ARQUIVO de dados (.asset) no
+// projeto, e não um componente preso a um GameObject. Ela não tem Update nem vive na
+// cena; só guarda dados que vários scripts leem (aqui, o MapButton; depois, o
+// GameEndManager). [CreateAssetMenu] adiciona a opção no menu
+// botão direito > Create > Data > NeighborhoodData.
+//
+// ATENÇÃO: mudar `isCleaned` durante o jogo altera o arquivo .asset só dentro do
+// Editor (e a mudança fica gravada mesmo depois de parar o Play!). Numa build, o
+// valor volta ao original toda vez que o jogo abre. Para o progresso valer de
+// verdade, ele precisa ser salvo à parte (ex.: guardado no GameManager/arquivo de
+// save) — isso ainda não está no guia.
 [CreateAssetMenu(fileName = "NewNeighborhood", menuName = "Data/NeighborhoodData")]
 public class NeighborhoodData : ScriptableObject
 {
-    public string neighborhoodName;
-    public int threatLevel; // 1 a 5, por exemplo
-    public bool isCleaned;
-    public string sceneToLoad; // nome da cena da casa correspondente
+    public string neighborhoodName; // nome mostrado ao jogador
+    public int threatLevel; // 1 a 5, por exemplo — usado para o ícone de ameaça no mapa
+    public bool isCleaned; // true quando o imóvel já foi limpo (ver ATENÇÃO acima)
+    public string sceneToLoad; // nome da cena da casa correspondente (tem que estar no Build Settings / Build Profiles)
 }
 ```
 
@@ -293,23 +352,40 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+// POR QUE: cada botão do mapa precisa saber a qual bairro ele se refere, mostrar o
+// perigo dele e abrir a cena certa quando clicado.
+// ESTRATÉGIA: um único script reaproveitado em TODOS os botões; o que muda entre eles
+// é só o asset NeighborhoodData arrastado no campo `data`. Assim, para adicionar um
+// bairro novo você cria um asset e um botão — sem escrever código novo.
 public class MapButton : MonoBehaviour
 {
-    public NeighborhoodData data;
-    public Image threatIcon; // referencia a um icone de ameaca no botao
+    public NeighborhoodData data; // qual bairro este botão representa (arraste o asset no Inspector)
+    public Image threatIcon; // referência a um ícone de ameaça no botão
 
+    // Start: chamado uma vez, logo antes do primeiro Update, e DEPOIS do Awake de
+    // todos os objetos da cena. Use Start (e não Awake) quando depender de coisas que
+    // outros objetos preparam no Awake deles.
     void Start()
     {
         UpdateVisual();
+        // Liga o clique do componente Button a este script por código. É o mesmo que
+        // configurar o evento "On Click ()" no Inspector, mas não dá pra esquecer.
+        // (Não configure os dois, senão OnClick roda duas vezes.)
         GetComponent<Button>().onClick.AddListener(OnClick);
     }
 
+    // Atualiza a aparência do botão conforme o estado do bairro. Fica num método
+    // separado para poder ser chamado de novo no futuro (ex.: após limpar a casa).
     void UpdateVisual()
     {
-        // aqui voce pode trocar a cor/sprite do threatIcon
+        // aqui você pode trocar a cor/sprite do threatIcon
         // dependendo de data.threatLevel e data.isCleaned
     }
 
+    // Chamado pelo Button quando o jogador clica. Troca de cena pelo NOME guardado no
+    // asset. SceneManager.LoadScene descarrega a cena atual e carrega a nova; a cena
+    // precisa estar na lista de cenas da build (File > Build Profiles / Build Settings),
+    // senão dá erro.
     void OnClick()
     {
         SceneManager.LoadScene(data.sceneToLoad);
@@ -330,19 +406,34 @@ public class MapButton : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: é o "corpo" do fantasma na mecânica principal: guarda quanto plasma ele
+// tem, regenera quando o jogador solta o botão (pilar "soltar cedo = perder progresso")
+// e morre quando o plasma zera.
+// ESTRATÉGIA: o Ghost NÃO sabe quem está sugando. Qualquer coisa (o jogador, uma
+// armadilha) chama o método público Drain(). Isso deixa PlayerSuction e TrapBase
+// reaproveitarem a mesma regra sem duplicar código. Comportamento (fugir/atacar) fica
+// em outro script (GhostAI), e a barra visual em outro (GhostPlasmaBar) — o Ghost só
+// cuida dos números.
 public class Ghost : MonoBehaviour
 {
-    public float maxPlasma = 100f;
-    public float currentPlasma;
-    public float regenRate = 5f; // quanto plasma recupera por segundo quando nao esta sendo sugado
+    public float maxPlasma = 100f; // plasma cheio
+    public float currentPlasma; // plasma atual (public para a barra visual poder ler)
+    public float regenRate = 5f; // quanto plasma recupera por segundo quando não está sendo sugado
 
+    // "Alguém me sugou neste frame?" — decide se o fantasma regenera ou não.
     private bool isBeingDrained = false;
 
+    // Começa com plasma cheio (ver PlayerMovement sobre o Awake).
     void Awake()
     {
         currentPlasma = maxPlasma;
     }
 
+    // Todo frame: se ninguém sugou desde o último frame, recupera plasma.
+    // O truque do "aviso a cada frame": quem suga marca isBeingDrained = true dentro
+    // de Drain(); aqui usamos a marca e depois zeramos. Se o jogador soltar o botão,
+    // ninguém marca mais e a regeneração volta sozinha — sem precisar de um evento
+    // "parei de sugar".
     void Update()
     {
         if (!isBeingDrained && currentPlasma < maxPlasma)
@@ -354,6 +445,9 @@ public class Ghost : MonoBehaviour
         isBeingDrained = false; // reseta a cada frame, quem suga precisa "avisar" todo frame
     }
 
+    // Porta de entrada pública da sucção: o jogador e as armadilhas chamam isso.
+    // `amount` já vem multiplicado por Time.deltaTime por quem chama, ou seja, é
+    // "quanto sugar NESTE frame".
     public void Drain(float amount)
     {
         isBeingDrained = true;
@@ -366,9 +460,14 @@ public class Ghost : MonoBehaviour
         }
     }
 
+    // Fim do fantasma. Separado de Drain para ficar fácil acrescentar efeitos depois.
+    // Destroy não apaga o objeto na hora, só no fim do frame — então se o jogador e
+    // uma armadilha sugarem no mesmo frame, Die() pode ser chamado duas vezes. Hoje
+    // isso não faz mal, mas quando Die() passar a dar plasma ao jogador, proteja com
+    // um bool "isDead" para não pagar em dobro.
     void Die()
     {
-        // aqui entra: dropar plasma coletavel, tocar animacao, destruir o objeto
+        // aqui entra: dropar plasma coletável, tocar animação, destruir o objeto
         Destroy(gameObject);
     }
 }
@@ -379,29 +478,51 @@ public class Ghost : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: é a "arma" do jogador. Enquanto o botão direito estiver segurado, suga o
+// fantasma na direção do mouse.
+// ESTRATÉGIA: script separado do PlayerMovement (andar e sugar são coisas
+// independentes). Ele não mexe no plasma diretamente: acha o fantasma e chama
+// ghost.Drain() — a regra de plasma/regeneração fica toda no Ghost.
+// Usa o input antigo (ver ATENÇÃO em PlayerMovement).
 public class PlayerSuction : MonoBehaviour
 {
-    public float drainRate = 20f; // plasma sugado por segundo
-    public float suctionRange = 5f;
+    public float drainRate = 20f; // plasma sugado por segundo (é o valor que o upgrade da Fase 6 aumenta)
+    public float suctionRange = 5f; // alcance máximo do "raio" de sucção, em unidades do mundo
+    // LayerMask = filtro de camadas. O raio só "enxerga" objetos na Layer Ghost,
+    // ignorando paredes do chão, o próprio Player, etc.
     public LayerMask ghostLayer; // configure uma Layer chamada "Ghost" no Editor
 
+    // Todo frame verifica se o botão direito está SEGURADO (GetMouseButton = segurado;
+    // GetMouseButtonDown seria só no frame do clique). Sugar é contínuo, por isso segurado.
     void Update()
     {
-        if (Input.GetMouseButton(1)) // botao direito segurado
+        if (Input.GetMouseButton(1)) // botão direito segurado (0 = esquerdo, 1 = direito, 2 = meio)
         {
             TryDrainGhostUnderMouse();
         }
     }
 
+    // Dispara um raio invisível do jogador em direção ao mouse e suga o primeiro
+    // fantasma que ele encontrar. Obs.: apesar do nome, não precisa o mouse estar EM
+    // CIMA do fantasma — basta mirar na direção dele dentro do alcance.
     void TryDrainGhostUnderMouse()
     {
+        // O mouse vem em PIXELS da tela; ScreenToWorldPoint converte para a posição
+        // no mundo do jogo, onde estão os objetos. Camera.main acha a câmera com a tag
+        // "MainCamera".
         Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        // Direção de tamanho 1 (normalizada) do jogador até o mouse.
         Vector2 direction = (mouseWorldPos - (Vector2)transform.position).normalized;
 
+        // Raycast 2D: "a partir daqui, nesta direção, até esta distância, o que eu
+        // acerto nas camadas do filtro?". Devolve informações do primeiro acerto.
         RaycastHit2D hit = Physics2D.Raycast(transform.position, direction, suctionRange, ghostLayer);
 
+        // Se não acertou nada, hit.collider é null.
         if (hit.collider != null)
         {
+            // Pega o script Ghost do objeto atingido (o collider precisa estar no
+            // mesmo GameObject que o Ghost).
             Ghost ghost = hit.collider.GetComponent<Ghost>();
             if (ghost != null)
             {
@@ -426,14 +547,25 @@ public class PlayerSuction : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: lista fechada dos "modos" em que um fantasma pode estar.
+// ESTRATÉGIA: enum = um tipo com um conjunto fixo de nomes. Evita usar strings
+// ("fugir", "Fugir"...) que quebram por erro de digitação, e aparece como menu
+// dropdown no Inspector.
 public enum GhostState { Idle, Flee, Attack }
 
+// POR QUE: fantasmas precisam reagir ao jogador (ficar parado, fugir, atacar) sem um
+// sistema de IA complicado.
+// ESTRATÉGIA: "máquina de estados" simples: o fantasma está em UM estado por vez, e o
+// Update executa só o comportamento daquele estado (switch). Cada tipo de fantasma
+// (Errante, Assombrado, Poltergeist) é só um estado inicial diferente no Inspector.
+// Fica separado do Ghost: o Ghost cuida do plasma, o GhostAI do movimento.
 public class GhostAI : MonoBehaviour
 {
-    public GhostState currentState = GhostState.Idle;
-    public float fleeSpeed = 2f;
-    public Transform player;
+    public GhostState currentState = GhostState.Idle; // estado atual (troque no Inspector para testar)
+    public float fleeSpeed = 2f; // velocidade de fuga, em unidades por segundo
+    public Transform player; // arraste o Player aqui (de quem o fantasma foge)
 
+    // Todo frame, executa o comportamento do estado atual.
     void Update()
     {
         switch (currentState)
@@ -452,10 +584,16 @@ public class GhostAI : MonoBehaviour
         }
     }
 
+    // Afasta o fantasma do jogador. Direção = (minha posição − posição do jogador),
+    // ou seja, o vetor que aponta do jogador PARA mim; seguir esse vetor é fugir.
+    // Aqui movemos o transform direto (sem Rigidbody), então o fantasma atravessa
+    // paredes — ok para fantasma e para o protótipo. Se ele precisar colidir, troque
+    // por um Rigidbody2D com MovePosition no FixedUpdate (ver PlayerMovement).
     void Flee()
     {
         if (player == null) return;
         Vector2 direction = ((Vector2)transform.position - (Vector2)player.position).normalized;
+        // O cast (Vector3) é necessário porque transform.position é Vector3 e direction é Vector2.
         transform.position += (Vector3)(direction * fleeSpeed * Time.deltaTime);
     }
 }
@@ -472,14 +610,22 @@ public class GhostAI : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: armadilhas sugam fantasmas sozinhas, ajudando o jogador a dividir a atenção.
+// ESTRATÉGIA: reaproveita exatamente a mesma regra do jogador — chama ghost.Drain()
+// (ver Ghost). A diferença é que, em vez de um raio numa direção, ela suga TODOS os
+// fantasmas num círculo ao redor. Chama-se "Base" porque a ideia é criar tipos de
+// armadilha diferentes a partir dela no futuro.
 public class TrapBase : MonoBehaviour
 {
-    public float drainRate = 5f;
-    public float range = 2f;
-    public LayerMask ghostLayer;
+    public float drainRate = 5f; // plasma por segundo (mais fraca que o jogador, que tem 20)
+    public float range = 2f; // raio do círculo de alcance
+    public LayerMask ghostLayer; // só afeta objetos na Layer Ghost (ver PlayerSuction)
 
+    // Todo frame, procura fantasmas dentro do círculo e suga cada um.
     void Update()
     {
+        // OverlapCircleAll devolve TODOS os colliders dentro de um círculo (centro,
+        // raio, filtro de camadas). Diferente do Raycast, não tem direção.
         Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, range, ghostLayer);
         foreach (var hit in hits)
         {
@@ -505,17 +651,30 @@ public class TrapBase : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: o plasma ganho numa casa precisa continuar existindo quando o jogo volta
+// ao mapa. Mas toda troca de cena destrói os objetos da cena anterior.
+// ESTRATÉGIA: padrão "Singleton persistente": existe uma única instância, acessível de
+// qualquer script por GameManager.Instance, e ela é marcada para NÃO ser destruída
+// ao trocar de cena. É o "cofre" central do plasma; outros scripts pedem para
+// adicionar/gastar em vez de mexer no número direto.
 public class GameManager : MonoBehaviour
 {
+    // "static" = pertence à classe, não a um objeto. Por isso qualquer script escreve
+    // GameManager.Instance sem precisar de referência arrastada no Inspector.
     public static GameManager Instance;
 
-    public float totalPlasma;
+    public float totalPlasma; // plasma acumulado do jogador (a "moeda" dos upgrades)
 
+    // Garante que só exista UM GameManager. O primeiro a acordar vira o Instance e
+    // sobrevive às trocas de cena; se a cena inicial for carregada de novo (voltando
+    // ao menu, por exemplo), a cópia nova percebe que já existe um e se destrói.
     void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
+            // DontDestroyOnLoad: este GameObject não é apagado quando outra cena carrega.
+            // Só funciona em objetos na raiz da Hierarchy (sem pai).
             DontDestroyOnLoad(gameObject);
         }
         else
@@ -524,11 +683,15 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Chamado quando o jogador coleta plasma (ex.: ao matar um fantasma).
     public void AddPlasma(float amount)
     {
         totalPlasma += amount;
     }
 
+    // Tenta gastar. Devolve true se tinha saldo (e desconta), false se não tinha
+    // (e não mexe em nada). Quem chama usa o retorno para decidir se aplica o upgrade:
+    // if (GameManager.Instance.SpendPlasma(custo)) { ...aplica... }
     public bool SpendPlasma(float amount)
     {
         if (totalPlasma >= amount)
@@ -547,12 +710,16 @@ public class GameManager : MonoBehaviour
 ```csharp
 using UnityEngine;
 
+// POR QUE: cada upgrade (nome, preço, efeito) é um dado que você quer ajustar sem
+// recompilar código.
+// ESTRATÉGIA: ScriptableObject, igual ao NeighborhoodData — um asset por upgrade.
+// O UpgradeManager lê uma lista desses assets e monta os botões da loja.
 [CreateAssetMenu(fileName = "NewUpgrade", menuName = "Data/UpgradeData")]
 public class UpgradeData : ScriptableObject
 {
-    public string upgradeName;
-    public float cost;
-    public float valueIncrease; // ex: quanto aumenta o drainRate
+    public string upgradeName; // texto mostrado no botão
+    public float cost; // preço em plasma (passado para GameManager.SpendPlasma)
+    public float valueIncrease; // ex: quanto aumenta o drainRate do PlayerSuction
 }
 ```
 
