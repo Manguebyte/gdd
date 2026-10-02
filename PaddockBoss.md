@@ -26,7 +26,7 @@
 
 **Parte 2 — Guia de Implementação Unity**
 - [Convenções, arquitetura e fases](#parte-2--guia-de-implementação-unity)
-- Partes 3 a 12: Fases 0 a 9 (setup → build)
+- Partes 3 a 13: Fases 0 a 10 (setup → testes automáticos → build)
 
 ---
 
@@ -240,16 +240,37 @@ Lista consolidada, para revisão rápida:
 
 # Parte 2 — Guia de Implementação Unity
 
-Este guia leva o MVP do Paddock Boss do projeto vazio até as builds de PC, Mobile e WebGL. Ele implementa a **proposta inicial** da Parte 1. Onde a Parte 1 diz **Em aberto**, o guia escolhe a solução mais simples e avisa. Todos os números ficam em dados (ScriptableObjects), então mudar o balanceamento não exige mexer em código.
+Este guia leva o MVP do Paddock Boss de um projeto vazio até as builds de PC, Mobile e WebGL. Ele implementa a **proposta inicial** da Parte 1. Onde a Parte 1 diz **Em aberto**, o guia escolhe a solução mais simples e avisa. Todos os números ficam em dados (ScriptableObjects), então mudar o balanceamento não exige mexer em código.
 
-Cada fase termina com algo que dá para ver funcionando no Play Mode, um **✅ Checkpoint** e, quando há armadilhas prováveis, **Problemas comuns**.
+## Como usar este guia
+
+O guia foi escrito para quem está aprendendo Unity. Cada fase segue o mesmo formato:
+
+- **Conceitos novos:** o que a fase usa pela primeira vez, explicado antes de aparecer.
+- **Etapas:** a fase é dividida em etapas pequenas (3A, 3B, ...). Cada etapa termina com um **🧪 Teste rápido**: algo para ver funcionando no Play Mode antes de seguir. Se o teste falhar, o problema está só no que foi feito naquela etapa.
+- **Passos no Editor clique a clique:** menus no formato **Menu → Submenu → Item**, campos do Inspector em **negrito** e valores em `código`.
+- **Hierarchy esperada:** ao fim das fases que mexem na cena, um desenho de como a janela Hierarchy deve estar.
+- **✅ Checkpoint** no fim da fase e **Problemas comuns** com os erros mais prováveis.
+
+Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Unity gerou e cole o código inteiro.
+
+### Duas operações que se repetem no guia inteiro
+
+**Criar um script C#:**
+1. Na janela **Project**, entre na pasta indicada no comentário `// Caminho:` do script (ex.: `Assets/_Project/Scripts/Data/`).
+2. Botão direito no espaço vazio da pasta → **Create → Scripting → Empty C# Script**. Em versões anteriores ao Unity 6, use **Create → C# Script**.
+3. Digite o nome **exatamente igual ao nome da classe** (ex.: `GameBalance`) e aperte Enter. Se o arquivo e a classe tiverem nomes diferentes, a Unity não consegue adicionar o componente a um GameObject.
+4. Dê duplo clique no arquivo para abrir no editor de código, apague tudo, cole o script do guia e salve (**Ctrl+S**).
+5. Volte à Unity e espere a compilação (o ícone girando no canto inferior direito). Abra o **Console** (**Window → General → Console**): ele não pode ter erros em vermelho.
+
+**Ligar um campo no Inspector:** campos `[SerializeField]` aparecem no Inspector com o nome "humanizado" (`_trackRenderer` vira **Track Renderer**). Para preenchê-los, arraste o objeto da **Hierarchy** ou o asset da **Project** para o campo, ou clique no círculo ⊙ à direita do campo e escolha na lista.
 
 ## Convenções
 
 - **Nomes no projeto em inglês** (scripts, classes, GameObjects, assets); **comentários em português**. Cada classe começa com `// POR QUE:` (por que ela existe) e `// ESTRATÉGIA:` (como funciona), e cada método tem um comentário curto acima dele.
-- **Namespaces:** `PaddockBoss.Data` (ScriptableObjects e enums), `PaddockBoss.Game` (regras: simulação, economia, IA, campeonato, save), `PaddockBoss.UI` (tudo que desenha algo na tela).
+- **Namespaces:** `PaddockBoss.Data` (ScriptableObjects e enums), `PaddockBoss.Game` (regras: simulação, economia, IA, campeonato, save), `PaddockBoss.UI` (tudo que desenha algo na tela), `PaddockBoss.Tests` (testes automáticos).
 - **Campos do Inspector:** `[SerializeField] private` com `_camelCase`. **Dados de ScriptableObject e de save:** campos públicos `camelCase`.
-- **Hierarquia da cena `Main`:** agrupadores na raiz entre colchetes: `[Systems]`, `[World]`, `[UI]`.
+- **Hierarchy da cena `Main`:** agrupadores na raiz entre colchetes: `[Systems]`, `[World]`, `[UI]`.
 
 ## Arquitetura em uma página
 
@@ -267,7 +288,7 @@ Cada fase termina com algo que dá para ver funcionando no Play Mode, um **✅ C
                      GameSession (MonoBehaviour): temporada → corrida → resultado
 ```
 
-- **Regra de ouro:** as regras do jogo (velocidade, dinheiro, compra, pontos) moram em classes C# comuns, sem `MonoBehaviour`. A tela só lê o estado e chama métodos (`RequestPit`, `TryBuy`). Assim a lógica não depende de cena e dá para testar em Edit Mode depois.
+- **Regra de ouro:** as regras do jogo (velocidade, dinheiro, compra, pontos) moram em classes C# comuns, sem `MonoBehaviour`. A tela só lê o estado e chama métodos (`RequestPit`, `TryBuy`). Assim a lógica não depende de cena e pode ser testada automaticamente (Fase 9).
 - **Por que a simulação não usa física (`Rigidbody2D`)?** Os carros andam sobre uma linha. A posição de cada um é só "quantas unidades já percorreu" (`Distance`). Isso torna ordem, voltas e ultrapassagens triviais de calcular e deixa a corrida igual em qualquer taxa de quadros. Por isso este guia não tem a nota `rb.linearVelocity`/`rb.velocity`: nenhuma fase usa Rigidbody.
 
 ## Mapa de sistemas
@@ -279,7 +300,7 @@ Cada fase termina com algo que dá para ver funcionando no Play Mode, um **✅ C
 | `Game` | `TrackPath` | Geometria da pista (posição, direção e curva por distância) | 2 |
 | `UI` | `TrackAuthoring`, `TrackRenderer` | Desenhar pistas no Editor; mostrar a pista no jogo | 2 |
 | `Game` | `TeamState`, `CarState`, `RaceSimulator`, `RaceRunner` | Simulação da corrida | 3 |
-| `Game` | `RaceTestStarter` | Largada de teste (removida na Fase 7) | 3 |
+| `Game` | `RaceTestStarter` | Largada de teste (desativada na Fase 7) | 3 |
 | `UI` | `CarMarker`, `RaceHUD` | Carros no mapa; volta e tabela de posições | 3 |
 | `UI` | `CarPitControls` | Box e pneus dos carros do jogador | 4 |
 | `Game` | `RaceEconomy`, `UpgradeService` | Dinheiro ao vivo; compras | 5 |
@@ -289,21 +310,23 @@ Cada fase termina com algo que dá para ver funcionando no Play Mode, um **✅ C
 | `Game` | `SaveData`, `SaveService`, `Championship`, `GameSession` | Campeonato, pontos e save | 7 |
 | `UI` | `SeasonPanel` | Tela entre corridas | 7 |
 | `UI` | `SafeAreaFitter`, `TrackCameraFit` | Layout em qualquer tela | 8 |
+| `Tests` | `TestData` e 5 classes de teste | Testes automáticos em Edit Mode | 9 |
 
 ## Fases
 
-| Fase | Parte | Conteúdo |
-|---|---|---|
-| 0 | 3 | Setup do projeto |
-| 1 | 4 | Dados: balanceamento e equipes |
-| 2 | 5 | Pista: geometria, editor e desenho |
-| 3 | 6 | Simulação da corrida e tabela de posições |
-| 4 | 7 | Pneus e pit stop |
-| 5 | 8 | Economia ao vivo e investimentos |
-| 6 | 9 | IA das equipes rivais |
-| 7 | 10 | Campeonato e save local |
-| 8 | 11 | Layout multiplataforma e arte |
-| 9 | 12 | Build e próximos passos |
+| Fase | Parte | Conteúdo | Etapas |
+|---|---|---|---|
+| 0 | 3 | Setup do projeto | 0A Unity · 0B projeto e Git · 0C pastas e cenas |
+| 1 | 4 | Dados: balanceamento e equipes | 1A balanceamento · 1B equipes |
+| 2 | 5 | Pista: geometria, editor e desenho | 2A dados e geometria · 2B ferramenta de desenho · 2C três pistas · 2D pista na cena Main |
+| 3 | 6 | Simulação da corrida | 3A carros como bolinhas · 3B ícone do carro · 3C tabela de posições |
+| 4 | 7 | Pneus e pit stop | 4A script · 4B painel do primeiro carro · 4C segundo carro |
+| 5 | 8 | Economia e investimentos | 5A dinheiro entrando · 5B botões de compra |
+| 6 | 9 | IA das equipes rivais | 6A box e compras da IA · 6B personalidades |
+| 7 | 10 | Campeonato e save local | 7A dados e save · 7B tela da temporada · 7C fluxo completo |
+| 8 | 11 | Layout multiplataforma e arte | 8A área segura · 8B câmera · 8C arte |
+| 9 | 12 | Testes automáticos | 9A assemblies · 9B testes · 9C rodar |
+| 10 | 13 | Build e próximos passos | — |
 
 ---
 
@@ -311,23 +334,42 @@ Cada fase termina com algo que dá para ver funcionando no Play Mode, um **✅ C
 
 ## Fase 0 — Setup do Projeto
 
-> Objetivo desta fase: um projeto Unity 6 2D vazio, versionado no Git, com as pastas e pacotes que o resto do guia usa.
+> Objetivo desta fase: um projeto Unity 6 2D vazio, versionado no Git, com as pastas e cenas que o resto do guia usa.
 
-O Paddock Boss é 2D, mas quase não usa recursos 2D de jogo: não tem física, tilemap nem animação de personagem. O mapa da corrida são uma linha (`LineRenderer`) e alguns sprites; o resto é UI (uGUI + TextMeshPro). Por isso o template é o **Universal 2D** puro, sem pacotes extras de física ou tilemap.
+**Conceitos novos:**
+- **Unity Hub:** o programa que instala versões da Unity (o "Editor") e abre projetos. Cada versão pode ter **módulos** de plataforma; sem o módulo Android, por exemplo, a Unity não gera APK/AAB.
+- **LTS (Long Term Support):** versão que recebe correções por mais tempo. Use sempre uma LTS para um projeto que vai a público.
+- **Template Universal 2D:** projeto inicial já configurado com o **URP** (Universal Render Pipeline, o sistema de renderização moderno da Unity) em modo 2D: câmera ortográfica, materiais de sprite e luz 2D.
+- **As janelas do Editor:**
+  - **Hierarchy:** a lista de objetos da cena aberta.
+  - **Scene:** a vista de edição, onde você move as coisas.
+  - **Game:** o que o jogador vê.
+  - **Inspector:** propriedades do que estiver selecionado.
+  - **Project:** os arquivos do projeto (a pasta `Assets/`).
+  - **Console:** mensagens e erros.
 
-### 0.1 Instalar a Unity
+  Se alguma sumir, reabra em **Window → General**.
+- **GameObject e componente:** tudo na cena é um GameObject (um "objeto vazio" com posição). O que ele faz vem dos **componentes** presos a ele (um `SpriteRenderer` desenha uma imagem; um script seu é um componente também).
+- **Play Mode:** o botão ▶ no topo roda o jogo dentro do Editor. ⚠️ **Tudo o que você mudar na cena durante o Play é desfeito ao sair do Play.** Saia do Play antes de editar.
+- **Git LFS:** extensão do Git para guardar arquivos binários grandes (imagens, áudio) fora do histórico normal.
 
-1. Instale o **Unity Hub** (unity.com/download).
-2. **Installs → Install Editor** → **Unity 6 LTS** mais recente (`6000.x`).
-3. Marque os módulos das três plataformas do MVP:
-   - **Windows Build Support (IL2CPP)** (PC; o Mono já vem por padrão).
-   - **Android Build Support**, com **OpenJDK** e **Android SDK & NDK Tools** (Mobile). Para iOS, **iOS Build Support** (exige um Mac para gerar a build final).
-   - **Web Build Support** (WebGL).
+### Etapa 0A — Instalar a Unity
 
-### 0.2 Criar o projeto e o repositório
+1. Baixe e instale o **Unity Hub** (unity.com/download) e entre com sua conta Unity.
+2. No Hub: **Installs → Install Editor** → aba **Official releases** → a versão **Unity 6** mais recente marcada como **LTS** (`6000.x`) → **Install**.
+3. Na tela de módulos, marque:
+   - **Microsoft Visual Studio Community** (se ainda não tiver um editor de código; VS Code e Rider também servem).
+   - **Android Build Support**, abrindo a setinha e marcando também **OpenJDK** e **Android SDK & NDK Tools**.
+   - **iOS Build Support** (opcional; a build final de iOS exige um Mac).
+   - **Web Build Support**.
+   - **Windows Build Support (IL2CPP)**.
+4. Clique **Install** e espere (são vários GB).
 
-1. **Projects → New Project** → template **Universal 2D** → nome `PaddockBoss` → **Create project**.
-2. Na pasta do projeto, crie o repositório:
+### Etapa 0B — Criar o projeto e o repositório
+
+1. No Hub: **Projects → New project** → escolha a versão instalada no topo → template **Universal 2D** (baixe-o se aparecer o ícone de download) → **Project name** = `PaddockBoss` → **Location** = a pasta onde ficam seus projetos → **Create project**.
+2. Com o Editor aberto, configure o editor de código: **Edit → Preferences → External Tools → External Script Editor** = o seu (Visual Studio, VS Code ou Rider). Isso faz o duplo clique num script abri-lo no editor certo, com autocompletar.
+3. Abra um terminal (PowerShell) **na pasta do projeto** (a que contém `Assets/`) e rode:
 
    ```powershell
    git init
@@ -336,39 +378,52 @@ O Paddock Boss é 2D, mas quase não usa recursos 2D de jogo: não tem física, 
    git lfs track "*.png" "*.wav" "*.ogg" "*.ttf" "*.otf"
    ```
 
-3. Adicione `Builds/` ao `.gitignore`.
-4. **Edit → Project Settings → Editor**: **Version Control Mode** = `Visible Meta Files`, **Asset Serialization Mode** = `Force Text`.
+4. Abra o `.gitignore` num editor de texto e acrescente uma linha `Builds/` no final.
+5. Na Unity: **Edit → Project Settings → Editor**. Em **Version Control**, **Mode** = `Visible Meta Files`. Em **Asset Serialization**, **Mode** = `Force Text`. Arquivos de cena e de asset passam a ser texto, o que permite ver diferenças no Git.
+6. Primeiro commit:
 
-### 0.3 Pacotes
+   ```powershell
+   git add .
+   git commit -m "chore: projeto Unity vazio"
+   ```
 
-Não é preciso instalar nada. O template já traz **uGUI** (que no Unity 6 inclui o **TextMeshPro**), **Input System** e **2D Sprite**. Na primeira vez que criar um texto TMP, aceite **Import TMP Essentials**.
+> **Pacotes:** não é preciso instalar nada pelo Package Manager. O template já traz **uGUI** (que no Unity 6 inclui o **TextMeshPro**), **Input System**, **2D Sprite** e **Test Framework** (usado na Fase 9). A UI (uGUI) funciona com toque e mouse sem código extra, e toda interação do jogo é por botões (Parte 1 §10), então nenhum script deste guia lê input diretamente.
 
-> **Input:** a UI (uGUI) já funciona com toque e mouse sem código extra: o `EventSystem` da cena converte os dois em cliques. Como toda interação do jogo é por botões (Parte 1 §10), nenhum script deste guia lê input diretamente.
+### Etapa 0C — Pastas e cenas
 
-### 0.4 Estrutura de pastas
+1. Na janela **Project**, clique em `Assets`. Botão direito → **Create → Folder** → `_Project`. O sublinhado faz a pasta aparecer no topo da lista.
+2. Dentro de `_Project`, crie a estrutura (sempre com botão direito → **Create → Folder**):
 
-Crie em `Assets/`:
+   ```
+   Assets/_Project/
+     Data/
+       Teams/
+       Tracks/
+     Prefabs/
+     Scenes/
+     Scripts/
+       Data/
+       Game/
+       UI/
+     Sprites/
+   ```
 
-```
-Assets/_Project/
-  Data/            ← assets de ScriptableObject (balanceamento, equipes, pistas, campeonato)
-    Teams/
-    Tracks/
-  Prefabs/
-  Scenes/          ← Main.unity, TrackLab.unity
-  Scripts/
-    Data/
-    Game/
-    UI/
-  Sprites/
-```
+3. Em `Assets/Scenes/` existe a `SampleScene` do template. Arraste-a para `_Project/Scenes/`, clique nela uma vez e aperte **F2** para renomear para `Main`.
+4. Crie a segunda cena: **File → New Scene** → **Basic 2D (URP)** → **Create**. Salve com **File → Save As** em `_Project/Scenes/` com o nome `TrackLab`. Ela é uma "bancada" para desenhar pistas (Fase 2) e não entra na build.
+5. Volte para a `Main`: duplo clique em `Main` na Project.
 
-Mova a cena `SampleScene` para `Scenes/` e renomeie para `Main`. Crie a segunda cena, `TrackLab` (**File → New Scene → Basic 2D (URP)**), e salve também em `Scenes/`: ela vai servir de "bancada" para desenhar pistas.
+### 🧪 Teste rápido
+Aperte ▶. A Game view mostra um fundo azul/cinza vazio e o Console não tem erros. Aperte ▶ de novo para sair.
 
 ### ✅ Checkpoint da Fase 0
 - O projeto abre sem erros no Console.
 - `Assets/_Project/` tem as pastas acima e as cenas `Main` e `TrackLab`.
 - `git status` não lista `Library/` nem `Temp/` (o `.gitignore` funcionou).
+- Duplo clique num `.cs` qualquer abre o editor de código configurado.
+
+#### Problemas comuns
+- **O template Universal 2D não aparece:** atualize o Hub; na lista de templates, use a busca.
+- **Duplo clique no script abre o Bloco de Notas:** falta a etapa de **External Script Editor** (0B, passo 2).
 
 Próxima fase: **Dados** — os números do jogo e as equipes viram assets editáveis.
 
@@ -380,7 +435,17 @@ Próxima fase: **Dados** — os números do jogo e as equipes viram assets edit�
 
 > Objetivo desta fase: todos os números da Parte 1 §14 num asset `GameBalance` e as 7 equipes como assets `TeamDefinition`, editáveis no Inspector.
 
-### 1.1 Enums
+**Conceitos novos:**
+- **ScriptableObject:** uma classe cujas instâncias são **arquivos de dados** no projeto (`.asset`), não objetos de cena. É o lugar certo para números de balanceamento e definições (equipes, pistas): você edita no Inspector e todos os scripts que apontam para o asset leem os mesmos valores.
+- **`[CreateAssetMenu]`:** atributo que cria um item no menu **Create** da Project para gerar assets daquela classe.
+- **`namespace`:** "sobrenome" das classes (`PaddockBoss.Data.GameBalance`). Evita conflito com classes de mesmo nome de outros pacotes. Quem usa a classe em outro namespace escreve `using PaddockBoss.Data;` no topo do arquivo.
+- **`[Serializable]`:** marca uma classe comum para que a Unity consiga salvá-la e mostrá-la dentro de outro objeto (vira uma "gaveta" no Inspector).
+- **`[Header("...")]` e `[Range(min, max)]`:** só mudam a aparência no Inspector: um título de seção e um controle deslizante.
+- **`enum`:** um tipo com um conjunto fixo de opções nomeadas.
+
+### Etapa 1A — Enums e `GameBalance`
+
+Crie os dois scripts em `Assets/_Project/Scripts/Data/` (ver "Criar um script C#" na Parte 2).
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Data/Enums.cs
@@ -398,8 +463,6 @@ namespace PaddockBoss.Data
     public enum UpgradeType { Engineering, Marketing, PitCrew, DriverTraining }
 }
 ```
-
-### 1.2 `GameBalance`: todos os números num asset só
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Data/GameBalance.cs
@@ -516,7 +579,17 @@ namespace PaddockBoss.Data
 }
 ```
 
-### 1.3 `TeamDefinition`: uma equipe
+Criar o asset:
+1. Na Project, entre em `Assets/_Project/Data/`.
+2. Botão direito → **Create → Paddock Boss → Game Balance**. Mantenha o nome `GameBalance`.
+3. Clique no asset e veja o Inspector.
+
+#### 🧪 Teste rápido
+O Inspector do `GameBalance` mostra as seções **Velocidade**, **Pneus**, **Pit stop**, **Economia**, **Campeonato**, **Investimentos** e **IA**. Abra **Compounds** (3 elementos: Macio, Médio, Duro) e **Upgrade Costs** (4 elementos): já vêm preenchidos com os valores da Parte 1 §14.
+
+### Etapa 1B — Equipes
+
+Crie em `Assets/_Project/Scripts/Data/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Data/TeamDefinition.cs
@@ -556,20 +629,36 @@ namespace PaddockBoss.Data
 }
 ```
 
-### 1.4 Criar os assets
+Criar as 7 equipes:
+1. Na Project, entre em `Assets/_Project/Data/Teams/`.
+2. Botão direito → **Create → Paddock Boss → Team** → nome `Team_Player`.
+3. Preencha no Inspector. A tabela abaixo é uma sugestão de partida; nomes e identidades das equipes estão **Em aberto** na Parte 1, então use nomes provisórios:
 
-1. Em `Assets/_Project/Data/`: **botão direito → Create → Paddock Boss → Game Balance**. Os valores da Parte 1 §14 já vêm preenchidos.
-2. Em `Data/Teams/`, crie 7 equipes (**Create → Paddock Boss → Team**): `Team_Player` e `Team_Rival1` a `Team_Rival6`. Preencha `teamId` (único, sem espaços: `player`, `rival_1`, ...), `displayName`, `shortName`, `color` (bem distintas entre si) e os dois `driverNames`.
-3. Equipe do jogador: tudo em 0 (ela começa nanica). Rivais: varie os níveis iniciais (ex.: engenharia de 0 a 5) e as personalidades (uma com peso alto de propaganda, outra só engenharia, outra com `aiSpendEagerness` baixo...). Nomes e identidades das equipes ainda estão **Em aberto** na Parte 1: use nomes provisórios.
+   | Asset | Team Id | Short Name | Color | Engineering | Marketing | Pit Crew | Driver Skill |
+   |---|---|---|---|---|---|---|---|
+   | `Team_Player` | `player` | `MNG` | `#F2C230` | 0 | 0 | 0 | 0, 0 |
+   | `Team_Rival1` | `rival_1` | `RV1` | `#E8483C` | 5 | 2 | 2 | 3, 2 |
+   | `Team_Rival2` | `rival_2` | `RV2` | `#3C7BE8` | 3 | 4 | 1 | 2, 2 |
+   | `Team_Rival3` | `rival_3` | `RV3` | `#3CC27A` | 2 | 1 | 3 | 1, 3 |
+   | `Team_Rival4` | `rival_4` | `RV4` | `#A64CE0` | 1 | 1 | 1 | 2, 1 |
+   | `Team_Rival5` | `rival_5` | `RV5` | `#F28A30` | 1 | 0 | 2 | 0, 1 |
+   | `Team_Rival6` | `rival_6` | `RV6` | `#9AA3AE` | 0 | 1 | 0 | 1, 0 |
+
+   - **Color:** clique na barra de cor e cole o código no campo **Hexadecimal**.
+   - **Display Name** e os dois **Driver Names:** livres, mas nenhum vazio.
+   - Os campos de **IA** ficam para a Fase 6.
+4. Para criar as rivais mais rápido: selecione `Team_Player`, **Ctrl+D** (duplicar), renomeie (**F2**) e troque os campos.
+
+#### 🧪 Teste rápido
+A pasta `Data/Teams/` tem 7 assets. Clique em cada um e confira que **Team Id** é diferente em todos e que **Driver Names** tem 2 elementos com texto.
 
 ### ✅ Checkpoint da Fase 1
 - O Console não mostra erros de compilação.
-- Ao selecionar `GameBalance`, o Inspector mostra as seções Velocidade, Pneus, Pit stop, Economia, Campeonato, Investimentos e IA, já preenchidas.
-- Existem 7 assets `Team_*`, cada um com `teamId` diferente e `driverNames` com 2 nomes.
+- Existem o `GameBalance` preenchido e as 7 `Team_*`.
 
 #### Problemas comuns
 - **O menu "Paddock Boss" não aparece em Create:** o script tem erro de compilação (veja o Console) ou o nome do arquivo não bate com o da classe (`GameBalance.cs` ↔ `class GameBalance`).
-- **`compounds` veio vazio num asset antigo:** os padrões só valem para assets criados depois do script. Clique no ⋮ do componente → **Reset**, ou apague e recrie o asset.
+- **`Compounds` veio vazio:** o asset foi criado antes de o script estar completo. No Inspector, clique no ⋮ do topo → **Reset**, ou apague e recrie o asset.
 
 Próxima fase: **Pista** — desenhar o traçado no Editor e transformá-lo em dados.
 
@@ -579,11 +668,19 @@ Próxima fase: **Pista** — desenhar o traçado no Editor e transformá-lo em d
 
 ## Fase 2 — Pista: geometria, editor e desenho
 
-> Objetivo desta fase: desenhar uma pista na cena `TrackLab`, gravá-la num asset `TrackDefinition` e vê-la desenhada na cena `Main`.
+> Objetivo desta fase: desenhar 3 pistas na cena `TrackLab`, gravá-las em assets `TrackDefinition` e ver uma delas desenhada na cena `Main`.
 
-**Conceito novo — a pista como linha:** a pista é uma lista fechada de pontos (waypoints). Qualquer lugar da pista é descrito por um único número: a **distância** desde a linha de largada (o waypoint 0). Uma volta inteira mede `Length`; a distância `Length × 2,5` é "metade da terceira volta". Toda a simulação (Fase 3) trabalha com esse número.
+**Conceitos novos:**
+- **A pista como linha:** a pista é uma lista fechada de pontos (*waypoints*). Qualquer lugar dela é descrito por um único número: a **distância** desde a linha de largada (o waypoint 0). Uma volta inteira mede `Length`; a distância `Length × 2,5` é "metade da terceira volta". Toda a simulação (Fase 3) trabalha com esse número.
+- **Coordenadas do mundo:** em 2D, cada objeto tem posição (x, y) em **unidades** (não pixels). Com a câmera ortográfica, o **Size** é metade da altura visível em unidades.
+- **Classe C# "pura":** uma classe que não herda de `MonoBehaviour`. Não fica presa a GameObject, é criada com `new` e serve para cálculo. `TrackPath` é a primeira.
+- **Gizmos:** desenhos de ajuda que só aparecem na Scene view (e na Game view com o botão **Gizmos** ligado), nunca no jogo final. `OnDrawGizmos` desenha sempre; `OnDrawGizmosSelected` desenha só com o objeto selecionado.
+- **`[ContextMenu("...")]`:** cria um item no menu ⋮ do componente no Inspector, que roda o método **sem apertar Play**.
+- **`LineRenderer`:** componente que desenha uma linha com espessura passando por uma lista de pontos.
 
-### 2.1 `TrackDefinition`
+### Etapa 2A — Dados e geometria da pista
+
+Crie em `Assets/_Project/Scripts/Data/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Data/TrackDefinition.cs
@@ -614,7 +711,7 @@ namespace PaddockBoss.Data
 }
 ```
 
-### 2.2 `TrackPath`: a geometria
+Crie em `Assets/_Project/Scripts/Game/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/TrackPath.cs
@@ -713,12 +810,18 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 2.3 `TrackAuthoring`: desenhar pistas no Editor
+#### 🧪 Teste rápido
+O Console não tem erros. Na Project, **Create → Paddock Boss → Track** existe. Ainda não crie a pista: ela é criada na 2C.
+
+### Etapa 2B — Ferramenta de desenho de pistas
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/TrackAuthoring.cs
 using System.Collections.Generic;
 using PaddockBoss.Data;
+using PaddockBoss.Game;
 using UnityEngine;
 
 namespace PaddockBoss.UI
@@ -746,6 +849,25 @@ namespace PaddockBoss.UI
                 Gizmos.DrawLine(a, b);
                 Gizmos.color = i == 0 ? Color.green : Color.white;
                 Gizmos.DrawSphere(a, i == 0 ? 0.6f : 0.25f);
+            }
+        }
+
+        // Com o objeto selecionado, pinta o traçado pela intensidade de curva que
+        // a simulação vai usar (verde = reta, vermelho = curva fechada). É o teste
+        // visual do TrackPath e ajuda a calibrar sharpCornerDegreesPerUnit.
+        private void OnDrawGizmosSelected()
+        {
+            if (_target == null || transform.childCount < 3) return;
+            var points = new Vector2[transform.childCount];
+            for (int i = 0; i < points.Length; i++)
+                points[i] = transform.GetChild(i).localPosition;
+            var path = new TrackPath(points, _target.sharpCornerDegreesPerUnit, _target.cornerInfluence);
+
+            const float step = 0.5f;
+            for (float d = 0f; d < path.Length; d += step)
+            {
+                Gizmos.color = Color.Lerp(Color.green, Color.red, path.CornerAt(d));
+                Gizmos.DrawLine(transform.TransformPoint(path.PositionAt(d)), transform.TransformPoint(path.PositionAt(d + step)));
             }
         }
 
@@ -804,7 +926,38 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 2.4 `TrackRenderer`: mostrar a pista no jogo
+Montar a bancada:
+1. Em `Data/Tracks/`: **Create → Paddock Boss → Track** → `Track_A`. No Inspector: **Track Id** = `track_a`, **Display Name** = um nome provisório (nomes das pistas: **Em aberto**). Deixe o resto como veio.
+2. Abra a cena `TrackLab` (duplo clique em `Scenes/TrackLab`).
+3. Na Hierarchy: botão direito no vazio → **Create Empty** → renomeie (F2) para `TrackAuthoring`. No Inspector, no componente **Transform**, clique no ⋮ → **Reset** (posição 0, 0, 0).
+4. **Add Component** → digite `TrackAuthoring` → selecione. Arraste `Track_A` da Project para o campo **Target**.
+5. No ⋮ do componente **Track Authoring** → **Gerar oval de teste**. Aparecem 24 filhos `WP_00` a `WP_23`.
+6. Na Scene view, garanta que o botão **Gizmos** (barra superior da Scene) está ligado. Se a pista não aparecer inteira, dê duplo clique em `TrackAuthoring` na Hierarchy (enquadra o objeto) e role o mouse para afastar.
+
+#### 🧪 Teste rápido
+- Com `TrackAuthoring` **selecionado**, o traçado aparece colorido: **verde nas retas e alaranjado/vermelho nas curvas**. É o `TrackPath` calculando a intensidade de curva que a simulação vai usar.
+- Com outro objeto selecionado, o traçado aparece amarelo, com o `WP_00` em verde (a largada).
+- Selecione um `WP_xx` e arraste-o com a ferramenta de mover (**W**): o traçado acompanha.
+
+### Etapa 2C — Desenhar as 3 pistas
+
+1. Dê forma à `Track_A` arrastando os waypoints. Regras práticas:
+   - O sentido da corrida é a **ordem dos filhos na Hierarchy**. O `WP_00` (verde) é a largada; deixe-o numa reta.
+   - Para **acrescentar** um ponto: selecione um `WP`, **Ctrl+D** e arraste a cópia na Hierarchy para logo depois do original. Para **remover**: selecione e Delete. Os nomes não importam, só a ordem.
+   - Curvas são feitas com vários pontos próximos; retas, com poucos pontos espaçados.
+   - Use as cores do gizmo para calibrar: se uma curva que deveria ser lenta está verde, aproxime os pontos dela ou feche o ângulo. Se tudo fica vermelho, aumente **Sharp Corner Degrees Per Unit** no asset da pista.
+   - Mantenha a pista dentro de uns 40 × 25 unidades (a grade da Scene view ajuda a medir).
+2. Clique no ⋮ do **Track Authoring** → **Gravar waypoints na TrackDefinition**. O Console mostra `TrackAuthoring: N waypoints gravados em Track_A`.
+3. Para a segunda pista: crie `Track_B` (`track_b`). Na Hierarchy, selecione `TrackAuthoring`, **Ctrl+D**, renomeie a cópia para `TrackAuthoring_B`, troque o **Target** para `Track_B` e desative a original (desmarque a caixinha ao lado do nome no Inspector) para não confundir os traçados. Remodele e grave.
+4. Repita para `Track_C`.
+5. **File → Save** (Ctrl+S) para salvar a cena `TrackLab`. Assim as pistas podem ser editadas e regravadas depois.
+
+#### 🧪 Teste rápido
+Clique em cada asset `Track_*` na Project: o campo **Waypoints** tem a quantidade de pontos que o Console informou.
+
+### Etapa 2D — A pista na cena `Main`
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/TrackRenderer.cs
@@ -825,8 +978,18 @@ namespace PaddockBoss.UI
     {
         [SerializeField] private float _width = 1.6f;
         [SerializeField] private Transform _startLine;
+        [SerializeField] private TrackDefinition _editorPreview;
 
         public Bounds Bounds { get; private set; }
+
+        // Desenha _editorPreview sem apertar Play, pelo menu ⋮ do componente. Só
+        // serve para conferir a pista na cena; no jogo, quem chama Draw é o
+        // RaceRunner a cada largada.
+        [ContextMenu("Desenhar prévia no Editor")]
+        private void DrawEditorPreview()
+        {
+            if (_editorPreview != null) Draw(_editorPreview);
+        }
 
         // Redesenha a pista a partir do asset.
         public void Draw(TrackDefinition track)
@@ -856,36 +1019,43 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 2.5 Desenhar a primeira pista
+Montar a cena:
+1. Abra a cena `Main`.
+2. Crie os agrupadores: botão direito no vazio da Hierarchy → **Create Empty**, três vezes, com os nomes `[Systems]`, `[World]` e `[UI]`. Dê **Reset** no Transform de cada um.
+3. Pista: botão direito em `[World]` → **Create Empty** → `Track`. **Add Component → Line Renderer** e **Add Component → Track Renderer**.
+4. No **Line Renderer**:
+   - **Materials → Element 0:** clique no ⊙ e escolha `Sprite-Unlit-Default`. Com o material padrão, a linha fica rosa no URP.
+   - **Color:** clique na barra de gradiente, selecione as duas setas de cor de cima e coloque `#3A3F4B` (cinza-chumbo).
+   - **Corner Vertices** = `4` e **End Cap Vertices** = `4` (cantos arredondados, mais limpo no flat vector).
+   - **Order in Layer** (seção Additional Settings / Sorting) = `0`.
+5. Linha de largada: botão direito em `[World]` → **2D Object → Sprites → Square** → `StartLine`. **Scale** = (1.6, 0.25, 1), **Color** branco, **Order in Layer** = `1`. Arraste `StartLine` para o campo **Start Line** do `Track Renderer`.
+6. Câmera: selecione `Main Camera`. **Projection** = Orthographic (já vem assim no 2D), **Size** = `16`, **Position** = (0, 0, -10). Em **Environment → Background**, uma cor de fundo escura (ex.: `#14171C`). A Fase 8 troca o Size fixo por enquadramento automático.
+7. No **Track Renderer**, arraste `Track_A` para **Editor Preview** e clique no ⋮ → **Desenhar prévia no Editor**.
+8. **Ctrl+S** para salvar a cena.
 
-1. Em `Data/Tracks/`: **Create → Paddock Boss → Track** → `Track_A`. Preencha `trackId` = `track_a` e `displayName` (nomes das pistas: **Em aberto**).
-2. Abra a cena `TrackLab`. Crie um GameObject vazio `TrackAuthoring` na posição (0, 0, 0), adicione o componente `TrackAuthoring` e arraste `Track_A` para **Target**.
-3. No ⋮ do componente: **Gerar oval de teste**. O traçado amarelo aparece na Scene view (deixe o botão **Gizmos** ligado).
-4. Arraste os filhos `WP_xx` para dar forma à pista. Regras práticas:
-   - O sentido da corrida é a ordem dos filhos na Hierarchy. O `WP_00` (verde) é a largada; deixe-o numa reta.
-   - Curvas são feitas com vários pontos próximos; retas, com poucos pontos espaçados.
-   - Mantenha a pista dentro de uns 40 × 25 unidades (a câmera da Fase 8 enquadra qualquer tamanho, mas os números de ritmo foram pensados para isso).
-5. ⋮ → **Gravar waypoints na TrackDefinition**. Confira no asset que `Waypoints` foi preenchido.
-6. Repita para `Track_B` e `Track_C` (pode duplicar o objeto `TrackAuthoring`, trocar o Target e remodelar).
+#### 🧪 Teste rápido
+Sem apertar Play, a Scene e a Game view mostram a `Track_A` como uma faixa cinza fechada, com a linha de largada branca atravessada no `WP_00`.
 
-### 2.6 Mostrar a pista na cena `Main`
+**Hierarchy esperada ao fim da Fase 2 (cena `Main`):**
 
-1. Abra `Main`. Crie os agrupadores vazios `[Systems]`, `[World]` e `[UI]`.
-2. Em `[World]`: crie `Track` com **Add Component → Line Renderer** e `TrackRenderer`.
-   - No Line Renderer, **Materials → Element 0** = `Sprite-Unlit-Default` (clique no ícone de busca do campo e procure). Com o material padrão, a linha fica rosa.
-   - **Color**: um cinza-chumbo. **Corner Vertices** e **End Cap Vertices** = 4 (cantos arredondados, mais limpo no flat vector).
-3. Em `[World]`: crie `StartLine` (**2D Object → Sprites → Square**), escala (1.6, 0.25, 1), cor branca, **Order in Layer** = 1. Arraste para o campo **Start Line** do `TrackRenderer`.
-4. Câmera: **Projection** = Orthographic, **Size** = 16, posição (0, 0, -10). A Fase 8 troca isso por um enquadramento automático.
-5. Teste rápido: o `TrackRenderer` só desenha quando alguém chama `Draw`, o que começa na Fase 3. Para conferir agora, adicione temporariamente ao `TrackRenderer` um `[SerializeField] private TrackDefinition _preview;` e um `private void Start() { if (_preview) Draw(_preview); }`, aperte Play, confira e remova essas duas linhas.
+```
+Main
+├─ Main Camera
+├─ [Systems]
+├─ [World]
+│  ├─ Track          (Line Renderer, Track Renderer)
+│  └─ StartLine      (Sprite Renderer)
+└─ [UI]
+```
 
 ### ✅ Checkpoint da Fase 2
-- Na `TrackLab`, o traçado amarelo fecha o circuito e o `WP_00` aparece em verde.
-- Os 3 assets `Track_*` têm `Waypoints` preenchidos.
-- Na `Main`, em Play (com o teste rápido), a pista aparece como uma faixa cinza fechada, com a linha de largada atravessada no `WP_00`.
+- Os 3 assets `Track_*` têm **Waypoints** preenchidos.
+- Na `TrackLab`, o gizmo colorido mostra retas verdes e curvas vermelhas em todas as pistas.
+- Na `Main`, a prévia desenha a pista com a linha de largada no lugar certo.
 
 #### Problemas comuns
 - **Linha rosa ou invisível:** falta o material `Sprite-Unlit-Default` no Line Renderer (o projeto é URP 2D).
-- **A linha some atrás do fundo:** no Line Renderer, ajuste **Sorting Layer**/**Order in Layer** (ex.: 0 para a pista, 1 para a linha de largada, 2 para os carros).
+- **A prévia não aparece na Game view:** a câmera está longe da pista. Confira **Position** (0, 0, -10) e **Size** 16, e se a `TrackAuthoring` estava em (0, 0, 0) ao gravar.
 - **Gravei, mas o asset voltou ao que era:** você editou os waypoints e não clicou em **Gravar** de novo. O asset só muda no Bake.
 
 Próxima fase: **Simulação da corrida** — 14 carros andando, completando voltas e trocando de posição.
@@ -898,7 +1068,26 @@ Próxima fase: **Simulação da corrida** — 14 carros andando, completando vol
 
 > Objetivo desta fase: apertar Play e ver 14 carros largarem, andarem mais devagar nas curvas, completarem voltas e terminarem a corrida, com uma tabela de posições atualizada ao vivo.
 
-### 3.1 `TeamState`: o que muda numa equipe
+**Conceitos novos:**
+- **Ciclo de vida de um MonoBehaviour:** a Unity chama métodos com nomes especiais nos seus scripts:
+  - `Awake`: uma vez, quando o objeto é criado.
+  - `OnEnable`: toda vez que o objeto é ligado.
+  - `Start`: uma vez, no primeiro frame, depois de todos os `Awake`.
+  - `Update`: todo frame.
+  - `LateUpdate`: todo frame, depois de todos os `Update`.
+  - `OnDisable`: quando o objeto é desligado.
+- **`Time.deltaTime`:** os segundos que se passaram desde o frame anterior. Multiplicar velocidades por ele faz o jogo andar igual a 30 ou a 144 fps.
+- **Eventos C# (`event Action<...>`):** uma lista de funções a avisar. Quem quer ser avisado se inscreve com `+=` e sai com `-=`; quem dispara chama `Evento?.Invoke(...)`. O `?.` evita erro quando ninguém está inscrito.
+- **Prefab:** um GameObject "modelo" salvo como asset (ícone azul na Project). `Instantiate(prefab)` cria cópias na cena; mudar o prefab muda todas as cópias.
+- **Canvas e Rect Transform:** a UI da Unity (uGUI) vive dentro de um **Canvas**. Objetos de UI têm **Rect Transform** em vez de Transform. As **âncoras** dizem a que parte do pai o objeto se prende (ex.: "à direita, de cima a baixo"). O **Canvas Scaler** define como a UI escala em telas diferentes.
+- **TextMeshPro (TMP):** o sistema de texto da Unity. Existem duas versões: **UI → Text - TextMeshPro** (dentro do Canvas) e **3D Object → Text - TextMeshPro** (no mundo, junto dos sprites). Na primeira vez, a Unity pede para importar o **TMP Essentials**: aceite.
+- **Layout Groups:** componentes que organizam os filhos automaticamente (**Vertical Layout Group** empilha; **Horizontal** põe lado a lado; **Grid** faz uma grade). O **Layout Element** num filho diz que tamanho ele prefere.
+
+### Etapa 3A — A corrida rodando, com os carros como bolinhas
+
+Primeiro, a simulação sem nenhuma arte: os carros aparecem como bolinhas coloridas desenhadas por gizmo.
+
+Crie em `Assets/_Project/Scripts/Game/` os scripts abaixo, nesta ordem. Os erros de compilação somem quando todos existirem: o `RaceRunner` cita `CarMarker` (Etapa 3B), então crie `CarMarker` agora também (em `Scripts/UI/`) e só monte o prefab dele na 3B.
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/TeamState.cs
@@ -971,8 +1160,6 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 3.2 `CarState`: um carro durante a corrida
-
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/CarState.cs
 using PaddockBoss.Data;
@@ -1024,8 +1211,6 @@ namespace PaddockBoss.Game
     }
 }
 ```
-
-### 3.3 `RaceSimulator`: o coração do jogo
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/RaceSimulator.cs
@@ -1265,8 +1450,6 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 3.4 `CarMarker`: o carro no mapa
-
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/CarMarker.cs
 using PaddockBoss.Game;
@@ -1324,8 +1507,6 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 3.5 `RaceRunner`: liga a simulação ao tempo do jogo
-
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/RaceRunner.cs
 using System;
@@ -1370,6 +1551,7 @@ namespace PaddockBoss.Game
             _trackRenderer.Draw(track);
             foreach (var car in Sim.Cars)
             {
+                if (_carMarkerPrefab == null) break; // sem prefab ainda: só os gizmos (Etapa 3A)
                 // Instantiate cria uma cópia do prefab (um GameObject "modelo" salvo
                 // como asset) na cena, como filho de _markersParent.
                 CarMarker marker = Instantiate(_carMarkerPrefab, _markersParent);
@@ -1392,6 +1574,19 @@ namespace PaddockBoss.Game
             }
         }
 
+        // Desenha cada carro como uma bolinha na cor da equipe (maior para o
+        // jogador). Aparece na Scene view e, com o botão Gizmos ligado, na Game
+        // view: é o teste visual da simulação antes de existir o prefab do carro.
+        private void OnDrawGizmos()
+        {
+            if (Sim == null) return;
+            foreach (var car in Sim.Cars)
+            {
+                Gizmos.color = car.Team.Definition.color;
+                Gizmos.DrawSphere(Sim.Path.PositionAt(car.Distance), car.IsPlayer ? 0.5f : 0.35f);
+            }
+        }
+
         // Repassa o fim da corrida para quem estiver ouvindo.
         private void HandleRaceFinished() => RaceEnded?.Invoke(Sim);
 
@@ -1406,7 +1601,75 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 3.6 `RaceHUD`: volta e tabela de posições
+```csharp
+// Caminho: Assets/_Project/Scripts/Game/RaceTestStarter.cs
+using System.Collections.Generic;
+using PaddockBoss.Data;
+using UnityEngine;
+
+namespace PaddockBoss.Game
+{
+    // POR QUE: o campeonato só chega na Fase 7, mas a corrida precisa ser testada
+    // desde já. Este script monta as equipes e larga uma corrida ao apertar Play.
+    // ESTRATÉGIA: Start roda uma vez, no primeiro frame em que o objeto está
+    // ativo (depois de todos os Awake). Na Fase 7, o GameSession assume esse papel
+    // e este componente é desativado.
+    public class RaceTestStarter : MonoBehaviour
+    {
+        [SerializeField] private RaceRunner _runner;
+        [SerializeField] private TrackDefinition _track;
+        [SerializeField] private TeamDefinition _playerTeam;
+        [SerializeField] private TeamDefinition[] _rivalTeams;
+
+        // Cria as equipes "zeradas" e larga.
+        private void Start()
+        {
+            int money = _runner.Balance.startingMoney;
+            var teams = new List<TeamState> { TeamState.Create(_playerTeam, true, money) };
+            foreach (var rival in _rivalTeams) teams.Add(TeamState.Create(rival, false, money));
+            _runner.StartRace(_track, teams);
+        }
+    }
+}
+```
+
+Montar na cena `Main`:
+1. Botão direito em `[World]` → **Create Empty** → `Cars` (os carros serão criados dentro dele).
+2. Botão direito em `[Systems]` → **Create Empty** → `RaceRunner`. **Add Component → Race Runner**:
+   - **Balance** = `GameBalance` (da Project).
+   - **Track Renderer** = `Track` (da Hierarchy).
+   - **Car Marker Prefab** = deixe **vazio** por enquanto (a Etapa 3B cria o prefab).
+   - **Markers Parent** = `Cars`.
+   - **Time Scale** = `4`, para testar rápido.
+3. No mesmo objeto, **Add Component → Race Test Starter**:
+   - **Runner** = arraste o próprio objeto `RaceRunner`.
+   - **Track** = `Track_A`.
+   - **Player Team** = `Team_Player`.
+   - **Rival Teams:** clique no cadeado 🔒 do topo do Inspector (trava o Inspector neste objeto), selecione as 6 `Team_Rival*` na Project e arraste todas de uma vez sobre o título **Rival Teams**. Destrave o cadeado.
+4. Na Game view, ligue o botão **Gizmos** (barra superior da Game view).
+
+#### 🧪 Teste rápido
+Aperte ▶. 14 bolinhas coloridas saem de trás da linha de largada e dão voltas. Nas curvas, elas se aproximam umas das outras (estão freando). As duas bolinhas amarelas maiores são os carros do jogador. Em cerca de um minuto (com Time Scale 4), todas param sobre a linha de chegada.
+
+### Etapa 3B — O ícone do carro (prefab)
+
+1. Na Hierarchy, botão direito no vazio → **Create Empty** → `CarMarker`. **Reset** no Transform.
+2. Botão direito em `CarMarker` → **2D Object → Sprites → Capsule** → `Body`. **Scale** = (0.5, 0.8, 1); **Sprite Renderer → Order in Layer** = `3`.
+3. Botão direito em `CarMarker` → **2D Object → Sprites → Capsule** → `Highlight`. **Scale** = (0.7, 1.0, 1); **Color** = `#FFE14D`; **Order in Layer** = `2` (fica atrás do Body, como um contorno).
+4. Botão direito em `CarMarker` → **3D Object → Text - TextMeshPro** → `Label`. Aceite **Import TMP Essentials** se for pedido. No Inspector:
+   - **Rect Transform:** **Pos** (0, 0, 0), **Width** 1, **Height** 1.
+   - **Text Input:** `A`. **Font Size** = `3`. **Alignment:** centro horizontal e centro vertical. **Vertex Color** = preto.
+   - **Extra Settings → Order in Layer** = `4`.
+5. Selecione `CarMarker`. **Add Component → Car Marker** e arraste os filhos para **Body**, **Player Highlight** (o `Highlight`) e **Label**.
+6. Arraste `CarMarker` da Hierarchy para a pasta `Assets/_Project/Prefabs/`. O ícone fica azul: virou prefab. Apague o `CarMarker` da Hierarchy (Delete); o prefab continua na Project.
+7. Selecione `RaceRunner` e arraste o prefab `CarMarker` para **Car Marker Prefab**.
+
+#### 🧪 Teste rápido
+Aperte ▶. Agora cada carro é uma cápsula com a cor da equipe, apontando para onde anda e com a inicial do piloto sempre de pé. Os do jogador têm contorno amarelo. Carros lado a lado ficam levemente separados (faixas), e não um em cima do outro. As bolinhas de gizmo continuam por baixo; desligue **Gizmos** na Game view se atrapalharem.
+
+### Etapa 3C — Volta e tabela de posições
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/RaceHUD.cs
@@ -1473,64 +1736,54 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 3.7 `RaceTestStarter`: largada de teste
+Montar a UI, clique a clique:
 
-```csharp
-// Caminho: Assets/_Project/Scripts/Game/RaceTestStarter.cs
-using System.Collections.Generic;
-using PaddockBoss.Data;
-using UnityEngine;
+1. **Canvas:** botão direito em `[UI]` → **UI → Canvas**. A Unity cria o `Canvas` e, na raiz, um `EventSystem` (é ele que transforma toque e clique em eventos de botão; não apague). Arraste o `EventSystem` para a raiz da Hierarchy, se não estiver lá.
+2. **Canvas Scaler** (no `Canvas`): **UI Scale Mode** = `Scale With Screen Size`, **Reference Resolution** = `1920` × `1080`, **Screen Match Mode** = `Match Width Or Height`, **Match** = `0.5`. A partir daqui, todos os tamanhos do guia são "pixels de uma tela 1920×1080" e escalam para qualquer tela.
+3. **Game view:** no menu de resolução da Game view (onde diz *Free Aspect*), escolha `Full HD (1920x1080)`. Se não existir, clique em **+** e crie.
+4. **SidePanel:** botão direito em `Canvas` → **UI → Panel** → `SidePanel`.
+   - **Rect Transform:** clique no quadrado de âncoras (canto superior esquerdo do componente), segure **Shift + Alt** e clique na opção da **coluna da direita, linha de baixo** (*right / stretch*). Depois: **Width** = `640`, **Pos X** = `0`, **Top** = `0`, **Bottom** = `0`.
+   - **Image → Color** = `#1B1F27`, alfa 255 (painel opaco).
+   - **Add Component → Vertical Layout Group:** **Padding** 16 nos quatro lados, **Spacing** `8`, **Child Alignment** `Upper Left`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✗ Height.
+5. **LapText:** botão direito em `SidePanel` → **UI → Text - TextMeshPro** → `LapText`. Texto `Volta 1/12`, **Font Size** `40`, **Font Style** **B**. **Add Component → Layout Element** → **Preferred Height** ✓ `56`.
+6. **StandingsText:** mesmo caminho → `StandingsText`. Texto `Tabela`, **Font Size** `22`, **Alignment** topo/esquerda, **Wrapping** desligado. **Layout Element → Preferred Height** ✓ `400`.
+7. Selecione `SidePanel`. **Add Component → Race HUD** e ligue **Runner** (`RaceRunner`), **Lap Text** e **Standings Text**.
+8. **Ctrl+S**.
 
-namespace PaddockBoss.Game
-{
-    // POR QUE: o campeonato só chega na Fase 7, mas a corrida precisa ser testada
-    // desde já. Este script monta as equipes e larga uma corrida ao apertar Play.
-    // ESTRATÉGIA: Start roda uma vez, no primeiro frame em que o objeto está
-    // ativo (depois de todos os Awake). Na Fase 7, o GameSession assume esse papel
-    // e este componente é desativado.
-    public class RaceTestStarter : MonoBehaviour
-    {
-        [SerializeField] private RaceRunner _runner;
-        [SerializeField] private TrackDefinition _track;
-        [SerializeField] private TeamDefinition _playerTeam;
-        [SerializeField] private TeamDefinition[] _rivalTeams;
+#### 🧪 Teste rápido
+Aperte ▶. O painel escuro à direita mostra `Volta 1/12` e a tabela com 14 linhas: posição, sigla colorida da equipe, nome do piloto e diferença para o líder. Seus dois pilotos aparecem em **negrito**. A tabela muda a cada ultrapassagem; ao final, aparecem `Última volta`, `FIM` nos que terminaram e `Bandeirada!`.
 
-        // Cria as equipes "zeradas" e larga.
-        private void Start()
-        {
-            int money = _runner.Balance.startingMoney;
-            var teams = new List<TeamState> { TeamState.Create(_playerTeam, true, money) };
-            foreach (var rival in _rivalTeams) teams.Add(TeamState.Create(rival, false, money));
-            _runner.StartRace(_track, teams);
-        }
-    }
-}
+> Parte da pista pode ficar por baixo do painel. A Fase 8 resolve isso com enquadramento automático; por ora, mova a `Main Camera` alguns pontos para a direita (**Position X** ≈ 6).
+
+**Hierarchy esperada ao fim da Fase 3:**
+
+```
+Main
+├─ Main Camera
+├─ EventSystem
+├─ [Systems]
+│  └─ RaceRunner        (Race Runner, Race Test Starter)
+├─ [World]
+│  ├─ Track
+│  ├─ StartLine
+│  └─ Cars              (vazio no Editor; os carros nascem aqui no Play)
+└─ [UI]
+   └─ Canvas
+      └─ SidePanel      (Image, Vertical Layout Group, Race HUD)
+         ├─ LapText
+         └─ StandingsText
 ```
 
-### 3.8 Montar a cena
-
-1. **Prefab do carro:** na `Main`, crie `CarMarker` (vazio) com três filhos:
-   - `Body`: **2D Object → Sprites → Capsule**, escala (0.5, 0.8, 1), **Order in Layer** 2. A arte flat vector entra na Fase 8.
-   - `Highlight`: outra Capsule, escala (0.7, 1.0, 1), cor amarela, **Order in Layer** 1 (fica atrás do Body, como um contorno).
-   - `Label`: **3D Object → Text - TextMeshPro** (o TMP "de mundo", não o de UI), texto `A`, **Font Size** 3, centralizado, cor preta; no **Extra Settings** do TMP, **Order in Layer** 3.
-   - No pai, adicione `CarMarker` e ligue `Body`, `Highlight` e `Label`. Arraste o objeto para `Prefabs/` e apague-o da cena.
-2. Em `[World]`, crie `Cars` (vazio).
-3. Em `[Systems]`, crie `RaceRunner` com o componente `RaceRunner`: **Balance** = `GameBalance`, **Track Renderer** = `Track`, **Car Marker Prefab** = o prefab, **Markers Parent** = `Cars`.
-4. No mesmo objeto, adicione `RaceTestStarter`: **Runner** = o próprio RaceRunner, **Track** = `Track_A`, **Player Team** = `Team_Player`, **Rival Teams** = as 6 rivais.
-5. **UI:** em `[UI]`, crie **UI → Canvas** (o EventSystem vem junto; deixe-o na raiz). No Canvas, crie `SidePanel` (**UI → Panel**) ancorado à direita: no Rect Transform, use o preset de âncora *stretch vertical / right*, **Width** 640. Dentro dele, dois **UI → Text - TextMeshPro**: `LapText` (no topo, fonte 40) e `StandingsText` (abaixo, fonte 28, alinhado à esquerda e ao topo, altura para 14 linhas).
-6. No `SidePanel`, adicione `RaceHUD` e ligue **Runner**, **Lap Text** e **Standings Text**.
-
 ### ✅ Checkpoint da Fase 3
-- Ao apertar Play, 14 carros coloridos saem enfileirados de trás da linha de largada.
-- Nas curvas os carros ficam visivelmente mais lentos; as posições mudam ao longo da corrida.
-- O texto de volta vai de `Volta 1/12` até `Última volta` e `Bandeirada!`; carros que terminaram mostram `FIM` e param na linha.
-- Os dois carros da equipe do jogador aparecem em negrito na tabela e com o contorno amarelo no mapa.
-- Com **Time Scale** = 8 no RaceRunner, a corrida inteira passa em menos de um minuto, sem carros "pulando" a linha de chegada.
+- 14 carros largam enfileirados, freiam nas curvas, trocam de posição e terminam a corrida.
+- A tabela acompanha a ordem real do mapa.
+- Com **Time Scale** = 8, a corrida inteira passa em menos de um minuto, sem carros "pulando" a linha de chegada.
 
 #### Problemas comuns
 - **`ArgumentException: A pista precisa de pelo menos 3 waypoints`:** a `TrackDefinition` usada não passou pelo **Gravar** da Fase 2.
-- **Todos os carros andam igual e a ordem nunca muda:** confira se os rivais têm níveis iniciais diferentes e se `noiseAmplitude` não está 0 no `GameBalance`.
-- **`NullReferenceException` no `CarMarker.Bind`:** algum campo do prefab ficou sem ligar (Body, Highlight ou Label), ou uma `TeamDefinition` tem `driverNames` com nome vazio.
+- **Todos os carros andam igual e a ordem nunca muda:** os rivais estão com os níveis iniciais zerados (ver tabela da Etapa 1B) ou `Noise Amplitude` está 0 no `GameBalance`.
+- **`NullReferenceException` no `CarMarker.Bind`:** um campo do prefab ficou vazio (Body, Player Highlight ou Label) ou uma equipe tem nome de piloto vazio.
+- **A tabela não aparece:** o texto está fora do painel. Confira **Control Child Size** no Vertical Layout Group e o **Layout Element** dos textos.
 
 Próxima fase: **Pneus e pit stop** — desgaste visível e o primeiro controle do jogador.
 
@@ -1544,7 +1797,15 @@ Próxima fase: **Pneus e pit stop** — desgaste visível e o primeiro controle 
 
 A simulação já gasta pneus e faz pit stops (Fase 3: `TireWear`, `RequestPit`, `StartPit`, `TickPit`). Falta a interface.
 
-### 4.1 `CarPitControls`
+**Conceitos novos:**
+- **`Button` e `onClick`:** o componente de botão da uGUI. `onClick.AddListener(Metodo)` registra a função chamada no clique ou toque. Pelo código, o registro acontece no `Awake` (uma vez só).
+- **Inscrever no `OnEnable`, sair no `OnDisable`:** um painel que é ligado e desligado (a Fase 7 esconde o HUD entre corridas) deve parar de ouvir eventos quando desligado; senão, continua recebendo avisos sem estar na tela, ou se inscreve duas vezes.
+- **`Image` do tipo *Filled*:** uma imagem que se desenha só em parte, conforme o **Fill Amount** (0 a 1). É a forma mais simples de fazer uma barra.
+- **Duplicar com referências internas:** ao duplicar (Ctrl+D) um objeto cujo script aponta para os próprios filhos, a cópia aponta para os filhos **da cópia**. Por isso dá para montar um painel e duplicá-lo.
+
+### Etapa 4A — O script
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/CarPitControls.cs
@@ -1642,24 +1903,66 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 4.2 Montar o painel
+### Etapa 4B — Painel do primeiro carro
 
-1. No `SidePanel`, abaixo da tabela, crie `PitPanel` com um **Horizontal Layout Group** e dois filhos `CarPit_0` e `CarPit_1`, cada um com **Vertical Layout Group** e:
-   - `DriverText` (TMP).
-   - `WearBar`: **UI → Image** de fundo cinza com um filho `Fill` (**UI → Image**, **Image Type** = *Filled*, **Fill Method** = *Horizontal*). O campo **Source Image** precisa ter um sprite (use o `UISprite` padrão), senão o *Filled* não aparece no Inspector.
-   - `TireText` (TMP).
-   - `CompoundButton` e `BoxButton` (**UI → Button - TextMeshPro**).
-2. Adicione `CarPitControls` em cada um: **Runner**, **Driver Index** (0 no primeiro, 1 no segundo) e os campos de texto, imagem e botões.
+1. **PitPanel:** botão direito em `SidePanel` → **Create Empty** → `PitPanel`. **Add Component → Horizontal Layout Group:** **Spacing** `16`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height. **Add Component → Layout Element → Preferred Height** ✓ `190`.
+2. **CarPit_0:** botão direito em `PitPanel` → **Create Empty** → `CarPit_0`. **Add Component → Vertical Layout Group:** **Spacing** `6`, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✗ Height.
+3. Filhos de `CarPit_0`, nesta ordem (cada um com **Add Component → Layout Element → Preferred Height**):
+
+   | Nome | Como criar (botão direito em `CarPit_0` →) | Ajustes | Preferred Height |
+   |---|---|---|---|
+   | `DriverText` | **UI → Text - TextMeshPro** | Font Size 22, negrito | 30 |
+   | `WearBar` | **UI → Image** | Color `#3A3F4B` | 20 |
+   | `TireText` | **UI → Text - TextMeshPro** | Font Size 20 | 26 |
+   | `CompoundButton` | **UI → Button - TextMeshPro** | texto filho: Font Size 18 | 44 |
+   | `BoxButton` | **UI → Button - TextMeshPro** | texto filho: Font Size 20, negrito | 44 |
+
+4. **Barra de desgaste:** botão direito em `WearBar` → **UI → Image** → `Fill`.
+   - **Rect Transform:** quadrado de âncoras → **Alt** + clique na opção do canto inferior direito (*stretch / stretch*), para ocupar todo o `WearBar`.
+   - **Source Image:** clique no ⊙ e escolha `UISprite`. Sem sprite, a opção *Filled* não aparece.
+   - **Image Type** = `Filled`, **Fill Method** = `Horizontal`, **Fill Origin** = `Left`. **Color** = verde.
+5. Selecione `CarPit_0`. **Add Component → Car Pit Controls**:
+   - **Runner** = `RaceRunner`; **Driver Index** = `0`.
+   - **Driver Text**, **Wear Fill** (o `Fill`, não o `WearBar`), **Tire Text**.
+   - **Box Button** = `BoxButton`; **Box Label** = o `Text (TMP)` filho do `BoxButton`.
+   - **Compound Button** = `CompoundButton`; **Compound Label** = o texto filho dele.
+
+#### 🧪 Teste rápido
+Aperte ▶. O painel do primeiro carro mostra `P7  Nome`, a barra cheia e verde, `Médio 100%` e os botões. Clique **Trocar por: Médio** até mostrar **Macio**. Clique **Box**: o texto vira "Box nesta volta (cancelar)". Ao cruzar a linha, a cápsula sai para o lado da pista, o botão mostra a contagem regressiva, e o carro volta com `Macio 100%`.
+
+### Etapa 4C — Segundo carro
+
+1. Selecione `CarPit_0` e **Ctrl+D**. Renomeie a cópia para `CarPit_1`.
+2. No **Car Pit Controls** da cópia, mude **Driver Index** para `1`. As outras referências já apontam para os filhos da cópia.
+
+#### 🧪 Teste rápido
+Os dois painéis mostram pilotos diferentes, e o **Box** de cada um chama só o seu carro.
+
+**Hierarchy esperada (dentro de `SidePanel`) ao fim da Fase 4:**
+
+```
+SidePanel
+├─ LapText
+├─ StandingsText
+└─ PitPanel                (Horizontal Layout Group)
+   ├─ CarPit_0             (Vertical Layout Group, Car Pit Controls: Driver Index 0)
+   │  ├─ DriverText
+   │  ├─ WearBar
+   │  │  └─ Fill
+   │  ├─ TireText
+   │  ├─ CompoundButton
+   │  └─ BoxButton
+   └─ CarPit_1             (igual, Driver Index 1)
+```
 
 ### ✅ Checkpoint da Fase 4
 - A barra de cada carro do jogador esvazia e passa de verde a vermelho ao longo da corrida.
-- **Box** muda para "Box nesta volta"; ao cruzar a linha, o carro sai para o lado da pista, o botão mostra a contagem regressiva e o carro volta com 100% e o composto escolhido.
+- O pit stop troca o composto e zera o desgaste; a tabela mostra `BOX` enquanto o carro está parado.
 - Com pneu acabado, o carro fica claramente mais lento e perde posições (teste deixando um carro sem parar a corrida inteira).
-- A tabela mostra `BOX` enquanto o carro está parado, e ninguém ganha "ultrapassagem" por passar um carro no box (isso fica visível na Fase 5, quando ultrapassagem passa a dar dinheiro).
 
 #### Problemas comuns
-- **A barra não esvazia:** a `Image` do `Fill` não está como *Filled* ou não tem Source Image.
-- **O botão não reage ao clique:** falta o `EventSystem` na cena, ou outro painel transparente está por cima, bloqueando os cliques (desligue **Raycast Target** das imagens decorativas).
+- **A barra não esvazia:** o campo **Wear Fill** aponta para o `WearBar` em vez do `Fill`, ou o `Fill` não está como *Filled*.
+- **O botão não reage ao clique:** falta o `EventSystem` na cena, ou outro objeto de UI transparente está por cima bloqueando (desligue **Raycast Target** das imagens decorativas).
 
 Próxima fase: **Economia e investimentos** — o dinheiro entra durante a corrida e vira desempenho.
 
@@ -1671,7 +1974,15 @@ Próxima fase: **Economia e investimentos** — o dinheiro entra durante a corri
 
 > Objetivo desta fase: o dinheiro da equipe sobe durante a corrida (patrocínio, voltas, ultrapassagens, prêmio), e cada botão de investimento compra um nível que muda o desempenho na hora.
 
-### 5.1 `RaceEconomy`: o dinheiro de uma corrida
+**Conceitos novos:**
+- **`Dictionary<Chave, Valor>`:** uma tabela de consulta rápida. Aqui ela guarda as frações de dinheiro de patrocínio de cada equipe (o "cofrinho"), já que o dinheiro do jogo é inteiro.
+- **Classe que só ouve eventos:** a `RaceEconomy` não sabe nada de pista nem de velocidade; ela se inscreve nos eventos do `RaceSimulator` e paga. Isso deixa cada regra num lugar só.
+- **Ler a cada frame vs. esperar evento:** a UI de compra relê o dinheiro em todo `Update` em vez de esperar um aviso. Com poucos botões, é barato e não há como "perder" uma atualização.
+- **Grid Layout Group:** organiza os filhos numa grade de células de tamanho fixo.
+
+### Etapa 5A — Dinheiro entrando
+
+Crie em `Assets/_Project/Scripts/Game/` os dois serviços:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/RaceEconomy.cs
@@ -1754,8 +2065,6 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 5.2 `UpgradeService`: comprar níveis
-
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/UpgradeService.cs
 using System;
@@ -1807,9 +2116,7 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 5.3 `RaceRunner` atualizado
-
-Substitua o arquivo inteiro. As novidades são `Economy`, `Upgrades`, `PlayerTeam`, o `Awake` e a linha `Economy.Tick(step)`.
+Agora **substitua o conteúdo inteiro** do `RaceRunner.cs` pela versão abaixo. As novidades são `Economy`, `Upgrades`, `PlayerTeam`, o `Awake` e a linha `Economy.Tick(step)`.
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/RaceRunner.cs
@@ -1864,6 +2171,7 @@ namespace PaddockBoss.Game
             _trackRenderer.Draw(track);
             foreach (var car in Sim.Cars)
             {
+                if (_carMarkerPrefab == null) break; // sem prefab ainda: só os gizmos (Etapa 3A)
                 CarMarker marker = Instantiate(_carMarkerPrefab, _markersParent);
                 marker.Bind(car, Sim.Path);
                 _markers.Add(marker);
@@ -1885,6 +2193,19 @@ namespace PaddockBoss.Game
             }
         }
 
+        // Desenha cada carro como uma bolinha na cor da equipe (maior para o
+        // jogador). Aparece na Scene view e, com o botão Gizmos ligado, na Game
+        // view: é o teste visual da simulação antes de existir o prefab do carro.
+        private void OnDrawGizmos()
+        {
+            if (Sim == null) return;
+            foreach (var car in Sim.Cars)
+            {
+                Gizmos.color = car.Team.Definition.color;
+                Gizmos.DrawSphere(Sim.Path.PositionAt(car.Distance), car.IsPlayer ? 0.5f : 0.35f);
+            }
+        }
+
         // Repassa o fim da corrida para quem estiver ouvindo.
         private void HandleRaceFinished() => RaceEnded?.Invoke(Sim);
 
@@ -1899,65 +2220,7 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 5.4 `UpgradeButton`
-
-```csharp
-// Caminho: Assets/_Project/Scripts/UI/UpgradeButton.cs
-using PaddockBoss.Data;
-using PaddockBoss.Game;
-using TMPro;
-using UnityEngine;
-using UnityEngine.UI;
-
-namespace PaddockBoss.UI
-{
-    // POR QUE: o botão de uma área de investimento (Parte 1 §4), com nível atual
-    // e custo do próximo.
-    // ESTRATÉGIA: o mesmo script serve para todas as áreas; o Inspector diz qual
-    // (_type) e, no treino, qual piloto (_driverIndex). O clique só chama TryBuy.
-    // O estado é relido a cada frame: com 5 botões, é barato e garante que o botão
-    // acende no instante em que o dinheiro alcança o custo.
-    public class UpgradeButton : MonoBehaviour
-    {
-        [SerializeField] private RaceRunner _runner;
-        [SerializeField] private UpgradeType _type;
-        [SerializeField, Range(0, 1)] private int _driverIndex;
-        [SerializeField] private Button _button;
-        [SerializeField] private TMP_Text _titleText;
-        [SerializeField] private TMP_Text _levelText;
-        [SerializeField] private TMP_Text _costText;
-
-        // Liga o clique à compra.
-        private void Awake() => _button.onClick.AddListener(HandleClicked);
-
-        // Tenta comprar um nível para a equipe do jogador.
-        private void HandleClicked()
-        {
-            TeamState team = _runner.PlayerTeam;
-            if (team != null) _runner.Upgrades.TryBuy(team, _type, _driverIndex);
-        }
-
-        // Atualiza textos e se o botão está clicável.
-        private void Update()
-        {
-            TeamState team = _runner.PlayerTeam;
-            bool racing = team != null && _runner.Sim != null && !_runner.Sim.IsFinished;
-            if (team == null) { _button.interactable = false; return; }
-
-            string title = _runner.Balance.GetUpgrade(_type).displayName;
-            if (_type == UpgradeType.DriverTraining) title += $": {team.Definition.driverNames[_driverIndex]}";
-            _titleText.text = title;
-            _levelText.text = $"Nv {team.GetLevel(_type, _driverIndex)}";
-
-            bool maxed = _runner.Upgrades.IsMaxed(team, _type, _driverIndex);
-            _costText.text = maxed ? "MÁX" : $"$ {_runner.Upgrades.GetCost(team, _type, _driverIndex):N0}";
-            _button.interactable = racing && _runner.Upgrades.CanBuy(team, _type, _driverIndex);
-        }
-    }
-}
-```
-
-### 5.5 `MoneyFeed`: dinheiro e últimas entradas
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/MoneyFeed.cs
@@ -2039,29 +2302,129 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 5.6 Montar o painel de investimentos
+Montar o painel de dinheiro:
+1. Botão direito em `SidePanel` → **Create Empty** → `MoneyPanel`. Na Hierarchy, arraste-o para ficar **entre** `StandingsText` e `PitPanel`.
+2. Em `MoneyPanel`: **Add Component → Horizontal Layout Group** (**Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height) e **Add Component → Layout Element → Preferred Height** ✓ `100`.
+3. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `MoneyText`: **Font Size** `40`, negrito, **Alignment** meio/esquerda, cor `#FFE14D`.
+4. Botão direito em `MoneyPanel` → **UI → Text - TextMeshPro** → `FeedText`: **Font Size** `18`, **Alignment** topo/direita, cor `#6BE37A`, **Wrapping** desligado.
+5. Selecione `MoneyPanel`. **Add Component → Money Feed** e ligue **Runner**, **Money Text** e **Feed Text**.
 
-1. No `SidePanel`, crie `MoneyPanel` com dois TMP: `MoneyText` (fonte 44, negrito) e `FeedText` (fonte 24, cor verde). Adicione `MoneyFeed` e ligue os campos.
-2. Crie `InvestPanel` com **Vertical Layout Group** e 5 botões (**UI → Button - TextMeshPro**). Dentro de cada um, troque o texto único por três TMP: `Title`, `Level` e `Cost`.
-3. Adicione `UpgradeButton` a cada botão:
+#### 🧪 Teste rápido
+Aperte ▶. O saldo começa em `$ 300` e sobe sozinho (patrocínio). A cada volta aparece `+N  Volta em Px` à direita; quando um carro seu ultrapassa, `+15  Ultrapassagem`. Na chegada, `+N  Chegada em Px`. As mensagens somem depois de 3 segundos.
 
-   | Botão | Type | Driver Index |
+### Etapa 5B — Botões de investimento
+
+Crie em `Assets/_Project/Scripts/UI/`:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/UpgradeButton.cs
+using PaddockBoss.Data;
+using PaddockBoss.Game;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace PaddockBoss.UI
+{
+    // POR QUE: o botão de uma área de investimento (Parte 1 §4), com nível atual
+    // e custo do próximo.
+    // ESTRATÉGIA: o mesmo script serve para todas as áreas; o Inspector diz qual
+    // (_type) e, no treino, qual piloto (_driverIndex). O clique só chama TryBuy.
+    // O estado é relido a cada frame: com 5 botões, é barato e garante que o botão
+    // acende no instante em que o dinheiro alcança o custo.
+    public class UpgradeButton : MonoBehaviour
+    {
+        [SerializeField] private RaceRunner _runner;
+        [SerializeField] private UpgradeType _type;
+        [SerializeField, Range(0, 1)] private int _driverIndex;
+        [SerializeField] private Button _button;
+        [SerializeField] private TMP_Text _titleText;
+        [SerializeField] private TMP_Text _levelText;
+        [SerializeField] private TMP_Text _costText;
+
+        // Liga o clique à compra.
+        private void Awake() => _button.onClick.AddListener(HandleClicked);
+
+        // Tenta comprar um nível para a equipe do jogador.
+        private void HandleClicked()
+        {
+            TeamState team = _runner.PlayerTeam;
+            if (team != null) _runner.Upgrades.TryBuy(team, _type, _driverIndex);
+        }
+
+        // Atualiza textos e se o botão está clicável.
+        private void Update()
+        {
+            TeamState team = _runner.PlayerTeam;
+            bool racing = team != null && _runner.Sim != null && !_runner.Sim.IsFinished;
+            if (team == null) { _button.interactable = false; return; }
+
+            string title = _runner.Balance.GetUpgrade(_type).displayName;
+            if (_type == UpgradeType.DriverTraining) title += $": {team.Definition.driverNames[_driverIndex]}";
+            _titleText.text = title;
+            _levelText.text = $"Nv {team.GetLevel(_type, _driverIndex)}";
+
+            bool maxed = _runner.Upgrades.IsMaxed(team, _type, _driverIndex);
+            _costText.text = maxed ? "MÁX" : $"$ {_runner.Upgrades.GetCost(team, _type, _driverIndex):N0}";
+            _button.interactable = racing && _runner.Upgrades.CanBuy(team, _type, _driverIndex);
+        }
+    }
+}
+```
+
+Montar o painel:
+1. Botão direito em `SidePanel` → **Create Empty** → `InvestPanel` (deve ser o **último** filho do `SidePanel`).
+   - **Add Component → Grid Layout Group:** **Cell Size** `296` × `80`, **Spacing** `16` × `10`, **Constraint** = `Fixed Column Count`, **Constraint Count** = `2`.
+   - **Add Component → Layout Element → Preferred Height** ✓ `260`.
+2. Primeiro botão: botão direito em `InvestPanel` → **UI → Button - TextMeshPro** → `Upgrade_Engineering`.
+   - Renomeie o filho `Text (TMP)` para `Title`: **Font Size** `20`, negrito.
+   - Botão direito em `Upgrade_Engineering` → **UI → Text - TextMeshPro** → `Level` (**Font Size** `16`), e de novo → `Cost` (**Font Size** `18`, cor `#B8860B`).
+   - Em `Upgrade_Engineering`: **Add Component → Vertical Layout Group** (**Padding** 6 nos quatro lados, **Control Child Size** ✓ Width ✓ Height, **Child Force Expand** ✓ Width ✓ Height). Os três textos se empilham dentro do botão.
+   - **Add Component → Upgrade Button:** **Runner** = `RaceRunner`, **Type** = `Engineering`, **Driver Index** = `0`, **Button** = o próprio `Upgrade_Engineering`, **Title Text**, **Level Text**, **Cost Text**.
+3. Selecione `Upgrade_Engineering` e **Ctrl+D** quatro vezes. Renomeie as cópias e mude só **Type** e **Driver Index**:
+
+   | Objeto | Type | Driver Index |
    |---|---|---|
-   | Engenharia | Engineering | 0 |
-   | Propaganda | Marketing | 0 |
-   | Boxes | PitCrew | 0 |
-   | Treino 1 | DriverTraining | 0 |
-   | Treino 2 | DriverTraining | 1 |
+   | `Upgrade_Engineering` | Engineering | 0 |
+   | `Upgrade_Marketing` | Marketing | 0 |
+   | `Upgrade_PitCrew` | PitCrew | 0 |
+   | `Upgrade_Driver0` | DriverTraining | 0 |
+   | `Upgrade_Driver1` | DriverTraining | 1 |
+
+4. **Ctrl+S**.
+
+#### 🧪 Teste rápido
+Aperte ▶ com **Time Scale** `1`. Os botões mostram nome, `Nv 0` e custo, e ficam cinza até o saldo alcançar o custo. Compre **Engenharia** algumas vezes: o saldo cai, o nível sobe, o custo do próximo nível aumenta, e nas voltas seguintes seus carros ganham posições. **Propaganda** acelera a subida do saldo; **Equipe de boxes** encurta a contagem do próximo pit stop.
+
+**Hierarchy esperada (dentro de `SidePanel`) ao fim da Fase 5:**
+
+```
+SidePanel                  (Race HUD)
+├─ LapText
+├─ StandingsText
+├─ MoneyPanel              (Money Feed)
+│  ├─ MoneyText
+│  └─ FeedText
+├─ PitPanel
+│  ├─ CarPit_0
+│  └─ CarPit_1
+└─ InvestPanel             (Grid Layout Group)
+   ├─ Upgrade_Engineering  (Upgrade Button)
+   ├─ Upgrade_Marketing
+   ├─ Upgrade_PitCrew
+   ├─ Upgrade_Driver0
+   └─ Upgrade_Driver1
+```
 
 ### ✅ Checkpoint da Fase 5
-- O saldo sobe sozinho durante a corrida (patrocínio) e dá saltos com mensagens `+N Volta em Px`, `+15 Ultrapassagem` e, no fim, `+N Chegada em Px`.
-- Os botões ficam cinza até o dinheiro alcançar o custo. Ao comprar, o saldo cai, o nível sobe e o custo do próximo nível aumenta.
-- Comprar alguns níveis de **Engenharia** faz os dois carros ganharem posições nas voltas seguintes (com **Time Scale** alto, fica bem visível).
-- Comprar **Equipe de boxes** encurta a contagem regressiva do próximo pit stop; **Propaganda** acelera a subida do saldo.
+- O saldo sobe com patrocínio, voltas, ultrapassagens e chegada.
+- Cada compra tem efeito visível na mesma corrida.
+- Ao fim da corrida, todos os botões ficam cinza (não se compra depois da bandeirada).
 
 #### Problemas comuns
-- **Os botões nunca acendem:** `PlayerTeam` está nulo; confira se `Team_Player` está no campo **Player Team** do `RaceTestStarter` (é ele que marca `isPlayer = true`).
-- **O saldo sobe, mas o feed fica vazio:** o `MoneyFeed` foi habilitado depois da largada sem achar a economia. Confira se o `MoneyPanel` está ativo na cena ao apertar Play.
+- **Os botões nunca acendem:** `PlayerTeam` está nulo. Confira se `Team_Player` está no campo **Player Team** do `RaceTestStarter` (é ele que marca `isPlayer = true`).
+- **O painel não cabe na tela:** a soma das **Preferred Height** passou de 1080. Diminua a da `StandingsText` ou a fonte dela.
+- **`NullReferenceException` no `MoneyFeed`:** o `RaceRunner.cs` ainda é a versão da Fase 3, sem `Economy`. Substitua-o pela versão desta fase.
 
 Próxima fase: **IA das equipes rivais** — as rivais também compram e vão ao box.
 
@@ -2073,7 +2436,14 @@ Próxima fase: **IA das equipes rivais** — as rivais também compram e vão ao
 
 > Objetivo desta fase: as 6 equipes rivais investem e fazem pit stop sozinhas, cada uma com sua personalidade.
 
-### 6.1 `RivalAI`
+**Conceitos novos:**
+- **`System.Random` vs. `UnityEngine.Random`:** o `UnityEngine.Random` é global (qualquer script mexe na mesma sequência). Um `System.Random` próprio, criado com uma semente, dá à IA uma sequência só dela, que pode ser repetida nos testes.
+- **Sorteio ponderado:** cada opção tem um peso; uma opção de peso 3 sai três vezes mais que uma de peso 1. É assim que a "personalidade" vira comportamento.
+- **Decidir em intervalos:** a IA pensa a cada 2 segundos, e não a cada frame. É mais barato e mais parecido com uma equipe de verdade.
+
+### Etapa 6A — Box e compras da IA
+
+Crie em `Assets/_Project/Scripts/Game/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/RivalAI.cs
@@ -2189,12 +2559,10 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 6.2 Ligar a IA no `RaceRunner`
-
-Três mudanças em `RaceRunner.cs`:
+Ligue a IA no `RaceRunner.cs`, com três acréscimos:
 
 ```csharp
-// 1) Junto dos outros campos privados:
+// 1) Junto dos outros campos privados (abaixo de "_markers"):
 private RivalAI _rivalAI;
 
 // 2) Em StartRace, logo depois de "Economy = new RaceEconomy(Sim, _balance);":
@@ -2204,25 +2572,38 @@ _rivalAI = new RivalAI(Sim, Upgrades, _balance, Environment.TickCount + 1);
 _rivalAI.Tick(step);
 ```
 
-### 6.3 Dar personalidade às rivais
+Para ver as compras acontecendo, coloque temporariamente esta linha em `RivalAI.DecideSpending`, logo depois do `_upgrades.TryBuy(...)`:
 
-Nos assets `Team_Rival*`, varie os campos de IA. Exemplos de partida:
+```csharp
+Debug.Log($"{team.teamId} comprou {type} (saldo {team.money})");
+```
 
-| Equipe | Eagerness | Pesos (Eng / Prop / Box / Treino) | Box com desgaste |
-|---|---|---|---|
-| A "fábrica rica" | 0.9 | 3 / 1 / 1 / 1 | 0.7 |
-| A "marqueteira" | 0.6 | 1 / 3 / 0.5 / 1 | 0.8 |
-| A "cautelosa" | 0.2 | 1 / 1 / 1 / 1 | 0.65 |
-| A "dos pilotos" | 0.5 | 1 / 0.5 / 1 / 3 | 0.75 |
+#### 🧪 Teste rápido
+Aperte ▶ com **Time Scale** `4`. O Console mostra compras das rivais ao longo da corrida. Na tabela, carros rivais aparecem com `BOX`, quase sempre perto da metade da prova e nunca na última volta. Remova o `Debug.Log` depois do teste.
+
+### Etapa 6B — Personalidades
+
+Nos assets `Team_Rival*`, preencha a seção **IA (ignorado na equipe do jogador)**. Sugestão de partida:
+
+| Asset | Perfil | Ai Spend Eagerness | Pesos Eng / Mkt / Pit / Driver | Ai Pit Wear Threshold |
+|---|---|---|---|---|
+| `Team_Rival1` | fábrica rica | 0.9 | 3 / 1 / 1 / 1 | 0.70 |
+| `Team_Rival2` | marqueteira | 0.6 | 1 / 3 / 0.5 / 1 | 0.80 |
+| `Team_Rival3` | dos boxes | 0.5 | 1 / 1 / 3 / 1 | 0.75 |
+| `Team_Rival4` | dos pilotos | 0.5 | 1 / 0.5 / 1 / 3 | 0.75 |
+| `Team_Rival5` | cautelosa | 0.2 | 1 / 1 / 1 / 1 | 0.65 |
+| `Team_Rival6` | equilibrada | 0.5 | 1 / 1 / 1 / 1 | 0.75 |
+
+#### 🧪 Teste rápido
+Com o `Debug.Log` da 6A de volta por um momento: a `rival_1` compra quase só `Engineering` e logo; a `rival_5` compra pouco e tarde.
 
 ### ✅ Checkpoint da Fase 6
-- Durante a corrida, carros rivais também aparecem com `BOX` na tabela, quase sempre perto da metade da prova, e não nas últimas voltas.
-- Compras dos rivais: os assets `Team_*` não mudam durante o jogo (o estado fica no `TeamState`). Para ver as compras, coloque um `Debug.Log($"{team.teamId} comprou {type}")` temporário em `DecideSpending`, logo depois do `TryBuy`: cada rival compra com frequência e foco diferentes, conforme a personalidade.
-- Rivais "fábrica rica" ficam mais rápidas ao longo da corrida; a do jogador, sem investir nada, perde terreno.
+- As rivais fazem pit stop sozinhas e compram melhorias durante a corrida.
+- A rival "fábrica rica" fica mais rápida ao longo da corrida; sem investir nada, a equipe do jogador perde terreno.
 
 #### Problemas comuns
-- **Nenhum rival vai ao box:** com corridas curtas, o pneu Médio de largada pode aguentar até o fim (`lastsToEnd`). Aumente as voltas da pista ou o `wearPerSecond`.
-- **Um rival compra demais logo na largada:** ele começa com o mesmo `startingMoney` de todos. Dê a ele `aiSpendEagerness` menor ou níveis iniciais maiores (o que encarece o próximo nível).
+- **Nenhum rival vai ao box:** com corridas curtas, o pneu Médio de largada aguenta até o fim e a IA, corretamente, não para. Aumente as voltas da pista ou o `wearPerSecond`.
+- **Um rival compra demais logo na largada:** todos começam com o mesmo `startingMoney`. Dê a ele `aiSpendEagerness` menor ou níveis iniciais maiores (o que encarece o próximo nível).
 
 Próxima fase: **Campeonato e save** — 3 etapas, pontos e progresso salvo.
 
@@ -2235,11 +2616,16 @@ Próxima fase: **Campeonato e save** — 3 etapas, pontos e progresso salvo.
 > Objetivo desta fase: jogar as 3 etapas em sequência, com pontos, tela entre corridas e progresso salvo ao fechar o jogo.
 
 **Conceitos novos:**
-- **`JsonUtility`:** converte um objeto `[Serializable]` em texto JSON e de volta. Ele só salva campos públicos de tipos simples, arrays e `List`. Referências a assets não entram (por isso o `[NonSerialized] Definition` do `TeamState`).
-- **`PlayerPrefs`:** pequeno armazenamento de chave/valor da Unity. Funciona igual nas três plataformas: registro do Windows no PC, arquivo de preferências no Android e IndexedDB do navegador no WebGL. É o caminho mais simples para um save pequeno como este (poucos KB); no WebGL, gravar arquivo em disco exigiria cuidados extras.
-- **Coroutine:** função que pode "esperar" no meio (`yield return new WaitForSeconds(2f)`) sem travar o jogo. Usada para dar 2 segundos de bandeirada antes de mostrar o resultado.
+- **JSON e `JsonUtility`:** JSON é um formato de texto para dados (`{"money":300,"points":25}`). `JsonUtility.ToJson(objeto)` converte um objeto `[Serializable]` em texto, e `FromJson` faz o caminho de volta. Ele só salva campos públicos de tipos simples, arrays e `List`; referências a assets não entram (por isso o `[NonSerialized] Definition` do `TeamState`).
+- **`PlayerPrefs`:** armazenamento de chave/valor da Unity. Funciona igual nas três plataformas: registro do Windows no PC, arquivo de preferências no Android e IndexedDB do navegador no WebGL. É o caminho mais simples para um save pequeno como este (poucos KB).
+- **Classe `static`:** uma classe que não se instancia (`SaveService.Save(...)` direto). Serve para utilitários sem estado próprio.
+- **`Action` e lambda:** `Action` é "uma função guardada numa variável". `() => _onContinue?.Invoke()` é uma **lambda**, uma função escrita no próprio lugar onde é usada.
+- **`SetActive(true/false)`:** liga ou desliga um GameObject inteiro (e todos os filhos). Desligado, ele não aparece e seus scripts param de receber `Update`.
+- **Coroutine:** função que pode esperar no meio (`yield return new WaitForSeconds(2f)`) sem travar o jogo. É iniciada com `StartCoroutine(...)`.
 
-### 7.1 `ChampionshipDefinition`
+### Etapa 7A — Dados do campeonato e save
+
+Crie em `Assets/_Project/Scripts/Data/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Data/ChampionshipDefinition.cs
@@ -2261,7 +2647,7 @@ namespace PaddockBoss.Data
 }
 ```
 
-### 7.2 `SaveData` e `SaveService`
+Crie em `Assets/_Project/Scripts/Game/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/SaveService.cs
@@ -2292,7 +2678,11 @@ namespace PaddockBoss.Game
     // navegador pode fechar antes de gravar).
     public static class SaveService
     {
-        private const string Key = "paddockboss.save";
+        public const string DefaultKey = "paddockboss.save";
+
+        // Chave do PlayerPrefs onde o save fica. Os testes automáticos (Fase 9)
+        // trocam por outra, para não apagar o save de quem está jogando no Editor.
+        public static string Key { get; set; } = DefaultKey;
 
         // Lê o save. Devolve false se não houver, se estiver corrompido ou se for
         // de outra versão.
@@ -2328,8 +2718,6 @@ namespace PaddockBoss.Game
     }
 }
 ```
-
-### 7.3 `Championship`
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/Championship.cs
@@ -2425,7 +2813,18 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 7.4 `SeasonPanel`: a tela entre corridas
+Criar o asset:
+1. Em `Data/`: **Create → Paddock Boss → Championship** → `Championship`.
+2. **Player Team** = `Team_Player`.
+3. **Rival Teams:** trave o Inspector (🔒), selecione as 6 rivais na Project e arraste todas sobre o título **Rival Teams**. Destrave.
+4. **Tracks:** clique em **+** três vezes e arraste `Track_A`, `Track_B` e `Track_C`, nessa ordem.
+
+#### 🧪 Teste rápido
+O Console não tem erros e o asset `Championship` mostra 6 rivais e 3 pistas. O save só entra em uso na 7C.
+
+### Etapa 7B — A tela da temporada
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/SeasonPanel.cs
@@ -2504,7 +2903,21 @@ namespace PaddockBoss.UI
 }
 ```
 
-### 7.5 `GameSession`: amarra tudo
+Montar a tela, clique a clique:
+1. Botão direito em `Canvas` → **UI → Panel** → `SeasonPanel`. O Panel já nasce ocupando o Canvas inteiro. **Image → Color** = `#101418`, alfa `245`.
+2. Na Hierarchy, garanta que `SeasonPanel` é o **último filho** do `Canvas`. A UI é desenhada na ordem da Hierarchy, então o último fica por cima de tudo.
+3. **Title:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Title`. Âncoras: **Shift + Alt** + clique em *top / stretch* (linha de cima, coluna da direita). **Height** = `120`, **Left**/**Right** = `0`. **Font Size** `56`, negrito, alinhamento centralizado.
+4. **Results:** botão direito em `SeasonPanel` → **UI → Text - TextMeshPro** → `Results`. No Rect Transform, abra **Anchors** e digite **Min** (0.05, 0.18) e **Max** (0.48, 0.85); depois **Left**, **Top**, **Right**, **Bottom** = `0`. **Font Size** `24`, alinhamento topo/esquerda.
+5. **Standings:** igual ao `Results`, com **Min** (0.52, 0.18) e **Max** (0.95, 0.85).
+6. **Botão:** botão direito em `SeasonPanel` → **UI → Button - TextMeshPro** → `ContinueButton`. Âncoras: **Shift + Alt** + *bottom / center*. **Width** `420`, **Height** `100`, **Pos Y** `40`. Renomeie o texto filho para `ContinueLabel`: texto `Largar`, **Font Size** `36`, negrito.
+7. Selecione `SeasonPanel`. **Add Component → Season Panel** e ligue **Title Text**, **Results Text**, **Standings Text**, **Continue Button** e **Continue Label**.
+
+#### 🧪 Teste rápido
+Sem Play, a Game view mostra a tela escura por cima de tudo, com o título no topo, duas colunas de texto e o botão embaixo. Ela só ganha conteúdo na 7C.
+
+### Etapa 7C — O fluxo completo
+
+Crie em `Assets/_Project/Scripts/Game/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Game/GameSession.cs
@@ -2584,26 +2997,51 @@ namespace PaddockBoss.Game
 }
 ```
 
-### 7.6 Montar
+Montar:
+1. Selecione `RaceRunner` e **desmarque** a caixinha do componente **Race Test Starter** (desativa sem apagar; útil para testes isolados de corrida no futuro). Volte o **Time Scale** do Race Runner para `1`.
+2. Botão direito em `[Systems]` → **Create Empty** → `GameSession`. **Add Component → Game Session**:
+   - **Definition** = `Championship`.
+   - **Runner** = `RaceRunner`.
+   - **Season Panel** = `SeasonPanel`.
+   - **Race Hud** = `SidePanel`.
+3. **Ctrl+S**.
 
-1. Em `Data/`: **Create → Paddock Boss → Championship**. **Player Team** = `Team_Player`, **Rival Teams** = as 6 rivais, **Tracks** = `Track_A`, `Track_B`, `Track_C`, nessa ordem.
-2. No `RaceRunner`, **desative** o componente `RaceTestStarter` (desmarque a caixinha). Mantenha-o no projeto para testes isolados de corrida.
-3. Em `[Systems]`, crie `GameSession` com o componente `GameSession`: **Definition** = `Championship`, **Runner**, **Race Hud** = o `SidePanel`.
-4. No Canvas, crie `SeasonPanel` (**UI → Panel**, tela cheia, fundo escuro opaco) com `Title`, duas colunas de TMP (`Results` e `Standings`) e um botão `Continue` com o texto `ContinueLabel`. Adicione `SeasonPanel` e ligue os campos. Deixe-o como **último filho** do Canvas, para ficar por cima de tudo, e arraste-o para **Season Panel** no `GameSession`.
+> **Apagar o save durante os testes:** **Edit → Clear All PlayerPrefs**.
 
-> **Apagar o save durante os testes:** **Edit → Clear All PlayerPrefs** no Editor.
+#### 🧪 Teste rápido
+1. Aperte ▶: aparece `Etapa 1/3: <pista A>` com todas as equipes em 0 pts. Clique **Largar**: o painel lateral aparece e a corrida começa.
+2. 2 s depois da bandeirada, a tela mostra o resultado com os pontos e a classificação. **Largar** vai para a pista B, com o dinheiro e os níveis mantidos.
+3. Pare o Play entre a etapa 1 e a 2 e aperte ▶ de novo: o jogo volta em `Etapa 2/3`, com os mesmos pontos, dinheiro e níveis.
+4. Pare o Play **no meio** de uma corrida e volte: ela recomeça do estado de antes da largada.
+5. Depois da etapa 3: `Fim da temporada`; **Nova temporada** zera tudo.
+
+**Hierarchy esperada ao fim da Fase 7:**
+
+```
+Main
+├─ Main Camera
+├─ EventSystem
+├─ [Systems]
+│  ├─ RaceRunner        (Race Runner, Race Test Starter desativado)
+│  └─ GameSession       (Game Session)
+├─ [World]
+│  ├─ Track
+│  ├─ StartLine
+│  └─ Cars
+└─ [UI]
+   └─ Canvas
+      ├─ SidePanel      (Race HUD) → LapText, StandingsText, MoneyPanel, PitPanel, InvestPanel
+      └─ SeasonPanel    (Season Panel) → Title, Results, Standings, ContinueButton
+```
 
 ### ✅ Checkpoint da Fase 7
-- Ao apertar Play, aparece `Etapa 1/3: <pista A>` com todas as equipes em 0 pts. **Largar** inicia a corrida na pista A.
-- 2 s depois da bandeirada, a tela mostra o resultado com os pontos e a classificação atualizada. **Largar** vai para a pista B, com o dinheiro e os níveis da corrida anterior mantidos.
-- Pare o Play entre a etapa 1 e a 2 e aperte Play de novo: o jogo volta em `Etapa 2/3` com os mesmos pontos, dinheiro e níveis.
-- Pare o Play **no meio** de uma corrida e volte: ela recomeça do estado de antes da largada.
-- Depois da etapa 3, a tela mostra `Fim da temporada`; **Nova temporada** zera tudo.
+- As 3 etapas rodam em sequência, com pontos somados e dinheiro/níveis mantidos.
+- O progresso sobrevive a sair do Play entre corridas.
 
 #### Problemas comuns
-- **O jogo sempre recomeça do zero:** veja se o Console mostra "Save com equipe desconhecida": algum `teamId` mudou ou está repetido entre as equipes.
-- **O HUD aparece por trás do `SeasonPanel` ou vice-versa:** a ordem de desenho do Canvas segue a ordem da Hierarchy; o último filho fica por cima.
+- **O jogo sempre recomeça do zero:** veja se o Console mostra "Save com equipe desconhecida": algum `teamId` mudou ou está repetido.
 - **Os botões do HUD não respondem depois da primeira corrida:** algum script do HUD se inscreveu num evento no `Awake` (que roda uma vez) em vez do `OnEnable`. Siga o padrão do `CarPitControls`.
+- **O HUD aparece por cima da tela da temporada:** o `SeasonPanel` não é o último filho do Canvas.
 
 Próxima fase: **Layout multiplataforma e arte** — a mesma tela funcionando em monitor, celular e navegador.
 
@@ -2615,13 +3053,17 @@ Próxima fase: **Layout multiplataforma e arte** — a mesma tela funcionando em
 
 > Objetivo desta fase: a tela se adapta a qualquer resolução (monitor, celular com notch, janela do navegador), a pista sempre cabe no espaço livre à esquerda do painel, e os placeholders viram arte flat vector.
 
-A orientação no mobile está **Em aberto** (Parte 1 §10). Este guia usa **paisagem**, a mesma tela do PC e do WebGL.
+A orientação no mobile está **Em aberto** (Parte 1 §10). Este guia usa **paisagem**, a mesma tela do PC e do WebGL. O Canvas já escala desde a Fase 3 (Canvas Scaler em 1920×1080).
 
-### 8.1 Canvas que escala
+**Conceitos novos:**
+- **Área segura (`Screen.safeArea`):** o retângulo da tela livre de notch, câmera frontal e cantos arredondados. Fora dele, botões podem ficar escondidos.
+- **Matemática da câmera ortográfica:** **Size** é metade da altura visível em unidades; a largura visível é `altura × aspect` (`aspect` = largura ÷ altura da tela).
+- **Pixels Per Unit (PPU):** quantos pixels de uma imagem cabem em 1 unidade do mundo. Define o tamanho de um sprite na cena.
+- **Device Simulator:** janela que simula celulares específicos (resolução, notch, área segura) dentro do Editor.
 
-No Canvas, em **Canvas Scaler**: **UI Scale Mode** = *Scale With Screen Size*, **Reference Resolution** = 1920 × 1080, **Screen Match Mode** = *Match Width Or Height*, **Match** = 0.5. A UI passa a ser desenhada para 1080p e escalada para qualquer tela, sem textos minúsculos no celular nem gigantes no monitor 4K.
+### Etapa 8A — Área segura
 
-### 8.2 `SafeAreaFitter`: fugir do notch
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/SafeAreaFitter.cs
@@ -2671,9 +3113,16 @@ namespace PaddockBoss.UI
 }
 ```
 
-No Canvas, crie `SafeArea` (vazio, *stretch* total, **Left/Right/Top/Bottom** = 0), adicione `SafeAreaFitter` e mova o `SidePanel` e o `SeasonPanel` para dentro dele.
+1. Botão direito em `Canvas` → **Create Empty** → `SafeArea`. Âncoras: **Alt** + *stretch / stretch*; **Left**, **Top**, **Right**, **Bottom** = `0`.
+2. **Add Component → Safe Area Fitter**.
+3. Arraste `SidePanel` e depois `SeasonPanel` para dentro de `SafeArea`, nessa ordem (o `SeasonPanel` continua sendo o último). Confira que o `SidePanel` continua ancorado à direita.
 
-### 8.3 `TrackCameraFit`: a pista sempre cabe
+#### 🧪 Teste rápido
+**Window → General → Device Simulator**. Escolha um celular com notch (ex.: um iPhone recente ou Pixel) e gire para paisagem (botão de rotação). Aperte ▶: o painel lateral e o botão da tela da temporada ficam fora da área do notch.
+
+### Etapa 8B — A pista sempre cabe
+
+Crie em `Assets/_Project/Scripts/UI/`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/TrackCameraFit.cs
@@ -2732,9 +3181,13 @@ namespace PaddockBoss.UI
 }
 ```
 
-Adicione `TrackCameraFit` à **Main Camera** e ligue **Track**. Ajuste **Right Panel Fraction** para a largura real do `SidePanel` em relação à tela (640 de 1920 ≈ 0.34).
+1. Selecione `Main Camera`. Volte **Position X** para `0` (o ajuste manual da Fase 3 não é mais necessário).
+2. **Add Component → Track Camera Fit** → **Track** = `Track`. **Right Panel Fraction** = `0.34` (640 de 1920 pixels).
 
-### 8.4 Arte flat vector
+#### 🧪 Teste rápido
+Aperte ▶ e largue uma corrida. Troque a resolução da Game view entre `Full HD (1920x1080)`, `2560x1080` (crie com **+**) e o Device Simulator em paisagem: a pista sempre aparece inteira à esquerda, sem ficar por baixo do painel. Nas etapas seguintes, pistas de tamanhos diferentes também são reenquadradas.
+
+### Etapa 8C — Arte flat vector
 
 A arte segue a Parte 1 §9 (flat vector minimalista; paleta e identidade das equipes **Em aberto**). Assets mínimos do MVP:
 
@@ -2747,71 +3200,585 @@ A arte segue a Parte 1 §9 (flat vector minimalista; paleta e identidade das equ
 | Painéis e botões da UI | Cantos arredondados, cores chapadas |
 
 - Se gerar com o SpriteCook, siga as skills `spritecook-*` do repositório e guarde os `asset_id` num manifesto em `Sprites/PaddockBoss/`, como já é feito em `Sprites/Rally2D/`.
-- Importação na Unity: **Texture Type** = *Sprite (2D and UI)*. Ajuste **Pixels Per Unit** para o carro ficar com cerca de 0.8 unidade de comprimento (ex.: imagem de 256 px de altura → PPU 320). Troque os sprites `Capsule` do prefab `CarMarker` pelos novos.
-- Fonte: troque a LiberationSans por uma fonte da identidade visual (**Window → TextMeshPro → Font Asset Creator**) e confira os acentos do português (é, ã, ç).
+
+Importar e trocar o carro:
+1. Arraste os PNGs para `Assets/_Project/Sprites/`.
+2. Clique no PNG do carro. No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Single`, **Pixels Per Unit** = altura da imagem ÷ 0.8 (ex.: 256 px → `320`), para o carro ter 0.8 unidade de comprimento. **Apply**.
+3. Dê duplo clique no prefab `Prefabs/CarMarker` (abre o modo de edição de prefab). Em `Body`, troque **Sprite** pelo carro e volte **Scale** para (1, 1, 1). Em `Highlight`, troque pelo contorno, também com escala 1. Saia pela seta **<** no topo da Hierarchy; o prefab salva sozinho.
+4. Linha de largada: no `StartLine`, troque **Sprite** pela faixa quadriculada e ajuste a escala.
+5. Botões e painéis: no `Image` de cada um, troque **Source Image**. Para sprites de UI com cantos arredondados, abra o **Sprite Editor** do PNG e defina as bordas (**Border**), e use **Image Type** = `Sliced`, para o canto não esticar.
+6. Fonte: **Window → TextMeshPro → Font Asset Creator** → **Source Font File** = a fonte TTF da identidade, **Character Set** = `Extended ASCII` (cobre é, ã, ç) → **Generate Font Atlas** → **Save**. Troque o **Font Asset** dos textos.
+
+#### 🧪 Teste rápido
+Aperte ▶: cada carro aparece com o ícone novo, tingido com a cor da sua equipe e com o tamanho parecido com o das cápsulas. Os acentos dos nomes aparecem corretamente.
 
 ### ✅ Checkpoint da Fase 8
-- No **Game view**, troque entre 1920×1080, 2560×1080 (21:9) e um celular em paisagem (ex.: 2400×1080): a pista sempre aparece inteira à esquerda, sem ficar por baixo do painel.
-- No **Device Simulator** (**Window → General → Device Simulator**), num celular com notch, os botões do painel não ficam sob o notch.
-- Os carros mostram o ícone novo, tingido com a cor de cada equipe.
+- A pista sempre cabe no espaço livre em 16:9, 21:9 e no celular em paisagem.
+- Nada de UI fica sob o notch no Device Simulator.
+- Os placeholders (cápsulas e quadrado) foram substituídos pela arte.
 
 #### Problemas comuns
 - **A pista fica por baixo do painel:** **Right Panel Fraction** menor que a largura real do painel. Aumente até sobrar uma margem.
 - **Os carros ficaram enormes ou minúsculos com o sprite novo:** é o **Pixels Per Unit** da importação, não a escala do prefab.
+- **Quadrados no lugar de letras acentuadas:** o Font Asset foi gerado só com ASCII. Gere de novo com `Extended ASCII`.
+
+Próxima fase: **Testes automáticos** — proteger as regras do jogo antes de mexer no balanceamento.
+
+---
+
+# Parte 12 — Implementação Unity: Fase 9 (Testes automáticos)
+
+## Fase 9 — Testes automáticos
+
+> Objetivo desta fase: uma bateria de testes que roda em segundos no Editor e confirma que pista, corrida, compras, economia e campeonato continuam funcionando depois de qualquer mudança.
+
+**Conceitos novos:**
+- **Test Framework e NUnit:** a Unity roda testes escritos com a biblioteca NUnit. Um teste é um método marcado com `[Test]`, que monta uma situação e verifica o resultado com `Assert` (ex.: `Assert.AreEqual(esperado, real)`). Se alguma verificação falha, o teste fica vermelho e mostra o motivo.
+- **Edit Mode vs. Play Mode:** testes **Edit Mode** rodam sem cena e sem apertar Play, e são instantâneos. Servem para as classes C# puras (que são quase todas as regras deste jogo, graças à "regra de ouro" da Parte 2). Testes **Play Mode** abrem uma cena; não são necessários aqui.
+- **`[SetUp]` e `[TearDown]`:** métodos que rodam antes e depois de **cada** teste, para preparar e limpar.
+- **Assembly Definition (asmdef):** um arquivo que agrupa os scripts de uma pasta numa "assembly" (uma DLL) separada. Os testes ficam numa assembly própria, que **referencia** a do jogo. Sem asmdef, os scripts do jogo ficam na assembly padrão `Assembly-CSharp`, que outras assemblies não conseguem referenciar.
+- **Testes sem bagunçar o save:** os testes do campeonato gravam em outra chave do PlayerPrefs (`SaveService.Key`) e apagam tudo no fim, para não destruir o save de quem está jogando no Editor.
+
+### Etapa 9A — Assemblies
+
+1. **Assembly do jogo:** na Project, entre em `Assets/_Project/Scripts/`. Botão direito → **Create → Scripting → Assembly Definition** → nome `PaddockBoss`.
+   - Clique no asset. Em **Assembly Definition References**, clique **+** duas vezes e escolha `Unity.TextMeshPro` e `UnityEngine.UI` (os scripts de UI usam os dois).
+   - **Apply** no fim do Inspector. Espere compilar: o Console não pode ter erros. Se aparecer `The type or namespace name 'TMPro' could not be found`, faltou uma das referências.
+2. **Assembly dos testes:** entre em `Assets/_Project/`. Botão direito → **Create → Testing → Tests Assembly Folder**. A Unity cria a pasta `Tests` com um asmdef dentro.
+   - Renomeie o asmdef para `PaddockBoss.Tests` e, no Inspector, ponha `PaddockBoss.Tests` também no campo **Name**.
+   - **Platforms:** desmarque **Any Platform** e deixe marcado só **Editor** (testes Edit Mode).
+   - **Assembly Definition References:** **+** → `PaddockBoss`.
+   - **Apply**.
+
+#### 🧪 Teste rápido
+O Console não tem erros e o jogo continua funcionando ao apertar ▶ (a mudança de assembly não altera comportamento).
+
+### Etapa 9B — Os testes
+
+Crie os arquivos abaixo em `Assets/_Project/Tests/` (botão direito → **Create → Scripting → Empty C# Script**, como sempre).
+
+```csharp
+// Caminho: Assets/_Project/Tests/TestData.cs
+using System.Collections.Generic;
+using PaddockBoss.Data;
+using PaddockBoss.Game;
+using UnityEngine;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: todos os testes precisam de balanceamento, pistas e equipes. Criar
+    // isso à mão em cada teste repetiria código e esconderia o que cada teste
+    // quer provar.
+    // ESTRATÉGIA: ScriptableObject.CreateInstance cria o "asset" só na memória,
+    // sem arquivo, com os mesmos valores padrão de um asset novo (os da Parte 1
+    // §14). A pista de teste é um quadrado de lado 10 (volta = 40 unidades).
+    public static class TestData
+    {
+        // Balanceamento com os valores padrão.
+        public static GameBalance Balance() => ScriptableObject.CreateInstance<GameBalance>();
+
+        // Pista quadrada de 4 waypoints.
+        public static TrackDefinition SquareTrack(int laps = 3)
+        {
+            var track = ScriptableObject.CreateInstance<TrackDefinition>();
+            track.trackId = "test";
+            track.displayName = "Teste";
+            track.laps = laps;
+            track.waypoints = new[] { new Vector2(0, 0), new Vector2(10, 0), new Vector2(10, 10), new Vector2(0, 10) };
+            return track;
+        }
+
+        // Equipe com id e nível de engenharia escolhidos.
+        public static TeamDefinition Team(string id, int engineering = 0)
+        {
+            var team = ScriptableObject.CreateInstance<TeamDefinition>();
+            team.teamId = id;
+            team.displayName = id;
+            team.shortName = id;
+            team.engineering = engineering;
+            team.driverNames = new[] { id + "_A", id + "_B" };
+            return team;
+        }
+
+        // Estados das equipes; a primeira da lista é a do jogador.
+        public static List<TeamState> Teams(GameBalance balance, params TeamDefinition[] definitions)
+        {
+            var teams = new List<TeamState>();
+            for (int i = 0; i < definitions.Length; i++)
+                teams.Add(TeamState.Create(definitions[i], i == 0, balance.startingMoney));
+            return teams;
+        }
+
+        // Roda a corrida até o fim. O limite de passos impede que um bug (carro
+        // parado para sempre) trave o Editor.
+        public static void RunToEnd(RaceSimulator sim, float step = 0.05f, int maxSteps = 200000)
+        {
+            for (int i = 0; i < maxSteps && !sim.IsFinished; i++) sim.Tick(step);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Tests/TrackPathTests.cs
+using System;
+using NUnit.Framework;
+using PaddockBoss.Game;
+using UnityEngine;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: toda a corrida depende de a pista responder certo "onde fica a
+    // distância X" e "quão fechada é a curva ali".
+    // ESTRATÉGIA: usa o quadrado de lado 10, onde as respostas certas dá para
+    // calcular de cabeça.
+    public class TrackPathTests
+    {
+        // Cria o quadrado com os parâmetros padrão de curva.
+        private static TrackPath Square() => new(TestData.SquareTrack().waypoints, 15f, 4f);
+
+        // O comprimento da volta é o perímetro do quadrado.
+        [Test]
+        public void Length_IsThePerimeter() => Assert.AreEqual(40f, Square().Length, 0.001f);
+
+        // Uma volta a mais cai no mesmo ponto.
+        [Test]
+        public void PositionAt_WrapsAroundLaps()
+        {
+            TrackPath path = Square();
+            Assert.Less(Vector2.Distance(path.PositionAt(5f), path.PositionAt(45f)), 0.001f);
+        }
+
+        // Distância negativa (o grid) fica antes da linha: 2 unidades antes de
+        // (0, 0) no último lado, que desce de (0, 10) para (0, 0).
+        [Test]
+        public void PositionAt_NegativeDistanceIsBehindTheLine()
+        {
+            Assert.Less(Vector2.Distance(new Vector2(0f, 2f), Square().PositionAt(-2f)), 0.001f);
+        }
+
+        // No meio de um lado (longe das quinas) não há curva.
+        [Test]
+        public void CornerAt_MiddleOfStraightIsZero() => Assert.AreEqual(0f, Square().CornerAt(5f), 0.001f);
+
+        // Na quina, a curva é forte.
+        [Test]
+        public void CornerAt_OnTheCornerIsHigh() => Assert.Greater(Square().CornerAt(10f), 0.5f);
+
+        // Pista com menos de 3 pontos é rejeitada com uma mensagem clara.
+        [Test]
+        public void Constructor_RejectsTooFewPoints()
+        {
+            Assert.Throws<ArgumentException>(() => new TrackPath(new[] { Vector2.zero, Vector2.one }, 15f, 4f));
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Tests/RaceSimulatorTests.cs
+using System.Linq;
+using NUnit.Framework;
+using PaddockBoss.Data;
+using PaddockBoss.Game;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: o RaceSimulator é o coração do jogo; um erro nele (volta contada
+    // duas vezes, ordem errada) estraga tudo o que vem depois.
+    // ESTRATÉGIA: corridas curtas de 3 voltas na pista quadrada, com 2 equipes
+    // (4 carros) e semente fixa, para o resultado ser sempre o mesmo.
+    public class RaceSimulatorTests
+    {
+        // Cria uma corrida com as equipes dadas.
+        private static RaceSimulator NewRace(GameBalance balance, params TeamDefinition[] teams) =>
+            new(TestData.SquareTrack(3), balance, TestData.Teams(balance, teams), seed: 1);
+
+        // A corrida termina, e todo carro completa todas as voltas.
+        [Test]
+        public void Race_FinishesWithEveryCarCompletingAllLaps()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("a"), TestData.Team("b"));
+            TestData.RunToEnd(sim);
+
+            Assert.IsTrue(sim.IsFinished);
+            foreach (CarState car in sim.Cars)
+            {
+                Assert.IsTrue(car.Finished);
+                Assert.AreEqual(3, car.LapsCompleted);
+            }
+        }
+
+        // As posições são sempre 1, 2, 3, 4, sem repetir nem pular.
+        [Test]
+        public void Standings_PositionsAreOneToN()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("a"), TestData.Team("b"));
+            for (int i = 0; i < 200; i++) sim.Tick(0.05f);
+            CollectionAssert.AreEqual(new[] { 1, 2, 3, 4 }, sim.Standings.Select(c => c.Position).ToArray());
+        }
+
+        // Na tabela final, quem chegou antes está na frente.
+        [Test]
+        public void Standings_AfterTheRaceAreOrderedByFinishTime()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("a"), TestData.Team("b"));
+            TestData.RunToEnd(sim);
+            for (int i = 1; i < sim.Standings.Count; i++)
+                Assert.LessOrEqual(sim.Standings[i - 1].FinishTime, sim.Standings[i].FinishTime);
+        }
+
+        // Muita engenharia (+40% de velocidade) garante os dois primeiros lugares.
+        [Test]
+        public void Engineering_MakesTheTeamFaster()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("slow"), TestData.Team("fast", engineering: 20));
+            TestData.RunToEnd(sim);
+            Assert.AreEqual("fast", sim.Standings[0].Team.teamId);
+            Assert.AreEqual("fast", sim.Standings[1].Team.teamId);
+        }
+
+        // LapCompleted dispara em toda volta menos a última (que é a chegada).
+        [Test]
+        public void LapCompleted_FiresForEveryLapExceptTheFinish()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("a"), TestData.Team("b"));
+            int laps = 0;
+            sim.LapCompleted += _ => laps++;
+            TestData.RunToEnd(sim);
+            Assert.AreEqual(4 * (3 - 1), laps);
+        }
+
+        // O pit stop troca o composto e devolve o pneu novo.
+        [Test]
+        public void PitStop_ChangesCompoundAndResetsWear()
+        {
+            RaceSimulator sim = NewRace(TestData.Balance(), TestData.Team("a"), TestData.Team("b"));
+            CarState car = sim.Cars[0];
+            sim.RequestPit(car, TireCompound.Soft);
+            for (int i = 0; i < 100000 && car.PitStops == 0; i++) sim.Tick(0.05f);
+
+            Assert.AreEqual(1, car.PitStops);
+            Assert.AreEqual(TireCompound.Soft, car.Compound);
+            Assert.AreEqual(0f, car.TireWear, 0.001f);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Tests/UpgradeServiceTests.cs
+using NUnit.Framework;
+using PaddockBoss.Data;
+using PaddockBoss.Game;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: a compra é a ação principal do jogador; custo errado ou compra
+    // "de graça" quebram a economia inteira.
+    // ESTRATÉGIA: uma equipe com bastante dinheiro, recriada antes de cada teste
+    // pelo [SetUp], para um teste não afetar o outro.
+    public class UpgradeServiceTests
+    {
+        private GameBalance _balance;
+        private UpgradeService _upgrades;
+        private TeamState _team;
+
+        // Prepara balanceamento, serviço e equipe novos para cada teste.
+        [SetUp]
+        public void SetUp()
+        {
+            _balance = TestData.Balance();
+            _upgrades = new UpgradeService(_balance);
+            _team = TeamState.Create(TestData.Team("a"), true, 10000);
+        }
+
+        // Propaganda: 120 no nível 0; 120 × 1,4 = 168 no nível 1.
+        [Test]
+        public void Cost_GrowsByTheGrowthFactor()
+        {
+            Assert.AreEqual(120, _upgrades.GetCost(_team, UpgradeType.Marketing));
+            _upgrades.TryBuy(_team, UpgradeType.Marketing);
+            Assert.AreEqual(168, _upgrades.GetCost(_team, UpgradeType.Marketing));
+        }
+
+        // Comprar desconta o custo e sobe um nível.
+        [Test]
+        public void TryBuy_SpendsMoneyAndRaisesTheLevel()
+        {
+            Assert.IsTrue(_upgrades.TryBuy(_team, UpgradeType.Engineering));
+            Assert.AreEqual(10000 - 150, _team.money);
+            Assert.AreEqual(1, _team.engineering);
+        }
+
+        // Sem dinheiro, nada muda.
+        [Test]
+        public void TryBuy_WithoutMoney_ChangesNothing()
+        {
+            _team.money = 10;
+            Assert.IsFalse(_upgrades.TryBuy(_team, UpgradeType.PitCrew));
+            Assert.AreEqual(10, _team.money);
+            Assert.AreEqual(0, _team.pitCrew);
+        }
+
+        // No nível máximo, não compra mais.
+        [Test]
+        public void TryBuy_AtMaxLevel_Fails()
+        {
+            _team.engineering = _balance.maxLevel;
+            Assert.IsTrue(_upgrades.IsMaxed(_team, UpgradeType.Engineering));
+            Assert.IsFalse(_upgrades.TryBuy(_team, UpgradeType.Engineering));
+        }
+
+        // Treinar o piloto 2 não mexe no piloto 1.
+        [Test]
+        public void DriverTraining_OnlyAffectsTheChosenDriver()
+        {
+            _upgrades.TryBuy(_team, UpgradeType.DriverTraining, 1);
+            Assert.AreEqual(0, _team.driverSkill[0]);
+            Assert.AreEqual(1, _team.driverSkill[1]);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Tests/RaceEconomyTests.cs
+using NUnit.Framework;
+using PaddockBoss.Game;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: o dinheiro é o que liga a corrida aos investimentos.
+    // ESTRATÉGIA: confere a fórmula de patrocínio, o "cofrinho" de frações e se
+    // os eventos da corrida viram dinheiro.
+    public class RaceEconomyTests
+    {
+        // Corrida de 2 equipes com economia já ouvindo a simulação.
+        private static (RaceSimulator sim, RaceEconomy economy) NewRace()
+        {
+            var balance = TestData.Balance();
+            var sim = new RaceSimulator(TestData.SquareTrack(3), balance,
+                TestData.Teams(balance, TestData.Team("a"), TestData.Team("b")), seed: 1);
+            return (sim, new RaceEconomy(sim, balance));
+        }
+
+        // Propaganda nível 2: 2 × (1 + 2 × 0,15) = 2,6 por segundo.
+        [Test]
+        public void SponsorPerSecond_GrowsWithMarketing()
+        {
+            var (sim, economy) = NewRace();
+            TeamState team = sim.Cars[0].Team;
+            team.marketing = 2;
+            Assert.AreEqual(2.6f, economy.SponsorPerSecond(team), 0.0001f);
+        }
+
+        // 0,25 s rende 0,5 (fica no cofrinho); mais 0,25 s completa 1.
+        [Test]
+        public void Tick_PaysOnlyWholeUnits()
+        {
+            var (sim, economy) = NewRace();
+            TeamState team = sim.Cars[0].Team;
+            int start = team.money;
+            economy.Tick(0.25f);
+            Assert.AreEqual(start, team.money);
+            economy.Tick(0.25f);
+            Assert.AreEqual(start + 1, team.money);
+        }
+
+        // Ao fim da corrida, toda equipe recebeu bônus de volta e prêmio.
+        [Test]
+        public void FinishedRace_PaysEveryTeam()
+        {
+            var (sim, _) = NewRace();
+            int start = sim.Cars[0].Team.money;
+            TestData.RunToEnd(sim);
+            foreach (CarState car in sim.Cars) Assert.Greater(car.Team.money, start);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Tests/ChampionshipTests.cs
+using NUnit.Framework;
+using PaddockBoss.Data;
+using PaddockBoss.Game;
+using UnityEngine;
+
+namespace PaddockBoss.Tests
+{
+    // POR QUE: pontos e save são o progresso de longo prazo; perder o save é o
+    // pior bug possível para o jogador.
+    // ESTRATÉGIA: troca a chave do save antes de cada teste e apaga tudo depois,
+    // para nunca tocar no save real do Editor.
+    public class ChampionshipTests
+    {
+        private GameBalance _balance;
+        private ChampionshipDefinition _definition;
+
+        // Save isolado e um campeonato de 3 equipes e 3 pistas.
+        [SetUp]
+        public void SetUp()
+        {
+            SaveService.Key = "paddockboss.tests";
+            SaveService.Delete();
+            _balance = TestData.Balance();
+            _definition = ScriptableObject.CreateInstance<ChampionshipDefinition>();
+            _definition.playerTeam = TestData.Team("player");
+            _definition.rivalTeams = new[] { TestData.Team("r1"), TestData.Team("r2") };
+            _definition.tracks = new[] { TestData.SquareTrack(), TestData.SquareTrack(), TestData.SquareTrack() };
+        }
+
+        // Apaga o save de teste e devolve a chave original.
+        [TearDown]
+        public void TearDown()
+        {
+            SaveService.Delete();
+            SaveService.Key = SaveService.DefaultKey;
+        }
+
+        // Campeonato novo: jogador primeiro, todos com o dinheiro inicial, etapa 1.
+        [Test]
+        public void CreateNew_StartsAtRaceOneWithStartingMoney()
+        {
+            Championship season = Championship.CreateNew(_definition, _balance);
+            Assert.AreEqual(3, season.Teams.Count);
+            Assert.IsTrue(season.Teams[0].isPlayer);
+            foreach (TeamState team in season.Teams) Assert.AreEqual(_balance.startingMoney, team.money);
+            Assert.AreEqual(1, season.RaceNumber);
+        }
+
+        // P1 soma 25, P2 soma 18, e o campeonato avança.
+        [Test]
+        public void RecordResult_AddsPointsAndAdvances()
+        {
+            Championship season = Championship.CreateNew(_definition, _balance);
+            var winner = new CarState(0, season.Teams[1], 0, 0f) { Position = 1 };
+            var second = new CarState(1, season.Teams[0], 0, 0f) { Position = 2 };
+            season.RecordResult(new[] { winner, second });
+
+            Assert.AreEqual(25, season.Teams[1].points);
+            Assert.AreEqual(18, season.Teams[0].points);
+            Assert.AreEqual(2, season.RaceNumber);
+        }
+
+        // Fechar e abrir o jogo mantém etapa, dinheiro e o vínculo com os assets.
+        [Test]
+        public void LoadOrCreate_RestoresSavedProgress()
+        {
+            Championship season = Championship.CreateNew(_definition, _balance);
+            season.Teams[0].money = 999;
+            season.RecordResult(new CarState[0]);
+
+            Championship loaded = Championship.LoadOrCreate(_definition, _balance);
+            Assert.AreEqual(2, loaded.RaceNumber);
+            Assert.AreEqual(999, loaded.Teams[0].money);
+            Assert.AreSame(_definition.playerTeam, loaded.Teams[0].Definition);
+        }
+
+        // Se uma equipe do save não existe mais, recomeça em vez de quebrar.
+        [Test]
+        public void LoadOrCreate_WithUnknownTeam_StartsOver()
+        {
+            Championship.CreateNew(_definition, _balance).RecordResult(new CarState[0]);
+            _definition.rivalTeams[1] = TestData.Team("other");
+
+            Championship loaded = Championship.LoadOrCreate(_definition, _balance);
+            Assert.AreEqual(1, loaded.RaceNumber);
+        }
+
+        // Depois da última etapa, o campeonato acabou.
+        [Test]
+        public void IsOver_AfterTheLastRace()
+        {
+            Championship season = Championship.CreateNew(_definition, _balance);
+            for (int i = 0; i < 3; i++) season.RecordResult(new CarState[0]);
+            Assert.IsTrue(season.IsOver);
+            Assert.IsNull(season.NextTrack);
+        }
+    }
+}
+```
+
+### Etapa 9C — Rodar
+
+1. **Window → General → Test Runner**.
+2. Aba **EditMode** → **Run All**.
+
+#### 🧪 Teste rápido
+A árvore mostra `PaddockBoss.Tests` com 5 classes e 25 testes, todos com ✓ verde em poucos segundos. Para ver um teste falhando de propósito, mude temporariamente `engineeringBonusPerLevel` padrão no `GameBalance.cs` para `0f` e rode de novo: `Engineering_MakesTheTeamFaster` fica vermelho. Desfaça a mudança.
+
+### ✅ Checkpoint da Fase 9
+- Os 25 testes passam.
+- O save do jogo no Editor continua intacto depois de rodar os testes (aperte ▶ e confira a etapa atual).
+- Daqui em diante, rode **Run All** antes de cada commit que mexa em `Scripts/Game/` ou no `GameBalance`.
+
+#### Problemas comuns
+- **O Test Runner não mostra nenhum teste:** o asmdef de testes não referencia `PaddockBoss`, ou está com **Any Platform** marcado em vez de só **Editor**.
+- **`The type or namespace name 'PaddockBoss' could not be found` nos testes:** o asmdef `PaddockBoss` não existe em `Scripts/` (Etapa 9A, passo 1).
+- **`Engineering_MakesTheTeamFaster` falha depois de mudar o balanceamento:** o teste assume que 20 níveis de engenharia dão uma vantagem enorme. Se você reduziu muito `engineeringBonusPerLevel`, a falha é real: o investimento deixou de fazer diferença.
 
 Próxima fase: **Build e próximos passos**.
 
 ---
 
-# Parte 12 — Implementação Unity: Fase 9 (Build e Próximos Passos)
+# Parte 13 — Implementação Unity: Fase 10 (Build e Próximos Passos)
 
-## Fase 9 — Build e Próximos Passos
+## Fase 10 — Build e Próximos Passos
 
 > Objetivo desta fase: gerar builds jogáveis de PC, Android e WebGL a partir do mesmo projeto.
 
-### 9.1 Configurações comuns
+**Conceitos novos:**
+- **Build Profile:** no Unity 6, cada plataforma de destino tem um perfil (**File → Build Profiles**). **Switch Platform** converte os assets para aquela plataforma (pode demorar na primeira vez).
+- **Player Settings:** configurações do executável (nome, ícone, orientação, identificador do app), em **Edit → Project Settings → Player**, com uma aba por plataforma.
+- **IL2CPP:** converte o C# em C++ antes de compilar. É obrigatório para Android ARM64 e iOS e costuma deixar o jogo mais rápido.
 
-1. **File → Build Profiles → Scene List**: só a cena `Main` (a `TrackLab` é ferramenta de Editor e fica de fora).
-2. **Project Settings → Player**: **Company Name** = `MangueByte`, **Product Name** = `Paddock Boss`, ícone do jogo.
-3. **Player → Resolution and Presentation** (aba Android): **Default Orientation** = *Auto Rotation*, permitindo só **Landscape Right** e **Landscape Left** (orientação provisória, ver Fase 8).
+### 10.1 Configurações comuns
 
-### 9.2 PC (Windows)
+1. **File → Build Profiles → Scene List:** deixe marcada só a cena `Main` (a `TrackLab` é ferramenta de Editor e fica de fora). Se a `Main` não estiver na lista, clique **Add Open Scenes** com ela aberta.
+2. **Edit → Project Settings → Player:** **Company Name** = `MangueByte`, **Product Name** = `Paddock Boss`, **Default Icon** = o ícone do jogo.
+3. Aba Android do Player → **Resolution and Presentation → Default Orientation** = `Auto Rotation`, marcando só **Landscape Right** e **Landscape Left** (orientação provisória, ver Fase 8).
 
-1. **Build Profiles → Windows** → **Switch Platform** → **Build** em `Builds/Windows/`.
-2. Teste em janela redimensionável: a câmera reenquadra (Fase 8).
+### 10.2 PC (Windows)
 
-### 9.3 Android
+1. **Build Profiles → Windows** → **Switch Platform** (se não for a atual) → **Build** → escolha `Builds/Windows/`.
+2. Abra o `.exe` gerado e jogue uma etapa. Redimensione a janela: a câmera reenquadra (Fase 8).
+
+### 10.3 Android
 
 1. **Build Profiles → Android** → **Switch Platform**.
-2. **Player → Other Settings**: **Package Name** = `com.manguebyte.paddockboss`; **Scripting Backend** = *IL2CPP*; **Target Architectures** = *ARM64* (exigido pela Google Play).
-3. Para testar, **Build And Run** com o celular ligado por USB (depuração USB ativada). Para a loja, marque **Build App Bundle (Google Play)** e configure o keystore (fora do escopo do MVP).
-4. iOS: mesmo fluxo em **Build Profiles → iOS**; a build final exige Xcode num Mac.
+2. **Player → Other Settings:** **Package Name** = `com.manguebyte.paddockboss`; **Scripting Backend** = `IL2CPP`; **Target Architectures** = só `ARM64` (exigido pela Google Play).
+3. No celular: ative **Opções do desenvolvedor** e **Depuração USB**, ligue o cabo e autorize o computador.
+4. **Build And Run** → `Builds/Android/`. O jogo abre no celular.
+5. Para a loja: marque **Build App Bundle (Google Play)** e configure o keystore (fora do escopo do MVP).
+6. iOS: mesmo fluxo em **Build Profiles → iOS**. A Unity gera um projeto Xcode, que precisa ser compilado num Mac.
 
-### 9.4 WebGL
+### 10.4 WebGL
 
 1. **Build Profiles → Web** → **Switch Platform**.
-2. **Player → Publishing Settings**: **Compression Format** = *Gzip* e marque **Decompression Fallback**. Assim a build roda em hosts que não configuram os cabeçalhos de compressão (itch.io, GitHub Pages).
-3. **Build** em `Builds/WebGL/`. Para testar localmente, use **Build And Run** (abrir o `index.html` direto do disco não funciona).
-4. No itch.io: compacte o conteúdo da pasta em `.zip`, envie como *HTML* e marque *This file will be played in the browser*.
+2. **Player → Publishing Settings:** **Compression Format** = `Gzip` e marque **Decompression Fallback**. Assim a build roda em hosts que não configuram os cabeçalhos de compressão (itch.io, GitHub Pages).
+3. **Build And Run** → `Builds/WebGL/`. A Unity abre um servidor local no navegador. Abrir o `index.html` direto do disco não funciona.
+4. No itch.io: compacte o **conteúdo** da pasta em `.zip`, envie como *HTML* e marque *This file will be played in the browser*.
 
-### ✅ Checkpoint da Fase 9
+### ✅ Checkpoint da Fase 10
 - As três builds abrem, mostram `Etapa 1/3` e jogam uma corrida inteira.
 - Em cada plataforma, fechar o jogo entre etapas e reabrir mantém o progresso (no WebGL, recarregar a página).
 - No celular, os botões do painel são grandes o bastante para tocar sem errar.
 
 #### Problemas comuns
 - **WebGL fica na tela de carregamento com erro de "Content-Encoding":** faltou **Decompression Fallback**.
-- **WebGL perde o save ao recarregar:** o navegador está em modo anônimo ou bloqueia o armazenamento do site; o `PlayerPrefs.Save()` do `SaveService` já força a gravação.
+- **WebGL perde o save ao recarregar:** o navegador está em modo anônimo ou bloqueia o armazenamento do site. O `PlayerPrefs.Save()` do `SaveService` já força a gravação.
+- **Android: "No devices found":** a depuração USB não foi autorizada no celular, ou o cabo só carrega (não transfere dados).
 
-### 9.5 Próximos passos
+### 10.5 Próximos passos
 
 Em ordem sugerida, cada um ligado a um item **Em aberto** da Parte 1 §15:
 
-1. **Playtest de ritmo:** medir a duração real da corrida e quantas compras o jogador faz por volta; ajustar o `GameBalance` (itens 3 e 6).
+1. **Playtest de ritmo:** medir a duração real da corrida e quantas compras o jogador faz por volta; ajustar o `GameBalance` (itens 3 e 6). Rodar os testes da Fase 9 depois de cada ajuste.
 2. **Ajuste da IA / rubber band:** verificar se a equipe do jogador consegue sair do fundo do grid em 3 etapas (item 12).
-3. **Testes automáticos em Edit Mode** para `TrackPath`, `RaceSimulator` (ordem, ultrapassagens, box), `UpgradeService` e `Championship`. Como são C# puro, não precisam de cena.
-4. **Áudio** (item 15), tutorial e decisão sobre a orientação no mobile (item 14).
-5. **Fim de temporada** e investimento entre corridas (itens 1 e 2).
+3. **Áudio** (item 15), tutorial e decisão sobre a orientação no mobile (item 14).
+4. **Fim de temporada** e investimento entre corridas (itens 1 e 2).
 
 ---
 *Versão: rascunho inicial — a refinar conforme prototipagem.*
