@@ -33,7 +33,7 @@
 
 ### 1. Visão Geral
 
-- **Gênero:** Corrida / Rally, topdown, pixel art 2D.
+- **Gênero:** Corrida / Rally, topdown, 2D vetorial flat minimalista.
 - **Pilar de design:** controle tenso e "orgânico" via mouse, onde a distância entre carro e cursor dita a velocidade — cria risco/recompensa constante (quanto mais rápido, mais longe o cursor precisa estar, mais difícil reagir a curvas).
 - **Fantasia central:** pilotar no limite, sentindo a frenagem e aceleração através de um feedback visual claro (chevrons), sem HUD pesado de velocímetro (ver Parte 1 §5 — o indicador de velocidade usado é uma barra leve em %, não um velocímetro numérico tradicional).
 
@@ -61,7 +61,8 @@
 
 ### 4. Estilo Visual
 
-- Pixel art 2D, câmera topdown fixa (rotação de câmera a definir: segue o carro ou é fixa por pista?).
+- 2D vetorial flat minimalista, câmera topdown fixa (rotação de câmera a definir: segue o carro ou é fixa por pista?).
+- **Definido:** a franquia usa arte **vetorial flat minimalista** (substitui o pixel art definido antes): cores chapadas e bem saturadas, bordas limpas, sombreamento mínimo e sombra projetada suave, tudo visto estritamente de cima. Vale pros 4 jogos. Referência de estilo: `Sprites/Rally2D/sheet_v1.png`, e os assets vivem em `Sprites/Rally2D/` (ver Parte 14 §7.5).
 - Paleta e ambientação variam por pista/tema (ver documentos de variante).
 
 ### 5. HUD / UI Genérica
@@ -372,7 +373,6 @@ Instale agora, mesmo que só use mais adiante (evita interromper o fluxo depois)
 
 - **Input System** (com.unity.inputsystem) — vamos usar pra ler a posição do mouse de forma moderna.
 - **TextMeshPro** (geralmente já vem, ou é oferecido num popup na primeira vez que você usa texto — aceite o import de "TMP Essentials").
-- **2D Pixel Perfect** (com.unity.2d.pixel-perfect) — essencial pra pixel art não ficar borrada/tremida.
 - **2D Sprite Shape** (com.unity.2d.spriteshape) — pra desenhar o traçado da pista como uma textura contínua ao longo de uma spline (ver Fase 3).
 - **2D Tilemap Editor** (com.unity.2d.tilemap) — pra pintar o terreno de fundo (fora da pista) e apoiar a decoração.
 
@@ -383,7 +383,7 @@ Instale agora, mesmo que só use mais adiante (evita interromper o fluxo depois)
 - Projeto abre sem erros.
 - Estrutura de pastas criada.
 - Cena `RaceDesert` existe e está salva.
-- Package Manager mostra Input System, TextMeshPro, Pixel Perfect, Sprite Shape e Tilemap instalados.
+- Package Manager mostra Input System, TextMeshPro, Sprite Shape e Tilemap instalados.
 
 Próxima fase: **01_CARRO_MOVIMENTO.md** — vamos fazer o carro se mover em direção ao mouse.
 
@@ -397,7 +397,7 @@ Próxima fase: **01_CARRO_MOVIMENTO.md** — vamos fazer o carro se mover em dir
 
 ### 1.1 Criar o GameObject do carro
 
-1. Na Hierarchy, botão direito → **2D Object → Sprite → Square** (placeholder — depois trocamos pelo sprite pixel art real).
+1. Na Hierarchy, botão direito → **2D Object → Sprite → Square** (placeholder — depois trocamos pelo sprite real do carro).
 2. Renomeie para `Car`.
 3. Adicione componentes (botão **Add Component** no Inspector):
    - **Rigidbody2D** → mude `Body Type` para `Dynamic`, `Gravity Scale` para `0` (é topdown, sem gravidade), e marque `Interpolate` como `Interpolate` (deixa o movimento mais suave visualmente).
@@ -409,17 +409,36 @@ Crie em `Assets/_Project/Scripts/Car/CarController.cs`:
 
 ```csharp
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.InputSystem; // New Input System (Fase 0): é daqui que vem o Mouse.current
 
+// POR QUE: é o coração do jogo — o único lugar que transforma "onde está o mouse" em
+// "como o carro se move". Chevrons (Fase 2), partículas (§1.5), barra de velocidade (Fase 4)
+// e sensor de terreno (Fase 3) todos LEEM ou ESCREVEM valores aqui, mas nenhum deles
+// move o carro — isso fica concentrado nesta classe.
+// ESTRATÉGIA: é um MonoBehaviour (script que vive preso a um GameObject da cena e recebe
+// chamadas automáticas do Unity como Awake/Update). O carro é movido pela FÍSICA
+// (Rigidbody2D), não teleportando o transform, pra colisões e interpolação funcionarem.
+// A leitura do mouse fica no Update (1x por frame desenhado) e a física no FixedUpdate
+// (passo fixo de física). O resultado é exposto em propriedades públicas somente-leitura
+// (TargetSpeedNormalized, ActualSpeedNormalized, IsAccelerating, IsBraking) pra outros
+// scripts consumirem sem poder bagunçar o estado.
+//
+// [RequireComponent] faz o Unity adicionar um Rigidbody2D automaticamente quando você
+// arrasta este script num GameObject, e impede removê-lo — garante que GetComponent<Rigidbody2D>()
+// no Awake nunca volte null.
 [RequireComponent(typeof(Rigidbody2D))]
 public class CarController : MonoBehaviour
 {
+    // [Header("...")] só desenha um título no Inspector pra agrupar os campos abaixo.
+    // [SerializeField] faz um campo PRIVADO aparecer (e ser salvo) no Inspector — assim você
+    // ajusta valores sem recompilar, e outros scripts continuam sem poder mexer neles.
     [Header("Speed")]
-    [SerializeField] private float maxSpeed = 8f;
-    [SerializeField] private float minDistanceForMovement = 0.3f; // below this, car stops
-    [SerializeField] private float maxDistanceForTopSpeed = 6f;   // above this, already at top speed
+    [SerializeField] private float maxSpeed = 8f;                 // velocidade máxima, em unidades do mundo por segundo
+    [SerializeField] private float minDistanceForMovement = 0.3f; // abaixo dessa distância cursor→carro, o carro para ("zona morta")
+    [SerializeField] private float maxDistanceForTopSpeed = 6f;   // acima dessa distância, já está na velocidade máxima
     [SerializeField] private AnimationCurve speedCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-    // ^ smooth exponential curve, editable in the Inspector (see section 1.4)
+    // ^ curva suave "exponencial", editável num editor gráfico no Inspector (ver seção 1.4).
+    //   Entrada: distância normalizada (0 a 1). Saída: fração da velocidade máxima (0 a 1).
 
     [Header("Grip / Derrapagem")]
     [SerializeField] private float steeringResponsiveness = 20f;
@@ -427,78 +446,102 @@ public class CarController : MonoBehaviour
     //   Em grip baixo (poça, Gelo), a resposta efetiva cai proporcionalmente — ver FixedUpdate.
 
     [Header("Rotation")]
-    [SerializeField] private float rotationSpeed = 10f;
+    [SerializeField] private float rotationSpeed = 10f; // quão rápido o sprite gira pra apontar pra direção do movimento
 
-    private Rigidbody2D rb;
-    private Camera mainCamera;
-    private Vector2 mouseWorldPos;
+    private Rigidbody2D rb;          // referência cacheada ao componente de física (preenchida no Awake)
+    private Camera mainCamera;       // câmera usada pra converter posição de tela → mundo
+    private Vector2 mouseWorldPos;   // última posição do mouse em coordenadas do MUNDO (lida no Update, usada no FixedUpdate)
 
     // Grip atual (0 a 1) do terreno embaixo do carro — setado externamente pelo
     // CarTerrainSensor (Parte 10 §3.10), nunca calculado aqui dentro. Padrão 1 = grip
     // total, então nada muda até a Fase 3 ligar o sensor.
+    // { get; set; } = propriedade pública: outros scripts leem e escrevem como se fosse campo.
     public float CurrentGrip { get; set; } = 1f;
     // true enquanto o carro estiver sobre uma poça (Floresta) — só troca o preset de
     // partícula (seção 1.5), não afeta o grip em si (isso já está em CurrentGrip).
     public bool InPuddle { get; set; }
 
+    // { get; private set; } = qualquer script pode LER, mas só esta classe pode ESCREVER.
     // Velocidade PEDIDA pelo cursor (0 a 1) — alimenta os chevrons (intenção do jogador, Fase 2).
     public float TargetSpeedNormalized { get; private set; }
     // Velocidade REAL do carro (0 a 1), já filtrada pelo grip — alimenta a barra de
     // velocidade da UI (Parte 11 §4.4) e as partículas (seção 1.5).
     public float ActualSpeedNormalized { get; private set; }
-    public bool IsAccelerating { get; private set; }
-    public bool IsBraking { get; private set; }
+    public bool IsAccelerating { get; private set; } // true se o cursor está pedindo MAIS velocidade que no passo anterior
+    public bool IsBraking { get; private set; }      // true se o cursor está pedindo MENOS velocidade que no passo anterior
 
+    // Velocidade pedida no passo de física anterior — comparando com a atual descobrimos
+    // se o jogador está acelerando ou freando.
     private float previousTargetSpeedNormalized;
 
+    // Awake: o Unity chama UMA vez, assim que o objeto é criado/carregado na cena, antes de
+    // qualquer Start/Update. É o lugar certo pra pegar referências a componentes.
+    // Por que cachear: GetComponent e Camera.main fazem uma busca; fazer isso todo frame
+    // desperdiça CPU. Buscamos uma vez e guardamos no campo.
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
-        mainCamera = Camera.main;
+        mainCamera = Camera.main; // a câmera com a tag "MainCamera" na cena
     }
 
+    // Update: o Unity chama uma vez por FRAME desenhado (a taxa varia: 30, 60, 144 fps...).
+    // Input deve ser lido aqui, porque é onde o Unity atualiza o estado do mouse/teclado.
+    // Aqui só lemos e guardamos a posição do mouse — quem usa o valor é o FixedUpdate.
     void Update()
     {
-        // Reads the mouse position in world space (not screen space)
+        // O mouse vem em PIXELS de tela; o carro vive em unidades de MUNDO.
+        // ScreenToWorldPoint converte uma coisa na outra usando a câmera.
         Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
         mouseWorldPos = mainCamera.ScreenToWorldPoint(mouseScreenPos);
     }
 
+    // FixedUpdate: o Unity chama num intervalo FIXO (padrão 0,02s = 50x por segundo),
+    // independente do fps. Toda mexida em Rigidbody (velocidade, rotação, forças) vai aqui,
+    // pra física se comportar igual em PC rápido e lento.
+    // O que faz: calcula a velocidade que o cursor está pedindo, aproxima a velocidade real
+    // dela respeitando o grip, gira o carro e publica o estado pros outros scripts.
     void FixedUpdate()
     {
-        Vector2 toMouse = mouseWorldPos - (Vector2)transform.position;
+        Vector2 toMouse = mouseWorldPos - (Vector2)transform.position; // vetor carro → cursor
         float distance = toMouse.magnitude;
 
-        // 1. Normalize the distance between 0 and 1
+        // 1. Normaliza a distância pra faixa 0..1 (0 = na zona morta, 1 = na distância de velocidade máxima)
         float t = Mathf.InverseLerp(minDistanceForMovement, maxDistanceForTopSpeed, distance);
         t = Mathf.Clamp01(t);
 
-        // 2. Apply the curve (smooth exponential) to get the TARGET speed
+        // 2. Aplica a curva (exponencial suave) pra obter a velocidade ALVO (0..1).
+        //    É isso que dá a sensação "no limite do controle": pouca resposta perto, explosiva longe.
         float speedT = speedCurve.Evaluate(t);
 
-        // 3. Build the velocity the player is ASKING for (direction + target speed)
+        // 3. Monta a velocidade que o jogador está PEDINDO (direção + velocidade alvo)
         Vector2 desiredVelocity = Vector2.zero;
         if (distance > minDistanceForMovement)
         {
-            Vector2 direction = toMouse.normalized;
+            Vector2 direction = toMouse.normalized; // mesmo sentido, comprimento 1
+
             desiredVelocity = direction * (speedT * maxSpeed);
 
-            // Smoothly rotate the car to "look" in the direction of movement.
+            // Gira o carro suavemente pra "olhar" na direção do movimento.
+            // Atan2 dá o ângulo do vetor em radianos → convertemos pra graus.
+            // O "- 90f" é porque o sprite aponta pra CIMA (eixo Y), e o ângulo 0 do Atan2 é pra DIREITA.
+            // LerpAngle anda uma fração do caminho a cada passo (suaviza) e lida com a virada 359°→0°.
             // A rotação segue o cursor direto — só a velocidade é afetada pelo grip (passo 4).
             float targetAngle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
             float angle = Mathf.LerpAngle(rb.rotation, targetAngle, rotationSpeed * Time.fixedDeltaTime);
-            rb.MoveRotation(angle);
+            rb.MoveRotation(angle); // gira pela física (respeita a interpolação do Rigidbody2D)
         }
 
         // 4. Aproxima a velocidade REAL da velocidade pedida, numa taxa proporcional ao
         //    grip do terreno atual — isso é a derrapagem. Grip 1.0 (Deserto) responde quase
         //    instantaneamente; grip baixo (poça, Gelo) "carrega" velocidade antiga por mais
         //    tempo antes de alcançar o que o cursor está pedindo.
+        //    Vector2.Lerp(a, b, x) = anda a fração x do caminho de a até b (x=0 fica, x=1 chega).
         float effectiveResponsiveness = steeringResponsiveness * CurrentGrip;
         float lerpT = Mathf.Clamp01(effectiveResponsiveness * Time.fixedDeltaTime);
         rb.linearVelocity = Vector2.Lerp(rb.linearVelocity, desiredVelocity, lerpT);
 
-        // 5. Update public state
+        // 5. Atualiza o estado público que outros scripts leem.
+        //    O 0.001f é uma margem pra ignorar variações minúsculas (ruído), senão os chevrons piscariam.
         TargetSpeedNormalized = speedT;
         ActualSpeedNormalized = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
         IsAccelerating = speedT > previousTargetSpeedNormalized + 0.001f;
@@ -528,7 +571,10 @@ No Inspector, clique no campo `Speed Curve` (abre um editor gráfico de curva):
 
 Se preferir 100% via código sem mexer no Inspector, troque a linha da curva por:
 ```csharp
-float speedT = t * t; // simple quadratic curve, same "smooth exponential" effect
+// Substitui a linha "float speedT = speedCurve.Evaluate(t);" dentro do FixedUpdate.
+// t * t (curva quadrática) cresce devagar perto de 0 e rápido perto de 1 — o mesmo efeito
+// "exponencial suave" da AnimationCurve, só que fixo no código (não dá pra ajustar no Inspector).
+float speedT = t * t;
 ```
 
 ### 1.5 Partículas de movimento
@@ -552,17 +598,30 @@ Crie em `Assets/_Project/Scripts/Car/CarParticles.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: dar feedback visual de movimento/terreno (poeira, respingo, neve) sem colocar
+// código de efeito visual dentro do CarController — o controlador cuida de física, este
+// script cuida só de "pintar" o rastro.
+// ESTRATÉGIA: MonoBehaviour que, todo frame, LÊ o estado público do CarController
+// (ActualSpeedNormalized e InPuddle) e liga/desliga a emissão dos Particle Systems.
+// Não cria nem destrói partículas: os Particle Systems já existem na cena (montados à
+// mão no passo 1) e o script só abre/fecha a "torneira" (emission). Um único script serve
+// pras 3 pistas: se o campo splashParticles estiver vazio, ele entende que a cena não tem poça.
 public class CarParticles : MonoBehaviour
 {
-    [SerializeField] private CarController car;
+    [SerializeField] private CarController car;               // de onde lemos velocidade real e "está na poça?"
     [SerializeField] private ParticleSystem trailParticles;   // poeira (Deserto/Floresta) ou gelo/neve (Gelo)
     [SerializeField] private ParticleSystem splashParticles;  // respingo de poça — deixe vazio no Deserto e no Gelo
     [SerializeField] private float minSpeedToEmit = 0.1f;     // abaixo disso, carro "parado", sem partícula
 
+    // Update (1x por frame, ver CarController): efeito visual não é física, então não
+    // precisa do FixedUpdate. Decide qual preset deve estar emitindo agora.
     void Update()
     {
+        // Usa a velocidade REAL (pós-grip), não a pedida: se o carro derrapa parado no gelo,
+        // não faz sentido levantar poeira.
         bool moving = car.ActualSpeedNormalized > minSpeedToEmit;
 
+        // "!= null" num campo de componente = "foi arrastado algo no Inspector?"
         if (splashParticles != null)
         {
             // Cena com poça (Floresta): alterna entre os dois presets
@@ -576,6 +635,13 @@ public class CarParticles : MonoBehaviour
         }
     }
 
+    // Liga/desliga a emissão de um Particle System.
+    // Por que existe: evita repetir as mesmas 2 linhas 3 vezes no Update.
+    // Detalhe de Unity: ps.emission devolve um "módulo" (struct) que é só uma PONTE pro
+    // Particle System — alterar emission.enabled nele altera o sistema de verdade, mesmo
+    // sendo uma cópia local. Desligar a emissão não apaga as partículas já no ar: elas
+    // terminam a vida naturalmente (rastro some suave, sem "piscar").
+    // O "if" só escreve quando o valor muda, pra não mexer no sistema à toa todo frame.
     private void SetEmitting(ParticleSystem ps, bool emit)
     {
         var emission = ps.emission;
@@ -612,7 +678,7 @@ Próxima fase: **02_CHEVRONS.md** — desenhar as setas verdes/vermelhas entre c
 
 ### 2.1 Criar o sprite/prefab do chevron
 
-1. Por enquanto, crie um sprite simples: `2D Object → Sprite → Triangle` (serve de placeholder de seta — depois troca pelo pixel art).
+1. Por enquanto, crie um sprite simples: `2D Object → Sprite → Triangle` (serve de placeholder de seta — depois troca pelo sprite `Sprites/Rally2D/ui/chevron.png`, que é branco justamente pra ser tingido de verde/vermelho pela cor do `SpriteRenderer`).
 2. Renomeie para `ChevronArrow`.
 3. Arraste esse GameObject da Hierarchy pra pasta `Assets/_Project/Prefabs/` — isso cria um **Prefab**.
 4. Delete o objeto da Hierarchy (já está salvo como prefab, não precisa dele na cena).
@@ -624,26 +690,36 @@ Crie em `Assets/_Project/Scripts/Car/ChevronGuide.cs`:
 ```csharp
 using UnityEngine;
 using UnityEngine.InputSystem;
-using System.Collections.Generic;
+using System.Collections.Generic; // List<T>
 
+// POR QUE: mostrar ao jogador o que o cursor está "pedindo" ao carro: setas verdes =
+// acelerando, vermelhas = freando, mais setas = mais intensidade.
+// O nome ChevronGuide é uma convenção compartilhada entre os 4 jogos da franquia (não renomear).
+// ESTRATÉGIA: MonoBehaviour num GameObject próprio (não no carro), que só LÊ o estado do
+// CarController (IsBraking) e a posição do mouse; ele nunca mexe no carro. Usa um "object pool":
+// cria todas as setas uma única vez no Awake e, a cada frame, só liga/desliga e reposiciona
+// as que precisa. Isso evita Instantiate/Destroy todo frame, que são caros e geram lixo
+// de memória (o que causa travadinhas quando o coletor de lixo do C# roda).
 public class ChevronGuide : MonoBehaviour
 {
-    [SerializeField] private CarController car;
-    [SerializeField] private GameObject chevronPrefab;
-    [SerializeField] private int maxChevrons = 5;
-    [SerializeField] private float spacing = 0.8f; // distance between each chevron
+    [SerializeField] private CarController car;          // de onde lemos posição e IsBraking
+    [SerializeField] private GameObject chevronPrefab;   // o prefab ChevronArrow (seção 2.1), "molde" de cada seta
+    [SerializeField] private int maxChevrons = 5;        // tamanho do pool = máximo de setas na tela
+    [SerializeField] private float spacing = 0.8f;       // distância entre cada seta, em unidades do mundo
     [SerializeField] private Color accelerateColor = Color.green;
     [SerializeField] private Color brakeColor = Color.red;
 
     private Camera mainCamera;
-    private List<GameObject> pool = new List<GameObject>();
+    private List<GameObject> pool = new List<GameObject>(); // as setas já criadas, reaproveitadas todo frame
 
+    // Awake (ver CarController): cacheia a câmera e monta o pool de setas uma única vez.
     void Awake()
     {
         mainCamera = Camera.main;
 
-        // Object pool: creates all chevrons upfront and enables/disables them as needed
-        // (avoids Instantiate/Destroy every frame, which is expensive)
+        // Object pool: cria todas as setas de antemão e depois só liga/desliga.
+        // Instantiate(prefab, transform) cria uma cópia do prefab como FILHA deste objeto
+        // (fica organizada na Hierarchy). SetActive(false) esconde e desliga a seta.
         for (int i = 0; i < maxChevrons; i++)
         {
             GameObject chevron = Instantiate(chevronPrefab, transform);
@@ -652,6 +728,10 @@ public class ChevronGuide : MonoBehaviour
         }
     }
 
+    // Update (1x por frame, ver CarController): é visual, então roda no ritmo do frame.
+    // Recalcula quantas setas mostrar, onde, em que ângulo e com qual cor.
+    // Lê o mouse de novo (em vez de pegar do CarController) porque o CarController não
+    // expõe essa posição; a leitura é barata.
     void Update()
     {
         Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
@@ -660,9 +740,10 @@ public class ChevronGuide : MonoBehaviour
 
         Vector2 direction = (mouseWorldPos - carPos);
         float distance = direction.magnitude;
-        direction.Normalize();
+        direction.Normalize(); // agora só "aponta", com comprimento 1
 
-        // How many chevrons to show depends on intensity (accelerating or braking)
+        // Quantas setas mostrar: quantas "cabem" entre o carro e o cursor, limitado ao pool.
+        // Mais longe = mais setas = mais intensidade.
         int chevronsToShow = Mathf.Clamp(
             Mathf.FloorToInt(distance / spacing),
             0,
@@ -676,12 +757,17 @@ public class ChevronGuide : MonoBehaviour
             if (i < chevronsToShow)
             {
                 pool[i].SetActive(true);
+                // A seta i fica a (i+1) * spacing do carro, na linha carro → cursor.
                 Vector2 pos = carPos + direction * (spacing * (i + 1));
                 pool[i].transform.position = pos;
 
+                // Mesmo cálculo de ângulo do CarController (o sprite aponta pra cima, daí o -90).
+                // Quaternion.Euler(0, 0, angle) = rotação só no eixo Z, o único que importa em 2D.
                 float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg - 90f;
                 pool[i].transform.rotation = Quaternion.Euler(0, 0, angle);
 
+                // Pinta a seta. (Otimização opcional pra depois: guardar os SpriteRenderers
+                // numa lista no Awake em vez de chamar GetComponent todo frame.)
                 var sr = pool[i].GetComponent<SpriteRenderer>();
                 if (sr != null) sr.color = color;
             }
@@ -731,9 +817,9 @@ Próxima fase: **03_PISTA_E_LIMITES.md** — desenhar a pista com Sprite Shape e
 3. No componente **Sprite Shape Controller**, crie (ou peça pro seu artista criar) um **Sprite Shape Profile**: um asset que define qual sprite/textura preenche o interior (`Angle Range → Sprites`, campo de fill) e quais sprites usar nas bordas/laterais (acostamento, guia da pista).
 4. Edite os pontos de controle da spline na Scene view (clique com a ferramenta de edição de spline ativa) seguindo o traçado desejado da pista — esses pontos podem vir diretamente dos **waypoints** já definidos pra pista (Parte 1 — GDD Core).
 5. Ajuste a espessura da pista arrastando as alças de largura em cada ponto de controle (equivalente ao campo "largura de pista" dos dados de waypoint).
-6. No Sprite Shape Profile, configure o **Fill Texture** com a textura de asfalto/terra pixel art — o Unity repete/estica essa textura automaticamente ao longo de toda a spline, sem você desenhar tile por tile.
+6. No Sprite Shape Profile, configure o **Fill Texture** com a textura de asfalto/terra (vetorial flat, ver Parte 14 §7.5) — o Unity repete/estica essa textura automaticamente ao longo de toda a spline, sem você desenhar tile por tile.
 
-> Enquanto não tiver a textura final de pixel art, use uma textura sólida simples (ex: cinza-chapado) só pra testar a forma e a lógica.
+> Enquanto não tiver a textura final, use uma textura sólida simples (ex: cinza-chapado) só pra testar a forma e a lógica.
 
 ### 3.2 Terreno de fundo e decoração (Tilemap + sprites soltos)
 
@@ -771,19 +857,30 @@ Crie em `Assets/_Project/Scripts/Track/TrackBoundary.cs` e coloque no `TrackVali
 ```csharp
 using UnityEngine;
 
+// POR QUE: detectar o momento em que o carro sai 100% do traçado válido e avisar que ele
+// bateu. De quebra, guarda o grip base da pista (é um dado "da pista", então mora aqui).
+// ESTRATÉGIA: MonoBehaviour preso ao TrackValidZone (o GameObject com o Polygon Collider 2D
+// marcado como Is Trigger). Um TRIGGER não empurra nada fisicamente: ele só avisa, via callbacks
+// (OnTriggerEnter2D/Exit2D), quando outro collider entra ou sai dele. Este script não decide o
+// que acontece quando o carro bate; ele só avisa o RaceManager, que controla o estado da corrida.
 public class TrackBoundary : MonoBehaviour
 {
     [SerializeField] private float grip = 1f;
     // Grip base desta pista inteira (0 a 1): 1.0 no Deserto e na Floresta (fora de
     // poça), mais baixo no Gelo — ver Parte 10 §3.8. O CarTerrainSensor (§3.10) lê
     // este valor pra saber qual grip aplicar quando o carro não está sobre uma poça.
+    // "=>" cria uma propriedade só de leitura: outros scripts leem Grip, mas não alteram.
     public float Grip => grip;
 
-    // OnTriggerExit2D só dispara quando o Collider2D do carro deixa de
-    // sobrepor esta zona por completo (0% de sobreposição) — 99% fora
-    // ainda conta como dentro, e não gera este evento.
+    // OnTriggerExit2D: callback que o Unity chama sozinho quando um collider deixa de
+    // sobrepor este trigger. Pra ele disparar, pelo menos um dos dois objetos precisa ter
+    // Rigidbody2D (o Car tem).
+    // Só dispara quando o Collider2D do carro deixa de sobrepor esta zona por completo
+    // (0% de sobreposição) — 99% fora ainda conta como dentro, e não gera este evento.
     void OnTriggerExit2D(Collider2D other)
     {
+        // CompareTag é a forma recomendada de checar a tag (mais rápida que other.tag == "Car").
+        // Filtra pra reagir só ao carro, e não a qualquer outro collider que passe por aqui.
         if (other.CompareTag("Car"))
         {
             RaceManager.Instance.OnCarLeftTrack();
@@ -804,20 +901,34 @@ Crie em `Assets/_Project/Scripts/Track/RaceManager.cs`:
 
 ```csharp
 using UnityEngine;
-using UnityEngine.SceneManagement;
+using UnityEngine.SceneManagement; // SceneManager: carregar/recarregar cenas
 
+// POR QUE: alguém precisa ser o "juiz" da corrida: contar o tempo, saber se a corrida
+// está rolando e se o carro bateu, e reiniciar/voltar ao menu. Sem um dono central, cada
+// script (boundary, UI, linha de chegada) teria sua própria cópia desse estado, e as
+// cópias acabariam se contradizendo.
+// ESTRATÉGIA: MonoBehaviour com padrão SINGLETON: existe exatamente um por cena, acessível
+// de qualquer script via RaceManager.Instance, sem precisar arrastar referência no Inspector.
+// Os outros scripts AVISAM o RaceManager (OnCarLeftTrack) e LEEM o estado dele (ElapsedTime,
+// RaceActive, Crashed); a UI decide o que mostrar olhando esse estado.
 public class RaceManager : MonoBehaviour
 {
+    // "static" = pertence à CLASSE, não a um objeto; por isso qualquer script acessa
+    // RaceManager.Instance direto. private set: só o próprio RaceManager define quem é a instância.
     public static RaceManager Instance { get; private set; }
 
-    [SerializeField] private float elapsedTime;
+    [SerializeField] private float elapsedTime; // tempo da corrida em segundos (visível no Inspector pra depurar)
     public float ElapsedTime => elapsedTime;
-    public bool RaceActive { get; private set; } = true;
+    public bool RaceActive { get; private set; } = true; // o cronômetro está correndo?
     public bool Crashed { get; private set; } // true enquanto o menu "Você Bateu" está na tela
 
+    // Awake (ver CarController): registra este objeto como a instância única.
+    // Se já existir outro RaceManager (ex.: duplicado por engano), este se autodestrói.
+    // Tem que ser no Awake (e não no Start) pra Instance já estar pronta quando outros
+    // scripts a usarem nos seus Start.
     void Awake()
     {
-        // Simple singleton pattern: ensures only one RaceManager exists in the scene
+        // Padrão singleton simples: garante que só existe um RaceManager na cena
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -826,6 +937,9 @@ public class RaceManager : MonoBehaviour
         Instance = this;
     }
 
+    // Update (ver CarController): soma o tempo do frame ao cronômetro enquanto a corrida está ativa.
+    // Time.deltaTime = segundos que se passaram desde o frame anterior; somando isso todo frame
+    // temos o tempo real decorrido, independente do fps.
     void Update()
     {
         if (RaceActive)
@@ -834,9 +948,14 @@ public class RaceManager : MonoBehaviour
         }
     }
 
+    // Chamado pelo TrackBoundary quando o carro sai da pista.
+    // Para o cronômetro e entra no estado "bateu"; quem mostra a mensagem é a UI.
     public void OnCarLeftTrack()
     {
-        if (Crashed) return; // evita disparar de novo enquanto o menu de colisão já está aberto
+        // Se a corrida já não está ativa (já bateu, ou já cruzou a chegada na Fase 5), ignora:
+        // evita reabrir o menu de colisão, e evita que sair da pista DEPOIS da chegada
+        // (o carro continua andando enquanto o jogador digita o nome) mostre "Você Bateu".
+        if (!RaceActive) return;
         Debug.Log("Car left the track!");
         RaceActive = false;
         Crashed = true;
@@ -844,12 +963,16 @@ public class RaceManager : MonoBehaviour
         // a mensagem "Você Bateu" e espera o jogador apertar R (RetryRace) ou Esc (QuitToMainMenu).
     }
 
+    // Recomeça a corrida do zero. Recarregar a cena inteira é a forma mais simples de
+    // "resetar tudo" (carro, tempo, progresso) sem ter que zerar cada script à mão.
     public void RetryRace()
     {
         // Mesmo efeito que o reinício automático tinha antes: recarrega a cena inteira.
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
+    // Volta pro menu principal. A cena precisa estar na lista de cenas do build
+    // (File → Build Profiles / Build Settings), senão o LoadScene dá erro.
     public void QuitToMainMenu()
     {
         SceneManager.LoadScene("MainMenu"); // cena criada na Fase 6 — ver Parte 13 §6.1
@@ -899,12 +1022,20 @@ Crie em `Assets/_Project/Scripts/Track/TrackWaypoint.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: cada "porta" invisível da pista precisa avisar quando o carro passa por ela,
+// pra podermos calcular o % percorrido.
+// ESTRATÉGIA: script minúsculo, repetido em cada Waypoint_XX. Ele não faz conta nenhuma:
+// só descobre o próprio número (pela ordem na Hierarchy) e avisa o TrackProgress, que é
+// quem guarda o progresso. Assim a lógica fica num lugar só e as portas são "burras".
 public class TrackWaypoint : MonoBehaviour
 {
     // O número da porta é a posição dela dentro de TrackWaypoints na Hierarchy
     // (primeiro filho = 0, segundo = 1, ...). Nada para preencher no Inspector.
+    // GetSiblingIndex() = posição deste objeto entre os "irmãos" dentro do mesmo pai.
     public int Index => transform.GetSiblingIndex();
 
+    // OnTriggerEnter2D: callback do Unity quando um collider ENTRA neste trigger
+    // (é o par do OnTriggerExit2D, ver TrackBoundary).
     void OnTriggerEnter2D(Collider2D other)
     {
         if (other.CompareTag("Car")) // tag criada na seção 3.5
@@ -922,6 +1053,11 @@ Crie em `Assets/_Project/Scripts/Track/TrackProgress.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: transformar "o carro passou pela porta N" em "o carro percorreu X% da pista",
+// um número que a HUD (Fase 4 §4.5) pode mostrar.
+// ESTRATÉGIA: singleton (mesmo padrão do RaceManager) que recebe avisos das portas e guarda
+// só o MAIOR índice já atravessado; assim, dar ré ou repetir uma porta nunca faz o % cair.
+// Conta sozinho quantas portas existem, pra você não ter que digitar esse número em cada pista.
 public class TrackProgress : MonoBehaviour
 {
     public static TrackProgress Instance { get; private set; }
@@ -931,6 +1067,7 @@ public class TrackProgress : MonoBehaviour
     private int totalWaypoints;         // contado sozinho no Start, a partir das portas da cena
     private int lastWaypointIndex = -1; // maior porta já atravessada (-1 = nenhuma ainda)
 
+    // Awake: registra o singleton (mesmo padrão do RaceManager).
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -941,21 +1078,28 @@ public class TrackProgress : MonoBehaviour
         Instance = this;
     }
 
+    // Start: o Unity chama uma vez, depois que TODOS os Awake da cena já rodaram e logo
+    // antes do primeiro Update. É um bom lugar pra coisas que dependem de outros objetos
+    // já estarem prontos; aqui, contar as portas.
     void Start()
     {
         // Conta quantas portas (TrackWaypoint) existem na cena — não precisa digitar à mão.
+        // FindObjectsByType varre a cena inteira (é lento), por isso roda uma vez só, no Start.
         totalWaypoints = FindObjectsByType<TrackWaypoint>(FindObjectsSortMode.None).Length;
         if (totalWaypoints == 0)
             Debug.LogWarning("TrackProgress: nenhum TrackWaypoint na cena — o % vai ficar em 0 até a chegada.");
     }
 
+    // Chamado por cada TrackWaypoint quando o carro atravessa. Atualiza o % se a porta for nova.
     public void OnWaypointReached(int index)
     {
         if (index <= lastWaypointIndex) return; // porta repetida ou antiga (ré): ignora
         lastWaypointIndex = index;
+        // O (float) evita divisão inteira: em C#, 3 / 12 com dois int dá 0, e não 0.25.
         ProgressNormalized = (index + 1) / (float)totalWaypoints;
     }
 
+    // Força 100%. Usado na linha de chegada, que não tem porta própria.
     public void ForceComplete()
     {
         ProgressNormalized = 1f; // chamado pelo RaceManager.OnRaceFinished() (Parte 12 §5.6)
@@ -970,6 +1114,9 @@ public class TrackProgress : MonoBehaviour
 Como não existe porta na linha de chegada, quem leva o progresso a 100% é o `RaceManager`. Quando chegar na Parte 12 §5.6, adicione a chamada `ForceComplete()` dentro de `OnRaceFinished()`, logo após `Finished = true;`:
 
 ```csharp
+// Trecho do RaceManager (versão da Parte 12 §5.6). O que muda: a linha ForceComplete().
+// Por quê: não existe porta na linha de chegada, então sem essa linha o % pararia na
+// última porta (ex.: 92%). O RaceManager é quem sabe que a corrida acabou, então é ele quem avisa.
 public void OnRaceFinished()
 {
     if (!RaceActive) return;
@@ -1013,10 +1160,15 @@ Crie em `Assets/_Project/Scripts/Track/PuddleZone.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: marcar uma área da pista como "poça" e dizer quanto grip ela tem.
+// ESTRATÉGIA: é só um "rótulo com dado", sem nenhum Update ou lógica. Fica no GameObject
+// da poça (junto do collider trigger) e quem faz o trabalho é o CarTerrainSensor do carro:
+// quando ele encosta num trigger, pergunta "você tem um PuddleZone?" e lê o Grip daqui.
+// Separar assim deixa cada poça configurável no Inspector (uma pode escorregar mais que outra).
 public class PuddleZone : MonoBehaviour
 {
     [SerializeField] private float grip = 0.5f; // Em aberto: valor exato a calibrar em prototipagem
-    public float Grip => grip;
+    public float Grip => grip; // só leitura pra outros scripts (ver TrackBoundary)
 }
 ```
 
@@ -1041,21 +1193,36 @@ Crie em `Assets/_Project/Scripts/Car/CarTerrainSensor.cs`:
 ```csharp
 using UnityEngine;
 
+// POR QUE: é a ponte entre "sobre qual terreno o carro está" e "quanto ele derrapa".
+// O CarController não sabe nada de pistas ou poças: ele só usa o CurrentGrip que alguém
+// escreve nele. Este sensor é esse "alguém".
+// ESTRATÉGIA: MonoBehaviour no próprio Car. Como o carro tem Collider2D + Rigidbody2D, ele
+// recebe OnTriggerEnter2D/Exit2D de QUALQUER trigger que tocar (poças, portas, TrackValidZone...).
+// O sensor filtra só os que têm PuddleZone e CONTA quantas poças está sobrepondo (pode ser mais
+// de uma ao mesmo tempo). Enquanto a contagem for > 0, usa o grip da poça; quando volta a 0,
+// devolve o grip base da pista (lido do TrackBoundary).
 public class CarTerrainSensor : MonoBehaviour
 {
-    [SerializeField] private CarController car;
+    [SerializeField] private CarController car;           // onde escrevemos CurrentGrip e InPuddle
     [SerializeField] private TrackBoundary trackBoundary; // fornece o grip base da pista atual (seção 3.8)
 
-    private int puddleOverlapCount;
-    private float currentPuddleGrip;
+    private int puddleOverlapCount;  // em quantas poças o carro está AGORA (poças podem se sobrepor)
+    private float currentPuddleGrip; // grip em uso enquanto estiver em poça (o menor entre as sobrepostas)
 
+    // Start (ver TrackProgress): aplica o grip base da pista assim que a corrida começa.
+    // É isso que faz o Gelo escorregar o traçado inteiro sem precisar de nenhuma poça.
     void Start()
     {
         car.CurrentGrip = trackBoundary.Grip;
     }
 
+    // Callback de trigger (ver TrackWaypoint): o carro encostou em algum trigger.
+    // Se for uma poça, soma na contagem e aplica o grip dela.
     void OnTriggerEnter2D(Collider2D other)
     {
+        // GetComponent no OUTRO objeto: "esse trigger tem um PuddleZone?". Se não tiver
+        // (é uma porta, a zona da pista etc.), ignoramos. Aqui não dá pra cachear, porque
+        // cada evento traz um objeto diferente; mas o evento é raro, então o custo é baixo.
         var puddle = other.GetComponent<PuddleZone>();
         if (puddle == null) return;
 
@@ -1067,17 +1234,24 @@ public class CarTerrainSensor : MonoBehaviour
         car.InPuddle = true;
     }
 
+    // O carro saiu de algum trigger. Se era poça, desconta; se não sobrou nenhuma,
+    // volta ao grip base da pista.
     void OnTriggerExit2D(Collider2D other)
     {
         var puddle = other.GetComponent<PuddleZone>();
         if (puddle == null) return;
 
+        // Mathf.Max(0, ...) é uma proteção: a contagem nunca fica negativa, mesmo se
+        // algum evento vier fora de ordem.
         puddleOverlapCount = Mathf.Max(0, puddleOverlapCount - 1);
         if (puddleOverlapCount == 0)
         {
             car.CurrentGrip = trackBoundary.Grip;
             car.InPuddle = false;
         }
+        // Simplificação: se ainda sobrar alguma poça, o grip continua no menor valor já
+        // aplicado (não recalculamos qual poça ficou). Com poças de grip parecido, isso
+        // não faz diferença perceptível.
     }
 }
 ```
@@ -1124,7 +1298,7 @@ Não precisa de script próprio: é configuração pura de Inspector.
 #### Problemas comuns
 - **`OnTriggerExit2D` nunca dispara:** confirme que o `Car` tem um **Collider2D** (não só o Rigidbody2D) e que pelo menos um dos dois colliders envolvidos (carro ou zona) **não** está marcado como trigger simultaneamente de forma que ambos sejam triggers — Unity exige que pelo menos um Rigidbody2D esteja envolvido para eventos de trigger funcionarem (o do carro já resolve isso).
 - **Carro "atravessa" a borda sem detectar:** se o carro estiver muito rápido, ative `Collision Detection = Continuous` no Rigidbody2D do carro (`Rigidbody2D → Collision Detection`).
-- **`ProgressNormalized` nunca passa de um certo valor:** confira se `Index` de cada `Waypoint_XX` está preenchido corretamente e em ordem crescente — um índice repetido ou fora de ordem é ignorado pelo guard `if (index <= lastWaypointIndex)`.
+- **`ProgressNormalized` nunca passa de um certo valor:** confira se os `Waypoint_XX` estão na ordem do sentido da corrida dentro de `TrackWaypoints` na Hierarchy (o `Index` vem dessa ordem, via `GetSiblingIndex()`) — uma porta fora de ordem é ignorada pelo guard `if (index <= lastWaypointIndex)`.
 - **Carro nunca parece derrapar na Floresta/Gelo:** confira se `CarTerrainSensor` está no `Car` (não na zona) e se o campo `Track Boundary` está ligado ao `TrackValidZone` da cena — sem isso, `CurrentGrip` nunca é setado e fica no valor padrão (`1`) do `CarController`.
 
 Próxima fase: **04_TIMER_UI.md** — cronômetro visível na tela e feedback de UI.
@@ -1152,19 +1326,25 @@ Crie em `Assets/_Project/Scripts/UI/TimerDisplay.cs`:
 
 ```csharp
 using UnityEngine;
-using TMPro;
+using TMPro; // TextMeshPro: o sistema de texto recomendado do Unity (TMP_Text)
 
+// POR QUE: mostrar na tela o tempo que o RaceManager está contando.
+// ESTRATÉGIA: separar "contar" (RaceManager) de "mostrar" (este script). O RaceManager nem
+// sabe que existe UI. Isso deixa trocar o visual do cronômetro sem mexer na lógica da corrida,
+// e o mesmo tempo pode ser mostrado em vários lugares (HUD, tela de chegada...).
 public class TimerDisplay : MonoBehaviour
 {
-    [SerializeField] private TMP_Text timerText;
+    [SerializeField] private TMP_Text timerText; // o texto na tela que vamos reescrever todo frame
 
+    // Update (ver CarController): todo frame, lê o tempo e formata como mm:ss.cc.
     void Update()
     {
         float time = RaceManager.Instance.ElapsedTime;
         int minutes = Mathf.FloorToInt(time / 60f);
-        int seconds = Mathf.FloorToInt(time % 60f);
-        int centiseconds = Mathf.FloorToInt((time * 100f) % 100f);
+        int seconds = Mathf.FloorToInt(time % 60f);                 // % = resto da divisão: segundos dentro do minuto
+        int centiseconds = Mathf.FloorToInt((time * 100f) % 100f);  // centésimos de segundo
 
+        // $"..." = string interpolada; ":00" formata com 2 dígitos (7 vira "07").
         timerText.text = $"{minutes:00}:{seconds:00}.{centiseconds:00}";
     }
 }
@@ -1190,20 +1370,32 @@ Crie em `Assets/_Project/Scripts/UI/CrashMenuUI.cs`:
 
 ```csharp
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.InputSystem; // Keyboard.current
 
+// POR QUE: quando o carro bate, o jogador precisa ver a mensagem "Você Bateu" e escolher
+// entre tentar de novo (R) ou voltar ao menu (Esc).
+// ESTRATÉGIA: a UI só OBSERVA o RaceManager (lê Crashed) e PEDE a ele as ações (RetryRace,
+// QuitToMainMenu). Ela não guarda estado próprio: o painel aparece se, e só se, Crashed for true.
+// Importante: este script precisa estar num objeto ATIVO (ex.: o Canvas). Update não roda em
+// objeto desativado, então se o script estiver no próprio CrashPanel (que começa desligado),
+// ele nunca conseguiria ligar o painel.
 public class CrashMenuUI : MonoBehaviour
 {
-    [SerializeField] private GameObject crashPanel;
+    [SerializeField] private GameObject crashPanel; // o painel da mensagem, que começa desativado
 
+    // Update (ver CarController): sincroniza o painel com o estado Crashed e, enquanto
+    // ele estiver aberto, escuta as teclas R/Esc.
     void Update()
     {
         bool crashed = RaceManager.Instance.Crashed;
+        // activeSelf = "este objeto está ligado?". Só chama SetActive quando muda.
         if (crashPanel.activeSelf != crashed)
             crashPanel.SetActive(crashed);
 
-        if (!crashed) return;
+        if (!crashed) return; // fora do menu de batida, ignora teclado
 
+        // wasPressedThisFrame = true só no frame em que a tecla desceu (não fica repetindo
+        // enquanto ela estiver segurada).
         if (Keyboard.current.rKey.wasPressedThisFrame)
             RaceManager.Instance.RetryRace();
         else if (Keyboard.current.escapeKey.wasPressedThisFrame)
@@ -1212,7 +1404,7 @@ public class CrashMenuUI : MonoBehaviour
 }
 ```
 
-1. Arraste o script em qualquer GameObject da cena (ex.: no próprio `CrashPanel`).
+1. Arraste o script num GameObject **ativo** da cena (ex.: no `Canvas`) — **não** no próprio `CrashPanel`: ele começa desativado, e um script em objeto desativado não roda `Update`, então o painel nunca apareceria.
 2. No Inspector, ligue o campo `Crash Panel` ao GameObject `CrashPanel` criado acima.
 
 > `QuitToMainMenu()` carrega a cena `MainMenu`, que só é criada na Fase 6 (Parte 13). Até lá, testar o `Esc` nesta fase vai gerar um erro de "cena não encontrada nos Build Settings" — normal nesse ponto do guia, não é um bug.
@@ -1233,13 +1425,18 @@ Crie em `Assets/_Project/Scripts/UI/SpeedDisplay.cs`:
 
 ```csharp
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; // Image (componente de UI)
 
+// POR QUE: mostrar a velocidade REAL do carro como uma barra discreta, sem virar velocímetro numérico.
+// ESTRATÉGIA: mesmo padrão do TimerDisplay: o CarController calcula e este script só desenha.
+// Usa uma Image com Image Type = Filled, que tem o campo fillAmount (0 = vazia, 1 = cheia).
+// Como ActualSpeedNormalized já vem de 0 a 1, basta copiar um valor no outro.
 public class SpeedDisplay : MonoBehaviour
 {
     [SerializeField] private CarController car;
     [SerializeField] private Image speedFillImage; // Image Type = Filled
 
+    // Update (ver CarController): copia a velocidade real (pós-grip) para a barra, todo frame.
     void Update()
     {
         speedFillImage.fillAmount = car.ActualSpeedNormalized;
@@ -1266,10 +1463,14 @@ Crie em `Assets/_Project/Scripts/UI/TrackProgressDisplay.cs`:
 using UnityEngine;
 using TMPro;
 
+// POR QUE: mostrar ao jogador quanto da pista ele já percorreu (ex.: "42%").
+// ESTRATÉGIA: mesmo padrão "lógica calcula, UI mostra" (ver TimerDisplay): o TrackProgress
+// calcula o valor de 0 a 1, e este script só converte pra porcentagem e escreve no texto.
 public class TrackProgressDisplay : MonoBehaviour
 {
     [SerializeField] private TMP_Text progressText;
 
+    // Update (ver CarController): converte 0..1 em 0..100 (arredondado) e mostra com "%".
     void Update()
     {
         int percent = Mathf.RoundToInt(TrackProgress.Instance.ProgressNormalized * 100f);
@@ -1316,6 +1517,7 @@ A solução usada por esta seção é **não importar o SDK nativo por enquanto*
 1. Acesse console.firebase.google.com e faça login com sua conta Google.
 2. **Add project** → nome `RallySurvive` → siga o assistente (pode desativar Google Analytics por enquanto, não é necessário pro MVP).
 3. Dentro do projeto, vá em **Build → Firestore Database** → **Create database** → escolha modo **production** (vamos configurar regras de segurança manualmente) → escolha a região mais próxima do seu público.
+4. Ainda no console, vá em **Build → Authentication → Get started → Sign-in method** e habilite o provedor **Anonymous**. Sem isso, o login anônimo (seções 5.4 e 5.4-WEB) falha com erro 400 (`ADMIN_ONLY_OPERATION` na versão REST).
 
 ### 5.2 Registrar o app no Firebase
 
@@ -1346,27 +1548,42 @@ using Firebase;
 using Firebase.Auth;
 using Firebase.Firestore;
 
+// POR QUE: antes de ler ou gravar qualquer tempo no leaderboard, o Firebase precisa ser
+// inicializado e o jogador precisa estar logado (anonimamente). Isso tem que acontecer
+// uma única vez por sessão de jogo, antes de qualquer corrida.
+// ESTRATÉGIA (versão SDK nativo, fase futura): MonoBehaviour que vive na primeira cena e
+// sobrevive às trocas de cena (DontDestroyOnLoad). Expõe o banco (Db), o login (Auth) e um
+// sinal IsReady em propriedades STATIC, pra qualquer script usar sem precisar de referência
+// no Inspector. O LeaderboardService checa IsReady antes de tudo.
 public class FirebaseBootstrap : MonoBehaviour
 {
-    public static FirebaseFirestore Db { get; private set; }
-    public static FirebaseAuth Auth { get; private set; }
-    public static bool IsReady { get; private set; }
+    public static FirebaseFirestore Db { get; private set; } // acesso ao banco Firestore
+    public static FirebaseAuth Auth { get; private set; }    // acesso ao login (pra pegar o UID)
+    public static bool IsReady { get; private set; }         // true só depois de inicializar E logar
 
+    // "async void Awake": Awake normal (ver CarController), mas marcado como async pra poder
+    // usar "await". await = "espere essa operação lenta (rede, disco) terminar SEM travar o
+    // jogo; quando ela acabar, continue daqui". Enquanto isso o Unity segue desenhando frames.
+    // (async void só é aceitável em callbacks do Unity como este; nos seus métodos, use async Task.)
     async void Awake()
     {
+        // DontDestroyOnLoad: este objeto NÃO é destruído quando outra cena carrega.
+        // Assim o login feito no menu continua valendo nas pistas.
         DontDestroyOnLoad(gameObject);
 
+        // Confere se as bibliotecas nativas do Firebase estão presentes/atualizadas no aparelho.
         var dependencyStatus = await FirebaseApp.CheckAndFixDependenciesAsync();
         if (dependencyStatus != DependencyStatus.Available)
         {
             Debug.LogError($"Firebase not available: {dependencyStatus}");
-            return;
+            return; // IsReady continua false → o leaderboard simplesmente não faz nada
         }
 
         Auth = FirebaseAuth.DefaultInstance;
         Db = FirebaseFirestore.DefaultInstance;
 
-        // Anonymous login — each player gets a unique UID without creating an account
+        // Login anônimo: cada jogador ganha um UID único sem precisar criar conta.
+        // O SDK nativo lembra o usuário entre sessões, por isso só logamos se ainda não houver um.
         if (Auth.CurrentUser == null)
         {
             var result = await Auth.SignInAnonymouslyAsync();
@@ -1388,42 +1605,60 @@ Crie em `Assets/_Project/Scripts/Firebase/LeaderboardService.cs`:
 
 ```csharp
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Threading.Tasks; // Task: o "tipo de retorno" de métodos async
 using UnityEngine;
 using Firebase.Firestore;
 using Firebase.Auth;
 
+// POR QUE: representar UMA linha do ranking (nome + tempo) de forma organizada, em vez
+// de passar dicionários soltos entre o serviço e a UI.
+// ESTRATÉGIA: classe C# pura (NÃO é MonoBehaviour: não vai em GameObject nenhum),
+// só um "pacote de dados".
+// ATENÇÃO: o LeaderboardServiceWebGL.cs (5.5-WEB) declara esta MESMA classe. Se os dois
+// arquivos convivem no projeto, apague esta declaração daqui (senão o C# reclama de classe
+// duplicada); os dois serviços passam a usar a mesma LeaderboardEntry.
 public class LeaderboardEntry
 {
     public string PlayerName;
     public float TimeSeconds;
 }
 
+// POR QUE: concentrar num lugar só toda a conversa com o Firestore sobre o leaderboard
+// (gravar tempo e ler o top N). O RaceManager e o menu só chamam SubmitTime/GetTopTimes,
+// sem saber nada de coleções, documentos ou do formato do banco.
+// ESTRATÉGIA: classe "static" (não precisa criar objeto nem colocar em cena; chama
+// LeaderboardService.SubmitTime(...) direto). Não guarda estado próprio: usa o Db/Auth
+// do FirebaseBootstrap. Os métodos são async porque falam com a internet (ver FirebaseBootstrap).
+// Caminho no banco: leaderboards/rallysurvive/{pista}/{uid} (padrão do GDD Core).
 public static class LeaderboardService
 {
+    // Grava o tempo do jogador na pista, mas SÓ se for melhor que o recorde pessoal salvo.
+    // Um documento por jogador por pista (ID = UID), então cada um aparece no ranking uma vez só.
     public static async Task SubmitTime(string track, float timeSeconds, string playerName)
     {
-        if (!FirebaseBootstrap.IsReady) return;
+        if (!FirebaseBootstrap.IsReady) return; // Firebase ainda não pronto (ou falhou): não faz nada
 
         string uid = FirebaseBootstrap.Auth.CurrentUser.UserId;
+        // Monta o "endereço" do documento: coleção → documento → subcoleção → documento.
         DocumentReference docRef = FirebaseBootstrap.Db
             .Collection("leaderboards")
             .Document("rallysurvive")
             .Collection(track)
             .Document(uid);
 
-        // Reads the player's current time before overwriting — only saves if it's better
+        // Lê o tempo atual do jogador antes de sobrescrever: só salva se o novo for melhor
         var snapshot = await docRef.GetSnapshotAsync();
         if (snapshot.Exists)
         {
             float existingTime = snapshot.GetValue<float>("timeSeconds");
-            if (timeSeconds >= existingTime)
+            if (timeSeconds >= existingTime) // em contrarrelógio, MENOR é melhor
             {
                 Debug.Log("Time is not better than the saved personal record — not updating.");
                 return;
             }
         }
 
+        // O Firestore recebe os campos como um dicionário nome → valor.
         var data = new Dictionary<string, object>
         {
             { "playerName", playerName },
@@ -1431,15 +1666,18 @@ public static class LeaderboardService
             { "timestamp", Firebase.Firestore.Timestamp.GetCurrentTimestamp() }
         };
 
-        await docRef.SetAsync(data);
+        await docRef.SetAsync(data); // SetAsync cria ou substitui o documento inteiro
         Debug.Log("Time successfully submitted to the leaderboard.");
     }
 
+    // Lê os "limit" melhores tempos da pista, do mais rápido para o mais lento.
+    // Task<List<...>> = método async que, quando termina, devolve uma lista.
     public static async Task<List<LeaderboardEntry>> GetTopTimes(string track, int limit = 10)
     {
         var result = new List<LeaderboardEntry>();
-        if (!FirebaseBootstrap.IsReady) return result;
+        if (!FirebaseBootstrap.IsReady) return result; // devolve lista vazia em vez de dar erro
 
+        // Consulta: todos os documentos da pista, ordenados por tempo crescente, só os N primeiros.
         Query query = FirebaseBootstrap.Db
             .Collection("leaderboards")
             .Document("rallysurvive")
@@ -1448,6 +1686,7 @@ public static class LeaderboardService
             .Limit(limit);
 
         QuerySnapshot snapshot = await query.GetSnapshotAsync();
+        // Converte cada documento do banco num LeaderboardEntry
         foreach (DocumentSnapshot doc in snapshot.Documents)
         {
             result.Add(new LeaderboardEntry
@@ -1479,47 +1718,76 @@ Crie em `Assets/_Project/Scripts/Firebase/FirebaseBootstrapWebGL.cs`:
 ```csharp
 using System;
 using UnityEngine;
-using UnityEngine.Networking;
+using UnityEngine.Networking; // UnityWebRequest: requisições HTTP que funcionam também no WebGL
 
+// POR QUE: mesmo papel do FirebaseBootstrap (seção 5.4): logar o jogador anonimamente uma
+// vez por sessão. Mas o SDK nativo não funciona em WebGL, então fazemos o login "na mão",
+// por HTTP, na API REST do Firebase (Identity Toolkit).
+// ESTRATÉGIA: MonoBehaviour na primeira cena, que sobrevive às trocas de cena
+// (DontDestroyOnLoad, ver FirebaseBootstrap). Faz um POST pro endpoint de cadastro anônimo e
+// guarda o idToken (o "crachá" que prova quem somos em cada chamada ao Firestore) e o Uid em
+// propriedades static, que o LeaderboardServiceWebGL lê. IsReady avisa quando está tudo pronto.
 public class FirebaseBootstrapWebGL : MonoBehaviour
 {
-    // Preencha com os valores de Project Settings → General → Your apps → Web app
+    // Preencha com os valores de Project Settings → General → Your apps → Web app.
+    // const = valor fixo, definido na hora de compilar.
     private const string ApiKey = "SUA_API_KEY_AQUI";
-    public const string ProjectId = "SEU_PROJECT_ID_AQUI";
+    public const string ProjectId = "SEU_PROJECT_ID_AQUI"; // público porque o LeaderboardServiceWebGL monta as URLs com ele
 
-    public static string IdToken { get; private set; }
-    public static string Uid { get; private set; }
+    public static string IdToken { get; private set; } // token de login, vai no header "Authorization: Bearer ..."
+    public static string Uid { get; private set; }     // ID único do jogador (vira o ID do documento no leaderboard)
     public static bool IsReady { get; private set; }
 
+    // Guarda qual objeto é "o" bootstrap da sessão. Necessário porque esta cena (menu) é
+    // recarregada toda vez que o jogador volta de uma corrida: sem isso, cada volta ao menu
+    // criaria um NOVO login anônimo (novo Uid) e o recorde pessoal ficaria "perdido".
+    private static FirebaseBootstrapWebGL instance;
+
+    // POR QUE esta classe interna: JsonUtility (o conversor de JSON do Unity) só sabe preencher
+    // classes com campos de mesmo nome que as chaves do JSON. Ela é o "molde" da resposta.
+    // [Serializable] é obrigatório pro JsonUtility enxergar a classe.
     [Serializable]
     private class SignUpResponse
     {
         public string idToken;
-        public string localId;
-        public string refreshToken;
+        public string localId;      // é o UID do usuário
+        public string refreshToken; // serviria pra renovar o idToken depois de 1h (não usado ainda)
     }
 
+    // Awake assíncrono (ver FirebaseBootstrap): faz o login anônimo por HTTP sem travar o jogo.
     async void Awake()
     {
+        // Já existe um bootstrap vivo desta sessão (voltamos ao menu): descarta este duplicado.
+        if (instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
         DontDestroyOnLoad(gameObject);
 
         string url = $"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={ApiKey}";
-        string body = "{\"returnSecureToken\":true}";
+        string body = "{\"returnSecureToken\":true}"; // JSON mínimo pedindo um token de volta
 
+        // "using var": o request é liberado (Dispose) automaticamente no fim do método —
+        // UnityWebRequest segura memória nativa e precisa ser liberado.
         using var request = new UnityWebRequest(url, "POST");
         byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
-        request.uploadHandler = new UploadHandlerRaw(bodyBytes);
-        request.downloadHandler = new DownloadHandlerBuffer();
+        request.uploadHandler = new UploadHandlerRaw(bodyBytes);    // o que enviamos
+        request.downloadHandler = new DownloadHandlerBuffer();      // onde a resposta é guardada
         request.SetRequestHeader("Content-Type", "application/json");
 
+        // A partir do Unity 2023.1 / Unity 6, dá pra dar "await" direto numa requisição.
+        // (Em versões mais antigas seria preciso usar uma coroutine com "yield return".)
         await request.SendWebRequest();
 
         if (request.result != UnityWebRequest.Result.Success)
         {
             Debug.LogError($"Firebase anonymous sign-in failed: {request.error}\n{request.downloadHandler.text}");
-            return;
+            return; // IsReady continua false → o leaderboard fica desligado nesta sessão
         }
 
+        // Converte o texto JSON da resposta num objeto SignUpResponse.
         var response = JsonUtility.FromJson<SignUpResponse>(request.downloadHandler.text);
         IdToken = response.idToken;
         Uid = response.localId;
@@ -1544,20 +1812,33 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
+// Uma linha do ranking (nome + tempo): classe C# pura, só dados (ver LeaderboardService, seção 5.5).
+// Se o LeaderboardService.cs nativo também existir no projeto, só UMA das duas declarações pode ficar.
 public class LeaderboardEntry
 {
     public string PlayerName;
     public float TimeSeconds;
 }
 
+// POR QUE: mesmo papel do LeaderboardService (seção 5.5): gravar o tempo e ler o top N.
+// Mas, como o SDK nativo não roda em WebGL, aqui a conversa com o Firestore é feita "na mão",
+// por HTTP (API REST), com UnityWebRequest.
+// ESTRATÉGIA: classe static com os mesmos métodos públicos (SubmitTime/GetTopTimes) do
+// serviço nativo, pra quem chama (RaceManager, menu) não precisar mudar se um dia trocarmos
+// de caminho. A parte chata é o JSON: o Firestore REST embrulha cada valor num objeto de tipo
+// ({"stringValue": "..."}, {"doubleValue": 12.3}), então criamos pequenas classes-molde
+// [Serializable] pro JsonUtility conseguir ler as respostas. Pra ENVIAR, montamos o JSON como texto.
 public static class LeaderboardServiceWebGL
 {
     private const string BaseUrl = "https://firestore.googleapis.com/v1/projects";
 
+    // Moldes do formato de valor do Firestore REST: cada campo vem como { "<tipo>Value": valor }.
+    // [Serializable] é necessário pro JsonUtility (ver FirebaseBootstrapWebGL).
     [Serializable] private class StringValue { public string stringValue; }
     [Serializable] private class DoubleValue { public double doubleValue; }
     [Serializable] private class TimestampValue { public string timestampValue; }
 
+    // Os campos do nosso documento de leaderboard (os nomes precisam bater com os do banco).
     [Serializable]
     private class LeaderboardFields
     {
@@ -1566,6 +1847,7 @@ public static class LeaderboardServiceWebGL
         public TimestampValue timestamp;
     }
 
+    // Um documento do Firestore: "name" é o caminho completo dele, "fields" são os dados.
     [Serializable]
     private class FirestoreDocument
     {
@@ -1573,24 +1855,31 @@ public static class LeaderboardServiceWebGL
         public LeaderboardFields fields;
     }
 
+    // Cada item da resposta do runQuery (consulta) traz um "document".
     [Serializable] private class RunQueryEntry { public FirestoreDocument document; }
 
+    // Grava o tempo do jogador, SÓ se for melhor que o recorde pessoal (mesma regra da versão nativa).
+    // Em dois passos: GET (lê o documento atual) e, se valer a pena, PATCH (cria/sobrescreve).
     public static async Task SubmitTime(string track, float timeSeconds, string playerName)
     {
-        if (!FirebaseBootstrapWebGL.IsReady) return;
+        if (!FirebaseBootstrapWebGL.IsReady) return; // sem login, não há como gravar
 
         string uid = FirebaseBootstrapWebGL.Uid;
+        // Endereço REST do documento: .../documents/leaderboards/rallysurvive/{pista}/{uid}
         string docUrl = $"{BaseUrl}/{FirebaseBootstrapWebGL.ProjectId}/databases/(default)/documents/leaderboards/rallysurvive/{track}/{uid}";
 
         // Lê o tempo atual do jogador antes de sobrescrever — só salva se for melhor
         using (var getRequest = UnityWebRequest.Get(docUrl))
         {
+            // O idToken (do FirebaseBootstrapWebGL) prova ao Firestore quem está pedindo;
+            // as regras de segurança (seção 5.7) usam isso.
             getRequest.SetRequestHeader("Authorization", $"Bearer {FirebaseBootstrapWebGL.IdToken}");
-            await getRequest.SendWebRequest();
+            await getRequest.SendWebRequest(); // await numa requisição (ver FirebaseBootstrapWebGL)
 
             if (getRequest.result == UnityWebRequest.Result.Success)
             {
                 var existing = JsonUtility.FromJson<FirestoreDocument>(getRequest.downloadHandler.text);
+                // "?." = só continua se o da esquerda não for null (evita erro se faltar algo).
                 if (existing?.fields?.timeSeconds != null && timeSeconds >= existing.fields.timeSeconds.doubleValue)
                 {
                     Debug.Log("Time is not better than the saved personal record — not updating.");
@@ -1600,13 +1889,17 @@ public static class LeaderboardServiceWebGL
             // 404 = ainda não existe registro pra esse jogador — segue normalmente pro PATCH.
         }
 
-        string isoTimestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        // Monta o JSON do documento à mão, no formato de valores tipados do Firestore.
+        // InvariantCulture garante ponto decimal (12.34): em pt-BR o ToString() daria "12,34",
+        // que é JSON inválido.
+        string isoTimestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", System.Globalization.CultureInfo.InvariantCulture);
         string body = "{\"fields\":{"
             + $"\"playerName\":{{\"stringValue\":\"{Escape(playerName)}\"}},"
             + $"\"timeSeconds\":{{\"doubleValue\":{timeSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}}},"
             + $"\"timestamp\":{{\"timestampValue\":\"{isoTimestamp}\"}}"
             + "}}";
 
+        // PATCH num documento: cria se não existir, substitui os campos se existir.
         using var patchRequest = new UnityWebRequest(docUrl, "PATCH");
         patchRequest.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(body));
         patchRequest.downloadHandler = new DownloadHandlerBuffer();
@@ -1624,11 +1917,14 @@ public static class LeaderboardServiceWebGL
         Debug.Log("Time successfully submitted to the leaderboard.");
     }
 
+    // Lê os "limit" melhores tempos da pista (menor tempo primeiro), usando o endpoint
+    // runQuery do Firestore REST (o equivalente HTTP do OrderBy + Limit da versão nativa).
     public static async Task<List<LeaderboardEntry>> GetTopTimes(string track, int limit = 10)
     {
         var result = new List<LeaderboardEntry>();
-        if (!FirebaseBootstrapWebGL.IsReady) return result;
+        if (!FirebaseBootstrapWebGL.IsReady) return result; // lista vazia em vez de erro
 
+        // A consulta roda "dentro" do documento leaderboards/rallysurvive, na subcoleção {track}.
         string parentUrl = $"{BaseUrl}/{FirebaseBootstrapWebGL.ProjectId}/databases/(default)/documents/leaderboards/rallysurvive:runQuery";
         string body = "{\"structuredQuery\":{"
             + $"\"from\":[{{\"collectionId\":\"{track}\"}}],"
@@ -1651,12 +1947,16 @@ public static class LeaderboardServiceWebGL
         }
 
         // runQuery devolve um array JSON puro — envolve num objeto pra JsonUtility conseguir ler.
+        // (JsonUtility não aceita um array solto na raiz, só objetos.)
         string wrapped = "{\"items\":" + request.downloadHandler.text + "}";
         var parsed = JsonUtility.FromJson<Wrapper>(wrapped);
 
         foreach (var entry in parsed.items)
         {
-            if (entry.document?.fields == null) continue; // heartbeat sem documento, ignora
+            // Pista sem nenhum tempo: o runQuery devolve um item só com "readTime", sem documento.
+            // Cuidado: o JsonUtility nunca deixa campos de classe null (ele cria um objeto vazio),
+            // então "document == null" não basta; um documento real sempre tem "name" preenchido.
+            if (entry.document == null || string.IsNullOrEmpty(entry.document.name)) continue;
             result.Add(new LeaderboardEntry
             {
                 PlayerName = entry.document.fields.playerName.stringValue,
@@ -1666,8 +1966,10 @@ public static class LeaderboardServiceWebGL
         return result;
     }
 
+    // Molde que "embrulha" o array da resposta do runQuery (ver comentário acima).
     [Serializable] private class Wrapper { public RunQueryEntry[] items; }
 
+    // Escapa barra invertida e aspas do nome, senão um nome com " quebraria o JSON montado à mão.
     private static string Escape(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }
 ```
@@ -1691,6 +1993,9 @@ Crie em `Assets/_Project/Scripts/Track/FinishLine.cs` e coloque no GameObject `F
 ```csharp
 using UnityEngine;
 
+// POR QUE: detectar o momento em que o carro cruza a chegada e encerrar a corrida.
+// ESTRATÉGIA: mesmo padrão do TrackBoundary/TrackWaypoint: um trigger que só AVISA o
+// RaceManager. Quem para o cronômetro e abre o menu de chegada é o RaceManager/UI.
 public class FinishLine : MonoBehaviour
 {
     // Ao contrário do TrackBoundary (que usa OnTriggerExit2D pra saber
@@ -1709,8 +2014,14 @@ public class FinishLine : MonoBehaviour
 **3. Adicionar `OnRaceFinished()` e `SubmitFinishedTime()` ao `RaceManager.cs`** (da Fase 3):
 
 ```csharp
+// Acréscimos ao RaceManager (Parte 10 §3.6). O que muda: agora a corrida pode TERMINAR
+// (além de bater), e o RaceManager ganha o estado Finished + o envio do tempo.
+
+// Mesmo papel do Crashed, mas pra chegada: a UI (FinishMenuUI) observa este valor.
 public bool Finished { get; private set; } // true enquanto o menu de "digite seu nome" está na tela
 
+// Chamado pela FinishLine quando o carro cruza a chegada.
+// Para o cronômetro, marca como terminada e força o progresso a 100%.
 public void OnRaceFinished()
 {
     if (!RaceActive) return; // evita reabrir o menu se o collider disparar mais de uma vez
@@ -1722,6 +2033,9 @@ public void OnRaceFinished()
     // no FinishMenuUI (item 4 abaixo) — ver SubmitFinishedTime abaixo.
 }
 
+// Envia o tempo final ao leaderboard com o nome digitado. Chamado pelo botão Confirmar.
+// Separado do OnRaceFinished porque o nome só existe DEPOIS que o jogador digita.
+// "async void" porque é disparado por um botão e ninguém espera o resultado (ver FirebaseBootstrap).
 public async void SubmitFinishedTime(string playerName)
 {
     await LeaderboardServiceWebGL.SubmitTime("desert", ElapsedTime, playerName);
@@ -1750,20 +2064,30 @@ Script `FinishMenuUI.cs`, em `Assets/_Project/Scripts/UI/FinishMenuUI.cs`:
 
 ```csharp
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using UnityEngine.UI; // Button
+using TMPro;          // TMP_Text, TMP_InputField
 
+// POR QUE: ao cruzar a chegada, o jogador precisa ver o tempo final, digitar um nome
+// (até 5 letras) pra enviar ao ranking, e poder repetir a pista ou voltar ao menu.
+// ESTRATÉGIA: mesmo padrão do CrashMenuUI: a UI OBSERVA o RaceManager (Finished) no Update
+// e mostra/esconde o painel. A diferença é que aqui usamos BOTÕES de UI: no Start ligamos
+// cada botão a um método (AddListener), e o Unity chama esse método quando o botão é clicado.
+// Como o CrashMenuUI, este script tem que ficar num objeto ATIVO (ex.: o Canvas), não no
+// FinishPanel desativado.
 public class FinishMenuUI : MonoBehaviour
 {
     private const int MaxNameLength = 5;
 
     [SerializeField] private GameObject finishPanel;
     [SerializeField] private TMP_Text finalTimeText;
-    [SerializeField] private TMP_InputField nameInputField;
+    [SerializeField] private TMP_InputField nameInputField; // campo onde o jogador digita o nome
     [SerializeField] private Button confirmButton;
     [SerializeField] private Button retryButton;
     [SerializeField] private Button mainMenuButton;
 
+    // Start (ver TrackProgress): liga os botões aos métodos e esconde o painel.
+    // onClick.AddListener(método) = "quando clicar, chame este método".
+    // "() => ..." é uma lambda: uma mini-função sem nome, escrita ali mesmo.
     void Start()
     {
         nameInputField.characterLimit = MaxNameLength; // reforça no código o mesmo limite configurado no Inspector
@@ -1773,6 +2097,8 @@ public class FinishMenuUI : MonoBehaviour
         finishPanel.SetActive(false);
     }
 
+    // Update (ver CarController): abre o painel no frame em que a corrida termina, e nesse
+    // mesmo momento escreve o tempo final (uma vez só, não todo frame).
     void Update()
     {
         bool finished = RaceManager.Instance.Finished;
@@ -1784,9 +2110,10 @@ public class FinishMenuUI : MonoBehaviour
         }
     }
 
+    // Chamado pelo botão Confirmar: valida o nome e pede ao RaceManager pra enviar o tempo.
     private void OnConfirm()
     {
-        string playerName = nameInputField.text.Trim();
+        string playerName = nameInputField.text.Trim(); // Trim tira espaços do começo/fim
         if (string.IsNullOrEmpty(playerName))
             playerName = "PLAYR"; // fallback de 5 caracteres se o jogador confirmar sem digitar nada — ver "Em aberto" na Parte 2
 
@@ -1794,7 +2121,8 @@ public class FinishMenuUI : MonoBehaviour
         RaceManager.Instance.SubmitFinishedTime(playerName);
     }
 
-    // Mesmo formato usado em TimerDisplay.cs (Fase 4) e LeaderboardRowUI.cs (Fase 6)
+    // Mesmo formato usado em TimerDisplay.cs (Fase 4) e LeaderboardRowUI.cs (Fase 6).
+    // "static": não usa nada do objeto, só a entrada; é uma função utilitária.
     private static string FormatTime(float time)
     {
         int minutes = Mathf.FloorToInt(time / 60f);
@@ -1807,7 +2135,7 @@ public class FinishMenuUI : MonoBehaviour
 
 > `RetryButton` e `MainMenuButton` chamam diretamente `RaceManager.RetryRace()`/`QuitToMainMenu()` (já existentes desde a Fase 3, seção 3.6, usados pelo `CrashMenuUI`) — nenhum método novo no `RaceManager` é necessário. Como ficam interagíveis o tempo todo (diferente do `ConfirmButton`, que se desativa após o envio), o jogador pode repetir a pista ou voltar ao menu sem precisar salvar o tempo, se preferir.
 
-Arraste o script em qualquer GameObject da cena (ex.: no próprio `FinishPanel`) e ligue `Finish Panel`, `Final Time Text`, `Name Input Field`, `Confirm Button`, `Retry Button` e `Main Menu Button` aos respectivos objetos criados acima.
+Arraste o script num GameObject **ativo** da cena (ex.: no `Canvas` — **não** no próprio `FinishPanel`, pelo mesmo motivo do `CrashMenuUI` na Fase 4 §4.3) e ligue `Finish Panel`, `Final Time Text`, `Name Input Field`, `Confirm Button`, `Retry Button` e `Main Menu Button` aos respectivos objetos criados acima.
 
 ### 5.7 Regras de segurança do Firestore (importante!)
 
@@ -1885,12 +2213,18 @@ Crie em `Assets/_Project/Scripts/UI/LeaderboardRowUI.cs`:
 using UnityEngine;
 using TMPro;
 
+// POR QUE: cada linha do ranking no menu (posição, nome, tempo) é uma cópia de um prefab;
+// alguém precisa preencher os 3 textos de cada cópia.
+// ESTRATÉGIA: MonoBehaviour preso ao prefab LeaderboardRow. Os textos já vêm ligados no
+// Inspector do prefab, então quem cria a linha (MainMenuController) só chama Setup(...)
+// com os dados, sem precisar saber como a linha é montada por dentro.
 public class LeaderboardRowUI : MonoBehaviour
 {
     [SerializeField] private TMP_Text rankText;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text timeText;
 
+    // Preenche a linha. Chamado logo depois do Instantiate pelo MainMenuController.
     public void Setup(int rank, string playerName, float timeSeconds)
     {
         rankText.text = $"{rank}º";
@@ -1918,34 +2252,52 @@ Arraste o script no prefab `LeaderboardRow` e ligue os 3 campos aos respectivos 
 Crie em `Assets/_Project/Scripts/UI/TrackButtonHold.cs`:
 
 ```csharp
-using System;
+using System;                  // Action (tipo usado nos eventos)
 using UnityEngine;
-using UnityEngine.EventSystems;
+using UnityEngine.EventSystems; // interfaces de clique/toque da UI (IPointerDownHandler etc.)
 using UnityEngine.UI;
 
+// POR QUE: o botão de pista tem DOIS comportamentos: toque rápido = só selecionar (mostrar
+// ranking e fundo); tocar e SEGURAR = começar a corrida. O Button padrão do Unity só sabe
+// "clicou", então criamos este componente.
+// ESTRATÉGIA: MonoBehaviour que implementa interfaces do EventSystem. Ao "assinar" uma
+// interface (IPointerDownHandler...), o Unity passa a chamar o método correspondente quando o
+// dedo/mouse encosta, solta ou sai do botão (exige um EventSystem na cena, criado junto com o
+// Canvas, e uma Image com Raycast Target no mesmo objeto). O script não sabe O QUE fazer ao
+// tocar/completar: só dispara EVENTOS C# (OnTap, OnHoldComplete), e quem se inscreveu neles
+// (o MainMenuController) decide. Assim o mesmo botão serve pra qualquer pista.
 public class TrackButtonHold : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerExitHandler
 {
     [SerializeField] private Image holdProgressImage; // Image Type = Filled — preenche conforme o jogador segura
     [SerializeField] private float holdDurationSeconds = 1.5f; // placeholder — Em aberto
 
+    // "event Action" = um aviso que outros scripts podem assinar com "+=". Quando este script
+    // chama OnTap?.Invoke(), todos os inscritos são chamados. O "?." evita erro se ninguém
+    // tiver se inscrito.
     public event Action OnTap;          // dispara assim que o dedo/mouse encosta no botão
     public event Action OnHoldComplete; // dispara só se o toque durar holdDurationSeconds sem soltar
 
-    private bool _isHolding;
-    private bool _completed;
-    private float _holdStartTime;
+    private bool _isHolding;     // o dedo está pressionando o botão agora?
+    private bool _completed;     // já completou o "segurar" neste toque? (evita disparar duas vezes)
+    private float _holdStartTime; // momento (Time.time) em que o toque começou
 
+    // Chamado pelo EventSystem quando o dedo/mouse encosta no botão: começa a contar o tempo
+    // e já avisa o toque (seleciona a pista na hora).
     public void OnPointerDown(PointerEventData eventData)
     {
         _isHolding = true;
         _completed = false;
-        _holdStartTime = Time.time;
+        _holdStartTime = Time.time; // Time.time = segundos desde que o jogo começou
         OnTap?.Invoke();
     }
 
+    // Soltar o dedo ou arrastá-lo pra fora do botão cancela o "segurar".
+    // "=>" aqui é um método de uma linha só (mesmo que { CancelHold(); }).
     public void OnPointerUp(PointerEventData eventData) => CancelHold();
     public void OnPointerExit(PointerEventData eventData) => CancelHold(); // dedo saiu da área do botão
 
+    // Update (ver CarController): enquanto segura, atualiza a barra de progresso; quando
+    // o tempo completa, dispara OnHoldComplete uma única vez.
     private void Update()
     {
         if (!_isHolding || _completed) return;
@@ -1962,6 +2314,7 @@ public class TrackButtonHold : MonoBehaviour, IPointerDownHandler, IPointerUpHan
         }
     }
 
+    // Para de contar e zera a barra (a menos que já tenha completado; aí a cena já está trocando).
     private void CancelHold()
     {
         _isHolding = false;
@@ -1979,11 +2332,17 @@ Crie em `Assets/_Project/Scripts/UI/MainMenuController.cs`:
 
 ```csharp
 using System.Collections.Generic;
+using System.Threading.Tasks; // Task.Yield (esperar o login terminar)
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 
+// POR QUE: agrupar tudo que o menu precisa saber sobre UMA pista (id no banco, cena, nome,
+// fundo, botão) num lugar só, em vez de 5 listas paralelas que podem sair de ordem.
+// ESTRATÉGIA: classe C# pura marcada com [System.Serializable]. Isso faz o Inspector mostrar
+// os campos dela dentro da lista "Tracks" do MainMenuController, e você preenche cada pista
+// ali mesmo. Adicionar uma pista nova (ex.: Noturna) = adicionar um item na lista, sem código.
 [System.Serializable]
 public class TrackOption
 {
@@ -1991,24 +2350,37 @@ public class TrackOption
     public string SceneName;       // ex.: "RaceDesert"
     public string DisplayName;     // ex.: "Deserto"
     public Sprite BackgroundSprite; // imagem de fundo do menu para essa pista
-    public TrackButtonHold HoldButton;
+    public TrackButtonHold HoldButton; // o botão desta pista na tela (seção 6.4)
 }
 
+// POR QUE: o "cérebro" da tela de menu: liga cada botão de pista às ações de selecionar
+// (troca fundo + carrega ranking) e jogar (carrega a cena da corrida).
+// ESTRATÉGIA: MonoBehaviour único na cena MainMenu. No Start, se inscreve nos eventos de cada
+// TrackButtonHold (padrão de eventos, ver TrackButtonHold). O ranking é buscado de forma
+// async no LeaderboardServiceWebGL e as linhas são criadas a partir do prefab LeaderboardRow.
 public class MainMenuController : MonoBehaviour
 {
-    [SerializeField] private List<TrackOption> tracks = new();
+    [SerializeField] private List<TrackOption> tracks = new(); // preenchida no Inspector, uma entrada por pista
     [SerializeField] private Image menuBackground;
     [SerializeField] private TMP_Text selectedTrackText;
-    [SerializeField] private Transform leaderboardContent;
+    [SerializeField] private Transform leaderboardContent;  // "pai" onde as linhas do ranking são criadas
     [SerializeField] private GameObject leaderboardRowPrefab;
     [SerializeField] private GameObject loadingIndicator;
     [SerializeField] private GameObject emptyLeaderboardText;
 
+    // A pista selecionada por último. Serve pra descartar respostas "velhas": se o jogador
+    // tocar Deserto e logo depois Gelo, a resposta do Deserto pode chegar depois e não deve
+    // aparecer misturada no ranking do Gelo.
+    private TrackOption currentTrack;
+
+    // Start (ver TrackProgress): inscreve o menu nos eventos de toque/segurar de cada botão
+    // e já pré-seleciona a primeira pista.
     private void Start()
     {
         foreach (var track in tracks)
         {
             var capturedTrack = track; // evita o bug clássico de closure sobre a variável do loop
+            // "+=" inscreve uma lambda no evento: quando o botão avisar, ela é chamada com ESTA pista.
             capturedTrack.HoldButton.OnTap += () => SelectTrack(capturedTrack);
             capturedTrack.HoldButton.OnHoldComplete += () => PlayTrack(capturedTrack);
         }
@@ -2017,8 +2389,11 @@ public class MainMenuController : MonoBehaviour
             SelectTrack(tracks[0]); // pré-seleciona a primeira pista só pro grid e o background já aparecerem preenchidos ao abrir o menu
     }
 
+    // Mostra a pista escolhida: troca o fundo e o título, e busca o ranking dela no Firestore.
+    // "async void" porque é chamado por eventos e ninguém espera o resultado (ver FirebaseBootstrap).
     private async void SelectTrack(TrackOption track)
     {
+        currentTrack = track;
         selectedTrackText.text = track.DisplayName;
         menuBackground.sprite = track.BackgroundSprite;
 
@@ -2026,7 +2401,20 @@ public class MainMenuController : MonoBehaviour
         loadingIndicator.SetActive(true);
         emptyLeaderboardText.SetActive(false);
 
+        // Na primeira abertura do jogo, o login anônimo (FirebaseBootstrapWebGL.Awake) ainda
+        // está em andamento quando este Start roda. Sem esta espera, GetTopTimes veria
+        // IsReady = false e o menu mostraria "Nenhum tempo registrado" mesmo com tempos no banco.
+        // Task.Yield() = "continue no próximo frame"; esperamos no máximo 10s.
+        float giveUpAt = Time.time + 10f;
+        while (!FirebaseBootstrapWebGL.IsReady && Time.time < giveUpAt)
+            await Task.Yield();
+
         var topTimes = await LeaderboardServiceWebGL.GetTopTimes(track.TrackId);
+
+        // Depois de um await, o mundo pode ter mudado: o jogador pode ter selecionado outra
+        // pista (resposta velha, descarta) ou já ter entrado numa corrida (este objeto foi
+        // destruído junto com a cena; "this == null" detecta isso no Unity).
+        if (this == null || track != currentTrack) return;
 
         loadingIndicator.SetActive(false);
 
@@ -2036,6 +2424,8 @@ public class MainMenuController : MonoBehaviour
             return;
         }
 
+        // Cria uma linha (cópia do prefab) por tempo, como filha de leaderboardContent;
+        // o Layout Group do painel as empilha automaticamente.
         for (int i = 0; i < topTimes.Count; i++)
         {
             var row = Instantiate(leaderboardRowPrefab, leaderboardContent);
@@ -2043,12 +2433,16 @@ public class MainMenuController : MonoBehaviour
         }
     }
 
+    // Apaga as linhas do ranking anterior antes de mostrar o novo.
+    // (Destroy só acontece no fim do frame, por isso é seguro chamá-lo dentro do foreach.)
     private void ClearLeaderboardRows()
     {
         foreach (Transform child in leaderboardContent)
             Destroy(child.gameObject);
     }
 
+    // Segurou o botão até o fim: carrega a cena da corrida daquela pista.
+    // A cena precisa estar na lista de cenas do build (ver RaceManager.QuitToMainMenu).
     private void PlayTrack(TrackOption track)
     {
         SceneManager.LoadScene(track.SceneName);
@@ -2080,7 +2474,7 @@ public class MainMenuController : MonoBehaviour
 - Completar uma corrida (Fase 5) e voltar ao menu mostra o novo tempo refletido no grid (se foi o melhor tempo daquele jogador).
 
 #### Problemas comuns
-- **Grid nunca sai de "Carregando...":** confira se `FirebaseBootstrapWebGL.IsReady` já é `true` antes do menu tentar buscar os tempos — se o `MainMenuController.Start()` rodar antes do login anônimo terminar, `GetTopTimes` retorna lista vazia silenciosamente (ver Fase 5, `IsReady`). Se isso acontecer com frequência, vale adicionar um `await` esperando `IsReady` ficar `true` antes da primeira chamada.
+- **Grid fica vários segundos em "Carregando..." e depois mostra "Nenhum tempo registrado":** o `SelectTrack` espera até 10s o login anônimo (`FirebaseBootstrapWebGL.IsReady`) terminar antes de buscar os tempos; se passou disso, o login falhou — procure o erro `Firebase anonymous sign-in failed` no Console (normalmente `ApiKey` errada ou login anônimo não habilitado no Firebase Console).
 - **Segurar não carrega a cena:** confira se `SceneName` na lista `tracks` bate exatamente com o nome da cena em `Build Settings` (case-sensitive), e se a cena foi de fato adicionada ao Build Settings.
 - **Background não troca (ou fica em branco):** confira se `BackgroundSprite` foi preenchido pra cada entrada de `tracks` e se `menuBackground` está ligado no Inspector — um `Image` sem `sprite` atribuído fica transparente/branco, não dá erro.
 - **`HoldProgress` não preenche:** confira se a `Image` está com `Image Type = Filled` (uma `Image` normal ignora `fillAmount`).
@@ -2144,8 +2538,16 @@ Diferente de versões anteriores deste guia, as pistas Floresta e Gelo não são
 - **RaceLegenda:** também reaproveita `CarController`/`ChevronGuide`, incluindo o sistema de grip/`CarTerrainSensor` (Parte 10 §3.8–3.10) já pronto — só troca o que dispara ao sair da pista (aqui, perda de grip temporária em vez de reinício) e adiciona voltas múltiplas no `RaceManager`. Mais o sistema de setup do carro e o multiplayer via Firebase Realtime Database (esse último é bem mais complexo — merece uma sessão de implementação própria, depois de fecharmos os detalhes de sala/sincronização que você quer discutir).
 
 ### 7.5 O que fica pra uma próxima sessão de implementação
-- **Definido:** padrão de pixel art 32px por tile / Pixels Per Unit 32 (carro ~48px de sprite). Primeira leva de arte (carro, `ChevronGuide`, poça, tilesets de terreno das 3 pistas de lançamento e decoração — pedra, cacto, árvore, banco de neve) já gerada via PixelLab e organizada em `Sprites/RallySurvive/` neste repositório. Falta importar no Unity com os import settings corretos (Pixel Perfect Camera, filtro Point/no filter) — ver Parte 8 §0.5 e §1.1.
-- Trocar sprites placeholder pelo pixel art final dentro da cena Unity (a arte em si já existe; falta o passo de importação/atribuição).
+- **Definido:** arte **vetorial flat minimalista** (Parte 1 §4), gerada via SpriteCook (projeto "Rally2D") e organizada em `Sprites/Rally2D/` neste repositório — os `asset_id` de cada arquivo estão em `Sprites/Rally2D/spritecook-assets.json`. A leva anterior em pixel art (PixelLab, `Sprites/RallySurvive/`) fica **substituída**. O que já existe:
+  - Carros em `cars/`, todos vistos de cima apontando pra cima: o rally principal (`rally_orange_v1`/`v2`) mais 8 pinturas dele em `cars/liveries/` (mesmo formato, só a cor da carroceria muda — bom pra adversários/fantasmas e escolha de cor), e 6 modelos diferentes: `hatchback_red`, `buggy_yellow`, `pickup_green`, `classic_coupe`, `street_tuner_purple` e `police` (viatura pra ameaça externa do Street Legends). **Em aberto:** quais modelos entram em qual jogo e se têm atributos diferentes (Parte 1 §3, parâmetros por carro).
+  - Sprite do `ChevronGuide` (`ui/chevron.png`, branco pra tingir).
+  - Props por pista em `props/desert/` (cactos, pedras, arbusto seco, barreiras, cones, pneus, faixa de checkpoint), `props/forest/` (árvores, arbusto, pedra com musgo, tronco e **2 poças** — `puddle_a`/`puddle_b`, pra zona de poça da Parte 10 §3.9) e `props/ice/` (pinheiros com neve, montes de neve, pedras de gelo, placa de gelo).
+  - Decoração de cenário em `deco/common/` (público em fileiras e grupos, torcedores avulsos, tenda, guarda-sol, arco de largada/chegada, postes com bandeirolas, fardos de feno, van de apoio — serve pras 3 pistas), `deco/desert/` (dunas, acácias, palmeira, capim seco, tumbleweed), `deco/forest/` (pinheiros, samambaia, flores, cogumelos, toco, público de guarda-chuva) e `deco/ice/` (bonecos de neve, público de roupa de inverno, cabana, lago congelado, arbustos com neve). Decalques de chão em `decals/` (marcas de pneu retas/curvas/curtas, mancha de lama, pedrinhas) — usar com alpha reduzido no `SpriteRenderer` pra não competir com a pista.
+  - Tilesets de terreno em `tilesets/`, um por pista (`dirt_sand`, `grass_mud`, `snow_ice`): autotile de 15 peças (grade 4×4, tile de 128px) com transição estrada ↔ terreno já desenhada.
+- Import settings pra arte vetorial (diferente do pixel art): **Filter Mode Bilinear**, compressão ligada, **sem** Pixel Perfect Camera (o pacote saiu da Parte 8 §0.5). Pixels Per Unit **128** deixa 1 tile = 1 unidade de mundo.
+- **Em aberto:** escala do carro e dos props em relação ao tile (os PNGs vêm em ~150–600px — ajustar pelo `Transform` ou por PPU próprio na hora de montar a cena).
+- **Em aberto:** a estrada continua como Sprite Shape (Parte 10 §3.1) usando o miolo de terra do tileset como Fill Texture, ou passa a ser pintada direto com o autotile de 15 peças (dual-grid) na Tilemap — o tileset suporta os dois caminhos.
+- Trocar sprites placeholder pela arte final dentro da cena Unity (a arte em si já existe; falta o passo de importação/atribuição).
 - Calibrar os valores exatos de grip (Gelo, poça da Floresta) e de `steeringResponsiveness` com playtesting real — hoje são placeholders (Parte 10 §3.8-3.9).
 - Sistema de áudio (motor, derrapagem — o som já tem um gancho natural no mesmo `CurrentGrip`/`InPuddle` que já dirige as partículas, Fase 1 §1.5).
 - UI de ranking pós-corrida (ler `GetTopTimes` e mostrar numa tela de "Resultados" ao final de uma corrida, além do grid já disponível no menu — Fase 6).
@@ -2183,7 +2585,7 @@ A mecânica de movimento (distância do mouse → velocidade, chevrons de aceler
 ### Decisões de design a fechar antes de prototipar
 
 - **Tipo de câmera:** recomendo começar com **ortográfica**, olhando quase reto para baixo (rotação X ≈ 80-90°). Mantém a leitura do jogo o mais parecida possível com a versão 2D (sem distorção de perspectiva, sem objetos "grandes" no fundo por estarem mais perto da câmera). Uma perspectiva mais angulada (tipo isométrico, X ≈ 45-60°) dá mais sensação de profundidade e "showcase" dos carros modificados (interessante pro Street Legends), mas muda a legibilidade da pista — vale prototipar as duas e comparar.
-- **Pipeline de arte 3D:** baixo-poly estilizado costuma combinar bem com a origem pixel art (mantém a identidade visual "retrô/estilizada" da franquia) e é mais viável pra um time pequeno/iniciante em 3D do que buscar realismo.
+- **Pipeline de arte 3D:** baixo-poly estilizado com cores chapadas (flat shading) é a tradução natural da arte vetorial flat da versão 2D (mantém a identidade visual limpa/estilizada da franquia) e é mais viável pra um time pequeno/iniciante em 3D do que buscar realismo.
 
 ### Guia de Implementação Unity — Delta a partir da versão 2D
 
@@ -2207,7 +2609,15 @@ A diferença principal: em 2D, `ScreenToWorldPoint` já dava a posição do mous
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(Rigidbody))]
+// POR QUE: a versão 3D do CarController (Fase 1): mesma mecânica central (o carro vai até o
+// cursor, com velocidade crescendo pela curva), só que num mundo 3D visto de cima.
+// ESTRATÉGIA: a lógica é igual à 2D; o que muda:
+//  - física 3D: Rigidbody (não Rigidbody2D) e Vector3, andando no plano XZ (Y = altura, ignorado);
+//  - posição do mouse: em 3D, "onde o mouse aponta" é um RAIO saindo da câmera. Achamos o
+//    ponto em que esse raio cruza um plano invisível no chão (Y = 0).
+// Obs.: esta versão ainda não tem grip/derrapagem (CurrentGrip) nem velocidade real separada
+// da pedida, como a 2D ganhou na Fase 3; a velocidade é aplicada direto.
+[RequireComponent(typeof(Rigidbody))] // ver CarController (2D)
 public class CarController3D : MonoBehaviour
 {
     [Header("Speed")]
@@ -2221,37 +2631,44 @@ public class CarController3D : MonoBehaviour
 
     private Rigidbody rb;
     private Camera mainCamera;
-    private Plane groundPlane;
-    private Vector3 mouseWorldPos;
+    private Plane groundPlane;     // plano matemático do chão (não é um objeto na cena)
+    private Vector3 mouseWorldPos; // onde o raio do mouse encontrou o chão
 
-    public float CurrentSpeedNormalized { get; private set; }
+    public float CurrentSpeedNormalized { get; private set; } // velocidade pedida, 0..1 (alimenta os chevrons)
     public bool IsAccelerating { get; private set; }
     public bool IsBraking { get; private set; }
     private float previousSpeedNormalized;
 
+    // Awake (ver CarController 2D): cacheia componentes e cria o plano do chão.
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         mainCamera = Camera.main;
-        // Horizontal plane at ground level (Y = 0), used for the mouse raycast
+        // Plano horizontal no nível do chão (Y = 0), usado no raycast do mouse.
+        // new Plane(normal, ponto): a normal Vector3.up diz que o plano "olha pra cima".
         groundPlane = new Plane(Vector3.up, Vector3.zero);
     }
 
+    // Update: lê o mouse (input vai no Update, ver CarController 2D) e converte em ponto no chão.
     void Update()
     {
         Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
+        // ScreenPointToRay: raio que sai da câmera passando pelo pixel do mouse.
         Ray ray = mainCamera.ScreenPointToRay(mouseScreenPos);
 
+        // Raycast num Plane é pura matemática (não usa colliders): devolve true e a distância
+        // até o cruzamento, se o raio atinge o plano. GetPoint(distância) dá o ponto exato.
         if (groundPlane.Raycast(ray, out float distanceToPlane))
         {
             mouseWorldPos = ray.GetPoint(distanceToPlane);
         }
     }
 
+    // FixedUpdate (física, ver CarController 2D): mesma conta de curva da versão 2D, em 3D.
     void FixedUpdate()
     {
         Vector3 toMouse = mouseWorldPos - transform.position;
-        toMouse.y = 0f; // ignore any height difference, work only on the XZ plane
+        toMouse.y = 0f; // ignora diferença de altura, trabalha só no plano XZ
         float distance = toMouse.magnitude;
 
         float t = Mathf.InverseLerp(minDistanceForMovement, maxDistanceForTopSpeed, distance);
@@ -2262,16 +2679,20 @@ public class CarController3D : MonoBehaviour
         if (distance > minDistanceForMovement)
         {
             Vector3 direction = toMouse.normalized;
+            // Unity 6 / 2023.x+: rb.linearVelocity. No 2022 LTS: rb.velocity (mesma coisa, nome antigo).
             rb.linearVelocity = direction * targetSpeed;
 
+            // Em 3D a rotação é um Quaternion. LookRotation(direção, cima) = "olhe pra essa
+            // direção mantendo o topo pra cima". Slerp = versão suave do LerpAngle da 2D.
             Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
             rb.MoveRotation(Quaternion.Slerp(rb.rotation, targetRotation, rotationSpeed * Time.fixedDeltaTime));
         }
         else
         {
-            rb.linearVelocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero; // dentro da zona morta: para
         }
 
+        // Mesmo estado público da versão 2D, pros chevrons.
         CurrentSpeedNormalized = speedT;
         IsAccelerating = speedT > previousSpeedNormalized + 0.001f;
         IsBraking = speedT < previousSpeedNormalized - 0.001f;
@@ -2289,15 +2710,26 @@ Os chevrons agora precisam sempre "encarar" a câmera, senão em ângulos variad
 ```csharp
 using UnityEngine;
 
+// POR QUE: em 3D, um sprite chato visto de lado some (fica fino como papel). Um "billboard"
+// é um objeto que gira sozinho pra sempre encarar a câmera.
+// ESTRATÉGIA: componente minúsculo e reutilizável (serve pra qualquer sprite/quad), colocado no
+// prefab do chevron. Não sabe nada de chevrons nem de carro.
+// Atenção: ele SOBRESCREVE a rotação do objeto todo frame; ao adaptar o ChevronGuide pra 3D,
+// a direção da seta (que na 2D vinha da rotação) precisa ser resolvida de outro jeito
+// (ex.: girar um objeto FILHO do billboard, ou girar a textura).
 public class Billboard : MonoBehaviour
 {
     private Camera mainCamera;
 
+    // Awake (ver CarController): cacheia a câmera. Escrito em uma linha com "=>".
     void Awake() => mainCamera = Camera.main;
 
+    // LateUpdate: o Unity chama depois que TODOS os Update do frame rodaram. É o lugar
+    // certo pra "acompanhar" algo (aqui, a câmera), porque ela e os chevrons já se moveram
+    // neste frame. Assim o billboard nunca fica um frame atrasado.
     void LateUpdate()
     {
-        // Makes the sprite/quad always face the camera
+        // Faz o sprite/quad apontar sempre na direção câmera → objeto (ou seja, de frente pra câmera).
         transform.rotation = Quaternion.LookRotation(transform.position - mainCamera.transform.position);
     }
 }

@@ -1,0 +1,1106 @@
+{
+  "project_id": "57e8f7b4-a3d3-477e-a277-303818926f15",
+  "style_reference": "19ca7dcb-bbf5-4003-8259-4c226e62c4d9",
+  "assets": [
+    {
+      "asset_id": "19ca7dcb-bbf5-4003-8259-4c226e62c4d9",
+      "sha12": "9dd4bac9d433",
+      "label": "sheet_v1 - referencia de estilo (fundo verde)",
+      "file": "sheet_v1.png"
+    },
+    {
+      "asset_id": "48119491-e845-4244-85d4-b2192b12681e",
+      "sha12": "22c7c515f75a",
+      "label": "sheet_v2 - variacao (fundo verde/rosa)",
+      "file": "sheet_v2.png"
+    },
+    {
+      "asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "a5ff71234649",
+      "label": "car_v1 - carro rally topdown",
+      "file": "cars/rally_orange_v1.png"
+    },
+    {
+      "asset_id": "c7e1864d-eb15-4e7f-9563-7fc0e7af5b01",
+      "sha12": "531400e3c175",
+      "label": "car_v2 - carro rally topdown",
+      "file": "cars/rally_orange_v2.png"
+    },
+    {
+      "asset_id": "2ddb8a72-2126-4b52-be87-47b401076779",
+      "sha12": "4e3963bd92f0",
+      "label": "props deserto (folha fonte)",
+      "file": "sheets/props_desert_sheet.png"
+    },
+    {
+      "asset_id": "7587e274-bef6-4c8f-96ae-6712ea96646e",
+      "sha12": "6b98482251d9",
+      "label": "barreiras (folha fonte)",
+      "file": "sheets/props_barriers_sheet.png"
+    },
+    {
+      "asset_id": "a3b88b54-2b63-40a1-87b1-d7815fcd3fea",
+      "sha12": "ce6597266ff0",
+      "label": "cactus_large",
+      "file": "props/desert/cactus_large.png"
+    },
+    {
+      "asset_id": "1be12562-9c68-4e25-a243-edbf157abe11",
+      "sha12": "e20977c22562",
+      "label": "cactus_medium",
+      "file": "props/desert/cactus_medium.png"
+    },
+    {
+      "asset_id": "5cd8f24c-9dcf-46d3-a2cf-a50bf0497c49",
+      "sha12": "ea964a7dd94e",
+      "label": "cactus_small",
+      "file": "props/desert/cactus_small.png"
+    },
+    {
+      "asset_id": "6ac717e1-48b5-42ac-b1f8-723e1abc4369",
+      "sha12": "d86d5f15c2b6",
+      "label": "rock_cluster",
+      "file": "props/desert/rock_cluster.png"
+    },
+    {
+      "asset_id": "0a4bd7d3-593e-4c23-b256-796a128c2df6",
+      "sha12": "103049777836",
+      "label": "bush_dry",
+      "file": "props/desert/bush_dry.png"
+    },
+    {
+      "asset_id": "7e923c0f-0efc-413a-80bc-d8bf0956a282",
+      "sha12": "8600438c07fd",
+      "label": "rock_large",
+      "file": "props/desert/rock_large.png"
+    },
+    {
+      "asset_id": "f4e2da49-ed5f-49dc-a088-98acc481c58f",
+      "sha12": "1671c70f8efd",
+      "label": "rock_small",
+      "file": "props/desert/rock_small.png"
+    },
+    {
+      "asset_id": "0e31e19e-944e-4762-bfda-90117eeaa604",
+      "sha12": "01a9e054dabd",
+      "label": "cone_a",
+      "file": "props/desert/cone_a.png"
+    },
+    {
+      "asset_id": "25a1f861-fc0c-4d43-99c0-97af7dbe8db2",
+      "sha12": "44dcb98b6ea2",
+      "label": "barrier_long",
+      "file": "props/desert/barrier_long.png"
+    },
+    {
+      "asset_id": "9a6c5ccd-32db-4680-8193-5e57ae0e64f1",
+      "sha12": "7d080e925113",
+      "label": "barrier_short",
+      "file": "props/desert/barrier_short.png"
+    },
+    {
+      "asset_id": "1665ab9e-fc48-40d1-ac1b-1df12e76e7e7",
+      "sha12": "29ca9690a7f3",
+      "label": "tire_stack",
+      "file": "props/desert/tire_stack.png"
+    },
+    {
+      "asset_id": "b5574a87-67fb-4be5-8ede-fbaf8523fe2e",
+      "sha12": "e3459a6134f1",
+      "label": "cone_b",
+      "file": "props/desert/cone_b.png"
+    },
+    {
+      "asset_id": "d6fbf86c-ab83-422d-9b3c-202e6acd85d3",
+      "sha12": "9a0a6893383b",
+      "label": "checkpoint_banner (topdown)",
+      "file": "props/desert/checkpoint_banner.png"
+    },
+    {
+      "asset_id": "06f524ee-9451-4467-8016-190a9023cadd",
+      "sha12": "14f072dbea1c",
+      "label": "checkpoint_gate_side (vista lateral - descartar?)",
+      "file": "props/desert/checkpoint_gate_side.png"
+    },
+    {
+      "asset_id": "00b68468-afaa-482f-bcab-5f4f42fd4967",
+      "sha12": "f8aca2cefc3d",
+      "label": "tileset 15-piece two_surfaces terra/areia 128px v1 (preferido)",
+      "file": "tilesets/dirt_sand_v1.png"
+    },
+    {
+      "asset_id": "3727d6c8-da9a-4008-a707-910cd8e8581d",
+      "sha12": "b76ea984bb01",
+      "label": "tileset 15-piece two_surfaces terra/areia 128px v2",
+      "file": "tilesets/dirt_sand_v2.png"
+    },
+    {
+      "asset_id": "bfd2d682-e5ee-49d9-80f8-cded34ef182b",
+      "sha12": "8b133a788085",
+      "label": "tree_large",
+      "file": "props/forest/tree_large.png"
+    },
+    {
+      "asset_id": "e1899f50-e59c-4100-be64-1a6df28ac322",
+      "sha12": "3a5b352203c9",
+      "label": "tree_medium",
+      "file": "props/forest/tree_medium.png"
+    },
+    {
+      "asset_id": "9be87637-b571-4949-8a8e-cbb33552d3ba",
+      "sha12": "c289af078a86",
+      "label": "tree_small",
+      "file": "props/forest/tree_small.png"
+    },
+    {
+      "asset_id": "22d5d9bd-ede8-458f-86d5-be191316eea4",
+      "sha12": "b5503f006c96",
+      "label": "bush",
+      "file": "props/forest/bush.png"
+    },
+    {
+      "asset_id": "09219ead-1667-4c21-8759-43d3ccea4d0a",
+      "sha12": "4b489378c8e2",
+      "label": "puddle_b",
+      "file": "props/forest/puddle_b.png"
+    },
+    {
+      "asset_id": "ac83b036-a098-4b63-abee-b11e6aba078a",
+      "sha12": "799deb2fb848",
+      "label": "rock_mossy",
+      "file": "props/forest/rock_mossy.png"
+    },
+    {
+      "asset_id": "027f7343-d2ca-4bac-bd8c-f337cff91121",
+      "sha12": "addb4a688284",
+      "label": "puddle_a",
+      "file": "props/forest/puddle_a.png"
+    },
+    {
+      "asset_id": "5d8dbc16-7d21-49a8-ae2e-6775d4a6dffc",
+      "sha12": "b2820d8b324a",
+      "label": "log",
+      "file": "props/forest/log.png"
+    },
+    {
+      "asset_id": null,
+      "sha12": "188f49f1dd42",
+      "label": "pine_large",
+      "file": "props/ice/pine_large.png",
+      "source_asset_id": "a9ee4794-427a-4efa-a29d-35bf9d3a5128",
+      "note": "recorte local (fatia do SpriteCook 4dd0716f... pegava parte da pedra vizinha)"
+    },
+    {
+      "asset_id": "6909acd4-c7b1-48d4-aa34-3d6f2291dbe4",
+      "sha12": "85886748768f",
+      "label": "pine_small",
+      "file": "props/ice/pine_small.png"
+    },
+    {
+      "asset_id": "500acd7c-8ad2-4636-bbd7-040e05f4b63a",
+      "sha12": "7afde2065719",
+      "label": "snowbank_a",
+      "file": "props/ice/snowbank_a.png"
+    },
+    {
+      "asset_id": "a0874548-9b11-4707-982f-fcd9b54cfc10",
+      "sha12": "3805388a0e65",
+      "label": "ice_rock_b",
+      "file": "props/ice/ice_rock_b.png"
+    },
+    {
+      "asset_id": "96bdeb30-bfbc-4509-ba37-e945b0ea722e",
+      "sha12": "bb928a1a1db8",
+      "label": "ice_patch",
+      "file": "props/ice/ice_patch.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a9ee4794-427a-4efa-a29d-35bf9d3a5128",
+      "sha12": "2a13403e7887",
+      "label": "pine_medium",
+      "file": "props/ice/pine_medium.png",
+      "note": "recorte local (auto_slice do SpriteCook descartou este item)"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a9ee4794-427a-4efa-a29d-35bf9d3a5128",
+      "sha12": "6a9043007703",
+      "label": "ice_rock_a",
+      "file": "props/ice/ice_rock_a.png",
+      "note": "recorte local (auto_slice do SpriteCook descartou este item)"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a9ee4794-427a-4efa-a29d-35bf9d3a5128",
+      "sha12": "4446b6aa8b70",
+      "label": "snowbank_b",
+      "file": "props/ice/snowbank_b.png",
+      "note": "recorte local (auto_slice do SpriteCook descartou este item)"
+    },
+    {
+      "asset_id": "3974242c-43b5-4f94-86a6-5f02039ecb54",
+      "sha12": "6aac3b6fd926",
+      "label": "tileset Floresta grama/lama v1 (preferido)",
+      "file": "tilesets/grass_mud_v1.png"
+    },
+    {
+      "asset_id": "d454cfff-d39f-4490-b8ae-a2062a77cda3",
+      "sha12": "32f7a391e7d8",
+      "label": "tileset Floresta grama/lama v2",
+      "file": "tilesets/grass_mud_v2.png"
+    },
+    {
+      "asset_id": "70bf799f-c881-44d2-846f-04ca648d58d8",
+      "sha12": "c47fe8f8295a",
+      "label": "tileset Gelo neve/gelo v1",
+      "file": "tilesets/snow_ice_v1.png"
+    },
+    {
+      "asset_id": "f860191c-d0fa-4b72-9447-097e904ed0d7",
+      "sha12": "b2cc9fda9384",
+      "label": "tileset Gelo neve/gelo v2 (preferido)",
+      "file": "tilesets/snow_ice_v2.png"
+    },
+    {
+      "asset_id": "3cd92ebe-35ba-4f03-91d9-0d691e9c6c05",
+      "sha12": "e0f980406f25",
+      "label": "props Floresta (folha fonte)",
+      "file": "sheets/props_forest_sheet.png"
+    },
+    {
+      "asset_id": "a9ee4794-427a-4efa-a29d-35bf9d3a5128",
+      "sha12": "1c57b4fcf72e",
+      "label": "props Gelo (folha fonte)",
+      "file": "sheets/props_ice_sheet.png"
+    },
+    {
+      "asset_id": "a90b0637-38d6-4058-89d3-f9de87221138",
+      "sha12": "b5ae80ba7316",
+      "label": "ChevronGuide branco (tingir verde/vermelho)",
+      "file": "ui/chevron.png"
+    },
+    {
+      "asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "sha12": "d2f4844a55bf",
+      "label": "decoração crowd (folha fonte)",
+      "file": "sheets/deco_crowd_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        66,
+        90,
+        1244,
+        159
+      ],
+      "sha12": "5965b9a2ab63",
+      "label": "crowd_row_long",
+      "file": "deco/common/crowd_row_long.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        1046,
+        288,
+        156,
+        200
+      ],
+      "sha12": "1aaa8b1c3e76",
+      "label": "fan_flag",
+      "file": "deco/common/fan_flag.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        64,
+        330,
+        522,
+        150
+      ],
+      "sha12": "25c9e4cc33e2",
+      "label": "crowd_row_a",
+      "file": "deco/common/crowd_row_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        646,
+        317,
+        372,
+        385
+      ],
+      "sha12": "98a99fe82a07",
+      "label": "crowd_cluster",
+      "file": "deco/common/crowd_cluster.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        1155,
+        318,
+        157,
+        166
+      ],
+      "sha12": "e8e738601b8f",
+      "label": "fan_waving",
+      "file": "deco/common/fan_waving.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        63,
+        552,
+        523,
+        142
+      ],
+      "sha12": "1f9acd9db49d",
+      "label": "crowd_row_b",
+      "file": "deco/common/crowd_row_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "63fd9310-2f14-4e9a-8f2b-ef9bc2c7a96a",
+      "source_rect": [
+        1144,
+        553,
+        139,
+        148
+      ],
+      "sha12": "fc17822f42fe",
+      "label": "fan_camera",
+      "file": "deco/common/fan_camera.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "sha12": "668b8463ace0",
+      "label": "decoração track (folha fonte)",
+      "file": "sheets/deco_trackside_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        313,
+        14,
+        355,
+        319
+      ],
+      "sha12": "2c81ccbbc008",
+      "label": "tent_canopy",
+      "file": "deco/common/tent_canopy.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        982,
+        34,
+        197,
+        197
+      ],
+      "sha12": "6fbaa25ba036",
+      "label": "parasol",
+      "file": "deco/common/parasol.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        978,
+        265,
+        257,
+        227
+      ],
+      "sha12": "83ce05264a6f",
+      "label": "hay_bales",
+      "file": "deco/common/hay_bales.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        173,
+        345,
+        619,
+        160
+      ],
+      "sha12": "e86d6a98dafa",
+      "label": "start_finish_gantry",
+      "file": "deco/common/start_finish_gantry.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        202,
+        517,
+        45,
+        235
+      ],
+      "sha12": "363924ffc3dc",
+      "label": "pole_a",
+      "file": "deco/common/pole_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        272,
+        495,
+        57,
+        264
+      ],
+      "sha12": "72c78e9bbc9d",
+      "label": "pennant_pole_a",
+      "file": "deco/common/pennant_pole_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        592,
+        501,
+        55,
+        257
+      ],
+      "sha12": "2b7eb8afbd78",
+      "label": "pennant_pole_b",
+      "file": "deco/common/pennant_pole_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        677,
+        514,
+        45,
+        238
+      ],
+      "sha12": "a46ca47097eb",
+      "label": "pole_b",
+      "file": "deco/common/pole_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "a362d076-6958-41d0-b0dd-dae7503fff2d",
+      "source_rect": [
+        875,
+        522,
+        459,
+        222
+      ],
+      "sha12": "bcb4f6138872",
+      "label": "service_van",
+      "file": "deco/common/service_van.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "sha12": "7967373936a7",
+      "label": "decoração desert (folha fonte)",
+      "file": "sheets/deco_desert_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "source_rect": [
+        1134,
+        73,
+        194,
+        176
+      ],
+      "sha12": "7a1f7bb3d454",
+      "label": "grass_tuft_large",
+      "file": "deco/desert/grass_tuft_large.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "source_rect": [
+        606,
+        341,
+        387,
+        406
+      ],
+      "sha12": "1184ba2b9ca0",
+      "label": "palm",
+      "file": "deco/desert/palm.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "source_rect": [
+        62,
+        613,
+        125,
+        115
+      ],
+      "sha12": "a5f7ef180838",
+      "label": "grass_tuft_medium",
+      "file": "deco/desert/grass_tuft_medium.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "source_rect": [
+        238,
+        625,
+        106,
+        99
+      ],
+      "sha12": "50feb3370beb",
+      "label": "grass_tuft_small",
+      "file": "deco/desert/grass_tuft_small.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "8f6eb8df-53a2-4d1a-a73a-c621fd2eb00d",
+      "source_rect": [
+        405,
+        606,
+        134,
+        132
+      ],
+      "sha12": "e7dd790ccaae",
+      "label": "tumbleweed",
+      "file": "deco/desert/tumbleweed.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "sha12": "846f3da5fa06",
+      "label": "decoração desert2 (folha fonte)",
+      "file": "sheets/deco_desert2_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        61,
+        43,
+        406,
+        322
+      ],
+      "sha12": "ceead2a1c15e",
+      "label": "dune_a",
+      "file": "deco/desert/dune_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        583,
+        94,
+        260,
+        224
+      ],
+      "sha12": "59e084c1eba2",
+      "label": "dune_small",
+      "file": "deco/desert/dune_small.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        975,
+        44,
+        340,
+        323
+      ],
+      "sha12": "710303c22079",
+      "label": "acacia_a",
+      "file": "deco/desert/acacia_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        93,
+        402,
+        337,
+        321
+      ],
+      "sha12": "8fb332b524f3",
+      "label": "acacia_b",
+      "file": "deco/desert/acacia_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        501,
+        396,
+        408,
+        321
+      ],
+      "sha12": "3952313e606e",
+      "label": "dune_large",
+      "file": "deco/desert/dune_large.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "0caaf311-531c-4e43-a6a7-2850e0a24e28",
+      "source_rect": [
+        997,
+        435,
+        310,
+        275
+      ],
+      "sha12": "8a4ea6398b7f",
+      "label": "dune_b",
+      "file": "deco/desert/dune_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "sha12": "1b2fc62b279e",
+      "label": "decoração forest (folha fonte)",
+      "file": "sheets/deco_forest_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        33,
+        26,
+        320,
+        352
+      ],
+      "sha12": "ae32a2b34416",
+      "label": "pine_a",
+      "file": "deco/forest/pine_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        365,
+        29,
+        313,
+        343
+      ],
+      "sha12": "f4ce1a64b108",
+      "label": "pine_b",
+      "file": "deco/forest/pine_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        722,
+        58,
+        316,
+        291
+      ],
+      "sha12": "8fe69d9c9e87",
+      "label": "fern",
+      "file": "deco/forest/fern.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        1097,
+        95,
+        223,
+        211
+      ],
+      "sha12": "e7b7be40523f",
+      "label": "mushrooms_a",
+      "file": "deco/forest/mushrooms_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        62,
+        466,
+        266,
+        248
+      ],
+      "sha12": "b38a5a642cf9",
+      "label": "flowers",
+      "file": "deco/forest/flowers.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        441,
+        482,
+        195,
+        219
+      ],
+      "sha12": "df79ee8c2cc1",
+      "label": "mushrooms_b",
+      "file": "deco/forest/mushrooms_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        750,
+        462,
+        253,
+        261
+      ],
+      "sha12": "7102aed00d33",
+      "label": "stump",
+      "file": "deco/forest/stump.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "944b30da-2b56-49f7-9121-6458e93aefe2",
+      "source_rect": [
+        1062,
+        448,
+        277,
+        280
+      ],
+      "sha12": "c5ea63c4069b",
+      "label": "crowd_umbrellas",
+      "file": "deco/forest/crowd_umbrellas.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "sha12": "1899f1ce25bc",
+      "label": "decoração ice (folha fonte)",
+      "file": "sheets/deco_ice_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        53,
+        63,
+        269,
+        296
+      ],
+      "sha12": "183b1cd54e73",
+      "label": "snowman_a",
+      "file": "deco/ice/snowman_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        389,
+        54,
+        321,
+        309
+      ],
+      "sha12": "f7824d5cc91c",
+      "label": "crowd_winter_a",
+      "file": "deco/ice/crowd_winter_a.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        770,
+        46,
+        258,
+        326
+      ],
+      "sha12": "5685405b150d",
+      "label": "cabin",
+      "file": "deco/ice/cabin.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        1089,
+        82,
+        236,
+        262
+      ],
+      "sha12": "d9698691d50a",
+      "label": "snow_bush_cluster",
+      "file": "deco/ice/snow_bush_cluster.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        55,
+        415,
+        264,
+        307
+      ],
+      "sha12": "0300a5e23acb",
+      "label": "snowman_b",
+      "file": "deco/ice/snowman_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        389,
+        429,
+        292,
+        284
+      ],
+      "sha12": "13dafccbfbe6",
+      "label": "crowd_winter_b",
+      "file": "deco/ice/crowd_winter_b.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        740,
+        455,
+        304,
+        249
+      ],
+      "sha12": "91d483cf0c5a",
+      "label": "frozen_pond",
+      "file": "deco/ice/frozen_pond.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "551dedcc-5e58-4179-9d76-74a9ef504d74",
+      "source_rect": [
+        1084,
+        468,
+        251,
+        266
+      ],
+      "sha12": "fa3446dd5891",
+      "label": "snow_bush",
+      "file": "deco/ice/snow_bush.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "sha12": "d05f91fd4cdd",
+      "label": "decoração decals (folha fonte)",
+      "file": "sheets/deco_decals_sheet.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "source_rect": [
+        86,
+        62,
+        558,
+        186
+      ],
+      "sha12": "cea31de9a934",
+      "label": "skid_straight",
+      "file": "decals/skid_straight.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "source_rect": [
+        713,
+        30,
+        604,
+        326
+      ],
+      "sha12": "0e33d4c54a53",
+      "label": "skid_curve",
+      "file": "decals/skid_curve.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "source_rect": [
+        166,
+        278,
+        396,
+        211
+      ],
+      "sha12": "e7ad3bc1bf62",
+      "label": "skid_short",
+      "file": "decals/skid_short.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "source_rect": [
+        812,
+        360,
+        391,
+        338
+      ],
+      "sha12": "47a9810f21ce",
+      "label": "mud_splat",
+      "file": "decals/mud_splat.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "2f04e8df-bfc3-4b9b-93db-0ef07c0c534e",
+      "source_rect": [
+        224,
+        521,
+        280,
+        201
+      ],
+      "sha12": "c62fd2ad1696",
+      "label": "pebbles",
+      "file": "decals/pebbles.png",
+      "note": "recorte local da folha fonte"
+    },
+    {
+      "asset_id": "e7d8b252-6a57-495d-a80a-0773af0d7845",
+      "sha12": "797bfaaef015",
+      "label": "hatchback_red",
+      "file": "cars/hatchback_red.png"
+    },
+    {
+      "asset_id": "36e84db8-05da-4af1-9b4b-897b169ff288",
+      "sha12": "6172f9e78f48",
+      "label": "buggy_yellow",
+      "file": "cars/buggy_yellow.png"
+    },
+    {
+      "asset_id": "5e1afc4a-4039-4790-b29a-dabd52736eda",
+      "sha12": "0ec0d80f8e90",
+      "label": "pickup_green",
+      "file": "cars/pickup_green.png"
+    },
+    {
+      "asset_id": "1d554925-679c-4679-ace4-a293677511a0",
+      "sha12": "e2b351013d00",
+      "label": "classic_coupe",
+      "file": "cars/classic_coupe.png"
+    },
+    {
+      "asset_id": "262eeef6-0e39-4862-8458-a911c514a776",
+      "sha12": "97be934f4aa0",
+      "label": "police",
+      "file": "cars/police.png"
+    },
+    {
+      "asset_id": "7e9b66e2-791e-4af2-a823-ea3502ceb6d3",
+      "sha12": "38f2540429b9",
+      "label": "street_tuner_purple",
+      "file": "cars/street_tuner_purple.png"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "a63c52dd5fef",
+      "label": "rally_red",
+      "file": "cars/liveries/rally_red.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "dea5dcb3fe99",
+      "label": "rally_blue",
+      "file": "cars/liveries/rally_blue.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "24a50804a962",
+      "label": "rally_green",
+      "file": "cars/liveries/rally_green.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "186d515c7574",
+      "label": "rally_yellow",
+      "file": "cars/liveries/rally_yellow.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "c3ecd34ea656",
+      "label": "rally_purple",
+      "file": "cars/liveries/rally_purple.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "efd5d3d0e029",
+      "label": "rally_teal",
+      "file": "cars/liveries/rally_teal.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "0fef7ceb3971",
+      "label": "rally_black",
+      "file": "cars/liveries/rally_black.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "source_asset_id": "afd4891a-8f70-4485-9a3e-82128fc27b66",
+      "sha12": "873ae9715955",
+      "label": "rally_pink",
+      "file": "cars/liveries/rally_pink.png",
+      "note": "recolor local da carroceria laranja do rally_orange_v1"
+    }
+  ],
+  "palette": [
+    "#fdbf13",
+    "#feb210",
+    "#f19c1b",
+    "#fa7c01",
+    "#cf8441",
+    "#bb7d36"
+  ]
+}

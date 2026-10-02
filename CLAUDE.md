@@ -37,7 +37,7 @@ If future work adds an actual Unity project (scripts, scenes, assets) alongside 
 
 ## Core design concept (applies to all four games)
 
-- Topdown 2D pixel-art racing. The car moves toward the mouse cursor; **speed is proportional to cursor distance from the car**, following a smooth exponential curve (not linear) — this is the central "on the edge of control" pillar.
+- Topdown 2D racing in a minimalist flat-vector art style (replaced the original pixel art; assets and their SpriteCook `asset_id` manifest live in `Sprites/Rally2D/`). The car moves toward the mouse cursor; **speed is proportional to cursor distance from the car**, following a smooth exponential curve (not linear) — this is the central "on the edge of control" pillar.
 - **Chevrons**: a row of arrows drawn between car and cursor, green when accelerating, red when braking, with density scaling by intensity. The system/class name for this must stay `ChevronGuide` across all games/projects — this is an explicit shared-naming convention meant to ease future convergence of the four games into one.
 - Input is mouse-only for the MVP.
 - Track/terrain data (waypoints, width, checkpoints) should use the same format across games so tracks are portable between them.
