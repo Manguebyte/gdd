@@ -1,0 +1,733 @@
+{
+  "project_id": "03a7281d-8bf2-4af5-a3e1-3e3606929bf8",
+  "style": "F1 anos 60, flat vector minimalista",
+  "assets": [
+    {
+      "asset_id": "556f27eb-2c19-4464-afe6-d2574d2a2185",
+      "sha12": "398f5e876c9d",
+      "label": "car60s_white_v1 - carro F1 anos 60 (original do SpriteCook)",
+      "file": "source/car60s_v1.png"
+    },
+    {
+      "asset_id": "ba469533-b74a-4932-84ce-ad9eb610d903",
+      "sha12": "323f46a4b1a9",
+      "label": "car60s_white_v2 - carro F1 anos 60 (original do SpriteCook)",
+      "file": "source/car60s_v2.png"
+    },
+    {
+      "asset_id": "1fe4ec2b-322f-4608-9f5a-2948733bd487",
+      "sha12": "4201bf450e46",
+      "label": "start_line - faixa quadriculada (original do SpriteCook)",
+      "file": "source/start_line_raw.png"
+    },
+    {
+      "asset_id": "4f873262-9f44-4f9d-9b53-cf97d6901469",
+      "sha12": "653307a0a2bd",
+      "label": "map_background - papel creme de programa de corrida anos 60",
+      "file": "track/map_background.png"
+    }
+  ],
+  "derived": [
+    {
+      "file": "cars/car60s_white_v1.png",
+      "sha12": "2d33369a9c2d",
+      "from_asset_id": "556f27eb-2c19-4464-afe6-d2574d2a2185",
+      "processing": "halo removido pelo alfa e recortado"
+    },
+    {
+      "file": "cars/car60s_white_v2.png",
+      "sha12": "00a505822f9f",
+      "from_asset_id": "ba469533-b74a-4932-84ce-ad9eb610d903",
+      "processing": "halo removido pelo alfa e recortado"
+    },
+    {
+      "file": "cars/car60s_highlight_v1.png",
+      "sha12": "da81b4a83d8c",
+      "from_asset_id": "556f27eb-2c19-4464-afe6-d2574d2a2185",
+      "processing": "contorno gerado localmente (silhueta dilatada)"
+    },
+    {
+      "file": "cars/car60s_highlight_v2.png",
+      "sha12": "70de70ef5e3c",
+      "from_asset_id": "ba469533-b74a-4932-84ce-ad9eb610d903",
+      "processing": "contorno gerado localmente (silhueta dilatada)"
+    },
+    {
+      "file": "track/start_line.png",
+      "sha12": "5d21da0221d0",
+      "from_asset_id": "1fe4ec2b-322f-4608-9f5a-2948733bd487",
+      "processing": "recortado"
+    }
+  ],
+  "ui_kit": {
+    "ui_kit_id": "d9162c5e-3e86-4d7c-8ce8-cfa00d740310",
+    "project_id": "7895ee52-f2cd-42e2-a73e-d360e4bb0d5c",
+    "concept": {
+      "asset_id": "3c857988-433e-432c-b01a-f9c7bdfa7d01",
+      "file": "ui/concept_selected.png",
+      "sha12": "9230be73254a",
+      "label": "conceito 3 (escolhido)"
+    },
+    "component_sheet": {
+      "asset_id": "3298329f-09cf-45b6-a6f3-b4fd693c4237",
+      "file": "ui/component_sheet.png",
+      "sha12": "746567bc4daf"
+    },
+    "components": [
+      {
+        "asset_id": "c1fc7f0a-4bd2-48ab-908e-4eeea008cb5e",
+        "sha12": "a6972317fb6d",
+        "label": "header_green",
+        "file": "ui/components/headers/header_green.png",
+        "group": "headers",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "d9a6c2a7-83d7-4fe5-b2ff-26928a05cf4b",
+        "sha12": "39baa22a4f42",
+        "label": "header_red",
+        "file": "ui/components/headers/header_red.png",
+        "group": "headers",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "d0043443-be6f-430b-a98b-7e2bd0c02b78",
+        "sha12": "eea28bdf47ac",
+        "label": "panel_cream",
+        "file": "ui/components/panels/panel_cream.png",
+        "group": "panels",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "f900e5c9-fd9f-4213-a250-2859a38aaa90",
+        "sha12": "1c4cbe462ff4",
+        "label": "row_cream",
+        "file": "ui/components/panels/row_cream.png",
+        "group": "panels",
+        "state": "normal",
+        "nine_slice": {
+          "left": 12,
+          "top": 12,
+          "right": 12,
+          "bottom": 12
+        }
+      },
+      {
+        "asset_id": "122b44e9-d469-4248-92c2-b93049059f7a",
+        "sha12": "bed628a51c06",
+        "label": "row_player_split",
+        "file": "ui/components/panels/row_player_split.png",
+        "group": "panels",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "45f63079-2c7d-479f-a2ad-d1f055b02d5f",
+        "sha12": "b410a9ddb9c5",
+        "label": "button_cream",
+        "file": "ui/components/buttons_small/button_cream.png",
+        "group": "buttons_small",
+        "state": "normal",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "9bfb151a-4f2e-4166-ac21-ed8cf7b7a6e3",
+        "sha12": "145cec242520",
+        "label": "button_green",
+        "file": "ui/components/buttons_small/button_green.png",
+        "group": "buttons_small",
+        "state": "normal",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "0c15b1de-a320-4693-b05f-246474babfd5",
+        "sha12": "cb12ad64c8fb",
+        "label": "button_red",
+        "file": "ui/components/buttons_small/button_red.png",
+        "group": "buttons_small",
+        "state": "normal",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "1eb283c7-8062-4ca0-a418-4c5efce67bc0",
+        "sha12": "52588d50a723",
+        "label": "box_button_green",
+        "file": "ui/components/box_buttons/box_button_green.png",
+        "group": "box_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 16,
+          "top": 16,
+          "right": 16,
+          "bottom": 16
+        }
+      },
+      {
+        "asset_id": "bbfd917f-6e47-45e9-bfe3-9d6811dabe3c",
+        "sha12": "58a93ce3ac5d",
+        "label": "box_button_red",
+        "file": "ui/components/box_buttons/box_button_red.png",
+        "group": "box_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 16,
+          "top": 16,
+          "right": 16,
+          "bottom": 16
+        }
+      },
+      {
+        "asset_id": "3650c790-c186-4501-8054-29fdf4cd2e53",
+        "sha12": "47031b462d1e",
+        "label": "notification_green",
+        "file": "ui/components/notifications/notification_green.png",
+        "group": "notifications",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "d66fda73-db98-4c78-809d-721c7f2e77c6",
+        "sha12": "94ed38724bde",
+        "label": "notification_blue",
+        "file": "ui/components/notifications/notification_blue.png",
+        "group": "notifications",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "7672675d-5783-46e5-a04c-b1759953e800",
+        "sha12": "7d35a7f1461a",
+        "label": "icon_button_radio",
+        "file": "ui/components/icon_buttons/icon_button_radio.png",
+        "group": "icon_buttons",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "5032511e-1989-480c-a32c-1f5417ee1460",
+        "sha12": "a369536652ae",
+        "label": "icon_button_chart",
+        "file": "ui/components/icon_buttons/icon_button_chart.png",
+        "group": "icon_buttons",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "cf16e02a-136f-4aaf-bc98-23289bdbf79c",
+        "sha12": "052425d46d19",
+        "label": "icon_button_gear",
+        "file": "ui/components/icon_buttons/icon_button_gear.png",
+        "group": "icon_buttons",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "5d8a3995-79a9-4845-8aa7-fd6e0745245c",
+        "sha12": "c89da0dcb935",
+        "label": "tyre_badge_soft",
+        "file": "ui/components/tyre_badges/tyre_badge_soft.png",
+        "group": "tyre_badges",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "de21cf0c-d9c6-41b2-8045-07eca84290b8",
+        "sha12": "ca3f5b1d61ed",
+        "label": "tyre_badge_medium",
+        "file": "ui/components/tyre_badges/tyre_badge_medium.png",
+        "group": "tyre_badges",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "55d52891-b4e0-4586-a30d-39988bfc0a85",
+        "sha12": "ad28df1c22b5",
+        "label": "tyre_badge_blank",
+        "file": "ui/components/tyre_badges/tyre_badge_blank.png",
+        "group": "tyre_badges",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "100de7e8-ef3e-46d1-b0d7-9aa925184046",
+        "sha12": "6bf14ec8bc23",
+        "label": "upgrade_row_engineering",
+        "file": "ui/components/upgrade_rows/upgrade_row_engineering.png",
+        "group": "upgrade_rows",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "816a2676-8b41-4f83-877b-fda6ffd57b4f",
+        "sha12": "19f493bb20df",
+        "label": "upgrade_row_pitcrew",
+        "file": "ui/components/upgrade_rows/upgrade_row_pitcrew.png",
+        "group": "upgrade_rows",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "fb13e727-3cc8-4c00-9f55-c0cd27dd1b6f",
+        "sha12": "409e820eec99",
+        "label": "upgrade_row_driver",
+        "file": "ui/components/upgrade_rows/upgrade_row_driver.png",
+        "group": "upgrade_rows",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "31420779-1771-4a59-a12c-d2a7ef96417c",
+        "sha12": "dddfbe6ecc45",
+        "label": "upgrade_row_marketing",
+        "file": "ui/components/upgrade_rows/upgrade_row_marketing.png",
+        "group": "upgrade_rows",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "c7e96949-8a36-451e-8c78-9694ccb328d6",
+        "sha12": "d8205c2bdb71",
+        "label": "upgrade_row_locked",
+        "file": "ui/components/upgrade_rows/upgrade_row_locked.png",
+        "group": "upgrade_rows",
+        "state": "disabled",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "03920271-be60-4066-8998-db072786f81b",
+        "sha12": "78b09245b82e",
+        "label": "buy_button_green",
+        "file": "ui/components/buy_buttons/buy_button_green.png",
+        "group": "buy_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "caf9965b-59bb-4f42-9733-fa0109587212",
+        "sha12": "f757537d475a",
+        "label": "button_locked",
+        "file": "ui/components/buy_buttons/button_locked.png",
+        "group": "buy_buttons",
+        "state": "disabled",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "d165f232-53bd-4da1-8717-84857ad853d8",
+        "sha12": "fd1eaf10e148",
+        "label": "meter_empty",
+        "file": "ui/components/meters/meter_empty.png",
+        "group": "meters",
+        "state": "empty",
+        "nine_slice": {
+          "left": 10,
+          "top": 10,
+          "right": 10,
+          "bottom": 10
+        }
+      },
+      {
+        "asset_id": "77384785-0322-42b0-b44f-54092f02e7f6",
+        "sha12": "be9034fd43e4",
+        "label": "progress_green",
+        "file": "ui/components/progress/progress_green.png",
+        "group": "progress",
+        "state": "fill",
+        "nine_slice": {
+          "left": 10,
+          "top": 10,
+          "right": 10,
+          "bottom": 10
+        }
+      },
+      {
+        "asset_id": "d193754b-22e3-4f0f-a0b1-e6092096e513",
+        "sha12": "f1d33361b872",
+        "label": "progress_red",
+        "file": "ui/components/progress/progress_red.png",
+        "group": "progress",
+        "state": "fill",
+        "nine_slice": {
+          "left": 10,
+          "top": 10,
+          "right": 10,
+          "bottom": 10
+        }
+      },
+      {
+        "asset_id": "713821ec-75e6-4171-89d6-c864c63b9585",
+        "sha12": "aa1db246508d",
+        "label": "big_button_green",
+        "file": "ui/components/big_buttons/big_button_green.png",
+        "group": "big_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "47e9675b-916e-45a6-b2c7-68394ce7b1f5",
+        "sha12": "c0b6d375f195",
+        "label": "big_button_red",
+        "file": "ui/components/big_buttons/big_button_red.png",
+        "group": "big_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "8cc6435e-8e8a-4a4f-9f1b-562c2028a536",
+        "sha12": "c7ee0e0ff559",
+        "label": "big_button_cream",
+        "file": "ui/components/big_buttons/big_button_cream.png",
+        "group": "big_buttons",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "43a1b4e4-44f8-443e-892a-c7161a5e6a35",
+        "sha12": "fa98a0b09bff",
+        "label": "big_button_black",
+        "file": "ui/components/big_buttons/big_button_black.png",
+        "group": "big_buttons",
+        "state": "disabled",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "a15524cf-a964-4edd-a568-1ad1916eb1a9",
+        "sha12": "55d2b4046cc7",
+        "label": "square_button_cream",
+        "file": "ui/components/buttons_small/square_button_cream.png",
+        "group": "buttons_small",
+        "state": "normal",
+        "nine_slice": {
+          "left": 14,
+          "top": 14,
+          "right": 14,
+          "bottom": 14
+        }
+      },
+      {
+        "asset_id": "f846827d-47cb-4c93-b90d-e2858cd0517b",
+        "sha12": "d0c33acc35eb",
+        "label": "button_play",
+        "file": "ui/components/media/button_play.png",
+        "group": "media",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "0f12580e-743f-4c27-9737-8217b374fe5f",
+        "sha12": "98424fb2fcdd",
+        "label": "button_pause",
+        "file": "ui/components/media/button_pause.png",
+        "group": "media",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "aa1e287e-0358-4bd4-af30-3d04f5d5a2c6",
+        "sha12": "f30dd4d36ba5",
+        "label": "button_info",
+        "file": "ui/components/media/button_info.png",
+        "group": "media",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "1409da2c-2110-4002-8e2a-7e1d4ebc870c",
+        "sha12": "4b658eea03b5",
+        "label": "button_fast_forward",
+        "file": "ui/components/media/button_fast_forward.png",
+        "group": "media",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "8f14de49-87ec-46f4-adc4-849e07383357",
+        "sha12": "6e89b8859f4f",
+        "label": "icon_fuel",
+        "file": "ui/components/icons/icon_fuel.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "47f0d2fb-bf4c-47e6-8680-20f82488ac44",
+        "sha12": "11638d1bf7f1",
+        "label": "icon_wrench",
+        "file": "ui/components/icons/icon_wrench.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "65f7dc3c-9b13-4fa5-bba6-443d3af1d96e",
+        "sha12": "de7095dd3814",
+        "label": "icon_stopwatch",
+        "file": "ui/components/icons/icon_stopwatch.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "3d34df0d-8ea0-4614-a356-a64794c50cf9",
+        "sha12": "d6e6a2c2b32b",
+        "label": "icon_flag",
+        "file": "ui/components/icons/icon_flag.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "bd82f0ba-6576-44b7-a517-63e4a9bb5cc7",
+        "sha12": "ad1a5da3a587",
+        "label": "icon_tyre",
+        "file": "ui/components/icons/icon_tyre.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "f13bddfe-23d3-4d10-b127-713907f12896",
+        "sha12": "658958ece216",
+        "label": "icon_star",
+        "file": "ui/components/icons/icon_star.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "2157f7f4-0fdc-44b1-9356-434f944c3bbb",
+        "sha12": "50d1ed759808",
+        "label": "icon_check",
+        "file": "ui/components/icons/icon_check.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "9f6f3383-65da-4c4b-9818-5da70b3c2062",
+        "sha12": "9d920620db7c",
+        "label": "icon_close",
+        "file": "ui/components/icons/icon_close.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "83f340cc-f545-458a-925a-5568d1a3fd68",
+        "sha12": "35d3887339ea",
+        "label": "icon_warning",
+        "file": "ui/components/icons/icon_warning.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "recortado direto da folha (o smart_alpha do SpriteCook apagou o miolo)"
+      },
+      {
+        "asset_id": "e2e0edf6-8a4a-4c32-be4a-7aed7b432f16",
+        "sha12": "7c997f670d88",
+        "label": "pennant_green",
+        "file": "ui/components/pennants/pennant_green.png",
+        "group": "pennants",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "74316cd4-ac37-435e-8494-254f21a1f732",
+        "sha12": "fd9781243405",
+        "label": "pennant_red",
+        "file": "ui/components/pennants/pennant_red.png",
+        "group": "pennants",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "10c875fc-8d86-4139-8fcb-caa2202a3bf0",
+        "sha12": "8ee1d17a0a37",
+        "label": "pennant_blue",
+        "file": "ui/components/pennants/pennant_blue.png",
+        "group": "pennants",
+        "state": "normal",
+        "nine_slice": null
+      },
+      {
+        "asset_id": "d8fe545f-3a9c-4eff-867e-61dbdfd6228e",
+        "sha12": "27aeff9dcb61",
+        "label": "helmet_green",
+        "file": "ui/components/helmets/helmet_green.png",
+        "group": "helmets",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "fundo creme removido localmente"
+      },
+      {
+        "asset_id": "3ad4dfb0-3c63-4e87-9029-4639072dc8eb",
+        "sha12": "2a9df303fcd7",
+        "label": "helmet_red",
+        "file": "ui/components/helmets/helmet_red.png",
+        "group": "helmets",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "fundo creme removido localmente"
+      },
+      {
+        "asset_id": "c9fc5e7a-c446-46fd-a718-25379598c67f",
+        "sha12": "88066a296909",
+        "label": "notification_red",
+        "file": "ui/components/notifications/notification_red.png",
+        "group": "notifications",
+        "state": "normal",
+        "nine_slice": {
+          "left": 18,
+          "top": 18,
+          "right": 18,
+          "bottom": 18
+        }
+      },
+      {
+        "asset_id": "21fa7140-2e4b-45a5-908c-17499a97f283",
+        "sha12": "96630040af6a",
+        "label": "wear_bar_yellow",
+        "file": "ui/components/wear_bars/wear_bar_yellow.png",
+        "group": "wear_bars",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "3b57ff52-6e19-45d2-a188-e9ffb337d3c4",
+        "sha12": "fd31e04f89ea",
+        "label": "wear_bar_empty",
+        "file": "ui/components/wear_bars/wear_bar_empty.png",
+        "group": "wear_bars",
+        "state": "normal",
+        "nine_slice": {
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0
+        }
+      },
+      {
+        "asset_id": "8e911340-d944-4dd0-adf7-310af45916c5",
+        "sha12": "836fb45db2bb",
+        "label": "tyre_badge_hard",
+        "file": "ui/components/tyre_badges/tyre_badge_hard.png",
+        "group": "tyre_badges",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "gerado avulso (edição do tyre_badge_medium); halo removido, recortado e reduzido a 58 px",
+        "source": "ui/source/tyre_badge_hard_raw.png"
+      },
+      {
+        "asset_id": "9e589b3f-f4aa-4acf-8ba7-f339ecd4ec8c",
+        "sha12": "ebadc5f01c6c",
+        "label": "icon_money",
+        "file": "ui/components/icons/icon_money.png",
+        "group": "icons",
+        "state": "normal",
+        "nine_slice": null,
+        "local_fix": "gerado avulso; halo removido, recortado e reduzido a 70 px",
+        "source": "ui/source/icon_money_raw.png"
+      }
+    ]
+  }
+}

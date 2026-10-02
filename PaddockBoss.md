@@ -152,8 +152,12 @@
 ## 9. Estilo Visual
 
 - **Definido:** **flat vector minimalista** (mesma linha que a franquia Rally adotou, mas com identidade própria).
+- **Definido:** vibe de **Fórmula 1 dos anos 60**, não a F1 moderna. Carros em forma de charuto, sem asas, rodas raiadas expostas e piloto à vista no cockpit aberto.
 - **Proposta inicial (Em aberto):** traçado da pista como uma faixa grossa sobre fundo liso; carros como ícones simples vistos de cima, num sprite branco tingido com a cor da equipe; o carro do jogador com um contorno de destaque.
-- **Em aberto:** paleta, tipografia, identidade das equipes (nomes, logos), arte da tela da temporada.
+- **Proposta inicial (Em aberto):** fundo do mapa em papel creme, como um programa de corrida impresso da época; equipes nas cores nacionais de corrida dos anos 60 (verde britânico, vermelho italiano, azul francês, prata alemão...).
+- **Em aberto:** paleta final, tipografia, identidade das equipes (nomes, logos), arte da tela da temporada.
+- **Assets gerados:** `Sprites/PaddockBoss/` (SpriteCook, com manifesto `spritecook-assets.json`): carro em 2 variações, contorno de destaque, faixa de largada, fundo do mapa e o kit de UI (56 componentes em `ui/components/`).
+- **Definido:** a referência visual da interface é o conceito `Sprites/PaddockBoss/ui/concept_selected.png`: papel creme, cabeçalhos verde-escuros, botões BOX verde/vermelho, selos de composto circulares, cards de notificação. Ele vale como **direção de arte**, não como lista de funcionalidades. Os elementos que ele mostra além do MVP (subdivisões de engenharia como aerodinâmica e confiabilidade, mistura de combustível, estilo de pilotagem, modo do motor, controle de velocidade da simulação, clima, mensagens de rádio) continuam **Em aberto** (§3, §4 e §15).
 
 ## 10. HUD / UI
 
@@ -3187,30 +3191,67 @@ namespace PaddockBoss.UI
 #### 🧪 Teste rápido
 Aperte ▶ e largue uma corrida. Troque a resolução da Game view entre `Full HD (1920x1080)`, `2560x1080` (crie com **+**) e o Device Simulator em paisagem: a pista sempre aparece inteira à esquerda, sem ficar por baixo do painel. Nas etapas seguintes, pistas de tamanhos diferentes também são reenquadradas.
 
-### Etapa 8C — Arte flat vector
+### Etapa 8C — Arte flat vector (F1 anos 60)
 
-A arte segue a Parte 1 §9 (flat vector minimalista; paleta e identidade das equipes **Em aberto**). Assets mínimos do MVP:
+A arte segue a Parte 1 §9: flat vector minimalista com vibe de F1 dos anos 60. Os sprites de mundo já foram gerados no SpriteCook e estão neste repositório, em `Sprites/PaddockBoss/`. O manifesto `spritecook-assets.json` guarda o `asset_id` de cada um, para regerar ou criar variações coerentes depois.
 
-| Asset | Observação |
-|---|---|
-| Ícone do carro visto de cima | **Branco**, apontando para cima, fundo transparente: o `SpriteRenderer` tinge com a cor da equipe |
-| Contorno de destaque do jogador | Mesmo formato do carro, só o contorno |
-| Linha de largada | Faixa quadriculada |
-| Fundo do mapa | Liso ou com textura sutil; nada que dispute atenção com os carros |
-| Painéis e botões da UI | Cantos arredondados, cores chapadas |
+| Arquivo (em `Sprites/PaddockBoss/`) | Tamanho | Uso no jogo |
+|---|---|---|
+| `cars/car60s_white_v1.png` ou `cars/car60s_white_v2.png` | 456×962 / 468×953 | `Body` do prefab `CarMarker`. Branco, apontando para cima: o `SpriteRenderer` tinge com a cor da equipe. Use **uma** das duas variações (escolha **Em aberto**). |
+| `cars/car60s_highlight_v1.png` ou `cars/car60s_highlight_v2.png` | igual ao carro correspondente | `Highlight` do prefab: contorno do carro do jogador. Use o da **mesma variação** do carro, para encaixar. |
+| `track/start_line.png` | 943×72 | `StartLine`: faixa quadriculada de largada. |
+| `track/map_background.png` | 1024×1024 | Fundo do mapa: papel creme de programa de corrida, repetível lado a lado. |
+| `source/` | — | Originais do SpriteCook, antes da limpeza. **Não importe** no Unity. |
 
-- Se gerar com o SpriteCook, siga as skills `spritecook-*` do repositório e guarde os `asset_id` num manifesto em `Sprites/PaddockBoss/`, como já é feito em `Sprites/Rally2D/`.
+> Os carros saíram do SpriteCook com um brilho branco semitransparente em volta, que viraria uma auréola colorida ao tingir. Os arquivos em `cars/` já estão limpos (alfa cortado e imagem recortada). Os contornos foram gerados a partir da silhueta do carro, por isso encaixam exatamente quando importados com o mesmo Pixels Per Unit.
 
-Importar e trocar o carro:
-1. Arraste os PNGs para `Assets/_Project/Sprites/`.
-2. Clique no PNG do carro. No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Single`, **Pixels Per Unit** = altura da imagem ÷ 0.8 (ex.: 256 px → `320`), para o carro ter 0.8 unidade de comprimento. **Apply**.
-3. Dê duplo clique no prefab `Prefabs/CarMarker` (abre o modo de edição de prefab). Em `Body`, troque **Sprite** pelo carro e volte **Scale** para (1, 1, 1). Em `Highlight`, troque pelo contorno, também com escala 1. Saia pela seta **<** no topo da Hierarchy; o prefab salva sozinho.
-4. Linha de largada: no `StartLine`, troque **Sprite** pela faixa quadriculada e ajuste a escala.
-5. Botões e painéis: no `Image` de cada um, troque **Source Image**. Para sprites de UI com cantos arredondados, abra o **Sprite Editor** do PNG e defina as bordas (**Border**), e use **Image Type** = `Sliced`, para o canto não esticar.
-6. Fonte: **Window → TextMeshPro → Font Asset Creator** → **Source Font File** = a fonte TTF da identidade, **Character Set** = `Extended ASCII` (cobre é, ã, ç) → **Generate Font Atlas** → **Save**. Troque o **Font Asset** dos textos.
+A UI também tem arte própria, gerada como um kit no SpriteCook a partir do conceito escolhido (`ui/concept_selected.png`). Os componentes estão em `ui/components/<grupo>/` e o manifesto traz as bordas 9-slice de cada peça que estica. Onde cada peça entra no HUD das Fases 3 a 7:
+
+| Objeto do HUD | Componente (`ui/components/…`) | Image Type |
+|---|---|---|
+| `SidePanel`, `MoneyPanel`, `CarPit_0/1` (fundo) | `panels/panel_cream` | Sliced |
+| `LapText` (faixa atrás do texto) | `headers/header_green` (a bandeira quadriculada fica à direita) | Simple, **Preserve Aspect** |
+| Linha do jogador na tabela (opcional) | `panels/row_player_split` | Simple |
+| `BoxButton` | `box_buttons/box_button_green` (carro 1) e `box_button_red` (carro 2) | Sliced |
+| `CompoundButton` | `buttons_small/button_cream` + selo `tyre_badges/tyre_badge_soft`, `_medium` ou `_hard` | Sliced |
+| `WearBar` (fundo) / `Fill` | `wear_bars/wear_bar_empty` / `wear_bars/wear_bar_yellow` | Simple / **Filled Horizontal** |
+| Ícone de cada piloto | `helmets/helmet_green` e `helmet_red` | Simple, Preserve Aspect |
+| `Upgrade_*` (fundo do botão) | `upgrade_rows/upgrade_row_engineering`, `_marketing`, `_pitcrew`, `_driver` | Simple |
+| `Upgrade_*` sem dinheiro | `upgrade_rows/upgrade_row_locked` como **Disabled Sprite** do Button | — |
+| Ícone ao lado de `MoneyText` | `icons/icon_money` | Simple, Preserve Aspect |
+| `ContinueButton` (tela da temporada) | `big_buttons/big_button_green` | Sliced |
+| `SeasonPanel` (fundo) | `track/map_background` (o papel creme) | Tiled |
+
+> Os cards de upgrade já trazem desenhada uma barra de nível. Ela é decorativa: o nível real continua no texto `Level` do `UpgradeButton`. Se a barra confundir, use `buttons_small/button_cream` com o ícone correspondente de `icons/` por cima.
+
+**Importar a UI:**
+1. Copie `ui/components/` para `Assets/_Project/Sprites/UI/`. `ui/concept_selected.png` e `ui/component_sheet.png` são só referência e ficam fora do projeto.
+2. Selecione todos os PNGs de `UI/` → **Texture Type** = `Sprite (2D and UI)` → **Apply**.
+3. Para cada peça marcada como **Sliced** na tabela: abra o **Sprite Editor** (botão no Inspector da textura), arraste as linhas verdes de borda (ou digite **Border** L/T/R/B) com os valores de `nine_slice` do manifesto `spritecook-assets.json` (ex.: `panel_cream` = 18 em todos os lados) → **Apply**. Sem isso, os cantos arredondados esticam.
+4. Em cada `Image` do HUD, troque **Source Image** pela peça da tabela e ajuste **Image Type**. Volte a **Color** das imagens para branco: as cores agora vêm da arte. Textos sobre fundo creme ficam em `#14171C`; sobre verde ou vermelho, em creme `#EFE6D2`.
+5. `UpgradeButton` sem dinheiro: no componente **Button**, mude **Transition** para `Sprite Swap` e ponha `upgrade_row_locked` em **Disabled Sprite**. O script já liga e desliga `interactable` (Fase 5).
+
+> **Correções locais:** 9 ícones de `icons/` e os 2 capacetes foram corrigidos à mão depois da geração. A limpeza automática do SpriteCook apagou o miolo dos ícones e deixou o fundo creme nos capacetes. Os arquivos deste repositório já estão corretos; o manifesto marca quais são (`local_fix`). O selo `tyre_badge_hard` e o `icon_money` foram gerados à parte, depois do kit, no mesmo estilo; os originais estão em `ui/source/`.
+
+**Importar os sprites do mapa:**
+1. No Explorer, copie as pastas `cars/` e `track/` de `Sprites/PaddockBoss/` (do repositório de GDDs) para `Assets/_Project/Sprites/` do projeto Unity. A pasta `source/` e o JSON ficam de fora.
+2. Na Project, selecione **todos** os PNGs de `cars/` (Ctrl+clique). No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Single`, **Pixels Per Unit** = `1200`, **Apply**. Com 1200, o carro tem cerca de 0,8 unidade de comprimento, o mesmo das cápsulas provisórias. Carro e contorno precisam do **mesmo** valor, ou o contorno não encaixa.
+3. `track/start_line.png`: **Texture Type** = `Sprite (2D and UI)`, **Pixels Per Unit** = `590` (a faixa fica com 1,6 unidade, a largura da pista), **Apply**.
+4. `track/map_background.png`: **Texture Type** = `Sprite (2D and UI)`, **Mesh Type** = `Full Rect` (exigido para repetir o sprite), **Wrap Mode** = `Repeat`, **Pixels Per Unit** = `128` (cada repetição mede 8 unidades), **Apply**.
+
+**Trocar os placeholders:**
+5. Dê duplo clique no prefab `Prefabs/CarMarker` (abre o modo de edição de prefab).
+   - `Body`: **Sprite** = `car60s_white_v1` (ou v2), **Scale** = (1, 1, 1), **Color** = branco (o script tinge na largada).
+   - `Highlight`: **Sprite** = `car60s_highlight_v1` (mesma variação), **Scale** = (1, 1, 1), **Color** = `#14171C`. O contorno quase preto se destaca no papel creme, com cara de impresso. O amarelo da Fase 3 some em carros de cores claras.
+   - `Label`: a inicial do piloto passa a ficar sobre o capacete. Se atrapalhar, mude **Font Size** para `2` ou desative o objeto.
+   - Saia pela seta **<** no topo da Hierarchy; o prefab salva sozinho.
+6. `StartLine` (em `[World]`): **Sprite** = `start_line`, **Scale** = (1, 1, 1), **Color** = branco.
+7. Fundo: botão direito em `[World]` → **2D Object → Sprites → Square** → `Background`. **Sprite** = `map_background`, **Draw Mode** = `Tiled`, **Size** = (200, 200), **Order in Layer** = `-10`, **Position** = (0, 0, 0). Ele cobre toda a área que a câmera pode mostrar.
+8. `Main Camera` → **Environment → Background** = `#EFE6D2` (creme). Assim, se a câmera passar da borda do fundo, a cor continua a mesma.
+9. Fonte: **Window → TextMeshPro → Font Asset Creator** → **Source Font File** = a fonte TTF da identidade (tipografia **Em aberto**; uma sem serifa geométrica ou condensada combina com cartazes de corrida dos anos 60) → **Character Set** = `Extended ASCII` (cobre é, ã, ç) → **Generate Font Atlas** → **Save**. Troque o **Font Asset** dos textos.
 
 #### 🧪 Teste rápido
-Aperte ▶: cada carro aparece com o ícone novo, tingido com a cor da sua equipe e com o tamanho parecido com o das cápsulas. Os acentos dos nomes aparecem corretamente.
+Aperte ▶. O mapa aparece em papel creme. Os carros são F1 anos 60 tingidos com a cor de cada equipe, do tamanho das antigas cápsulas, e os do jogador têm contorno escuro bem encaixado. A largada é uma faixa quadriculada atravessada na pista. Os acentos dos nomes aparecem corretamente.
 
 ### ✅ Checkpoint da Fase 8
 - A pista sempre cabe no espaço livre em 16:9, 21:9 e no celular em paisagem.
@@ -3220,6 +3261,8 @@ Aperte ▶: cada carro aparece com o ícone novo, tingido com a cor da sua equip
 #### Problemas comuns
 - **A pista fica por baixo do painel:** **Right Panel Fraction** menor que a largura real do painel. Aumente até sobrar uma margem.
 - **Os carros ficaram enormes ou minúsculos com o sprite novo:** é o **Pixels Per Unit** da importação, não a escala do prefab.
+- **O contorno do jogador não encaixa no carro:** carro e contorno são de variações diferentes (v1 com v2) ou foram importados com Pixels Per Unit diferentes.
+- **O fundo aparece esticado em vez de repetido, com um aviso amarelo no Sprite Renderer:** o `map_background` não está com **Mesh Type** = `Full Rect`.
 - **Quadrados no lugar de letras acentuadas:** o Font Asset foi gerado só com ASCII. Gere de novo com `Extended ASCII`.
 
 Próxima fase: **Testes automáticos** — proteger as regras do jogo antes de mexer no balanceamento.
