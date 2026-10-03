@@ -215,7 +215,12 @@ Moedas de uma Run = **dano + tempo + sobreviventes + vitória**. Todas as parcel
 
 ## 10. Estilo Visual
 
-- **Definido:** pixel art do pack **Tiny Swords** (Pixel Frog): cavaleiros do jogador (Guerreiro, Arqueiro, Bombardeiro, Peão) dos sheets de facção, criaturas do *Enemy Pack* (Gnoll faz o Orc Grande; Lagarto, Urso, Minotauro, Troll), torres e castelo das construções.
+- **Protótipo:** pixel art do pack **Tiny Swords** (Pixel Frog): cavaleiros do jogador (Guerreiro, Arqueiro, Bombardeiro, Peão) dos sheets de facção, criaturas do *Enemy Pack* (Gnoll faz o Orc Grande; Lagarto, Urso, Minotauro, Troll), torres e castelo das construções.
+- **Definido (port Unity):** arte própria em pixel art gerada no **PixelLab**, numa fantasia leve na pegada **MapleStory**: personagens chibi (cabeça grande, olhos grandes, rosto à mostra), cores vivas e claras, sombreamento suave e contorno seletivo; construções de conto de fadas com telhados coloridos. Vista lateral, guardada em `Sprites/EvilEnemyDefense/` (ids em `pixellab-assets.json`; como gerar mais em `PENDENTES.md`).
+  - As unidades do jogador são aventureiros com azul na roupa.
+  - A Guarnição é goblin, orc, lagarto, urso, minotauro, troll e quatro torres mais o castelo.
+  - Todos os personagens olham para a direita; o jogo espelha quem precisa olhar para a esquerda.
+  - Unidades têm caminhada e ataque; criaturas têm parado e ataque (Goblin, Orc e Minotauro também caminhada); construções são imagens únicas.
 - **Definido:** resolução interna **320×180**, ampliada em escala inteira com filtro de pixel (sem suavização).
 - **Definido:** céu azul liso, chão verde com uma linha escura no horizonte. Os Defensores maiores são desenhados primeiro, para o castelo não cobrir as criaturas à frente dele.
 - **Definido:** as Unidades se espalham em 5 "profundidades" derivadas do id, para a coluna não virar uma fila de um pixel, e cada uma tem a animação deslocada no tempo para não andarem em passo sincronizado.
@@ -341,7 +346,7 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 | `Game` | `BattleRunner`, `BattleTestStarter` | Tick fixo na cena; Run de teste (desativada na Fase 5) | 2 |
 | `Game` | `CoinCalculator`, `PlayerState`, `Progression`, `SaveService` | Moedas, compras e save | 3 |
 | `Data` | `SpriteAnimation`, `VisualCatalog` | Animações e aparência por Tipo/Forma | 4 |
-| `EditorTools` | `SpriteAnimationMaker` | Cria animações a partir de sprites selecionados | 4 |
+| `EditorTools` | `PixelLabSpriteImporter`, `VisualCatalogBuilder`, `SpriteAnimationMaker` | Importa e recorta a arte; monta animações e catálogo; cria animação avulsa | 4 |
 | `View` | `SpriteAnimPlayer`, `HpBar`, `UnitView`, `DefenderView`, `BattleView`, `BattleHud` | A batalha na tela | 4 |
 | `UI` | `MenuItem`, `MenuRow`, `MenuList` | O menu estilo FF com cursor | 5 |
 | `Game`/`UI` | `GameSession`, `StageSelectScreen`, `ShopScreen`, `ArmyBuilderScreen`, `BattleScreen` | Telas e fluxo | 5 |
@@ -356,7 +361,7 @@ Todo script do guia é **completo**: crie o arquivo, apague o conteúdo que a Un
 | 1 | 4 | Dados | 1A tipos base · 1B definições · 1C dados iniciais |
 | 2 | 5 | Simulação da Run | 2A estado · 2B tick · 2C Run de teste com Gizmos |
 | 3 | 6 | Moedas, progressão e save | 3A Moedas · 3B progressão · 3C save |
-| 4 | 7 | A batalha na tela | 4A sprites · 4B animação · 4C views · 4D HUD |
+| 4 | 7 | A batalha na tela | 4A trazer os sprites · 4B animações e catálogo · 4C views · 4D HUD |
 | 5 | 8 | Menus estilo FF e fluxo | 5A visual FF · 5B menu com cursor · 5C telas · 5D fluxo completo |
 | 6 | 9 | Testes automáticos | 6A assemblies · 6B testes · 6C rodar |
 | 7 | 10 | Build e próximos passos | — |
@@ -1822,7 +1827,7 @@ Aperte ▶ com os 6 Guerreiros juntos no Acampamento Goblin. O total tem que inc
 - **`The type or namespace name 'Sim' could not be found`:** falta `using EvilEnemyDefense.Sim;` no topo do arquivo.
 - **Valores diferentes dos do protótipo por 1 Moeda:** algum cálculo usou `Mathf.RoundToInt` em vez de `MathUtil.RoundHalfUp`.
 
-Próxima fase: **a batalha na tela**, com os sprites do Tiny Swords no lugar dos Gizmos.
+Próxima fase: **a batalha na tela**, com os sprites do PixelLab no lugar dos Gizmos.
 
 ---
 
@@ -1830,7 +1835,7 @@ Próxima fase: **a batalha na tela**, com os sprites do Tiny Swords no lugar dos
 
 ## Fase 4 — A batalha na tela
 
-> Objetivo desta fase: a Run de teste aparece com os sprites animados do Tiny Swords, barras de HP, o piscar vermelho de dano e o HUD da Parte 1 §11.
+> Objetivo desta fase: a Run de teste aparece com os sprites animados (PixelLab), barras de HP, o piscar vermelho de dano e o HUD da Parte 1 §11.
 
 **Conceitos novos:**
 - **Sprite e spritesheet:** um *sprite* é uma imagem 2D pronta para a cena. Um *spritesheet* é uma imagem com vários quadros; no Inspector da textura, **Sprite Mode = Multiple** e o **Sprite Editor** a cortam em vários sprites.
@@ -1841,27 +1846,192 @@ Próxima fase: **a batalha na tela**, com os sprites do Tiny Swords no lugar dos
 - **`LateUpdate`:** chamado depois de todos os `Update` do quadro. O render lê o estado no `LateUpdate`, quando a simulação daquele quadro já rodou.
 - **uGUI, Canvas e TextMeshPro:** a interface da Unity. Um **Canvas** contém os elementos de tela; o **Canvas Scaler** ajusta o tamanho a qualquer resolução; **TextMeshPro** (TMP) é o componente de texto.
 
-### Etapa 4A — Importar os sprites
+### Etapa 4A — Trazer os sprites para o projeto
 
-O protótipo já tem os PNGs do Tiny Swords recortados e renomeados em `public/sprites/` (o pack original é da Pixel Frog; confira a licença dele antes de publicar).
+A arte do jogo já está pronta e versionada **neste repositório de GDDs**, na pasta `Sprites/EvilEnemyDefense/`. É pixel art chibi na pegada MapleStory, gerada no PixelLab (Parte 1 §10). Três pastas vão para o Unity:
 
-1. Copie todos os arquivos de `public/sprites/` do repositório do protótipo para `Assets/_Project/Art/Sprites/`.
-2. Na Project, selecione todos os PNGs dessa pasta (clique no primeiro, **Shift**+clique no último). No Inspector: **Texture Type** = `Sprite (2D and UI)`, **Sprite Mode** = `Multiple`, **Pixels Per Unit** = `64`, **Filter Mode** = `Point (no filter)`, **Compression** = `None`. **Apply**.
-3. Selecione só `tower`, `tower_blue`, `tower_purple` e `castle` e mude **Sprite Mode** para `Single`, **Pivot** = `Bottom`. **Apply**. São imagens únicas.
-4. Para cada um dos outros PNGs: selecione, clique **Open Sprite Editor** → menu **Slice** → **Type** = `Grid By Cell Size`, **Pixel Size** conforme a tabela abaixo, **Pivot** = `Bottom` → **Slice** → **Apply** (canto superior direito) e feche.
+| Pasta | Conteúdo | Exemplo |
+|---|---|---|
+| `units/` | a pose parada de cada Unidade do jogador (imagem única, 64 × 64) | `warrior.png` |
+| `garrison/` | a pose de cada criatura e as 5 construções (imagem única) | `goblin.png`, `castle.png` |
+| `anims/` | uma **sheet** por animação: os quadros lado a lado, todos do mesmo tamanho quadrado, com os pés na última linha | `warrior_walk.png` (8 quadros), `warrior_attack.png` (9) |
 
-| Tamanho do quadro | Arquivos |
+Cada arquivo se chama `<id do jogo>_<animação>.png`, com o mesmo id dos assets da Fase 1 (`warrior`, `great-orc`, `tower-blue`...). As ferramentas desta etapa e da próxima dependem disso: **não renomeie os arquivos**.
+
+**Conceitos novos desta etapa:**
+- **`TextureImporter`:** as configurações de importação de uma imagem, as mesmas que o Inspector mostra ao selecionar um PNG. Mudá-las por código e chamar `SaveAndReimport()` equivale a mudar no Inspector e clicar **Apply**.
+- **Sprite Data Provider:** a API do pacote **2D Sprite** (já vem no template Universal 2D) que lê e grava os recortes de uma sheet. Faz o mesmo que o botão **Slice** do **Sprite Editor**.
+
+**1. Baixar a arte.** Escolha um jeito:
+- **Com Git:** se você já tem este repositório clonado (`git clone https://github.com/Manguebyte/gdd`), a pasta está em `gdd/Sprites/EvilEnemyDefense/`.
+- **Sem Git:** abra o repositório no GitHub, clique **Code → Download ZIP**, extraia e entre em `Sprites/EvilEnemyDefense/`.
+
+**2. Copiar para o projeto Unity.**
+1. Na janela **Project** da Unity, entre em `Assets/_Project/Art/Sprites/` (criada na Fase 0).
+2. No Explorador de Arquivos do Windows, selecione as pastas `units`, `garrison` e `anims` e **arraste-as para a janela Project**, em cima de `Sprites`. A Unity copia e importa os arquivos; a barra de progresso aparece no canto inferior direito.
+3. Confira na Project: `Assets/_Project/Art/Sprites/units/` com 6 imagens, `.../garrison/` com 11 e `.../anims/` com 27.
+
+> **Não copie** as pastas `_tools` e `_preview` nem os arquivos `.md` e `.json`. São ferramentas e anotações de produção da arte, não fazem parte do jogo.
+
+**3. Configurar a importação e recortar as sheets.** Recém-copiadas, as imagens chegam como textura comum, suavizada e inteira. Cada uma precisa virar **Sprite** com filtro de pixel, e cada sheet precisa ser **recortada** nos seus quadros. São 44 arquivos; a ferramenta abaixo faz tudo de uma vez.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Editor/PixelLabSpriteImporter.cs
+using System.Collections.Generic;
+using System.IO;
+using UnityEditor;
+using UnityEditor.U2D.Sprites;
+using UnityEngine;
+
+namespace EvilEnemyDefense.EditorTools
+{
+    // POR QUE: 44 imagens precisam das mesmas configurações de importação e
+    // 27 sheets precisam ser recortadas em quadros. À mão, são vários cliques
+    // por arquivo, e um tamanho de quadro errado estraga a animação.
+    // ESTRATÉGIA: percorre Art/Sprites. Toda imagem vira Sprite com filtro de
+    // pixel, sem compressão e com 2 pixels por unidade. Imagens de units/ e
+    // garrison/ viram um sprite só, com pivot nos pés. Imagens de anims/ são
+    // recortadas em quadros quadrados com o lado igual à altura da imagem (é
+    // assim que as sheets foram montadas), também com pivot nos pés. Rodar de
+    // novo reaproveita os ids dos recortes, então as animações que apontam
+    // para eles continuam funcionando.
+    public static class PixelLabSpriteImporter
+    {
+        public const string Root = "Assets/_Project/Art/Sprites";
+        private const float PixelsPerUnit = 2f;
+
+        [MenuItem("EED/Importar sprites do PixelLab")]
+        public static void ImportAll()
+        {
+            int singles = 0;
+            int sheets = 0;
+            foreach (string guid in AssetDatabase.FindAssets("t:Texture2D", new[] { Root }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                bool isSheet = path.Contains("/anims/");
+                ApplySettings(importer, isSheet);
+                importer.SaveAndReimport();
+                if (isSheet)
+                {
+                    Slice(importer, path);
+                    sheets++;
+                }
+                else
+                {
+                    singles++;
+                }
+            }
+            AssetDatabase.SaveAssets();
+            Debug.Log($"EED: {singles} imagens únicas e {sheets} sheets importadas em {Root}.");
+        }
+
+        // As configurações que você escolheria no Inspector.
+        private static void ApplySettings(TextureImporter importer, bool isSheet)
+        {
+            importer.textureType = TextureImporterType.Sprite;
+            importer.spriteImportMode = isSheet ? SpriteImportMode.Multiple : SpriteImportMode.Single;
+            importer.spritePixelsPerUnit = PixelsPerUnit;
+            importer.filterMode = FilterMode.Point;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.mipmapEnabled = false;
+            importer.alphaIsTransparency = true;
+            importer.maxTextureSize = 2048;
+
+            // Imagem única: pivot embaixo, no meio (os pés).
+            var settings = new TextureImporterSettings();
+            importer.ReadTextureSettings(settings);
+            settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
+            importer.SetTextureSettings(settings);
+        }
+
+        // Recorta a sheet em quadros quadrados (lado = altura da imagem).
+        private static void Slice(TextureImporter importer, string path)
+        {
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            int size = texture.height;
+            int count = texture.width / size;
+            string baseName = Path.GetFileNameWithoutExtension(path);
+
+            var factory = new SpriteDataProviderFactories();
+            factory.Init();
+            var provider = factory.GetSpriteEditorDataProviderFromObject(importer);
+            provider.InitSpriteEditorDataProvider();
+
+            // Reaproveita o id dos recortes que já existiam com o mesmo nome.
+            var existing = new Dictionary<string, GUID>();
+            foreach (var old in provider.GetSpriteRects()) existing[old.name] = old.spriteID;
+
+            var rects = new List<SpriteRect>();
+            var names = new List<SpriteNameFileIdPair>();
+            for (int i = 0; i < count; i++)
+            {
+                string name = $"{baseName}_{i}";
+                var rect = new SpriteRect
+                {
+                    name = name,
+                    rect = new Rect(i * size, 0, size, size),
+                    alignment = SpriteAlignment.BottomCenter,
+                    pivot = new Vector2(0.5f, 0f),
+                    spriteID = existing.TryGetValue(name, out var id) ? id : GUID.Generate(),
+                };
+                rects.Add(rect);
+                names.Add(new SpriteNameFileIdPair(rect.name, rect.spriteID));
+            }
+
+            provider.SetSpriteRects(rects.ToArray());
+            provider.GetDataProvider<ISpriteNameFileIdDataProvider>().SetNameFileIdPairs(names);
+            provider.Apply();
+            importer.SaveAndReimport();
+        }
+    }
+}
+```
+
+1. Crie o script em `Assets/_Project/Scripts/Editor/` e espere compilar.
+2. Na barra de menus: **EED → Importar sprites do PixelLab**. Leva alguns segundos; o Console mostra `EED: 17 imagens únicas e 27 sheets importadas...`.
+
+> **Por que Pixels Per Unit = 2?** Com 2 pixels por unidade do campo, a altura de cada quadro em unidades é metade da altura em pixels. Assim os tamanhos relativos do PixelLab (goblin pequeno, troll enorme) viram direto as alturas do Visual Catalog da Etapa 4B. O `SpriteAnimPlayer` ajusta a escala pela **Height** do catálogo de qualquer jeito; o PPU só precisa ser o mesmo em todas as imagens.
+
+<details>
+<summary><b>Alternativa: configurar e recortar à mão</b></summary>
+
+1. Selecione todos os PNGs das três pastas. No Inspector:
+   - **Texture Type** = `Sprite (2D and UI)`;
+   - **Sprite Mode** = `Multiple`;
+   - **Pixels Per Unit** = `2`;
+   - **Filter Mode** = `Point (no filter)`;
+   - **Compression** = `None`.
+
+   **Apply**.
+2. Selecione as imagens de `units/` e `garrison/` e mude **Sprite Mode** para `Single` e **Pivot** para `Bottom`. **Apply**.
+3. Para cada sheet de `anims/`:
+   - **Open Sprite Editor** → **Slice**;
+   - **Type** = `Grid By Cell Size`;
+   - **Pixel Size** = o quadro da tabela abaixo, nos dois eixos;
+   - **Pivot** = `Bottom` → **Slice** → **Apply**.
+
+| Quadro (px) | Personagens |
 |---|---|
-| 192 × 192 | `warrior`, `archer`, `bomber`, `pawn`, `goblin`, `gnoll_*`, `lizard_*`, `thief_*` |
-| 256 × 256 | `lancer_*`, `bear_*` |
-| 320 × 320 | `minotaur_*` |
-| 384 × 384 | `troll_*` |
-| 128 × 192 | `wood_tower` |
+| 80 | `goblin` |
+| 84 | `warrior`, `bomber`, `pawn`, `lancer`, `thief` |
+| 88 | `archer` |
+| 108 | `lizard` |
+| 124 | `great-orc` |
+| 148 | `bear` |
+| 172 | `minotaur`, `troll` |
 
-> **Por que o Pixels Per Unit não importa muito aqui?** Cada personagem é redimensionado por código para a altura certa em unidades do campo (Etapa 4C). O PPU só precisa ser o mesmo em todos os sheets.
+</details>
 
 ### 🧪 Teste rápido
-Clique na setinha ao lado de `warrior` na Project: ela abre e mostra os quadros recortados (`warrior_0`, `warrior_1`...). Os sheets dos cavaleiros têm várias linhas: a primeira linha é "parado", a segunda "andando", a terceira "atacando".
+- Clique em `anims/warrior_attack` na Project. O Inspector mostra **Sprite Mode** `Multiple`, **Pixels Per Unit** `2` e **Filter Mode** `Point`.
+- Clique na setinha ao lado dele. Aparecem 9 quadros (`warrior_attack_0` a `_8`) com o golpe de espada; em `warrior_walk`, 8.
+- Selecione `garrison/castle`. O preview mostra o castelo inteiro, nítido e sem borrão. No Sprite Editor, o pivot (círculo azul) fica embaixo, no meio.
+
+#### Problemas comuns
+- **Erro `The type or namespace name 'U2D' does not exist`:** falta o pacote **2D Sprite**. Abra **Window → Package Manager → Unity Registry**, procure `2D Sprite` e clique **Install**.
+- **Os sprites aparecem borrados:** o **Filter Mode** não ficou `Point`. Rode a ferramenta de novo.
+- **Uma sheet virou um quadro só:** ela não está dentro de uma pasta chamada exatamente `anims`.
 
 ### Etapa 4B — Animação por sprites
 
@@ -1953,7 +2123,7 @@ namespace EvilEnemyDefense.Data
 }
 ```
 
-Criar 33 assets de animação arrastando sprites um a um é lento. A ferramenta abaixo cria uma animação a partir dos quadros que você selecionar na Project.
+Para criar uma animação avulsa a partir de quadros que você selecionar na Project (útil quando chegar arte nova fora do padrão de nomes), esta ferramenta pequena ajuda. Para o elenco inteiro, use a ferramenta seguinte, que faz tudo de uma vez.
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Editor/SpriteAnimationMaker.cs
@@ -2022,41 +2192,232 @@ namespace EvilEnemyDefense.EditorTools
 }
 ```
 
-Crie as animações. Para cada linha da tabela: na Project, abra a setinha da textura, clique no primeiro quadro, **Shift**+clique no último, botão direito → **EED → Criar animação com os sprites selecionados**, salve com o nome indicado e ajuste o **Fps** do asset criado. Em sheets de uma animação só (`bear_idle`, por exemplo), basta selecionar a textura inteira.
+Com os sprites recortados, faltam dois passos:
+- criar um asset `SpriteAnimation` para cada sheet;
+- preencher o `VisualCatalog` com a animação e a altura de cada Tipo e cada Forma.
 
-| Animação | Quadros | Fps |
-|---|---|---|
-| `warrior_idle` / `_walk` / `_attack` | `warrior` linha 1 (6) / linha 2 (6) / linha 3 (6) | 10 |
-| `archer_idle` / `_walk` / `_attack` | `archer` linha 1 (6) / linha 2 (6) / linha 3 (8) | 10 |
-| `bomber_idle` / `_walk` / `_attack` | `bomber` linha 1 (6) / linha 2 (6) / linha 3 (7) | 10 |
-| `pawn_idle` / `_walk` / `_attack` | `pawn` linha 1 (6) / linha 2 (6) / linha 3 (6) | 10 |
-| `lancer_idle` / `_walk` / `_attack` | `lancer_idle` (7) / `lancer_walk` (6) / `lancer_attack` (8) | 10 |
-| `thief_idle` / `_walk` / `_attack` | `thief_idle` (6) / `thief_walk` (6) / `thief_attack` (6) | 10 / 14 / 14 |
-| `goblin_idle` / `_walk` / `_attack` | `goblin` linha 1 (7) / linha 2 (6) / linha 3 (6) | 10 |
-| `orc_idle` / `_walk` / `_attack` | `gnoll_idle` (6) / `gnoll_walk` (8) / `gnoll_attack` (8) | 8 / 10 / 12 |
-| `lizard_idle` / `_walk` / `_attack` | `lizard_idle` (7) / `lizard_walk` (6) / `lizard_attack` (9) | 8 / 10 / 12 |
-| `bear_idle` / `_walk` / `_attack` | `bear_idle` (8) / `bear_walk` (5) / `bear_attack` (9) | 8 / 10 / 12 |
-| `minotaur_idle` / `_walk` / `_attack` | `minotaur_idle` (16) / `minotaur_walk` (8) / `minotaur_attack` (12) | 10 / 10 / 12 |
-| `troll_idle` / `_walk` / `_attack` | `troll_idle` (12) / `troll_walk` (10) / `troll_attack` (6) | 8 |
-| `wood_tower` | `wood_tower` (8) — usada como parada e como ataque | 8 |
-| `tower`, `tower_blue`, `tower_purple`, `castle` | a imagem única (1 quadro) | 1 |
+São 33 animações e 17 entradas de catálogo. A ferramenta abaixo faz tudo a partir dos nomes dos arquivos.
 
-> **Linhas dos cavaleiros:** a ordem "parado, andando, atacando" é a suposição do protótipo sobre o layout do pack (Parte 1 §16). Se uma animação parecer errada no Play, recrie-a com outra linha.
+```csharp
+// Caminho: Assets/_Project/Scripts/Editor/VisualCatalogBuilder.cs
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+using EvilEnemyDefense.Data;
+using UnityEditor;
+using UnityEngine;
 
-Agora o catálogo:
+namespace EvilEnemyDefense.EditorTools
+{
+    // POR QUE: liga a arte às regras. Cada Tipo de Unidade e cada Forma de
+    // Defensor (assets da Fase 1) precisa de animações e de uma altura no
+    // VisualCatalog. Com os arquivos nomeados "<id>_<animação>.png", isso
+    // dispensa qualquer escolha manual.
+    // ESTRATÉGIA: para cada id, procura as sheets walk/attack/idle em
+    // Art/Sprites/anims e cria (ou atualiza) um SpriteAnimation em Data/Anims
+    // com o fps daquele tipo de animação. Unidades usam a walk também como
+    // idle; criaturas sem walk usam a idle; construções (sem sheet) usam a
+    // imagem única de garrison/ como animação de 1 quadro. A altura é a do
+    // quadro em unidades do campo (pixels ÷ Pixels Per Unit). Rodar de novo
+    // reescreve o catálogo inteiro.
+    public static class VisualCatalogBuilder
+    {
+        private const string AnimFolder = "Assets/_Project/Data/Anims";
+        private const string CatalogPath = "Assets/_Project/Data/VisualCatalog.asset";
+        private const string DatabasePath = "Assets/_Project/Data/GameDatabase.asset";
 
-1. Botão direito em `Data` → **Create → EED → Visual Catalog**.
-2. Em **Units**, adicione 6 itens (um por Tipo) com **Type**, as três animações e **Height** = `33`. Escolha uma **Hud Color** clara para cada um (o protótipo usa branco, rosa, bege, azul-claro, azul e lilás).
-3. Em **Forms**, adicione 11 itens com **Form**, as animações (construções de pedra usam a mesma imagem nos três campos; a torre de madeira usa `wood_tower` em idle e attack) e **Height**:
+        private static readonly Dictionary<string, float> Fps = new Dictionary<string, float>
+        {
+            { "walk", 10f },
+            { "attack", 12f },
+            { "idle", 6f },
+        };
 
-| Forma | Height | Forma | Height |
+        // Cores do contador do HUD, na ordem da loja (as do protótipo).
+        private static readonly Color[] HudColors =
+        {
+            new Color(0.99f, 0.99f, 0.99f),
+            new Color(0.99f, 0.74f, 0.69f),
+            new Color(0.85f, 0.69f, 0.44f),
+            new Color(0.78f, 0.85f, 0.94f),
+            new Color(0.63f, 0.75f, 1f),
+            new Color(0.82f, 0.63f, 0.82f),
+        };
+
+        [MenuItem("EED/Montar animações e catálogo visual")]
+        public static void Build()
+        {
+            if (!AssetDatabase.IsValidFolder(AnimFolder)) AssetDatabase.CreateFolder("Assets/_Project/Data", "Anims");
+            var db = AssetDatabase.LoadAssetAtPath<GameDatabase>(DatabasePath);
+            if (db == null)
+            {
+                Debug.LogError("EED: GameDatabase não encontrado. Rode antes EED → Criar ou atualizar dados iniciais (Fase 1).");
+                return;
+            }
+
+            var catalog = LoadOrCreate<VisualCatalog>(CatalogPath);
+            catalog.units.Clear();
+            catalog.forms.Clear();
+            var missing = new List<string>();
+
+            for (int i = 0; i < db.unitTypes.Count; i++)
+            {
+                var type = db.unitTypes[i];
+                var walk = Anim(type.id, "walk");
+                var attack = Anim(type.id, "attack");
+                if (walk == null || attack == null) missing.Add(type.id);
+                catalog.units.Add(new VisualCatalog.UnitVisual
+                {
+                    type = type,
+                    anims = new SpriteAnimSet { idle = walk, walk = walk, attack = attack },
+                    height = HeightOf(walk != null ? walk : attack, 42f),
+                    hudColor = HudColors[i % HudColors.Length],
+                });
+            }
+
+            foreach (var form in AllForms())
+            {
+                var idle = Anim(form.id, "idle");
+                var attack = Anim(form.id, "attack");
+                var walk = Anim(form.id, "walk");
+                if (idle == null && attack == null)
+                {
+                    // Construção: uma imagem só serve para tudo.
+                    idle = attack = walk = Still(form.id);
+                }
+                if (idle == null) missing.Add(form.id);
+                catalog.forms.Add(new VisualCatalog.FormVisual
+                {
+                    form = form,
+                    anims = new SpriteAnimSet
+                    {
+                        idle = idle,
+                        attack = attack != null ? attack : idle,
+                        walk = walk != null ? walk : idle,
+                    },
+                    height = HeightOf(idle, 60f),
+                });
+            }
+
+            EditorUtility.SetDirty(catalog);
+            AssetDatabase.SaveAssets();
+            Selection.activeObject = catalog;
+            Debug.Log($"EED: catálogo com {catalog.units.Count} Tipos e {catalog.forms.Count} Formas." +
+                      (missing.Count > 0 ? $" Sem arte: {string.Join(", ", missing)}" : ""));
+        }
+
+        // A animação "<id>_<tipo>" a partir da sheet recortada, ou null se ela não existir.
+        private static SpriteAnimation Anim(string id, string kind)
+        {
+            string path = $"{PixelLabSpriteImporter.Root}/anims/{id}_{kind}.png";
+            var frames = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Sprite>()
+                .OrderBy(s => TrailingNumber(s.name)).ToArray();
+            return frames.Length == 0 ? null : Save($"{id}_{kind}", frames, Fps[kind]);
+        }
+
+        // Animação de 1 quadro com a imagem única de garrison/ (construções).
+        private static SpriteAnimation Still(string id)
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>($"{PixelLabSpriteImporter.Root}/garrison/{id}.png");
+            return sprite == null ? null : Save($"{id}_still", new[] { sprite }, 1f);
+        }
+
+        // Cria ou atualiza o asset de animação.
+        private static SpriteAnimation Save(string name, Sprite[] frames, float fps)
+        {
+            var anim = LoadOrCreate<SpriteAnimation>($"{AnimFolder}/{name}.asset");
+            anim.frames = frames;
+            anim.fps = fps;
+            EditorUtility.SetDirty(anim);
+            return anim;
+        }
+
+        // Altura do quadro em unidades do campo (pixels ÷ Pixels Per Unit).
+        private static float HeightOf(SpriteAnimation anim, float fallback)
+        {
+            if (anim == null || anim.frames.Length == 0) return fallback;
+            var sprite = anim.frames[0];
+            return sprite.rect.height / sprite.pixelsPerUnit;
+        }
+
+        // Todas as Formas de Defensor do projeto.
+        private static IEnumerable<DefenderFormDefinition> AllForms() =>
+            AssetDatabase.FindAssets("t:DefenderFormDefinition")
+                .Select(g => AssetDatabase.LoadAssetAtPath<DefenderFormDefinition>(AssetDatabase.GUIDToAssetPath(g)))
+                .OrderBy(f => f.id);
+
+        // Carrega o asset ou cria um novo no caminho.
+        private static T LoadOrCreate<T>(string path) where T : ScriptableObject
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(path);
+            if (asset != null) return asset;
+            asset = ScriptableObject.CreateInstance<T>();
+            AssetDatabase.CreateAsset(asset, path);
+            return asset;
+        }
+
+        // "warrior_attack_12" → 12.
+        private static int TrailingNumber(string name)
+        {
+            var match = Regex.Match(name, @"(\d+)$");
+            return match.Success ? int.Parse(match.Value) : 0;
+        }
+    }
+}
+```
+
+1. Crie o script em `Assets/_Project/Scripts/Editor/` e espere compilar.
+2. **EED → Montar animações e catálogo visual**. O Console mostra `EED: catálogo com 6 Tipos e 11 Formas.` e o `VisualCatalog` fica selecionado.
+3. Confira no Inspector do catálogo:
+   - em **Units**, `warrior` tem **Walk** = `warrior_walk`, **Attack** = `warrior_attack` e **Height** `42`;
+   - em **Forms**, `castle` tem as três animações = `castle_still` e **Height** `128`.
+
+O que a ferramenta decide, para referência:
+
+| Animação | Quadros | Fps | Quem tem |
 |---|---|---|---|
-| goblin | 38 | wood-tower | 69 |
-| great-orc | 49 | tower | 79 |
-| lizard | 44 | tower-blue | 85 |
-| bear | 54 | tower-purple | 90 |
-| minotaur | 64 | castle | 103 |
-| troll | 77 | | |
+| `<id>_walk` | 8 | 10 | as 6 unidades, `goblin`, `great-orc`, `minotaur` |
+| `<id>_attack` | 9 | 12 | todos os 12 personagens |
+| `<id>_idle` | 4 | 6 | `goblin`, `great-orc`, `lizard`, `bear`, `minotaur`, `troll` |
+| `<id>_still` | 1 | 1 | as 5 construções |
+
+| Unidade | Height | Forma | Height | Forma | Height |
+|---|---|---|---|---|---|
+| warrior | 42 | goblin | 40 | wood-tower | 96 |
+| archer | 44 | great-orc | 62 | tower | 96 |
+| bomber | 42 | lizard | 54 | tower-blue | 96 |
+| pawn | 42 | bear | 74 | tower-purple | 96 |
+| lancer | 42 | minotaur | 86 | castle | 128 |
+| thief | 42 | troll | 86 | | |
+
+> As unidades do jogador não têm `idle`: a `UnitView` só usa `walk` e `attack`. Os Defensores usam `idle` e `attack`. A `walk` de Goblin, Orc e Minotauro fica pronta para quando a `DefenderView` passar a mostrar a criatura andando.
+
+<details>
+<summary><b>Alternativa: criar as animações e o catálogo à mão</b></summary>
+
+1. Para cada sheet de `anims/`:
+   - abra a setinha da textura na Project e selecione a textura inteira;
+   - botão direito → **EED → Criar animação com os sprites selecionados**;
+   - salve com o mesmo nome da sheet (`warrior_attack`) e ajuste o **Fps** pela tabela acima.
+
+   Para cada construção, faça o mesmo com a imagem de `garrison/`.
+2. Botão direito em `Data` → **Create → EED → Visual Catalog**.
+3. Em **Units**, adicione 6 itens (um por Tipo), cada um com:
+   - **Type**;
+   - as animações, com **Idle** = a mesma `walk`;
+   - **Height** da tabela;
+   - uma **Hud Color** clara.
+4. Em **Forms**, adicione 11 itens com **Form**, as animações e **Height**. Criaturas sem `walk` repetem a `idle` em **Walk**; construções usam a mesma animação de 1 quadro nos três campos.
+
+</details>
+
+### 🧪 Teste rápido
+Selecione `Data/Anims/warrior_attack`: o Inspector mostra 9 quadros em ordem (`warrior_attack_0` a `_8`) e **Fps** `12`. Selecione `Data/Anims/troll_idle`: 4 quadros, **Fps** `6`.
+
+#### Problemas comuns
+- **"Sem arte: ..." no Console:** o nome do arquivo não bate com o id do asset (ex.: `great_orc.png` em vez de `great-orc.png`), ou a Etapa 4A não foi rodada e a sheet não foi recortada.
+- **Animação com os quadros fora de ordem:** os recortes não terminam em `_0`, `_1`... Rode **EED → Importar sprites do PixelLab** de novo.
+- **Arte nova depois:** se você trocar ou acrescentar PNGs (outra rodada do PixelLab), rode as duas ferramentas de novo, nesta ordem: primeiro importar, depois montar o catálogo.
 
 ### Etapa 4C — As views
 
@@ -2174,7 +2535,7 @@ namespace EvilEnemyDefense.View
     {
         private static readonly Color DamageTint = Color.Lerp(Color.white, new Color(0.88f, 0.09f, 0.09f), 0.8f);
         private const float FlashSeconds = 0.14f;
-        private const float BarOffsetFactor = 0.55f;
+        private const float BarOffsetFactor = 0.8f;   // topo da cabeça: o personagem ocupa ~75% do quadro
 
         [SerializeField] private SpriteAnimPlayer _body;
         [SerializeField] private HpBar _hpBar;
@@ -3461,7 +3822,7 @@ Próxima fase: **testes automáticos**, para mexer no balanceamento sem medo.
 ### Etapa 6A — Assemblies
 
 1. Na Project, botão direito em `Assets/_Project/Scripts` → **Create → Scripting → Assembly Definition** → nome `EvilEnemyDefense`. No Inspector, em **Assembly Definition References**, clique **+** três vezes e escolha `Unity.TextMeshPro`, `Unity.InputSystem` e `UnityEngine.UI`. **Apply**.
-2. Botão direito em `Scripts/Editor` → **Create → Scripting → Assembly Definition** → `EvilEnemyDefense.Editor`. Referência: `EvilEnemyDefense`. Em **Platforms**, desmarque **Any Platform** e marque só **Editor**. **Apply**.
+2. Botão direito em `Scripts/Editor` → **Create → Scripting → Assembly Definition** → `EvilEnemyDefense.Editor`. Referências: `EvilEnemyDefense` e `Unity.2D.Sprite.Editor` (usada pelo importador de sprites da Etapa 4A). Em **Platforms**, desmarque **Any Platform** e marque só **Editor**. **Apply**.
 3. Botão direito em `Assets/_Project` → **Create → Testing → Tests Assembly Folder**. Renomeie a pasta para `Tests` e o `.asmdef` dentro dela para `EvilEnemyDefense.Tests`. No Inspector do asmdef: referência a `EvilEnemyDefense`; **Platforms** só **Editor**. **Apply**.
 
 > Depois do passo 1 o Console pode mostrar erros por alguns segundos enquanto recompila; se continuarem, falta uma das três referências.
