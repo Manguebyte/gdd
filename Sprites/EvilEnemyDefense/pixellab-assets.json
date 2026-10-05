@@ -1,7 +1,7 @@
 {
   "characters": {
     "warrior": {
-      "character_id": "92e100d5-a863-460f-868c-234d5ba95978",
+      "character_id": "f0eff875-bfd9-4615-aa1a-075c1aca7a1d",
       "pose": "units/warrior.png",
       "anims": {
         "walk": {
@@ -24,20 +24,20 @@
       "frame_size": 84
     },
     "archer": {
-      "character_id": "7b7286b5-dfad-4e50-9425-2fef393f23b3",
+      "character_id": "225c7dc4-3db4-42e0-9289-3a8cc42341c3",
       "pose": "units/archer.png",
       "anims": {
-        "attack": {
-          "file": "anims/archer_attack.png",
-          "frames": 9,
+        "walk": {
+          "file": "anims/archer_walk.png",
+          "frames": 8,
           "frame_size": [
             88,
             88
           ]
         },
-        "walk": {
-          "file": "anims/archer_walk.png",
-          "frames": 8,
+        "attack": {
+          "file": "anims/archer_attack.png",
+          "frames": 9,
           "frame_size": [
             88,
             88
@@ -47,7 +47,7 @@
       "frame_size": 88
     },
     "bomber": {
-      "character_id": "0f4d305b-ac75-4460-8405-e35b8b0b16d2",
+      "character_id": "a0476b73-c52b-478a-80c0-c909614683ca",
       "pose": "units/bomber.png",
       "anims": {
         "walk": {
@@ -70,43 +70,43 @@
       "frame_size": 84
     },
     "pawn": {
-      "character_id": "8a9c406b-463f-4b60-ba7b-0a2833d5bff5",
+      "character_id": "51958fad-085f-4b47-b57d-b5cab48e9382",
       "pose": "units/pawn.png",
       "anims": {
-        "walk": {
-          "file": "anims/pawn_walk.png",
-          "frames": 8,
-          "frame_size": [
-            84,
-            84
-          ]
-        },
         "attack": {
           "file": "anims/pawn_attack.png",
           "frames": 9,
           "frame_size": [
-            84,
-            84
+            80,
+            80
+          ]
+        },
+        "walk": {
+          "file": "anims/pawn_walk.png",
+          "frames": 8,
+          "frame_size": [
+            80,
+            80
           ]
         }
       },
-      "frame_size": 84
+      "frame_size": 80
     },
     "lancer": {
-      "character_id": "f4b7978d-4180-4945-af9f-76c80cbbeb29",
+      "character_id": "a6c34bdb-ac9e-48af-9211-17d22f9a92bd",
       "pose": "units/lancer.png",
       "anims": {
-        "attack": {
-          "file": "anims/lancer_attack.png",
-          "frames": 9,
+        "walk": {
+          "file": "anims/lancer_walk.png",
+          "frames": 8,
           "frame_size": [
             84,
             84
           ]
         },
-        "walk": {
-          "file": "anims/lancer_walk.png",
-          "frames": 8,
+        "attack": {
+          "file": "anims/lancer_attack.png",
+          "frames": 9,
           "frame_size": [
             84,
             84
@@ -116,20 +116,51 @@
       "frame_size": 84
     },
     "thief": {
-      "character_id": "de5e32c4-ab98-4dc4-912c-b766ba6a2220",
+      "character_id": "6fb97aa5-493d-42e9-974d-1f0b5deeda73",
       "pose": "units/thief.png",
       "anims": {
+        "walk": {
+          "file": "anims/thief_walk.png",
+          "frames": 8,
+          "frame_size": [
+            88,
+            88
+          ]
+        },
         "attack": {
           "file": "anims/thief_attack.png",
           "frames": 9,
+          "frame_size": [
+            88,
+            88
+          ]
+        }
+      },
+      "frame_size": 88
+    },
+    "goblin": {
+      "character_id": "9f39185e-3e31-4627-b1cc-05cffb0acf49",
+      "pose": "garrison/goblin.png",
+      "anims": {
+        "walk": {
+          "file": "anims/goblin_walk.png",
+          "frames": 8,
           "frame_size": [
             84,
             84
           ]
         },
-        "walk": {
-          "file": "anims/thief_walk.png",
-          "frames": 8,
+        "idle": {
+          "file": "anims/goblin_idle.png",
+          "frames": 4,
+          "frame_size": [
+            84,
+            84
+          ]
+        },
+        "attack": {
+          "file": "anims/goblin_attack.png",
+          "frames": 9,
           "frame_size": [
             84,
             84
@@ -138,83 +169,52 @@
       },
       "frame_size": 84
     },
-    "goblin": {
-      "character_id": "195c55c6-7fbd-4bbf-9f9b-867126a93a84",
-      "pose": "garrison/goblin.png",
-      "anims": {
-        "attack": {
-          "file": "anims/goblin_attack.png",
-          "frames": 9,
-          "frame_size": [
-            80,
-            80
-          ]
-        },
-        "walk": {
-          "file": "anims/goblin_walk.png",
-          "frames": 8,
-          "frame_size": [
-            80,
-            80
-          ]
-        },
-        "idle": {
-          "file": "anims/goblin_idle.png",
-          "frames": 4,
-          "frame_size": [
-            80,
-            80
-          ]
-        }
-      },
-      "frame_size": 80
-    },
     "great-orc": {
-      "character_id": "770ebbe1-3ed3-4009-937c-d117ecdb6636",
+      "character_id": "fdaf6f1b-2c4d-4be6-85f3-1bbbf1478d76",
       "pose": "garrison/great-orc.png",
       "anims": {
+        "idle": {
+          "file": "anims/great-orc_idle.png",
+          "frames": 4,
+          "frame_size": [
+            128,
+            128
+          ]
+        },
         "attack": {
           "file": "anims/great-orc_attack.png",
           "frames": 9,
           "frame_size": [
-            124,
-            124
+            128,
+            128
           ]
         },
         "walk": {
           "file": "anims/great-orc_walk.png",
           "frames": 8,
           "frame_size": [
-            124,
-            124
-          ]
-        },
-        "idle": {
-          "file": "anims/great-orc_idle.png",
-          "frames": 4,
-          "frame_size": [
-            124,
-            124
+            128,
+            128
           ]
         }
       },
-      "frame_size": 124
+      "frame_size": 128
     },
     "lizard": {
-      "character_id": "de041e09-1c95-4a18-9e95-961eb1f30406",
+      "character_id": "a4066995-6277-430b-b31d-1937b8e60f80",
       "pose": "garrison/lizard.png",
       "anims": {
-        "attack": {
-          "file": "anims/lizard_attack.png",
-          "frames": 9,
+        "idle": {
+          "file": "anims/lizard_idle.png",
+          "frames": 4,
           "frame_size": [
             108,
             108
           ]
         },
-        "idle": {
-          "file": "anims/lizard_idle.png",
-          "frames": 4,
+        "attack": {
+          "file": "anims/lizard_attack.png",
+          "frames": 9,
           "frame_size": [
             108,
             108
@@ -224,7 +224,7 @@
       "frame_size": 108
     },
     "bear": {
-      "character_id": "99c6ff33-c7ef-47fc-b694-7c68e0e93a8a",
+      "character_id": "d3926c94-5f4d-4142-91f9-224ed2e26d89",
       "pose": "garrison/bear.png",
       "anims": {
         "idle": {
@@ -247,79 +247,79 @@
       "frame_size": 148
     },
     "minotaur": {
-      "character_id": "29497012-06dd-4a27-8a9b-06c98d3aa2dd",
+      "character_id": "c9ed0b33-5e2a-495c-acc1-11bdaff2084c",
       "pose": "garrison/minotaur.png",
       "anims": {
         "idle": {
           "file": "anims/minotaur_idle.png",
           "frames": 4,
           "frame_size": [
-            172,
-            172
+            168,
+            168
           ]
         },
         "walk": {
           "file": "anims/minotaur_walk.png",
           "frames": 8,
           "frame_size": [
-            172,
-            172
+            168,
+            168
           ]
         },
         "attack": {
           "file": "anims/minotaur_attack.png",
           "frames": 9,
           "frame_size": [
-            172,
-            172
+            168,
+            168
           ]
         }
       },
-      "frame_size": 172
+      "frame_size": 168
     },
     "troll": {
-      "character_id": "9e15baab-ad37-4eeb-adb2-0f9106cdaa7c",
+      "character_id": "039f7f06-bf8c-46cf-aabf-29bead9db38b",
       "pose": "garrison/troll.png",
       "anims": {
-        "attack": {
-          "file": "anims/troll_attack.png",
-          "frames": 9,
-          "frame_size": [
-            172,
-            172
-          ]
-        },
         "idle": {
           "file": "anims/troll_idle.png",
           "frames": 4,
           "frame_size": [
-            172,
-            172
+            188,
+            188
+          ]
+        },
+        "attack": {
+          "file": "anims/troll_attack.png",
+          "frames": 9,
+          "frame_size": [
+            188,
+            188
           ]
         }
       },
-      "frame_size": 172
+      "frame_size": 188
     }
   },
   "objects": {
     "wood-tower": {
-      "object_id": "7b491480-81d8-4e2e-a5c7-8291963e4708",
+      "object_id": "f7f5b73e-a29a-4179-824f-4de76e20d424",
       "pose": "garrison/wood-tower.png"
     },
     "tower": {
-      "object_id": "d4388054-64e1-4785-ba66-f6c4ca3afe47",
+      "object_id": "953843b8-4eff-43d1-adb4-5110c8e6e821",
       "pose": "garrison/tower.png"
     },
     "tower-blue": {
-      "object_id": "0412a253-3a53-46f2-a3ae-c49dc85bebb5",
+      "object_id": "e894ec26-1aef-42d6-9f1d-a06d08cbe500",
       "pose": "garrison/tower-blue.png"
     },
     "tower-purple": {
-      "object_id": "089b60e4-cdbf-4793-88db-142474a079df",
+      "object_id": "1f5171d1-be90-42fe-b8b9-f56a09731028",
       "pose": "garrison/tower-purple.png"
     },
     "castle": {
-      "object_id": "ed087600-f2c5-419d-8cb3-4cd3e0c2594f",
+      "object_id": "c2de499a-0fe4-4c11-900d-cf07c6305f1c",
       "pose": "garrison/castle.png"
     }
   }

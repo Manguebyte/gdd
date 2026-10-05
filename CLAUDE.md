@@ -10,6 +10,7 @@ This is a **game design document (GDD) repository**, not a code project. It cont
 - `StarExpeditionCo.md` — space team-management with idle expeditions.
 - `PaddockBoss.md` — racing-team management sim: the race is simulated on a topdown 2D map while the player invests live (car engineering, marketing, driver training, pit crew, pit/tire strategy). Despite the racing theme it is **not** part of the Rally franchise: no `ChevronGuide`, no mouse driving, no shared track format.
 - `EvilEnemyDefense.md` and `GuerreiroDaMasmorra.md` — GDDs reverse-engineered from playable web prototypes (`abraaovilanova/evil-enemy-defense`, `abraaovilanova/guerreiro-da-masmorra`). The prototype's code is the behavioral spec: Parte 1 describes what it does, Parte 2+ ports it to Unity. When the prototype's own docs disagree with its code, these GDDs follow the code and log the gap under "Em aberto".
+- `CraftDice.md` — roguelike + soulslike RPG: topdown 2D exploration of a fixed handmade map, with battles resolved by forgeable dice (attack, defense, spell). Fully offline; dying wipes the whole run. Unrelated to `DiceAndBlood.md` despite the shared dice theme.
 - `GDD_8-Bit_Armageddon.md`, `RequiemOfBlessings.md`, `DiceAndBlood.md`, `GDD_Protocolo_Ectoplasma.md` — other separate games (see the `GAMES` table in `site/scripts/split-gdds.mjs` for one-line descriptions).
 - `tutorial-mvp-completo-unity.md` — Unity tutorial only (Mercador & Legião), no GDD of its own.
 

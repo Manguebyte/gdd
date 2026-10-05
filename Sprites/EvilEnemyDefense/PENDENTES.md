@@ -1,8 +1,8 @@
 # Evil Enemy Defense — sprites PixelLab
 
-Pixel art chibi na pegada **MapleStory** (cabeça grande, olhos grandes, cores vivas), em vista lateral, gerada no PixelLab (modo `v3`, `view` = `side`, `outline` = `selective outline`, `detail` = `low detail`), só na direção **east**: o Unity espelha quem precisa olhar para a esquerda. Como importar: `EvilEnemyDefense.md`, Etapas 4A e 4B.
+Pixel art na pegada **Sea of Stars / Stardew Valley** (proporções naturais com a cabeça um pouco grande, paleta quente e terrosa, luz suave com rim light, contorno escuro colorido), em vista lateral, gerada no PixelLab (modo `v3`, `view` = `side`, `outline` = `selective outline`, `detail` = `medium detail`), só na direção **east**: o Unity espelha quem precisa olhar para a esquerda. Como importar: `EvilEnemyDefense.md`, Etapas 4A e 4B.
 
-## Pronto (2026-10-03, segunda versão: estilo MapleStory)
+## Pronto (2026-10-03, terceira versão: estilo Sea of Stars / Stardew)
 
 - **Pastas:**
   - `units/`: as 6 unidades;
@@ -24,14 +24,13 @@ Para conferir: `python _tools/contact_sheet.py units _preview/units.png`.
 
 ## Receita do estilo
 
-Todo prompt de personagem termina com: `in MapleStory style, very big round head with friendly face and large shiny eyes, small body, bright pastel fantasy colors, soft light shading`; descrições de ataque usam palavras como "bouncy", "cartoon". Para animação de ataque, comece com "facing right the whole time" e termine com "returning to the exact starting pose": sem isso o v3 às vezes vira o personagem no meio do golpe (aconteceu com o Guerreiro, refeito).
+Todo prompt de personagem e de construção termina com: `in the style of Sea of Stars and Stardew Valley, natural proportions with slightly big head and expressive face, warm earthy color palette, soft warm lighting with subtle rim light, dark colored outlines instead of pure black, cozy fantasy look`. O urso é bípede: o v3 não aceita quadrúpede. Para animação de ataque, comece com "facing right the whole time" e termine com "returning to the exact starting pose": sem isso o v3 às vezes vira o personagem no meio do golpe (aconteceu com o Guerreiro, refeito).
 
 ## Melhorias possíveis
 
-1. **Ataque do Goblin:** a adaga virou um porretinho e a estocada é discreta; vale regerar se incomodar.
-2. **Caminhada de lizard, bear e troll**, se a `DefenderView` passar a usar `walk`: template `walking-8-frames`, east.
-3. **Animações das construções** (fumaça do canhão, bandeira tremulando) com `animate_object`.
-4. **Projéteis e efeitos** no mesmo estilo (flecha, bomba, gosma do lagarto, bala de canhão, "puf" de queda).
+1. **Caminhada de lizard, bear e troll**, se a `DefenderView` passar a usar `walk`: template `walking-8-frames`, east.
+2. **Animações das construções** (fumaça do canhão, bandeira tremulando) com `animate_object`.
+3. **Projéteis e efeitos** no mesmo estilo (flecha, bomba, gosma do lagarto, bala de canhão, "puf" de queda).
 
 ## Dica de produção
 

@@ -216,7 +216,7 @@ Moedas de uma Run = **dano + tempo + sobreviventes + vitória**. Todas as parcel
 ## 10. Estilo Visual
 
 - **Protótipo:** pixel art do pack **Tiny Swords** (Pixel Frog): cavaleiros do jogador (Guerreiro, Arqueiro, Bombardeiro, Peão) dos sheets de facção, criaturas do *Enemy Pack* (Gnoll faz o Orc Grande; Lagarto, Urso, Minotauro, Troll), torres e castelo das construções.
-- **Definido (port Unity):** arte própria em pixel art gerada no **PixelLab**, numa fantasia leve na pegada **MapleStory**: personagens chibi (cabeça grande, olhos grandes, rosto à mostra), cores vivas e claras, sombreamento suave e contorno seletivo; construções de conto de fadas com telhados coloridos. Vista lateral, guardada em `Sprites/EvilEnemyDefense/` (ids em `pixellab-assets.json`; como gerar mais em `PENDENTES.md`).
+- **Definido (port Unity):** arte própria em pixel art gerada no **PixelLab**, numa fantasia aconchegante na pegada **Sea of Stars / Stardew Valley**: personagens com proporções naturais e a cabeça um pouco grande, rosto expressivo, paleta quente e terrosa, luz suave e quente com rim light discreto e contorno escuro colorido (nunca preto puro); construções de pedra e madeira com o mesmo tratamento de luz. Vista lateral, guardada em `Sprites/EvilEnemyDefense/` (ids em `pixellab-assets.json`; como gerar mais em `PENDENTES.md`).
   - As unidades do jogador são aventureiros com azul na roupa.
   - A Guarnição é goblin, orc, lagarto, urso, minotauro, troll e quatro torres mais o castelo.
   - Todos os personagens olham para a direita; o jogo espelha quem precisa olhar para a esquerda.
@@ -1848,7 +1848,7 @@ Próxima fase: **a batalha na tela**, com os sprites do PixelLab no lugar dos Gi
 
 ### Etapa 4A — Trazer os sprites para o projeto
 
-A arte do jogo já está pronta e versionada **neste repositório de GDDs**, na pasta `Sprites/EvilEnemyDefense/`. É pixel art chibi na pegada MapleStory, gerada no PixelLab (Parte 1 §10). Três pastas vão para o Unity:
+A arte do jogo já está pronta e versionada **neste repositório de GDDs**, na pasta `Sprites/EvilEnemyDefense/`. É pixel art na pegada Sea of Stars / Stardew Valley, gerada no PixelLab (Parte 1 §10). Três pastas vão para o Unity:
 
 | Pasta | Conteúdo | Exemplo |
 |---|---|---|
@@ -2013,13 +2013,14 @@ namespace EvilEnemyDefense.EditorTools
 
 | Quadro (px) | Personagens |
 |---|---|
-| 80 | `goblin` |
-| 84 | `warrior`, `bomber`, `pawn`, `lancer`, `thief` |
-| 88 | `archer` |
+| 80 | `pawn` |
+| 84 | `warrior`, `bomber`, `lancer`, `goblin` |
+| 88 | `archer`, `thief` |
 | 108 | `lizard` |
-| 124 | `great-orc` |
+| 128 | `great-orc` |
 | 148 | `bear` |
-| 172 | `minotaur`, `troll` |
+| 168 | `minotaur` |
+| 188 | `troll` |
 
 </details>
 
@@ -2383,12 +2384,12 @@ O que a ferramenta decide, para referência:
 
 | Unidade | Height | Forma | Height | Forma | Height |
 |---|---|---|---|---|---|
-| warrior | 42 | goblin | 40 | wood-tower | 96 |
-| archer | 44 | great-orc | 62 | tower | 96 |
+| warrior | 42 | goblin | 42 | wood-tower | 96 |
+| archer | 44 | great-orc | 64 | tower | 96 |
 | bomber | 42 | lizard | 54 | tower-blue | 96 |
-| pawn | 42 | bear | 74 | tower-purple | 96 |
-| lancer | 42 | minotaur | 86 | castle | 128 |
-| thief | 42 | troll | 86 | | |
+| pawn | 40 | bear | 74 | tower-purple | 96 |
+| lancer | 42 | minotaur | 84 | castle | 128 |
+| thief | 44 | troll | 94 | | |
 
 > As unidades do jogador não têm `idle`: a `UnitView` só usa `walk` e `attack`. Os Defensores usam `idle` e `attack`. A `walk` de Goblin, Orc e Minotauro fica pronta para quando a `DefenderView` passar a mostrar a criatura andando.
 

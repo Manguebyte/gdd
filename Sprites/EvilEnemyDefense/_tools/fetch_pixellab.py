@@ -24,29 +24,29 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# id do jogo -> (pasta, character_id PixelLab). Estilo MapleStory (chibi), 2026-10-03.
+# id do jogo -> (pasta, character_id PixelLab). Estilo Sea of Stars / Stardew Valley, 2026-10-03.
 CHARACTERS = {
-    "warrior": ("units", "92e100d5-a863-460f-868c-234d5ba95978"),
-    "archer": ("units", "7b7286b5-dfad-4e50-9425-2fef393f23b3"),
-    "bomber": ("units", "0f4d305b-ac75-4460-8405-e35b8b0b16d2"),
-    "pawn": ("units", "8a9c406b-463f-4b60-ba7b-0a2833d5bff5"),
-    "lancer": ("units", "f4b7978d-4180-4945-af9f-76c80cbbeb29"),
-    "thief": ("units", "de5e32c4-ab98-4dc4-912c-b766ba6a2220"),
-    "goblin": ("garrison", "195c55c6-7fbd-4bbf-9f9b-867126a93a84"),
-    "great-orc": ("garrison", "770ebbe1-3ed3-4009-937c-d117ecdb6636"),
-    "lizard": ("garrison", "de041e09-1c95-4a18-9e95-961eb1f30406"),
-    "bear": ("garrison", "99c6ff33-c7ef-47fc-b694-7c68e0e93a8a"),
-    "minotaur": ("garrison", "29497012-06dd-4a27-8a9b-06c98d3aa2dd"),
-    "troll": ("garrison", "9e15baab-ad37-4eeb-adb2-0f9106cdaa7c"),
+    "warrior": ("units", "f0eff875-bfd9-4615-aa1a-075c1aca7a1d"),
+    "archer": ("units", "225c7dc4-3db4-42e0-9289-3a8cc42341c3"),
+    "bomber": ("units", "a0476b73-c52b-478a-80c0-c909614683ca"),
+    "pawn": ("units", "51958fad-085f-4b47-b57d-b5cab48e9382"),
+    "lancer": ("units", "a6c34bdb-ac9e-48af-9211-17d22f9a92bd"),
+    "thief": ("units", "6fb97aa5-493d-42e9-974d-1f0b5deeda73"),
+    "goblin": ("garrison", "9f39185e-3e31-4627-b1cc-05cffb0acf49"),
+    "great-orc": ("garrison", "fdaf6f1b-2c4d-4be6-85f3-1bbbf1478d76"),
+    "lizard": ("garrison", "a4066995-6277-430b-b31d-1937b8e60f80"),
+    "bear": ("garrison", "d3926c94-5f4d-4142-91f9-224ed2e26d89"),
+    "minotaur": ("garrison", "c9ed0b33-5e2a-495c-acc1-11bdaff2084c"),
+    "troll": ("garrison", "039f7f06-bf8c-46cf-aabf-29bead9db38b"),
 }
 
 # Construções: id do jogo -> object_id PixelLab (objeto de 1 direção, imagem única).
 OBJECTS = {
-    "wood-tower": "7b491480-81d8-4e2e-a5c7-8291963e4708",
-    "tower": "d4388054-64e1-4785-ba66-f6c4ca3afe47",
-    "tower-blue": "0412a253-3a53-46f2-a3ae-c49dc85bebb5",
-    "tower-purple": "089b60e4-cdbf-4793-88db-142474a079df",
-    "castle": "ed087600-f2c5-419d-8cb3-4cd3e0c2594f",
+    "wood-tower": "f7f5b73e-a29a-4179-824f-4de76e20d424",
+    "tower": "953843b8-4eff-43d1-adb4-5110c8e6e821",
+    "tower-blue": "e894ec26-1aef-42d6-9f1d-a06d08cbe500",
+    "tower-purple": "1f5171d1-be90-42fe-b8b9-f56a09731028",
+    "castle": "c2de499a-0fe4-4c11-900d-cf07c6305f1c",
 }
 
 DOWNLOAD = "https://api.pixellab.ai/mcp/characters/{id}/download"

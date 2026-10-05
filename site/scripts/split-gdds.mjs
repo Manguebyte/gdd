@@ -91,6 +91,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'CraftDice.md',
+    slug: 'craft-dice',
+    label: 'Craft Dice',
+    description: 'RPG roguelike + soulslike topdown 2D com batalha por dados forjáveis (ataque, defesa e feitiço).',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',
