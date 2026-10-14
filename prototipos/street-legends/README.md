@@ -1,25 +1,43 @@
-# Street Legends — protótipo web (JavaScript)
+# Street Legends — protótipo web
 
-Versão jogável em HTML/JS puro da variante Street Legends (Parte 5) do [`RallySurvive.md`](../../RallySurvive.md), sobre o Core da Parte 1 em [`../rally-core/`](../rally-core/). Arte em pixel art gerada no PixelLab, em [`Sprites/StreetLegends/`](../../Sprites/StreetLegends/). Abra `index.html` no navegador.
+Corrida de rua com exploração livre, eventos pela cidade e perseguição policial. Abra `index.html`, de preferência por um servidor HTTP local para permitir as pinturas dos carros. Física em `../rally-core/`, arte em `../../Sprites/StreetLegends/`.
 
-## O que tem
-- **Rota aberta com checkpoints** numa cidade em grade (9 × 7 quarteirões), com minimapa e seta de 1,5 s iguais aos do Navigation Expert (Parte 5 §Estrutura da pista). Prédios bloqueiam; praças são grama (grip baixo); calçada agarra um pouco menos que a rua.
-- **Noite:** a cena escurece e só os postes, os faróis (cone à frente do carro), os letreiros de neon, as sirenes e o checkpoint iluminam.
-- **Polícia** (Parte 5 §Mecânica de Polícia):
-  - **Detecção:** viatura a menos de **3 unidades** por **2 s seguidos** = pego. A barra "CERCO" mostra o tempo acumulado.
-  - **Falha:** "A polícia te pegou!" — `ESC` volta ao grid, `R` tenta de novo (mesmo menu da batida do RallySurvive).
-  - **Escalonamento pelo tempo de corrida:** quanto mais demora, mais viaturas; o HUD mostra uma ★ por viatura.
-- **Garagem permanente** (Parte 5 §Carros Modificados): moeda por corrida (base + bônus por tempo abaixo do par + bônus por viatura despistada). Desempenho em 3 categorias × 3 níveis (motor/turbo → velocidade máxima, suspensão → aderência/resposta, freios → frenagem), que mudam o `CarController` de vez. Visual: 7 pinturas e neon embaixo do carro, só estética. Desbloqueios por marcos (ex.: nível 3 só depois de terminar a rota Porto; pintura preta depois de fugir de 3 viaturas).
-- **Ranking** por rota com o nível de procurado atingido como dado secundário (Parte 5 §Leaderboard). Solo, como o GDD define para o MVP.
+## Como jogar
 
-## Escolhas do protótipo onde o GDD diz "Em aberto"
-- **Curva de escalonamento:** 1ª viatura aos 8 s, +1 a cada 25 s, no máximo 6. Viaturas nascem num cruzamento longe do jogador e ficam um pouco mais rápidas a cada nova (7,2 → 8,0 unidades/s; o carro de série anda 8).
-- **IA:** andam pelas ruas de cruzamento em cruzamento rumo ao jogador; a menos de 13 unidades vão direto nele; acima de 20 perdem o rastro e voltam às ruas.
-- **Faróis e visibilidade:** afetam o jogo — o escuro é de verdade e longe dos postes só se vê o que o farol ilumina.
-- **Garagem:** tela própria a partir do menu; 3 categorias × 3 níveis no MVP.
-- **Ranking:** local (`localStorage`), no lugar do Firebase.
-- **Carros estacionados e pinturas:** o mesmo sprite do carro do jogador com a cor trocada no carregamento (`RC.recolor`). Aberto direto do disco (`file://`) o navegador não deixa ler os pixels e tudo fica roxo; pelo site ou por um servidor local (`python -m http.server`) as cores aparecem.
-- **Arte:** pixel art 3/4 no estilo do `rally2d` (ver a nota "Em aberto" na Parte 1 §4). Os prédios são desenhados no código (telhado + fachada com janelas acesas), com props de telhado do PixelLab.
+1. Clique em **Explorar a cidade**.
+2. Procure largadas no minimapa: **ciano = sprint**, **laranja = circuito**.
+3. Aproxime-se e pressione **E** ou toque no botão do evento.
+4. Passe pelos checkpoints em ordem. Circuitos exigem **duas voltas**.
+5. Na chegada, envie seu tempo e clique em **Continuar na cidade**. A perseguição continua se ainda houver viaturas.
+6. Fique **10 segundos sem contato visual**, usando distância e prédios para despistar.
 
-## Atalhos
-Na URL: `#avenida`, `#centro` ou `#porto` (larga direto), `#sempolicia` (corre sem viaturas, para testar), `#rico` (carteira com $5000 a cada carregamento), `#reset` (apaga tudo: ranking, dinheiro e garagem). Na corrida: `ESC` volta ao menu, `Shift+R` reinicia.
+**Controles:** W/seta para cima acelera; A/D ou setas laterais esterçam; S/seta para baixo e espaço freiam. Mouse ou arrastar o dedo também dirigem. **G** abre a garagem na exploração sem perseguição. **ESC** abandona o evento e volta à exploração; na exploração, abre o menu. **Shift+R** reinicia o evento selecionado.
+
+## Cidade e eventos
+
+- Quadras de tamanhos variados: centro antigo, distrito comercial, Jardins e porto industrial.
+- Casas recuadas e áreas verdes nos Jardins; comércio com pátios abertos; galpões maiores no porto; parques com caminhos e lagos decorativos.
+- Avenida e Porto: sprints com chegada em outro ponto da cidade.
+- Centro e Jardins: circuitos de duas voltas, com chegada na largada.
+- Marcadores no mundo e minimapa, indicação do bairro e HUD de volta/perseguição.
+
+A malha principal continua ortogonal; a variação vem das dimensões das quadras, ocupação dos lotes e espaços livres. Os lagos são decoração. Ainda não há trânsito civil em movimento ou adversários de corrida.
+
+## Polícia e progressão
+
+Explorar sem perseguição não gera viaturas automaticamente. Corridas atraem a primeira após 8 segundos; reforços chegam a cada 25 segundos, até seis. A perseguição permanece depois da corrida. Viaturas seguem cruzamentos e tentam interceptar diretamente quando não há prédios bloqueando o caminho.
+
+Uma viatura dentro de 3 unidades por 2 segundos seguidos causa captura e multa de até $75, sem saldo negativo. Voltar à cidade após captura encerra a perseguição.
+
+Corridas dão dinheiro para motor, suspensão, freios, pintura e neon. Carteira, upgrades, desbloqueios e rankings ficam em `localStorage`; o save anterior foi preservado. Como as rotas mudaram, tempos anteriores podem não ser comparáveis.
+
+## Desenvolvimento
+
+Na URL: `#avenida`, `#centro`, `#porto`, `#jardins` entram no evento; `#sempolicia` desliga viaturas; `#rico` inicia com $5000; `#reset` apaga o save. Combine opções com vírgulas.
+
+```sh
+node --check prototipos/street-legends/game.js
+node prototipos/street-legends/smoke-test.cjs
+```
+
+O teste usa DOM/canvas simulados e a física real do core. Verifica exploração, largada por proximidade, checkpoints acessíveis, duas voltas, recompensa, perseguição após chegada, fuga, pausa da garagem e retorno após captura. Não substitui avaliação visual e de dirigibilidade no navegador.

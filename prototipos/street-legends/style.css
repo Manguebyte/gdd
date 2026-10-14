@@ -18,3 +18,8 @@
 .swatch.on { outline: 3px solid var(--accent); }
 .swatch[disabled] { opacity: .45; }
 @media (max-width: 720px) { .garage { grid-template-columns: 1fr; } }
+#explore-btn { margin: 12px 0; }
+#event-prompt { position: fixed; bottom: 70px; left: 20px; z-index: 8; max-width: 55vw; }
+#pursuit { position: fixed; top: 115px; left: 20px; color: #e3fff9; background: #121a28d9; padding: 8px 12px; border-left: 3px solid #3ff0e0; pointer-events: none; font-size: 16px; }
+body:has(#menu:not(.hidden)) #pursuit, body:has(#menu:not(.hidden)) #event-prompt { display: none; }
+@media (max-width: 720px) { #pursuit { top: 130px; font-size: 12px; } #event-prompt { bottom: 20px; } }

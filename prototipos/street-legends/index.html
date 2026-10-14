@@ -17,14 +17,17 @@
   <div class="panel big-stat"><small>PROCURADO</small><b id="wanted">—</b></div>
   <div class="panel bars"><label>VELOCIDADE</label><div class="bar"><i id="speed"></i></div><label>CERCO</label><div class="bar busted"><i id="busted"></i></div></div>
 </div>
+<div id="pursuit"></div>
+<div id="event-prompt" class="hidden"><button class="btn go" id="event-start">Entrar no evento</button></div>
 <div id="menu" class="hidden">
   <h1>STREET<span>LEGENDS</span><small>corrida de rua · à noite · sem ser pego</small></h1>
   <div id="tracks"></div>
+  <button class="btn go" id="explore-btn">Explorar a cidade</button>
   <div class="side">
     <div class="panel wallet"><span>Carteira</span><b id="money">$0</b><button class="btn go" id="garage-btn">Garagem</button></div>
     <div id="board"></div>
   </div>
-  <p class="tip">Toque numa rota para ver o ranking · <b>segure</b> para largar</p>
+  <p class="tip">Explore e encontre largadas · <b>E</b> entra no evento · WASD / setas ou mouse para dirigir · espaço freia · G abre a garagem fora da perseguição<br>Toque no evento para ver o ranking · segure para visitar a largada</p>
 </div>
 <div id="dialog" class="hidden"></div>
 <script src="../rally-core/rally-core.js"></script>
