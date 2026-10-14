@@ -1,0 +1,273 @@
+/* Star Expedition Co. — protótipo web.
+   Toda medida em px aqui é "pixel de jogo" (resolução de referência 360x640, GDD §10.2).
+   O #app é escalado por um fator inteiro (3x em 1080 px de largura etc.), então nada estica. */
+
+@font-face {
+  /* A fonte do GDD (Pixel Operator) ainda não está no repositório; m5x7 é o substituto do protótipo. */
+  font-family: "m5x7";
+  src: url("../../Sprites/8-Bit-Armageddon/Fonts/m5x7.ttf") format("truetype");
+}
+
+:root {
+  --slate-900: #1B2030;
+  --slate-700: #2E3650;
+  --slate-500: #4A5578;
+  --slate-300: #8A96B8;
+  --paper: #E8ECF5;
+  --amber-500: #F2A33A;
+  --amber-300: #FFD27A;
+  --green: #5EC46B;
+  --red: #E0524A;
+  --violet: #B07CFF;
+  --outline: #0E1018;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0b0d14;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+img, canvas { image-rendering: pixelated; }
+
+#app {
+  position: absolute;
+  width: 360px;
+  height: 640px;
+  transform-origin: 0 0;
+  overflow: hidden;
+  background: var(--slate-900);
+  font-family: "m5x7", monospace;
+  font-size: 16px;
+  line-height: 11px;
+  color: var(--paper);
+  -webkit-font-smoothing: none;
+}
+
+.hidden { display: none !important; }
+.dim { color: var(--slate-300); }
+.amber { color: var(--amber-500); }
+.green { color: var(--green); }
+.red { color: var(--red); }
+.violet { color: var(--violet); }
+.title { font-size: 32px; line-height: 20px; }
+.row { display: flex; align-items: center; gap: 4px; }
+.between { justify-content: space-between; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1; }
+.ico16 { width: 16px; height: 16px; flex: none; }
+.ico24 { width: 24px; height: 24px; flex: none; }
+.ico32 { width: 32px; height: 32px; flex: none; }
+
+/* ---------- peças de UI com a arte do jogo ---------- */
+
+.panel {
+  border-style: solid;
+  border-width: 16px;
+  border-image: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Panel.png") 16 fill / 16px stretch;
+}
+
+.card {
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Panel.png") 16 fill / 8px stretch;
+  padding: 0;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 48px;
+  height: 24px;
+  padding: 0 8px 2px;
+  /* border-width 0 + border-image-width 8px: o 9-slice cobre a caixa toda e o padding controla o texto. */
+  border-style: solid;
+  border-width: 0;
+  border-image: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Primary_Normal.png") 8 fill / 8px stretch;
+  background: none;
+  font: inherit;
+  color: var(--outline);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active:not([disabled]) { border-image-source: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Primary_Pressed.png"); padding-top: 1px; padding-bottom: 1px; }
+.btn[disabled] { border-image-source: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Primary_Disabled.png"); color: var(--slate-700); cursor: default; }
+.btn.sec { border-image-source: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Secondary_Normal.png"); color: var(--paper); }
+.btn.sec:active:not([disabled]) { border-image-source: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Secondary_Pressed.png"); }
+.btn.sec[disabled] { border-image-source: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_Button_Secondary_Disabled.png"); color: var(--slate-300); opacity: 0.6; }
+.btn.wide { width: 100%; }
+.btn.big { height: 32px; font-size: 16px; }
+
+/* Retrato: folha 256x64 com 4 quadros de idle (GDD §10.3). */
+.portrait {
+  width: 64px; height: 64px; flex: none;
+  background-repeat: no-repeat;
+  animation: idle 1s steps(4) infinite;
+}
+.portrait.small { width: 64px; height: 64px; transform: scale(0.5); margin: -16px; }
+@keyframes idle { from { background-position: 0 0; } to { background-position: -256px 0; } }
+
+/* ---------- barras ---------- */
+
+#topbar {
+  position: absolute; left: 0; top: 0; width: 360px; height: 32px;
+  background: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_TopBar.png");
+  display: flex; align-items: center; gap: 6px; padding: 0 8px 2px;
+  z-index: 5;
+}
+#topbar .gear { cursor: pointer; }
+#topbar .clock-warn { color: var(--red); }
+
+#tabbar {
+  position: absolute; left: 0; bottom: 0; width: 360px; height: 48px;
+  background: url("../../Sprites/StarExpeditionCo/UI/SPR_UI_TabBar.png");
+  display: flex; padding: 6px 4px 4px;
+  z-index: 5;
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--slate-300); cursor: pointer; position: relative;
+}
+.tab img { opacity: 0.55; }
+.tab.on { color: var(--amber-500); }
+.tab.on img { opacity: 1; }
+.tab .dot {
+  position: absolute; top: 0; right: 22px; width: 6px; height: 6px;
+  background: var(--red); box-shadow: 0 0 0 1px var(--outline);
+}
+
+#content {
+  position: absolute; left: 0; top: 32px; width: 360px; height: 560px;
+  overflow: hidden;
+}
+.scroll { position: absolute; inset: 0; overflow-y: auto; padding: 8px; scrollbar-width: thin; scrollbar-color: var(--slate-500) transparent; }
+
+/* ---------- mapa ---------- */
+
+.map {
+  position: absolute; inset: 0;
+  background-size: 360px 960px;
+  background-repeat: repeat-y;
+  animation: drift 120s linear infinite;
+}
+@keyframes drift { from { background-position: 0 0; } to { background-position: 0 960px; } }
+
+.map-head {
+  position: absolute; left: 0; right: 0; top: 6px;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 8px;
+  z-index: 2;
+}
+.map-head .gname { text-shadow: 1px 1px var(--outline); }
+
+.planet {
+  position: absolute; width: 96px; margin-left: -48px; margin-top: -32px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer;
+}
+.planet .globe { position: relative; width: 64px; height: 64px; }
+.planet canvas { width: 64px; height: 64px; display: block; }
+.planet.locked canvas { filter: grayscale(1) brightness(0.45); }
+.planet.locked { cursor: default; }
+.planet .lock { position: absolute; left: 24px; top: 24px; }
+.planet .badge { position: absolute; right: -4px; top: -4px; animation: bob 0.8s steps(2) infinite; }
+@keyframes bob { 50% { transform: translateY(-2px); } }
+.planet .label {
+  text-align: center; text-shadow: 1px 1px var(--outline), -1px 1px var(--outline), 1px -1px var(--outline), -1px -1px var(--outline);
+}
+.planet .timer { display: flex; align-items: center; gap: 2px; color: var(--amber-300); }
+
+/* Navezinha orbitando o Planet com Expedition ativa (GDD §10.3). */
+.orbit {
+  position: absolute; left: 24px; top: 24px; width: 16px; height: 16px;
+  animation: orbit 4s linear infinite;
+}
+.orbit img { position: absolute; left: 0; top: -42px; transform: rotate(90deg); }
+@keyframes orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.cycle-banner {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 2;
+}
+
+/* ---------- sheet (painel de baixo) e modal ---------- */
+
+#overlay { position: absolute; left: 0; top: 0; width: 360px; height: 640px; background: rgba(14,16,24,0.6); z-index: 10; }
+
+#sheet {
+  position: absolute; left: 0; bottom: 0; width: 360px; max-height: 560px;
+  z-index: 11; display: flex; flex-direction: column;
+  animation: slideup 0.15s ease-out;
+}
+@keyframes slideup { from { transform: translateY(40px); opacity: 0; } }
+#sheet .sheet-body { overflow-y: auto; margin: -4px -8px; padding: 4px 8px; scrollbar-width: thin; scrollbar-color: var(--slate-500) transparent; }
+.sheet-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.close { cursor: pointer; margin-left: auto; }
+
+#modal {
+  position: absolute; left: 0; top: 0; width: 360px; height: 640px; z-index: 20;
+  display: flex; align-items: center; justify-content: center; background: rgba(14,16,24,0.7);
+}
+#modal > .panel { width: 312px; max-height: 560px; overflow-y: auto; animation: pop 0.15s ease-out; }
+@keyframes pop { from { transform: scale(0.9); opacity: 0; } }
+
+.stat { display: flex; align-items: center; gap: 3px; }
+.sep { height: 1px; background: var(--slate-500); margin: 8px 0; }
+.section { margin: 10px 0 6px; color: var(--amber-500); }
+
+.pick {
+  display: flex; align-items: center; gap: 6px; padding: 2px 4px 2px 2px; cursor: pointer;
+  border: 1px solid transparent;
+}
+.pick.on { border-color: var(--amber-500); background: rgba(242,163,58,0.12); }
+.pick.busy { opacity: 0.45; cursor: default; }
+.chk { width: 12px; height: 12px; border: 1px solid var(--slate-300); flex: none; display: grid; place-items: center; }
+.pick.on .chk { border-color: var(--amber-500); background: var(--amber-500); }
+
+.slot { width: 36px; height: 36px; border: 1px solid var(--slate-500); background: var(--slate-900); display: grid; place-items: center; position: relative; flex: none; }
+.slot .qty { position: absolute; right: 1px; bottom: 0; text-shadow: 1px 1px var(--outline); }
+
+.loot-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 4px; }
+
+.crew-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.crew-card { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; padding: 2px 0 4px; }
+.crew-card .eq { display: flex; align-items: center; gap: 2px; min-height: 18px; }
+
+.recipe { margin-bottom: 6px; padding: 2px 2px 4px; }
+.ing { display: flex; align-items: center; gap: 2px; }
+.tier-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+
+.hire-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+.hire-card { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; padding-bottom: 2px; }
+
+.sell-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+
+/* ---------- tela cheia: Starter Pick ---------- */
+
+.fullscreen {
+  position: absolute; inset: 0; z-index: 15; background: var(--slate-900);
+  display: flex; flex-direction: column; align-items: center; padding: 24px 12px; gap: 10px;
+  background-size: 360px 960px;
+}
+.starter-row { display: flex; gap: 6px; }
+.starter-row .card { width: 108px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding-bottom: 4px; }
+
+/* ---------- tutorial ---------- */
+
+#hint {
+  position: absolute; left: 8px; right: 8px; top: 36px; z-index: 30;
+  background: var(--slate-900); border: 1px solid var(--amber-500); padding: 5px 6px 6px;
+  color: var(--amber-300); text-align: center; pointer-events: none;
+}
+#tut-arrow { position: absolute; z-index: 31; pointer-events: none; animation: bob 0.6s steps(2) infinite; }
+.tut-target { outline: 1px dashed var(--amber-300); outline-offset: 1px; }
+
+#toast {
+  position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); z-index: 40;
+  background: var(--slate-700); border: 1px solid var(--slate-500); padding: 4px 8px 5px; white-space: nowrap;
+}

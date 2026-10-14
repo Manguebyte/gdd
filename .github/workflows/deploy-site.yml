@@ -9,6 +9,9 @@ on:
     paths:
       - '*.md'
       - 'site/**'
+      - 'prototipos/**'
+      - 'Sprites/StarExpeditionCo/**'
+      - 'Sprites/8-Bit-Armageddon/**'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
@@ -36,6 +39,14 @@ jobs:
           cache-dependency-path: site/package-lock.json
       - run: npm ci
       - run: npm run build
+      # Protótipos jogáveis em /gdd/prototipos/<jogo>/. Eles carregam a arte por "../../Sprites/<Jogo>/",
+      # então a pasta Sprites vai junto, na mesma posição relativa (sem candidatos descartados nem ferramentas).
+      - name: Copia os protótipos e a arte deles para o site
+        run: |
+          cp -r ../prototipos build/prototipos
+          mkdir -p build/Sprites
+          cp -r ../Sprites/StarExpeditionCo ../Sprites/8-Bit-Armageddon build/Sprites/
+          find build/Sprites -type d \( -name _candidatos_descartados -o -name tools -o -name _tools -o -name _previews -o -name _referencia \) -prune -exec rm -rf {} +
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site/build
