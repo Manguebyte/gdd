@@ -1,0 +1,139 @@
+{
+  "witch": {
+    "object_id": "81bd1a08-2698-4eae-811e-12928c9e6545",
+    "prompt": "Young adult female witch, protagonist heroine, pale skin, short silver hair, worn deep violet hooded cloak and dark travelling dress, small amber pendant, empty hands holding a subtle violet magical orb. Whole standing body viewed from front 3/4, no broom, no oversized hat. Frame contains only this character. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "witch.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/81bd1a08-2698-4eae-811e-12928c9e6545/rotations/unknown.png",
+    "sha12": "76ccce8e67d8",
+    "walk": {
+      "animation_group_id": "78ffa132-7b07-4f67-ba0f-e64e961d9def",
+      "url_pattern": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/81bd1a08-2698-4eae-811e-12928c9e6545/animations/cb0efb21-bf10-4a29-9fdc-f4aa0540c802/unknown/{i}.png",
+      "frames": [
+        {
+          "file": "witch-walk/0.png",
+          "sha12": "e76e08a696e4"
+        },
+        {
+          "file": "witch-walk/1.png",
+          "sha12": "01cf5b83e539"
+        },
+        {
+          "file": "witch-walk/2.png",
+          "sha12": "a7cf3058bcd9"
+        },
+        {
+          "file": "witch-walk/3.png",
+          "sha12": "d233ea1aa37d"
+        },
+        {
+          "file": "witch-walk/4.png",
+          "sha12": "be4aaf168fc0"
+        },
+        {
+          "file": "witch-walk/5.png",
+          "sha12": "40bde72c7780"
+        },
+        {
+          "file": "witch-walk/6.png",
+          "sha12": "5c331ce9f8c9"
+        },
+        {
+          "file": "witch-walk/7.png",
+          "sha12": "74be52ece462"
+        }
+      ]
+    },
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "guard": {
+    "object_id": "046311cc-908e-4e03-ae29-aeb98512e8c7",
+    "prompt": "Hostile town guard, whole standing body, worn iron helmet and dark red tabard over leather armor, holding a spear and small torch. Humanoid game enemy sprite. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "guard.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/046311cc-908e-4e03-ae29-aeb98512e8c7/rotations/unknown.png",
+    "sha12": "60763c743dcc",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "demon": {
+    "object_id": "d6a01184-0b7f-4f60-8e74-36890308aa0f",
+    "prompt": "Large hunched horned demon boss, coal-black hide with ember-red cracks, long clawed forearms, feral snarling head, whole body, intimidating broad silhouette. No flames outside silhouette. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "demon.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/d6a01184-0b7f-4f60-8e74-36890308aa0f/rotations/unknown.png",
+    "sha12": "7487b11b9db7",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "inquisitor": {
+    "object_id": "1e1a11e2-3353-43b4-89a9-a050bc5666f4",
+    "prompt": "Tall sinister inquisitor boss, black iron armor and crimson clerical robe, narrow pointed helmet, holding an ornate golden reliquary staff and chained censer, whole body. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "inquisitor.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/1e1a11e2-3353-43b4-89a9-a050bc5666f4/rotations/unknown.png",
+    "sha12": "24c1a147b261",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "house": {
+    "object_id": "28dc7127-9d76-4923-8fce-3ac6ce45f0a8",
+    "prompt": "One medieval half-timbered town house, mossy dark slate roof, weathered cream plaster walls, timber beams, amber-lit windows, closed wooden front door, 3/4 top-down view, entire building, no ground, no other props. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "house.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/28dc7127-9d76-4923-8fce-3ac6ce45f0a8/rotations/unknown.png",
+    "sha12": "fd3ea23f740e",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "tree": {
+    "object_id": "23252f06-4ff1-4435-8aa9-7034f3b1d56d",
+    "prompt": "One twisted dark oak tree, full rounded sparse moss-green foliage, gnarled trunk and visible roots, cemetery atmosphere, entire tree, isolated, no ground. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "tree.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/23252f06-4ff1-4435-8aa9-7034f3b1d56d/rotations/unknown.png",
+    "sha12": "fc0d4f56c42a",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "ghost": {
+    "object_id": "4f30c851-8ac6-4ff3-be98-8a3441c17d49",
+    "prompt": "Spectral spirit of a woman burned as a witch, soft turquoise translucent dress, gentle face, long pale hair, floating peacefully with hands held together, whole body, no horror gore. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "ghost.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/4f30c851-8ac6-4ff3-be98-8a3441c17d49/rotations/unknown.png",
+    "sha12": "a71234047017",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "pyre": {
+    "object_id": "3a2cc701-11f3-4d3a-8f20-e18740886799",
+    "prompt": "Checkpoint execution pyre, a charred wooden stake wrapped in burned iron chains with a small amber fire at its base and a few blackened logs, respectful somber memorial, no body or victim. Entire isolated object. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "pyre.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/3a2cc701-11f3-4d3a-8f20-e18740886799/rotations/unknown.png",
+    "sha12": "a8a96cc6222e",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "chest": {
+    "object_id": "13e1707a-0cec-4676-8fce-1075a1b73ba6",
+    "prompt": "Small old wooden witch grimoire chest, iron bands, slightly open lid, a violet glow from within, 3/4 top-down game prop, isolated. Dark fantasy SNES 16-bit pixel art, top-down 3/4 view, crisp single-pixel clusters, limited palette dark indigo charcoal muted moss green amber highlights violet magic, selective dark outline, upper-left light, no cast shadow, no ground, transparent background, centered isolated game sprite, readable at small sizes.",
+    "file": "chest.png",
+    "url": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/13e1707a-0cec-4676-8fce-1075a1b73ba6/rotations/unknown.png",
+    "sha12": "01745cdffa13",
+    "status": "status: completed",
+    "provider": "PixelLab"
+  },
+  "stone": {
+    "file": "stone.png",
+    "url": "https://api.pixellab.ai/mcp/images/4e1367df-9a8e-4549-a438-0967038de5ac/download",
+    "sha12": "ef7c6b319a4b",
+    "provider": "PixelLab",
+    "asset_id": "e09f8192-d71a-5f16-805a-eaa472694602",
+    "job_id": "4e1367df-9a8e-4549-a438-0967038de5ac",
+    "prompt": "One seamless repeating 64x64 pixel art texture of worn medieval cobblestone paving seen directly from above. Small irregular flat stones, muted dark desaturated blue gray, tiny moss in joints, no perspective, no objects, no cast shadows, tile fills entire square edge to edge, low contrast so characters stand out. SNES 16-bit crisp pixel clusters, limited 8 color palette, must tile seamlessly left-right and top-bottom."
+  },
+  "grass": {
+    "file": "grass.png",
+    "url": "https://api.pixellab.ai/mcp/images/ee2a74be-34b3-4429-a9d1-92726fae92d2/download",
+    "sha12": "2d63916ec59e",
+    "provider": "PixelLab",
+    "asset_id": "1c8bf7ed-a04a-5f6c-8758-09911d9a6170",
+    "job_id": "ee2a74be-34b3-4429-a9d1-92726fae92d2",
+    "prompt": "One seamless repeating 64x64 pixel art texture of dark mossy grass and small bare dirt specks seen directly from above. Somber witch cemetery palette muted deep moss green and olive charcoal, no bright greens, no perspective, no objects, no cast shadows, tile fills entire square edge to edge, low contrast so characters stand out. SNES 16-bit crisp pixel clusters, limited 8 color palette, must tile seamlessly left-right and top-bottom."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "description": "One seamless repeating 64x64 pixel art texture of worn medieval cobblestone paving seen directly from above. Small irregular flat stones, muted dark desaturated blue gray, tiny moss in joints, no perspective, no objects, no cast shadows, tile fills entire square edge to edge, low contrast so characters stand out. SNES 16-bit crisp pixel clusters, limited 8 color palette, must tile seamlessly left-right and top-bottom.",
+  "width": 64,
+  "height": 64,
+  "no_background": false
+}

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111014">
+    <meta name="description" content="Caça às Bruxas — um protótipo de ação e exploração em pixel art. Você é a bruxa que a cidade aprendeu a temer.">
+    <title>Caça às Bruxas · Manguebyte</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="game.js" defer></script>
+  </head>
+  <body>
+    <main id="stage" aria-label="Caça às Bruxas, jogo de ação e exploração">
+      <canvas id="game" width="960" height="540" aria-label="Mundo do jogo. Use WASD ou as setas para andar."></canvas>
+
+      <div id="hud" class="hud" aria-label="Estado da personagem">
+        <section class="vitals hud-surface">
+          <div class="vitals-heading"><span class="witch-mark" aria-hidden="true">✧</span><span>A ÚLTIMA BRUXA</span></div>
+          <label class="meter-row hp-row"><span>VIDA</span><progress id="hp" value="100" max="100" aria-label="Vida"></progress></label>
+          <label class="meter-row mp-row"><span>MAGIA</span><progress id="mp" value="100" max="100" aria-label="Magia"></progress></label>
+          <label class="meter-row stamina-row"><span>FÔLEGO</span><progress id="stamina" value="100" max="100" aria-label="Fôlego"></progress></label>
+          <div class="ashes-line"><span class="ashes-symbol" aria-hidden="true">✦</span><strong id="ashes">0</strong><span>CINZAS</span></div>
+        </section>
+
+        <section class="suspicion-block hud-surface">
+          <div class="suspicion-heading"><span>OLHOS DA CIDADE</span><span class="suspicion-symbol" aria-hidden="true">◈</span></div>
+          <progress id="suspicion" value="0" max="100" aria-label="Suspeita da cidade"></progress>
+          <span id="suspicion-label" class="suspicion-label">Desconfiança</span>
+        </section>
+
+        <section id="boss-panel" class="boss-panel hidden" aria-label="Chefe">
+          <span class="boss-eyebrow">O QUE RESTA DA FÉ</span>
+          <strong id="boss-name">O Demônio da Vila</strong>
+          <progress id="boss-hp" value="100" max="100" aria-label="Vida do chefe"></progress>
+        </section>
+
+        <section class="objective-block hud-surface" aria-label="Objetivo atual">
+          <span class="eyebrow"><span class="objective-mark" aria-hidden="true">◇</span> O CAMINHO</span>
+          <p id="objective">Encontre a mulher junto à entrada da vila.</p>
+        </section>
+
+        <nav class="spellbar" aria-label="Magias equipadas">
+          <button id="spell1" class="spell-slot" data-spell="1" data-control="spell1" title="Magia 1" aria-label="Usar magia 1"><kbd>1</kbd><span class="spell-icon fire-icon" aria-hidden="true">✦</span><span class="spell-name">Brasa</span></button>
+          <button id="spell2" class="spell-slot" data-spell="2" data-control="spell2" title="Magia 2" aria-label="Usar magia 2"><kbd>2</kbd><span class="spell-icon heal-icon" aria-hidden="true">✚</span><span class="spell-name">Cura</span></button>
+          <button id="spell3" class="spell-slot" data-spell="3" data-control="spell3" title="Magia 3" aria-label="Usar magia 3"><kbd>3</kbd><span class="spell-icon frost-icon" aria-hidden="true">❄</span><span class="spell-name">Geada</span></button>
+          <button id="spell4" class="spell-slot" data-spell="4" data-control="spell4" title="Magia 4" aria-label="Usar magia 4"><kbd>4</kbd><span class="spell-icon shade-icon" aria-hidden="true">☾</span><span class="spell-name">Sombra</span></button>
+        </nav>
+        <div class="keyboard-hint"><kbd>E</kbd> interagir <span>·</span> <kbd>ESPAÇO</kbd> esquivar <span>·</span> <kbd>Q</kbd> escudo</div>
+      </div>
+
+      <div id="prompt" class="prompt hidden" role="status"></div>
+      <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+      <section id="title-screen" class="overlay title-screen" aria-labelledby="game-title">
+        <header class="title-topline"><a class="studio-link" href="../index.html">MANGUEBYTE<span> / </span>PROTÓTIPOS</a><span class="build-tag">UMA HISTÓRIA EM CINZAS</span></header>
+        <div class="title-content">
+          <div class="title-kicker"><span></span> VOCÊ É A CAÇA <span></span></div>
+          <h1 id="game-title">CAÇA ÀS<br><em>BRUXAS</em></h1>
+          <p class="title-premise">Uma cidade sob uma maldição.<br>Uma mulher disposta a salvá-la.<br><span>E uma fogueira esperando por ela.</span></p>
+          <div class="title-actions">
+            <button id="play-btn" class="button button-primary"><span>Entrar na vila</span><span aria-hidden="true">→</span></button>
+            <button id="continue-btn" class="button button-secondary hidden">Continuar a jornada</button>
+            <button id="reset-btn" class="button button-quiet hidden">Recomeçar a história</button>
+          </div>
+          <p class="title-note">As mortas conhecem o caminho. Escute o fogo.</p>
+        </div>
+        <aside class="title-controls" aria-label="Como jogar">
+          <h2>ANTES DE PARTIR</h2>
+          <dl>
+            <div><dt><kbd>WASD</kbd> <span>/</span> <kbd>↑↓←→</kbd></dt><dd>Mover</dd></div>
+            <div><dt><kbd>MOUSE</kbd></dt><dd>Mirar</dd></div>
+            <div><dt><kbd>CLIQUE</kbd> <span>/</span> <kbd>J</kbd></dt><dd>Ataque mágico</dd></div>
+            <div><dt><kbd>K</kbd></dt><dd>Segurar e soltar: carregar</dd></div>
+            <div><dt><kbd>Q</kbd> <span>/</span> <kbd>BOTÃO DIREITO</kbd></dt><dd>Escudo · toque preciso: parry</dd></div>
+            <div><dt><kbd>ESPAÇO</kbd></dt><dd>Esquivar</dd></div>
+            <div><dt><kbd>E</kbd></dt><dd>Conversar / interagir</dd></div>
+            <div><dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>Magias aprendidas</dd></div>
+          </dl>
+          <p>Cada poder deixa uma marca.<br>Aprender magia aumenta a Suspeita.</p>
+        </aside>
+        <footer class="title-footer"><span>AÇÃO · EXPLORAÇÃO · PIXEL ART</span><a href="../../caca-as-bruxas/gdd">O mundo de Caça às Bruxas ↗</a></footer>
+      </section>
+
+      <section id="dialog" class="overlay dialog-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <div class="dialog-card">
+          <span class="dialog-ornament" aria-hidden="true">✦</span>
+          <span class="dialog-eyebrow">VOZES DA VILA</span>
+          <h2 id="dialog-title"></h2>
+          <div id="dialog-text" class="dialog-text"></div>
+          <div id="dialog-actions" class="dialog-actions"></div>
+        </div>
+      </section>
+
+      <div id="mobile-controls" class="mobile-controls" aria-label="Controles de toque">
+        <div class="touch-direction">
+          <button data-control="up" class="touch-up" aria-label="Mover para cima">↑</button>
+          <button data-control="left" class="touch-left" aria-label="Mover para esquerda">←</button>
+          <button data-control="down" class="touch-down" aria-label="Mover para baixo">↓</button>
+          <button data-control="right" class="touch-right" aria-label="Mover para direita">→</button>
+        </div>
+        <div class="touch-actions">
+          <button data-control="shield" aria-label="Escudo">◈<small>ESCUDO</small></button>
+          <button data-control="attack" class="touch-attack" aria-label="Ataque mágico">✦<small>ATAQUE</small></button>
+          <button data-control="dodge" aria-label="Esquivar">↝<small>ESQUIVA</small></button>
+          <button data-control="interact" aria-label="Interagir">E<small>INTERAGIR</small></button>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
