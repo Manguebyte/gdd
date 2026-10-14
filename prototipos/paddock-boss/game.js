@@ -753,6 +753,9 @@ async function boot() {
     ['car1', ART + 'cars/car60s_white_v1.png'],
     ['car2', ART + 'cars/car60s_white_v2.png'],
     ['hl1', ART + 'cars/car60s_highlight_v1.png'],
+    // A tabela e o caixa são redesenhados 10×/s: sem pré-carga, na 1ª visita (rede) a imagem nem chega a aparecer.
+    ...Object.values(COMPOUNDS).map(c => [c.badge, `${UI}tyre_badges/${c.badge}.png`]),
+    ['money', UI + 'icons/icon_money.png'],
   ]);
   // Equipes de índice par usam a variação 1 do carro; ímpar, a 2. O jogador usa a 1 com contorno.
   TEAMS.forEach((t, i) => { const src = IMG[i % 2 ? 'car2' : 'car1']; if (src) carSprites[t.id] = tintCar(src, t.color); });
