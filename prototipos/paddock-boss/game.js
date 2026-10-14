@@ -841,6 +841,18 @@ function frame(t) {
   requestAnimationFrame(frame);
 }
 
+// No celular: tela cheia e paisagem travada (Android). Precisa de um toque do jogador para ser permitido;
+// onde não existe (iPhone), simplesmente não faz nada.
+function goFullscreen() {
+  if (!matchMedia('(pointer: coarse)').matches) return;
+  const root = document.documentElement;
+  if (document.fullscreenElement || !root.requestFullscreen) return;
+  root.requestFullscreen()
+    .then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'))
+    .catch(() => {});
+}
+addEventListener('pointerdown', goFullscreen);
+
 async function boot() {
   await loadImages([
     ['paper', ART + 'track/map_background.png'],

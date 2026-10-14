@@ -11,7 +11,7 @@ Versão jogável em HTML/JS puro da Parte 1 do [`PaddockBoss.md`](../../PaddockB
 - Pit stop: escolha do composto (Macio/Médio/Duro) e botão BOX por carro; entra ao fim da volta, dá para cancelar antes.
 - Notificações (volta mais rápida, pneu gasto, box, última volta, chegada), tabela de posições com diferença, pneu e paradas.
 - Tela da temporada com resultado da última etapa e classificação; save no `localStorage` só entre corridas (§12: fechar no meio da corrida perde ela).
-- Todos os números vêm da §14 (Balanceamento inicial). Tela de referência 1920×1080, escalada para caber na janela (paisagem).
+- Todos os números vêm da §14 (Balanceamento inicial). Tela de referência 1920×1080, escalada para caber na janela (paisagem). No celular em pé aparece um aviso para girar o aparelho; no Android, o primeiro toque põe em tela cheia e trava em paisagem.
 
 ## Escolhas do protótipo onde o GDD diz "Em aberto"
 - **Traçados:** o guia desenha as pistas no Editor da Unity; aqui elas são pontos de controle suavizados (Catmull-Rom) em `TRACKS`, no `game.js`. Nomes de pistas e equipes são provisórios.
