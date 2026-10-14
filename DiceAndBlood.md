@@ -26,6 +26,7 @@
 - **Plataforma-alvo:** **Definido** — Mobile (Android/iOS).
 - **Câmera/perspectiva:** Topdown, tabuleiro de batalha em grid 8x8 visto de cima.
 - **Pilar de design:** **Em aberto** — em discussão com o time. Candidato descartado por ora: "dados maiores dão poder, mas roubam controle" (ecoava demais o pilar da franquia Rally). Precisa de uma frase própria que capture a sensação central pretendida (tensão de mesa de RPG? sorte crua? controle tático apesar do dado? etc.).
+- **Candidato em teste no protótipo web:** *"A sorte não é justa, mas se compra com sangue."* O herói pode pagar vida para rolar de novo qualquer dado seu (mecânica "Sangrar", ver §3.1). Ainda não é decisão do time.
 - **Fantasia central:** **Em aberto** — depende do pilar acima.
 
 ## 2. Mecânica Principal
@@ -60,6 +61,23 @@
   - Condição de vitória em combate além de "eliminar todos os inimigos do tabuleiro" (ex.: extração, objetivo por sala) — não definido.
   - Crítico/fumble (equivalente a natural 20 / natural 1) — não definido se existe.
   - Terrenos/obstáculos especiais no tabuleiro além de "bloqueia passagem".
+
+### 3.1 Propostas em teste no protótipo web
+
+O protótipo em `prototipos/dice-and-blood/` testa respostas para vários itens "Em aberto". **Nenhuma é decisão ainda**: são candidatas para o time jogar e discutir. Os valores foram calibrados com uma simulação; detalhes no `README.md` do protótipo.
+
+- **Estrutura do turno, "mover e agir":** a unidade rola o dado de movimento, anda (se quiser) e então pode atacar um vizinho. O Parry continua ocupando o turno inteiro, como já definido na §2.4. Motivo: com "mover **ou** atacar", quem se aproximava apanhava primeiro, e a melhor jogada era esperar parado.
+- **Sangrar (candidato a pilar, §1):** pagar vida para rolar de novo o dado de movimento (antes de andar) ou um ataque que errou. O custo começa em 1 e sobe 1 a cada uso no mesmo turno, e nunca pode matar. Na simulação, custo fixo 2 tornava sangrar sempre pior e custo fixo 1 sempre melhor. O custo crescente premia usar com critério.
+- **Crítico/falha:** no roll-under, 1 natural sempre acerta com dano dobrado e 20 natural sempre erra.
+- **Dado por unidade (§2.2):** o Esqueleto rola d4 (lento) e uma recompensa troca o d6 do herói por d8.
+- **IA por tipo (Parte 7 §5.1):**
+  - **Esqueleto:** lento e resistente.
+  - **Goblin:** foge quando está com pouca vida.
+  - **Morcego:** voa por cima de pedras e unidades, ataca e recua.
+  - **Rei Esqueleto:** chefe da última sala.
+- **Run em 7 salas fixas, com condição de vitória** (vencer o chefe da sala 7). A vida passa de uma sala para a outra; ao descer, o herói recupera um pouco de vida e escolhe 1 de 3 recompensas (cura, +Ataque, +dano, +Defesa etc.). É uma versão sem geração procedural da estrutura roguelike da §3.
+- **Score (§7):** salas limpas e, no empate, menos turnos.
+- **Feedback (§5, §6):** mostra a chance de acerto antes do ataque, faz a tela tremer no acerto, deixa manchas de sangue no chão e toca sons sintetizados.
 
 ## 4. Estilo Visual
 
