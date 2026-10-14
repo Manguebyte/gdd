@@ -29,8 +29,8 @@ const STATS = [
   { id: 'regen',        track: 'defense', name: 'Regeneration',      base: 0,   inc: 0.4,   cap: null, cost:  8, icon: 8,  fmt: v => v.toFixed(1) + '/s' },
   { id: 'defAbs',       track: 'defense', name: 'Defense (abs.)',    base: 0,   inc: 0.5,   cap: null, cost:  8, icon: 9,  fmt: v => v.toFixed(1) },
   { id: 'defRel',       track: 'defense', name: 'Defense (rel.)',    base: 0,   inc: 0.015, cap: 0.75, cost: 10, icon: 10, fmt: v => pct(v) },
-  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost: 10, icon: 11, fmt: v => '+' + pct(v) },
-  { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost: 10, icon: 12, fmt: v => '+' + pct(v) },
+  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost:  6, icon: 11, fmt: v => '+' + pct(v) },
+  { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost:  6, icon: 12, fmt: v => '+' + pct(v) },
 ];
 const STAT = Object.fromEntries(STATS.map(s => [s.id, s]));
 
@@ -45,7 +45,7 @@ const ICON = { shards: 17, trophy: 19, trophyLocked: 20 };
 
 // Satellites extras são comprados durante a run, com Shards, na aba Satellites da gaveta
 // (não são Stats). Custo do 2º, 3º e 4º Satellite — valor inicial, ajustar jogando.
-const SATELLITE_COSTS = [15, 150, 600];
+const SATELLITE_COSTS = [10, 50, 100];
 const MAX_SATELLITES = 4;
 
 const CORES = [

@@ -117,8 +117,8 @@ Ao comprar um nível de Hitpoints, o HP atual sobe na mesma quantidade (o jogado
 #### 💰 Utility
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
-| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 10 |
-| **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 10 |
+| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 6 |
+| **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 6 |
 
 Utility é a Track "de investimento": não ataca nem defende, mas acelera o acesso às outras duas.
 
@@ -128,11 +128,11 @@ Comprados na aba "Satellites" da gaveta. Não são um Stat: não têm nível nem
 **Definido (valor inicial, ajustar via Analytics):**
 | Compra | Custo (Shards) |
 |---|---|
-| **Satellite 2** | 15 |
-| **Satellite 3** | 150 |
-| **Satellite 4** | 600 |
+| **Satellite 2** | 10 |
+| **Satellite 3** | 50 |
+| **Satellite 4** | 100 |
 
-Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problema (Quadrants sem cobertura) e custa pouco mais que 2 níveis de Orbit Speed (6 + 7), para ser uma das primeiras compras da run. Comprar cedo deixa Damage e Hitpoints para trás; adiar deixa Quadrants descobertos por mais tempo.
+Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problema (Quadrants sem cobertura) e custa menos que 2 níveis de Orbit Speed (6 + 7), para ser uma das primeiras compras da run. Comprar cedo deixa Damage e Hitpoints para trás; adiar deixa Quadrants descobertos por mais tempo.
 
 ### 4.3 Waves
 
@@ -4801,7 +4801,7 @@ namespace Armageddon.Economy
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private WaveDirector _waves;
         [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
-        [SerializeField] private int[] _satelliteCosts = { 15, 150, 600 };   // 2º, 3º e 4º Satellite (Seção 4.2)
+        [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
         public RunStats Stats { get; private set; }
@@ -5327,14 +5327,14 @@ Em `Assets/_Project/Data/Stats/`, **Create → Armageddon → Stat Definition**,
 | `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 8 | PerSecond | 8 |
 | `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 8 | Number | 9 |
 | `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 10 | Percent | 10 |
-| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 10 | Percent | 11 |
-| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 10 | Percent | 12 |
+| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 6 | Percent | 11 |
+| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 6 | Percent | 12 |
 
 Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome `StatCatalog`, e arraste os 13 assets **nesta ordem** para a lista **Stats**: é a ordem dos cards na gaveta.
 
 #### Passo 9 — Montar a economia na cena
 
-Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`; **Satellite Costs** = `15`, `150`, `600` (já vem preenchido; Seção 4.2).
+Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`; **Satellite Costs** = `10`, `50`, `100` (já vem preenchido; Seção 4.2).
 
 > A partir de agora, os Stats do `SatelliteOrbit` e do `PlanetHealth` no Inspector são **sobrescritos** pelo `RunEconomy` quando o Play começa. Para testar valores, compre Upgrades (ou use **M** para ganhar Shards).
 
@@ -5378,8 +5378,8 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - Comprar **Range** faz o preenchimento do Quadrant **crescer** na hora. **Orbit Speed** faz o Satellite girar mais rápido.
 - Comprar **Hitpoints** com o planeta ferido (**F6** algumas vezes): o máximo **e** o HP atual sobem 25.
 - **Crit Chance** chega a `MAX` quando atinge 80% e deixa de ser comprável.
-- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 15 Shards`, desabilitado até o saldo chegar a 15. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
-- Com **M**, compre o Satellite 2: o saldo cai 15, o segundo Satellite aparece do lado oposto da órbita, surge a linha `Satellite 2: Closest` e o botão passa a `+ Satellite 3: 150 Shards`. Depois do 4º, o botão some. As teclas **2**–**4** da Fase 3 também mudam o número de Satellites (sem cobrar), e o botão acompanha.
+- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 10 Shards`, desabilitado até o saldo chegar a 10. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
+- Com **M**, compre o Satellite 2: o saldo cai 10, o segundo Satellite aparece do lado oposto da órbita, surge a linha `Satellite 2: Closest` e o botão passa a `+ Satellite 3: 50 Shards`. Depois do 4º, o botão some. As teclas **2**–**4** da Fase 3 também mudam o número de Satellites (sem cobrar), e o botão acompanha.
 - O jogo **nunca pausa** ao abrir a gaveta ou comprar.
 - Em `1920x1080`, a UI tem o mesmo tamanho de pixel que o mundo (6×). Em `1280x720`, os dois ficam em 4×.
 
@@ -5876,7 +5876,7 @@ namespace Armageddon.Economy
         [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
         [SerializeField] private WaveDirector _waves;
         [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
-        [SerializeField] private int[] _satelliteCosts = { 15, 150, 600 };   // 2º, 3º e 4º Satellite (Seção 4.2)
+        [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
         public RunStats Stats { get; private set; }
