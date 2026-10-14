@@ -98,11 +98,33 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'UltimaEntrega.md',
+    slug: 'ultima-entrega',
+    label: 'Última Entrega',
+    description: 'Plataforma 2D de horror psicológico: um entregador equilibra caixas empilhadas num mundo destruído.',
+    guideStart: /^## Unity: /,
+  },
+  {
     source: 'PaperFlight.md',
     slug: 'paper-flight',
     label: 'Paper Flight',
     description: 'Incremental mobile em retrato: lance um avião de papel, plane o mais longe possível e compre upgrades.',
     guideStart: /^# Parte 2\b/,
+  },
+  {
+    source: 'ProjetoHex.md',
+    slug: 'projeto-hex',
+    label: 'Projeto Hex',
+    description: 'Estratégia isométrica em hexágonos no estilo Catan: explore, construa nas interseções e colete por tempo, mesmo offline.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
+    // Ainda não tem guia Unity, só o GDD inicial.
+    source: 'CacaAsBruxas.md',
+    slug: 'caca-as-bruxas',
+    label: 'Caça às Bruxas',
+    description: 'Souls-like em que você é a bruxa caçada: cada magia aprendida aumenta a Suspeita sobre ela.',
+    gddOnly: true,
   },
   {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
@@ -228,10 +250,10 @@ function splitGame(game) {
   const chunks = [{ heading: null, lines: [], mode: 'gdd' }];
   let mode = game.guideOnly ? 'guide' : 'gdd';
   chunks[0].mode = mode;
-  let guideFound = Boolean(game.guideOnly);
+  let guideFound = Boolean(game.guideOnly || game.gddOnly);
 
   lines.forEach((line, i) => {
-    const isSplitHeading = !mask[i] && /^#{1,2} /.test(line) && !game.guideOnly;
+    const isSplitHeading = !mask[i] && /^#{1,2} /.test(line) && !game.guideOnly && !game.gddOnly;
     if (isSplitHeading) {
       if (game.guideStart.test(line)) {
         mode = 'guide';
@@ -287,7 +309,9 @@ function buildIntro() {
     const first = g.guideOnly ? 'guia-unity' : 'gdd';
     const links = g.guideOnly
       ? `[${g.guideLabel}](./${g.slug}/guia-unity.md)`
-      : `[GDD](./${g.slug}/gdd.md) · [Guia Unity](./${g.slug}/guia-unity.md)`;
+      : g.gddOnly
+        ? `[GDD](./${g.slug}/gdd.md)`
+        : `[GDD](./${g.slug}/gdd.md) · [Guia Unity](./${g.slug}/guia-unity.md)`;
     return `| [${g.label}](./${g.slug}/${first}.md) | ${g.description} | ${links} |`;
   });
   return (
@@ -350,8 +374,14 @@ export function splitGdds() {
       );
     }
 
+    const guideFile = path.join(dir, 'guia-unity.md');
+    if (game.gddOnly) {
+      fs.rmSync(guideFile, { force: true });
+      return;
+    }
+
     writeIfChanged(
-      path.join(dir, 'guia-unity.md'),
+      guideFile,
       frontMatter({
         title: `${game.label} — ${game.guideLabel ?? 'Guia Unity'}`,
         sidebar_label: game.guideLabel ?? 'Guia Unity',

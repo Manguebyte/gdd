@@ -1413,13 +1413,36 @@ public class CrashMenuUI : MonoBehaviour
 
 > Objetivo: mostrar a velocidade **real** do carro (pós-grip, não a pedida pelo cursor) como uma barra leve em %, sem virar um velocímetro numérico pesado (ver pilar na Parte 1 §1, e a distinção intenção/realidade na Parte 1 §3). A fonte do dado já existe: `CarController.ActualSpeedNormalized` (Fase 1, seção 1.2), que varia de 0 a 1 e reflete o grip do terreno atual.
 
-**1. Criar a barra na UI:**
+**1. Importar os sprites da barra:**
 
-1. No mesmo `Canvas` da seção 4.1, crie uma `Image` chamada `SpeedBarFill` (**UI → Image**), com `Image Type = Filled` e `Fill Method` à sua escolha (`Horizontal` para uma barra reta, `Radial 360` para um gauge circular).
-2. Posicione num canto discreto da tela (ex.: inferior direito) — não é o foco visual do HUD, é um apoio.
-3. Opcional: uma `Image` de fundo (`SpeedBarBackground`) atrás dela, só pra moldura da barra.
+Os sprites estão em `Sprites/Rally2D/ui/`, desenhados no estilo flat da franquia:
 
-**2. Script: `SpeedDisplay.cs`**
+| Arquivo | Tamanho | O que é |
+|---|---|---|
+| `speedbar_frame.png` | 640 × 112 | Moldura: contorno marrom, trilho escuro e sombra. Fica atrás. |
+| `speedbar_fill.png` | 600 × 64 | Preenchimento em degradê verde → amarelo → laranja → vermelho. Como o `Filled` corta da esquerda para a direita, o vermelho só aparece com o carro rápido. |
+| `speedbar_fill_white.png` | 600 × 64 | O mesmo preenchimento em branco, caso prefira uma cor só, definida pelo campo `Color` da `Image`. |
+
+1. Copie os três para `Assets/_Project/Sprites/UI/`.
+2. Selecione os três e, no Inspector, use `Texture Type = Sprite (2D and UI)` e clique em **Apply**. Por ser arte vetorial e não pixel art, deixe `Filter Mode = Bilinear`.
+
+**2. Montar a barra na UI:**
+
+1. No mesmo `Canvas` da seção 4.1, crie uma `Image` chamada `SpeedBarBackground` (**UI → Image**).
+   - `Source Image = speedbar_frame`, depois clique em **Set Native Size**.
+   - Posicione num canto discreto da tela (ex.: ancorada no canto inferior direito). Não é o foco visual do HUD, é um apoio.
+   - Para mudar o tamanho, altere `Width` e `Height` mantendo a proporção 640 × 112 (ex.: 320 × 56).
+2. Como filha dela, crie outra `Image` chamada `SpeedBarFill`.
+   - `Source Image = speedbar_fill`.
+   - `Image Type = Filled`, `Fill Method = Horizontal`, `Fill Origin = Left`.
+   - Deixe `Fill Amount = 1` por enquanto, para ver a barra cheia enquanto ajusta.
+3. Encaixe o preenchimento no trilho pelas âncoras do `RectTransform` do `SpeedBarFill`:
+   - `Anchors Min = (0.03125, 0.25)` e `Anchors Max = (0.96875, 0.8214)`;
+   - `Left`, `Top`, `Right` e `Bottom` todos em `0`.
+
+   As âncoras são frações da moldura, então o encaixe vale em qualquer tamanho da barra. Os números vêm da posição do preenchimento na moldura: 20 px de cada lado, 20 px em cima e 28 px embaixo, por causa da sombra.
+
+**3. Script: `SpeedDisplay.cs`**
 
 Crie em `Assets/_Project/Scripts/UI/SpeedDisplay.cs`:
 
@@ -1492,6 +1515,7 @@ public class TrackProgressDisplay : MonoBehaviour
 
 #### Problemas comuns
 - **`SpeedBarFill` não se move:** confira se `Image Type = Filled` está marcado — numa `Image` normal, `fillAmount` não tem efeito visual.
+- **O preenchimento sai do trilho ou fica torto:** confira as âncoras do `SpeedBarFill` (seção 4.4, passo 2.3). Os quatro offsets (`Left`, `Top`, `Right`, `Bottom`) precisam estar em `0`, e a proporção da `SpeedBarBackground` precisa continuar 640 × 112.
 - **`TrackProgressText` fica sempre em `0%`:** confira se os `Waypoint_XX` têm o script `TrackWaypoint` e um `Box Collider 2D` com `Is Trigger` ✅ cobrindo a largura da pista, e se o carro tem a tag `Car` (Fase 3, seções 3.5 e 3.7). Se o % sobe fora de ordem, a ordem dos filhos dentro de `TrackWaypoints` na Hierarchy não segue o sentido da corrida.
 
 Próxima fase: **05_FIREBASE_LEADERBOARD.md** — conectar o projeto ao Firebase e enviar/ler tempos do leaderboard global.
@@ -2541,6 +2565,7 @@ Diferente de versões anteriores deste guia, as pistas Floresta e Gelo não são
 - **Definido:** arte **vetorial flat minimalista** (Parte 1 §4), gerada via SpriteCook (projeto "Rally2D") e organizada em `Sprites/Rally2D/` neste repositório — os `asset_id` de cada arquivo estão em `Sprites/Rally2D/spritecook-assets.json`. A leva anterior em pixel art (PixelLab, `Sprites/RallySurvive/`) fica **substituída**. O que já existe:
   - Carros em `cars/`, todos vistos de cima apontando pra cima: o rally principal (`rally_orange_v1`/`v2`) mais 8 pinturas dele em `cars/liveries/` (mesmo formato, só a cor da carroceria muda — bom pra adversários/fantasmas e escolha de cor), e 6 modelos diferentes: `hatchback_red`, `buggy_yellow`, `pickup_green`, `classic_coupe`, `street_tuner_purple` e `police` (viatura pra ameaça externa do Street Legends). **Em aberto:** quais modelos entram em qual jogo e se têm atributos diferentes (Parte 1 §3, parâmetros por carro).
   - Sprite do `ChevronGuide` (`ui/chevron.png`, branco pra tingir).
+  - Barra de velocidade da HUD (`ui/speedbar_frame.png`, `ui/speedbar_fill.png` e a versão branca `ui/speedbar_fill_white.png`), feita para `Image Type = Filled` e montada na Fase 4 §4.4. Não vem do SpriteCook: é desenhada pelo script `Sprites/Rally2D/_tools/speed_bar.py`, porque o preenchimento precisa encaixar exatamente na moldura. Para mudar cores ou tamanho, edite o script e rode de novo.
   - Props por pista em `props/desert/` (cactos, pedras, arbusto seco, barreiras, cones, pneus, faixa de checkpoint), `props/forest/` (árvores, arbusto, pedra com musgo, tronco e **2 poças** — `puddle_a`/`puddle_b`, pra zona de poça da Parte 10 §3.9) e `props/ice/` (pinheiros com neve, montes de neve, pedras de gelo, placa de gelo).
   - Decoração de cenário em `deco/common/` (público em fileiras e grupos, torcedores avulsos, tenda, guarda-sol, arco de largada/chegada, postes com bandeirolas, fardos de feno, van de apoio — serve pras 3 pistas), `deco/desert/` (dunas, acácias, palmeira, capim seco, tumbleweed), `deco/forest/` (pinheiros, samambaia, flores, cogumelos, toco, público de guarda-chuva) e `deco/ice/` (bonecos de neve, público de roupa de inverno, cabana, lago congelado, arbustos com neve). Decalques de chão em `decals/` (marcas de pneu retas/curvas/curtas, mancha de lama, pedrinhas) — usar com alpha reduzido no `SpriteRenderer` pra não competir com a pista.
   - Tilesets de terreno em `tilesets/`, um por pista (`dirt_sand`, `grass_mud`, `snow_ice`): autotile de 15 peças (grade 4×4, tile de 128px) com transição estrada ↔ terreno já desenhada.

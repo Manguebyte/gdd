@@ -1093,6 +1093,27 @@
       "label": "rally_pink",
       "file": "cars/liveries/rally_pink.png",
       "note": "recolor local da carroceria laranja do rally_orange_v1"
+    },
+    {
+      "asset_id": null,
+      "sha12": "7fed99cb3208",
+      "label": "barra de velocidade - moldura (Image atrás)",
+      "file": "ui/speedbar_frame.png",
+      "note": "desenhado por script local (_tools/speed_bar.py), não gerado no SpriteCook"
+    },
+    {
+      "asset_id": null,
+      "sha12": "c0063c74df31",
+      "label": "barra de velocidade - preenchimento em degradê (Image Type = Filled)",
+      "file": "ui/speedbar_fill.png",
+      "note": "desenhado por script local (_tools/speed_bar.py), não gerado no SpriteCook"
+    },
+    {
+      "asset_id": null,
+      "sha12": "924c9a169c1d",
+      "label": "barra de velocidade - preenchimento branco para tingir (Image Type = Filled)",
+      "file": "ui/speedbar_fill_white.png",
+      "note": "desenhado por script local (_tools/speed_bar.py), não gerado no SpriteCook"
     }
   ],
   "palette": [
