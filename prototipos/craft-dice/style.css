@@ -1,0 +1,66 @@
+/* Craft Dice — protótipo web. Mapa em 480×270 (pixel art, tiles de 32 px) desenhado em 2× (960×540) e escalado para a janela. */
+:root { --void: #1a0d2e; --crimson: #b3000c; --ink: #f3e6d0; --dim: #a597b8; --atk: #d83a3a; --def: #9aa0aa; --spl: #3f7fe0; --gold: #f2c94c; --panel: #26163f; --line: #4b3470; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d0718; font-family: 'VT323', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; touch-action: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+.hidden { display: none !important; }
+#app { position: absolute; width: 960px; height: 540px; transform-origin: 0 0; overflow: hidden; background: var(--void); }
+#map { position: absolute; inset: 0; width: 960px; height: 540px; image-rendering: pixelated; }
+h2, h3, .title { font-family: 'Silkscreen', monospace; font-weight: 400; margin: 0; }
+
+.btn { background: #3a2560; border: 2px solid #6d4fa0; border-radius: 4px; padding: 4px 12px; font-size: 22px; box-shadow: 0 3px 0 #120a20; }
+.btn:not(:disabled):hover { border-color: var(--gold); }
+.btn:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
+.btn.gold { border-color: var(--gold); color: var(--gold); }
+.btn.red { border-color: var(--atk); color: #ff9d9d; }
+
+#hud { position: absolute; left: 10px; top: 8px; display: flex; gap: 14px; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+#hud .hp { color: #ff7070; } #hud .coin { color: var(--gold); }
+#toast { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: rgba(20,10,35,.9); border: 2px solid var(--line); padding: 4px 14px; font-size: 22px; }
+#stick { position: absolute; width: 120px; height: 120px; border-radius: 50%; border: 3px solid rgba(255,255,255,.3); pointer-events: none; transform: translate(-50%, -50%); }
+#stick i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: rgba(255,255,255,.35); }
+
+/* ------------------------------------------------------------ batalha (cena separada, orientada a UI) */
+#battle { position: absolute; inset: 0; background: radial-gradient(circle at 50% 35%, #4a0812, #1a0d2e 70%); display: grid; grid-template-rows: 210px 1fr auto; padding: 14px 20px; gap: 6px; }
+.foe { display: grid; grid-template-columns: 200px 1fr 260px; align-items: center; gap: 16px; }
+.foe canvas { width: 192px; height: 192px; image-rendering: pixelated; }
+.foe h2 { font-size: 26px; }
+.bar { height: 16px; background: #120a20; border: 2px solid #000; position: relative; margin: 6px 0; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--atk); }
+.bar span { position: absolute; inset: 0; text-align: center; font-size: 16px; line-height: 13px; }
+.intent { background: rgba(0,0,0,.35); border: 2px solid var(--atk); border-radius: 6px; padding: 8px 12px; font-size: 24px; text-align: center; }
+.intent b { font-size: 40px; color: #ff8080; display: block; line-height: 1; }
+.tags { font-size: 18px; color: var(--gold); }
+.dice { display: flex; gap: 14px; justify-content: center; align-items: center; }
+.die { position: relative; width: 108px; height: 120px; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; }
+.die canvas { width: 96px; height: 96px; image-rendering: pixelated; }
+.die span { font-size: 18px; color: var(--dim); }
+.die.sel canvas { filter: drop-shadow(0 0 0 var(--gold)) drop-shadow(0 0 6px var(--gold)); }
+.die.sel span { color: var(--gold); }
+.me { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.me .stats { font-size: 24px; display: flex; gap: 18px; }
+.me .stats b { color: #ff7070; } .me .stats .sp { color: #8fb8ff; }
+.spells { display: flex; gap: 8px; flex-wrap: wrap; }
+.spells .btn { font-size: 18px; border-color: var(--spl); }
+.log { font-size: 20px; color: var(--dim); min-height: 46px; text-align: center; }
+.actions { display: flex; gap: 10px; }
+
+/* ------------------------------------------------------------ bonfire */
+#bonfire, #screen { position: absolute; inset: 0; background: rgba(13,7,24,.86); display: flex; align-items: center; justify-content: center; }
+.card { width: 760px; max-height: 510px; overflow: auto; background: var(--panel); border: 3px solid var(--line); border-radius: 6px; padding: 14px 18px; }
+.tabs { display: flex; gap: 6px; margin: 10px 0; }
+.tabs .btn.on { border-color: var(--gold); color: var(--gold); }
+.list { display: flex; flex-direction: column; gap: 6px; font-size: 22px; }
+.item { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,.2); padding: 4px 8px; border-radius: 4px; }
+.item .grow { flex: 1; }
+.item small { color: var(--dim); font-size: 18px; }
+.faces { display: flex; gap: 2px; }
+.faces img { width: 36px; height: 36px; image-rendering: pixelated; }
+.slot { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; margin-right: 6px; }
+.slot select { font: inherit; font-size: 18px; background: #120a20; color: var(--ink); border: 1px solid var(--line); }
+.slot img { width: 48px; height: 48px; image-rendering: pixelated; }
+.note { color: var(--dim); font-size: 18px; }
+#screen .card { text-align: center; font-size: 22px; }
+#screen h2 { font-size: 36px; color: var(--gold); margin-bottom: 8px; }
+#screen .row { display: flex; gap: 12px; justify-content: center; margin-top: 14px; }

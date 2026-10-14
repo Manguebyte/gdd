@@ -172,8 +172,21 @@
 
 ## 10. Estilo Visual e Áudio
 
-- **Definido:** pixel art.
-- **Em aberto:** a resolução dos sprites, a paleta, o tema visual de cada área e a ferramenta de geração. O estúdio já usa PixelLab e SpriteCook em outros jogos, mas isso ainda não foi confirmado para este.
+- **Definido:** pixel art retrô de baixa resolução, gerada no **PixelLab** a partir da imagem de referência em `Sprites/CraftDice/example/`.
+  - Personagens chibi minúsculos, com cabeça redonda, pouco detalhe e cores variadas.
+  - Chão carmesim formando uma "ilha" sobre um fundo roxo-vazio.
+  - Props com sombreado suave, pedras bege/areia, árvores ciano e sombra projetada.
+- **Definido:** vista **top-down angulada** (3/4), que dá o visual 2.5D sem trocar o Tilemap retangular. O pedido original falava em isométrico, mas isométrico de verdade exigiria Isometric Tilemap e tiles sem autotile, então ficou a vista angulada.
+- **Definido:** tamanhos.
+  - Tiles de **32 px** (PPU 32).
+  - Personagens comuns com uns 20 px de altura num quadro de 32 px; o chefe usa um quadro de 48 px.
+  - Props em telas de 32 ou 64 px.
+  - 4 direções (south, east, north, west).
+- **Definido:** cada tipo de dado tem uma cor: **Ataque vermelho**, **Defesa cinza** e **Feitiço azul**.
+  - O dado é desenhado como um corpo na cor do tipo mais um ícone de face por cima. Assim a forja (§3.3) monta qualquer combinação.
+  - Os três dados têm uma animação de girar (8 quadros). Enquanto gira, o dado mostra os ícones das faces que ele tem, e não pontos de dado comum. No fim aparece a face sorteada.
+- Arquivos, ids do PixelLab e receita do estilo: `Sprites/CraftDice/PENDENTES.md`.
+- **Em aberto:** o tema visual das áreas depois da primeira. A Área 1 é a ilha carmesim com ruínas bege e árvores ciano.
 - **Em aberto:** a direção sonora inteira.
 
 ## 11. HUD, UI e Controles
@@ -184,7 +197,8 @@
   - A ação de interagir com a bonfire está **Em aberto**. Placeholder de MVP: o menu abre ao encostar na bonfire.
 - **Batalha:** tudo por clique ou toque. Tocar num dado marca ou desmarca o dado para re-rolar; os botões **Re-rolar** e **Confirmar** ficam na tela, e os feitiços aparecem como botões.
 - **HUD de batalha (placeholder de MVP):** nome, HP e intenção do monstro; HP do jogador, pontos de feitiço e re-rolagens restantes; a fileira de dados; a fileira de feitiços; um texto com o resultado da última rodada.
-- **Em aberto:** o HUD da exploração (HP e moeda sempre visíveis?), a animação de rolagem dos dados e o layout final das telas.
+- **Definido:** ao rolar, cada dado toca a animação de girar (§10) e termina mostrando a face sorteada.
+- **Em aberto:** o HUD da exploração (HP e moeda sempre visíveis?), quanto tempo dura a rolagem e o layout final das telas.
 
 ## 12. Backend / Persistência
 
@@ -221,7 +235,7 @@
 | Monstro comum B ("Cão Sombrio") | 6 HP, 2 de dano, intenção 1, 1, 2..., 15 de moeda |
 | Chefe ("Cavaleiro Caído") | 15 HP, 2 de dano, intenção 2, 3, 1, 3..., 50 de moeda |
 
-**Fica para depois / Em aberto:** número de áreas, lista completa de feitiços e monstros, mecânicas de chefe, progressão entre runs, áudio, animações de rolagem.
+**Fica para depois / Em aberto:** número de áreas, lista completa de feitiços e monstros, mecânicas de chefe, progressão entre runs, áudio.
 
 ## 14. Em aberto (consolidado)
 
@@ -238,8 +252,8 @@
 - Chefes renascem ao descansar? (§7)
 - Número e tema das áreas, posição das bonfires, portas do chefe, variação por run (§8).
 - Nome da moeda e progressão entre runs (§9).
-- Arte (resolução, paleta, ferramenta) e áudio (§10).
-- Interação com a bonfire, HUD da exploração, animações (§11).
+- Tema visual das áreas depois da primeira, e áudio (§10).
+- Interação com a bonfire, HUD da exploração, duração da rolagem dos dados (§11).
 - Momento do save e o risco de fechar o jogo no meio da batalha (§12).
 
 ---
@@ -328,7 +342,7 @@ Assets/_Project/
 
 ### 0.5 Ajustes de importação de pixel art
 
-1. Selecione a pasta `Sprites` e, para cada sprite importado: **Filter Mode = Point (no filter)**, **Compression = None** e **Pixels Per Unit** igual ao tamanho do tile (ex.: 16).
+1. Selecione a pasta `Sprites` e, para cada sprite importado: **Filter Mode = Point (no filter)**, **Compression = None** e **Pixels Per Unit** igual ao tamanho do tile: **32**, porque os tiles gerados no PixelLab têm 32 px (Parte 1 §10). Os sprites prontos estão em `Sprites/CraftDice/` na raiz do repositório.
 2. Em **Edit → Project Settings → Player → Other Settings → Active Input Handling**, deixe **Input System Package (New)** ou **Both**.
 
 ### ✅ Checkpoint da Fase 0

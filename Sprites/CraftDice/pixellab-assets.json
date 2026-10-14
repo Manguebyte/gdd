@@ -1,0 +1,258 @@
+{
+  "characters": {
+    "player": {
+      "character_id": "7f1fbf6a-de0c-460d-a73b-61866765d55d",
+      "poses": {
+        "south": "chars/player_south.png",
+        "east": "chars/player_east.png",
+        "north": "chars/player_north.png",
+        "west": "chars/player_west.png"
+      },
+      "anims": {
+        "idle": {
+          "file": "anims/player_idle.png",
+          "rows": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ],
+          "frames": 4,
+          "frame_size": [
+            32,
+            32
+          ]
+        },
+        "walk": {
+          "file": "anims/player_walk.png",
+          "rows": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ],
+          "frames": 6,
+          "frame_size": [
+            32,
+            32
+          ]
+        }
+      },
+      "frame_size": 32
+    },
+    "skeleton": {
+      "character_id": "7d5749ee-cc21-4ac4-8afe-9f92b741900c",
+      "poses": {
+        "south": "chars/skeleton_south.png",
+        "east": "chars/skeleton_east.png",
+        "north": "chars/skeleton_north.png",
+        "west": "chars/skeleton_west.png"
+      },
+      "anims": {
+        "idle": {
+          "file": "anims/skeleton_idle.png",
+          "rows": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ],
+          "frames": 4,
+          "frame_size": [
+            32,
+            32
+          ]
+        }
+      },
+      "frame_size": 32
+    },
+    "shadow-hound": {
+      "character_id": "c783525c-f02c-4199-a59b-c42e4a23d0f2",
+      "poses": {
+        "south": "chars/shadow-hound_south.png",
+        "east": "chars/shadow-hound_east.png",
+        "north": "chars/shadow-hound_north.png",
+        "west": "chars/shadow-hound_west.png"
+      },
+      "anims": {
+        "idle": {
+          "file": "anims/shadow-hound_idle.png",
+          "rows": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ],
+          "frames": 8,
+          "frame_size": [
+            32,
+            32
+          ]
+        }
+      },
+      "frame_size": 32
+    },
+    "fallen-knight": {
+      "character_id": "f33c5c28-0729-498e-a9f4-4e06c7f67250",
+      "poses": {
+        "south": "chars/fallen-knight_south.png",
+        "east": "chars/fallen-knight_east.png",
+        "north": "chars/fallen-knight_north.png",
+        "west": "chars/fallen-knight_west.png"
+      },
+      "anims": {
+        "idle": {
+          "file": "anims/fallen-knight_idle.png",
+          "rows": [
+            "south",
+            "east",
+            "north",
+            "west"
+          ],
+          "frames": 4,
+          "frame_size": [
+            48,
+            48
+          ]
+        }
+      },
+      "frame_size": 48
+    }
+  },
+  "tilesets": {
+    "area1-void-ground": {
+      "tileset_id": "0e268927-6164-4a44-959f-ba0e1ee49349",
+      "sheet": "tiles/area1-void-ground.png",
+      "metadata": "tiles/area1-void-ground.json"
+    }
+  },
+  "props": {
+    "bonfire": {
+      "object_id": "a3a59885-1b58-462d-8f80-fb3d9ac2a895",
+      "file": "props/bonfire.png",
+      "anims": {
+        "burn": {
+          "file": "anims/bonfire_burn.png",
+          "frames": 8,
+          "frame_size": [
+            64,
+            64
+          ]
+        }
+      }
+    },
+    "bonfire-unlit": {
+      "object_id": "4d5f0f1a-93f5-4de8-a9ff-c37a5e40afc8",
+      "file": "props/bonfire-unlit.png"
+    },
+    "anvil": {
+      "object_id": "66ce1831-05b2-4ee1-9ddd-901d64040a52",
+      "file": "props/anvil.png"
+    },
+    "rune-stone": {
+      "object_id": "e9bbbda3-4783-45eb-b361-9354493293f1",
+      "file": "props/rune-stone.png"
+    },
+    "pillar": {
+      "object_id": "d40da670-7ceb-4baf-8491-7831dd2636d9",
+      "file": "props/pillar.png"
+    },
+    "broken-pillar": {
+      "object_id": "c3a0bb31-83da-4c39-9e93-928cdfa49096",
+      "file": "props/broken-pillar.png"
+    },
+    "cyan-tree": {
+      "object_id": "2242b324-c523-44bf-84fa-a0b14049888c",
+      "file": "props/cyan-tree.png"
+    },
+    "dead-tree": {
+      "object_id": "3bb4f037-434f-402f-9c09-a13ce682853f",
+      "file": "props/dead-tree.png"
+    },
+    "stump": {
+      "object_id": "68d105bf-6311-40cf-a0f5-5c282f6e540e",
+      "file": "props/stump.png"
+    },
+    "boulders": {
+      "object_id": "e7d07cc5-c2de-4625-a5b6-3a9a11f42103",
+      "file": "props/boulders.png"
+    },
+    "chest": {
+      "object_id": "38008f0c-a186-4ec5-bcef-b9b32a5c40ee",
+      "file": "props/chest.png"
+    },
+    "tombstone": {
+      "object_id": "2d6f4728-b516-45c6-a97b-a288a390ea9a",
+      "file": "props/tombstone.png"
+    },
+    "boss-gate": {
+      "object_id": "5f3dbb97-5330-4f69-a006-e9f6a913df45",
+      "file": "props/boss-gate.png"
+    },
+    "crystal": {
+      "object_id": "811758c2-3ca7-4629-91f2-d4ae24730122",
+      "file": "props/crystal.png"
+    },
+    "skull-pile": {
+      "object_id": "188ddd91-1742-4a43-b729-e03ad78ce213",
+      "file": "props/skull-pile.png"
+    }
+  },
+  "dice": {
+    "body_job": "9fbf12c4-8345-443b-999e-3307cb0e4b8a",
+    "types": {
+      "attack": {
+        "color": "red",
+        "body": "dice/bodies/attack.png",
+        "faces": {
+          "attack1": "dice/faces/attack_attack1.png",
+          "attack2": "dice/faces/attack_attack2.png",
+          "critical": "dice/faces/attack_critical.png",
+          "miss": "dice/faces/attack_miss.png"
+        },
+        "roll": {
+          "file": "anims/die-attack_roll.png",
+          "frames": 8,
+          "frame_size": [
+            48,
+            48
+          ]
+        }
+      },
+      "defense": {
+        "color": "grey",
+        "body": "dice/bodies/defense.png",
+        "faces": {
+          "parry": "dice/faces/defense_parry.png",
+          "dodge": "dice/faces/defense_dodge.png",
+          "miss": "dice/faces/defense_miss.png"
+        },
+        "roll": {
+          "file": "anims/die-defense_roll.png",
+          "frames": 8,
+          "frame_size": [
+            48,
+            48
+          ]
+        }
+      },
+      "spell": {
+        "color": "blue",
+        "body": "dice/bodies/spell.png",
+        "faces": {
+          "spell0": "dice/faces/spell_spell0.png",
+          "spell1": "dice/faces/spell_spell1.png",
+          "spell2": "dice/faces/spell_spell2.png"
+        },
+        "roll": {
+          "file": "anims/die-spell_roll.png",
+          "frames": 8,
+          "frame_size": [
+            48,
+            48
+          ]
+        }
+      }
+    }
+  }
+}

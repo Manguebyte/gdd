@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>RallySurvive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div class="timer"><b id="time">0:00.00</b><small id="best"></small></div>
+  <div class="bars">
+    <label>VELOCIDADE</label><div class="bar"><i id="speed"></i></div>
+    <label>PISTA</label><div class="bar prog"><i id="prog"></i></div>
+  </div>
+</div>
+<div id="menu" class="hidden">
+  <h1>RALLY<span>SURVIVE</span></h1>
+  <div id="tracks"></div>
+  <div id="board"></div>
+  <p class="tip">Toque numa pista para ver o ranking · <b>segure</b> para largar</p>
+</div>
+<div id="dialog" class="hidden"></div>
+<script src="game.js"></script>
+</body>
+</html>

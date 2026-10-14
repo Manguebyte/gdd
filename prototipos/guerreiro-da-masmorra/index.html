@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Guerreiro da Masmorra</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="camp" class="hidden"></div>
+  <div id="battle" class="hidden">
+    <div id="chip"></div>
+    <div id="queue"></div>
+    <canvas id="field" width="720" height="640"></canvas>
+    <div id="move" class="hidden"></div>
+    <div id="cmds"></div>
+    <div id="bottom"><div id="log"></div><div class="bars" id="bars"></div></div>
+    <div id="qte" class="hidden"><svg viewBox="0 0 200 200"><circle class="target" cx="100" cy="100" r="46"/><circle class="ring" cx="100" cy="100" r="90"/></svg><b></b><small></small></div>
+    <div id="mini" class="hidden"></div>
+  </div>
+  <div id="modal" class="hidden"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

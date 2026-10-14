@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Requiem of Blessings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="scene" width="1152" height="648"></canvas>
+  <div id="hud"></div>
+  <div id="camp" class="hidden"></div>
+  <div id="actions" class="hidden"></div>
+  <div id="react" class="hidden">
+    <button id="btn-dodge">ESQUIVA<small>Espaço</small></button>
+    <button id="btn-parry">PARRY<small>K</small></button>
+  </div>
+  <div id="precision" class="hidden"><div class="bar"><i class="sweet"></i><i class="cur"></i></div><p>Toque para parar no centro</p></div>
+  <div id="banner" class="hidden"></div>
+  <div id="modal" class="hidden"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

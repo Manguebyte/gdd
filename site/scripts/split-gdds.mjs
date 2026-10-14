@@ -98,6 +98,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'PaperFlight.md',
+    slug: 'paper-flight',
+    label: 'Paper Flight',
+    description: 'Incremental mobile em retrato: lance um avião de papel, plane o mais longe possível e compre upgrades.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',

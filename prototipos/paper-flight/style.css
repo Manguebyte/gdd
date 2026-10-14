@@ -1,0 +1,57 @@
+/* Paper Flight — protótipo web. Jogo em 180×320 (GDD §8) desenhado em 2× (360×640) e escalado para caber na janela. */
+:root { --ink: #3a2a20; --cream: #f6ecd6; --blue: #5aa8e0; --gold: #f2c443; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #2c3e50; font-family: 'Pixelify Sans', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; touch-action: none; }
+button { font: inherit; cursor: pointer; }
+.hidden { display: none !important; }
+#app { position: absolute; width: 360px; height: 640px; transform-origin: 0 0; overflow: hidden; }
+#game { position: absolute; inset: 0; width: 360px; height: 640px; image-rendering: pixelated; }
+
+/* HUD de voo (GDD §9) */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud .top { display: flex; justify-content: space-between; padding: 10px 12px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.45); }
+#hud b { font-size: 30px; display: block; }
+#hud small { font-size: 14px; }
+.wind { display: flex; gap: 2px; align-items: center; }
+.wind img { width: 28px; height: 28px; image-rendering: pixelated; }
+.wind img.off { opacity: .25; }
+.speedo { position: absolute; left: 20px; right: 20px; top: 88px; height: 22px; background: url('../../Sprites/PaperFlight/ui/bar_frame.png') center/100% 100% no-repeat; image-rendering: pixelated; }
+.speedo .fill { position: absolute; left: 4%; top: 25%; height: 50%; width: 0; background: #e04848;
+  -webkit-mask: url('../../Sprites/PaperFlight/ui/bar_fill_white.png') left center/100% 100% no-repeat; mask: url('../../Sprites/PaperFlight/ui/bar_fill_white.png') left center/100% 100% no-repeat; }
+#tip { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; color: #fff; font-size: 17px; text-shadow: 2px 2px 0 rgba(0,0,0,.5); padding: 0 20px; }
+
+/* Painel creme (9-slice do kit) */
+.panel { border: 16px solid transparent; border-image: url('../../Sprites/PaperFlight/ui/panel.png') 22 fill stretch; image-rendering: pixelated; padding: 2px 6px; }
+.btn { border: 0; height: 48px; padding: 0 14px; color: #fff; font-size: 20px; font-weight: 700; text-shadow: 1px 2px 0 rgba(0,0,0,.35);
+  background: url('../../Sprites/PaperFlight/ui/button_blue.png') center/100% 100% no-repeat; image-rendering: pixelated; }
+.btn:disabled { filter: grayscale(1); opacity: .6; cursor: default; }
+.btn:not(:disabled):active { transform: translateY(2px); }
+.btn.gold { background-image: url('../../Sprites/PaperFlight/ui/button_yellow_square.png'); color: var(--ink); text-shadow: none; }
+
+#hangar, #result { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; background: linear-gradient(rgba(30,50,80,.35), rgba(30,50,80,.65)); }
+.head { display: flex; justify-content: space-between; align-items: flex-end; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,.45); }
+.head h1 { margin: 0; font-size: 28px; }
+.head .money { font-size: 22px; display: flex; align-items: center; gap: 4px; }
+.head .money img { width: 22px; image-rendering: pixelated; }
+.info { font-size: 15px; line-height: 1.35; }
+.info b { font-size: 17px; }
+.goalbar { height: 10px; background: #d9c7a3; border: 2px solid var(--ink); margin-top: 4px; }
+.goalbar i { display: block; height: 100%; background: #6cc04a; }
+.ups { display: flex; flex-direction: column; gap: 6px; }
+.up { display: grid; grid-template-columns: 40px 1fr auto; gap: 8px; align-items: center; text-align: left; padding: 4px 6px; background: rgba(255,255,255,.0); border: 0; }
+.up img { width: 36px; image-rendering: pixelated; }
+.up .n { font-size: 17px; font-weight: 700; line-height: 1.05; }
+.up .n small { display: block; font-size: 12px; font-weight: 400; color: #7b6a58; }
+.up .lv { display: flex; gap: 2px; margin-top: 3px; }
+.up .lv i { width: 9px; height: 6px; background: #d9c7a3; border: 1px solid #a08a6c; }
+.up .lv i.on { background: #5aa8e0; border-color: #2f6a99; }
+.up .btn { height: 38px; min-width: 76px; font-size: 16px; }
+.row { display: flex; gap: 8px; }
+.row .btn { flex: 1; }
+.note { font-size: 12px; color: #7b6a58; margin: 2px 0 0; }
+#result { justify-content: center; }
+#result .panel { text-align: center; font-size: 17px; }
+#result .big { font-size: 40px; font-weight: 700; }
+#result .lines div { display: flex; justify-content: space-between; padding: 2px 6px; }
+#result .lines div.tot { border-top: 2px solid var(--ink); font-weight: 700; font-size: 20px; }
+#result .flag { color: #3c8c2a; font-weight: 700; }

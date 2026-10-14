@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Paper Flight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="game" width="180" height="320"></canvas>
+  <div id="hud" class="hidden">
+    <div class="top"><div><b id="dist">0 m</b><small id="goal"></small></div><div class="wind" id="wind"></div></div>
+    <div class="speedo"><div class="fill" id="speed"></div></div>
+    <div id="tip"></div>
+  </div>
+  <div id="hangar" class="hidden"></div>
+  <div id="result" class="hidden"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

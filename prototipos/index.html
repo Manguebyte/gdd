@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Protótipos · Mangue Byte Games</title>
+<meta name="description" content="Todos os protótipos jogáveis dos GDDs da Mangue Byte Games, num lugar só.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;900&display=swap">
+<style>
+  /* Página central dos protótipos: um cartão por jogo, com "Jogar" (o protótipo) e "GDD" (a página do site). */
+  :root { --bg: #14121c; --card: #1f1c2b; --line: #322d45; --ink: #f2eefb; --dim: #a59fba; --accent: #2fd08a; --accent2: #ff7a3d; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Rubik', system-ui, sans-serif; }
+  a { color: inherit; }
+  header { max-width: 1180px; margin: 0 auto; padding: 40px 16px 8px; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
+  h1 { margin: 0; font-size: clamp(30px, 5vw, 48px); font-weight: 900; letter-spacing: -1px; line-height: 1; }
+  h1 span { color: var(--accent); }
+  header p { margin: 8px 0 0; color: var(--dim); font-size: 16px; max-width: 560px; }
+  .site { display: inline-block; padding: 10px 16px; border-radius: 12px; border: 2px solid var(--line); text-decoration: none; font-weight: 700; white-space: nowrap; }
+  .site:hover { border-color: var(--accent); }
+  main { max-width: 1180px; margin: 0 auto; padding: 16px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 2px; color: var(--dim); margin: 28px 0 12px; font-weight: 700; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, border-color .15s; }
+  .card:hover { transform: translateY(-3px); border-color: #4a4266; }
+  .thumb { display: block; aspect-ratio: 16 / 10; background: #0b0a10; position: relative; overflow: hidden; }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.portrait img { object-fit: contain; }
+  .thumb.portrait::before { content: ''; position: absolute; inset: -20px; background: var(--img) center/cover; filter: blur(16px) brightness(.5); }
+  .thumb.portrait img { position: relative; }
+  .tag { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.65); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+  .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .body h3 { margin: 0; font-size: 20px; }
+  .body p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.4; flex: 1; }
+  .links { display: flex; gap: 8px; margin-top: 4px; }
+  .links a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 15px; }
+  .play { background: var(--accent); color: #062b1a; }
+  .play:hover { filter: brightness(1.1); }
+  .doc { border: 2px solid var(--line); }
+  .doc:hover { border-color: var(--accent2); }
+  .plain { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .plain a { display: block; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; text-decoration: none; }
+  .plain a:hover { border-color: var(--accent2); }
+  .plain b { display: block; }
+  .plain span { color: var(--dim); font-size: 14px; }
+  footer { max-width: 1180px; margin: 0 auto; padding: 24px 16px 40px; color: var(--dim); font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Protótipos <span>jogáveis</span></h1>
+    <p>Um protótipo web para cada GDD com arte pronta. Roda direto no navegador, sem instalar nada; o progresso fica salvo no próprio navegador.</p>
+  </div>
+  <a class="site" href="../">📘 Todos os GDDs →</a>
+</header>
+<main>
+  <h2>Protótipos</h2>
+  <div class="grid" id="grid"></div>
+  <h2>Só GDD, ainda sem protótipo</h2>
+  <div class="plain">
+    <a href="../dice-and-blood/gdd"><b>DiceAndBlood</b><span>RPG tático roguelike em tabuleiro 8×8, com movimento por dado.</span></a>
+    <a href="../protocolo-ectoplasma/gdd"><b>Protocolo Ectoplasma</b><span>Ação top-down: capturar fantasmas em zonas contaminadas da cidade.</span></a>
+    <a href="../mercador-e-legiao/guia-unity"><b>Mercador &amp; Legião</b><span>Tutorial Unity do MVP completo (heróis, quests, combate, crafting e loja).</span></a>
+  </div>
+</main>
+<footer>Mangue Byte Games · Cada protótipo segue a Parte 1 do seu GDD; o README de cada pasta em <a href="https://github.com/Manguebyte/gdd/tree/main/prototipos">prototipos/</a> lista o que tem, o que ficou de fora e os atalhos de teste.</footer>
+<script>
+  // Um item por protótipo: pasta, nome, descrição, página do GDD no site e se a tela é em retrato.
+  const GAMES = [
+    ['paddock-boss', 'Paddock Boss', 'Gerenciamento de equipe de corrida: invista ao vivo enquanto a corrida simulada acontece no mapa.', 'paddock-boss', false, 'Simulação'],
+    ['evil-enemy-defense', 'Evil Enemy Defense', 'Tower defense ao contrário: monte o Exército, divida-o entre as duas entradas e assista ao cerco.', 'evil-enemy-defense', false, 'Autobattler'],
+    ['guerreiro-da-masmorra', 'Guerreiro da Masmorra', 'RPG de turnos em que cada golpe inimigo vira uma reação: parry, salto ou esquiva.', 'guerreiro-da-masmorra', false, 'RPG de reflexo'],
+    ['requiem-of-blessings', 'Requiem of Blessings', 'RPG de fantasia sombria com turnos ativos: esquiva, parry e Sequência de Desvio.', 'requiem-of-blessings', false, 'RPG sombrio'],
+    ['craft-dice', 'Craft Dice', 'Roguelike + soulslike: explore a ilha carmesim e lute com dados de faces forjadas.', 'craft-dice', false, 'Roguelike de dados'],
+    ['rallysurvive', 'RallySurvive', 'Contrarrelógio topdown: o carro segue o mouse, a distância é o acelerador. Saiu da pista, bateu.', 'rallysurvive', false, 'Corrida'],
+    ['paper-flight', 'Paper Flight', 'Lance o avião de papel com o estilingue, plane o mais longe possível e compre upgrades.', 'paper-flight', false, 'Incremental'],
+    ['star-expedition-co', 'Star Expedition Co.', 'Gerencie a tripulação e mande expedições idle pelos planetas em tempo real.', 'star-expedition-co', true, 'Idle'],
+    ['8-bit-armageddon', '8-Bit Armageddon', 'Roguelike de defesa automática de planeta, com upgrades entre as ondas.', '8-bit-armageddon', false, 'Roguelike'],
+  ];
+  document.getElementById('grid').innerHTML = GAMES.map(([dir, name, desc, gdd, portrait, tag]) => `
+    <article class="card">
+      <a class="thumb${portrait ? ' portrait' : ''}" href="./${dir}/" style="--img:url('thumbs/${dir}.jpg')"><img src="thumbs/${dir}.jpg" alt="${name}" loading="lazy"><span class="tag">${tag}</span></a>
+      <div class="body"><h3>${name}</h3><p>${desc}</p>
+        <div class="links"><a class="play" href="./${dir}/">▶ Jogar</a><a class="doc" href="../${gdd}/gdd">GDD</a></div></div>
+    </article>`).join('');
+</script>
+</body>
+</html>

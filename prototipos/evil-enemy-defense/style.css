@@ -1,0 +1,29 @@
+/* Evil Enemy Defense — protótipo web. Campo em 640×360 (2× a resolução 320×180 do GDD, para caber a arte nova),
+   escalado inteiro; menus no estilo Final Fantasy 1/2 do NES (§11). */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #000; font-family: 'Press Start 2P', monospace; color: #fff; user-select: none; -webkit-user-select: none; }
+.hidden { display: none !important; }
+#app { position: absolute; width: 640px; height: 360px; transform-origin: 0 0; overflow: hidden; background: #000; image-rendering: pixelated; }
+#field { position: absolute; inset: 0; image-rendering: pixelated; }
+#ui { position: absolute; inset: 0; font-size: 10px; line-height: 1.6; }
+
+/* Janela FF: fundo azul, moldura branca dupla */
+.win { position: absolute; background: #0000a8; border: 2px solid #fff; outline: 2px solid #0000a8; box-shadow: 0 0 0 4px #fff; border-radius: 3px; padding: 8px 10px; }
+.title { color: #fff; margin-bottom: 6px; }
+.dim { color: #a8a8a8; }
+.gold { color: #fce4a0; }
+.red { color: #ff8080; }
+.green { color: #80ff98; }
+.row { position: relative; padding: 1px 0 1px 16px; cursor: pointer; white-space: nowrap; display: flex; justify-content: space-between; gap: 10px; }
+.row.off { color: #707070; }
+.row.cur::before { content: '▶'; position: absolute; left: 0; }
+.row:hover { background: rgba(255,255,255,.08); }
+.row .adj { display: inline-flex; gap: 6px; }
+.row .adj b { font-weight: 400; min-width: 22px; text-align: center; }
+.row .adj i { font-style: normal; padding: 0 3px; }
+.row .adj i:hover { color: #fce4a0; }
+
+.hud { position: absolute; left: 0; right: 0; top: 0; display: flex; justify-content: space-between; padding: 6px 8px; font-size: 9px; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+.hud .r { text-align: right; }
+.hint { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 8px; color: #e0e0e0; text-shadow: 1px 1px 0 #000; }
+.speed { position: absolute; right: 8px; bottom: 16px; font-size: 9px; padding: 4px 6px; cursor: pointer; }

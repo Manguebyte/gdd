@@ -12,6 +12,13 @@ on:
       - 'prototipos/**'
       - 'Sprites/StarExpeditionCo/**'
       - 'Sprites/8-Bit-Armageddon/**'
+      - 'Sprites/PaddockBoss/**'
+      - 'Sprites/Rally2D/**'
+      - 'Sprites/RequiemOfBlessings/**'
+      - 'Sprites/PaperFlight/**'
+      - 'Sprites/CraftDice/**'
+      - 'Sprites/EvilEnemyDefense/**'
+      - 'Sprites/GuerreiroDaMasmorra/**'
       - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
 
@@ -45,8 +52,8 @@ jobs:
         run: |
           cp -r ../prototipos build/prototipos
           mkdir -p build/Sprites
-          cp -r ../Sprites/StarExpeditionCo ../Sprites/8-Bit-Armageddon ../Sprites/PaddockBoss build/Sprites/
-          find build/Sprites -type d \( -name _candidatos_descartados -o -name tools -o -name _tools -o -name _previews -o -name _referencia \) -prune -exec rm -rf {} +
+          cp -r ../Sprites/StarExpeditionCo ../Sprites/8-Bit-Armageddon ../Sprites/PaddockBoss ../Sprites/Rally2D ../Sprites/RequiemOfBlessings ../Sprites/PaperFlight ../Sprites/CraftDice ../Sprites/EvilEnemyDefense ../Sprites/GuerreiroDaMasmorra build/Sprites/
+          find build/Sprites -type d \( -name _candidatos_descartados -o -name tools -o -name _tools -o -name _previews -o -name _preview -o -name _referencia -o -name _style-test -o -name example -o -name _raw -o -name _seam \) -prune -exec rm -rf {} +
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site/build

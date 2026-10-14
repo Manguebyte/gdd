@@ -1,0 +1,212 @@
+{
+  "images": {
+    "planes/plane_1_quintal.png": {
+      "job_id": "e6810867-8bac-47fb-b481-75bcb9d53dc2",
+      "source_image_id": "9aa2b184-555d-54aa-8d87-63f00c496191"
+    },
+    "planes/plane_2_parque.png": {
+      "job_id": "0d24b89f-3133-4252-8b67-2e80ee40245d",
+      "source_image_id": "4f93b7da-cf84-513f-9a47-b9df98e53a5b"
+    },
+    "planes/plane_3_praia.png": {
+      "job_id": "3521a6db-c865-428c-a5ea-9abf4d567b35",
+      "source_image_id": "1856f72a-0eac-5d4e-a4b1-3950be28ca20"
+    },
+    "planes/plane_4_cidade.png": {
+      "job_id": "98d6f53c-9cba-41aa-8f8b-e0a19849b5e3",
+      "source_image_id": "914b7dd8-2d6c-5364-899e-76c1fc19b283"
+    },
+    "planes/plane_5_montanha.png": {
+      "job_id": "9ebd0b51-247e-40ce-bd4a-145cd1d6b990",
+      "source_image_id": "f373ca33-08c6-562b-95a6-5579d32b4fa9"
+    },
+    "common/coin.png": {
+      "job_id": "3c99f7c6-9a8e-460d-b868-258922b315a1",
+      "source_image_id": "e2862c4b-7338-5450-98c8-36f7cc0db2d9"
+    },
+    "common/goal_flag.png": {
+      "job_id": "c6105e37-77de-4a36-90cf-a84357422870",
+      "source_image_id": "bf1a9708-24cb-579f-ba03-d17f078770a8"
+    },
+    "common/wind_puff.png": {
+      "job_id": "960e2073-e516-4360-896e-5aa730d08df3",
+      "source_image_id": "bb479f57-6b4e-54f4-998e-e0beff090147"
+    },
+    "common/air_current.png": {
+      "job_id": "64909714-bab1-40ec-be1f-7f2fd1df5b14",
+      "source_image_id": "eba7715f-be78-55c5-a6b2-024ace302ad4"
+    },
+    "backgrounds/_raw/1_quintal_near.png": {
+      "job_id": "819b8f60-9f58-4753-94ae-bbb0663d3377",
+      "source_image_id": "af10d116-2cb3-5f5a-93ae-7d85e8728672"
+    },
+    "backgrounds/_raw/2_parque_near.png": {
+      "job_id": "6cf71d88-1c1e-453a-abd0-64689d0edee1",
+      "source_image_id": "dd67c219-0fdf-56a4-b026-eda78da12791"
+    },
+    "backgrounds/_raw/3_praia_near.png": {
+      "job_id": "9c845fd8-fa71-435b-86ae-bcbbdef868f5",
+      "source_image_id": "d775f2fb-d465-5638-8857-a56966a05750"
+    },
+    "backgrounds/_raw/4_cidade_near.png": {
+      "job_id": "cf84f06d-94da-4b07-9843-fa6389e74175",
+      "source_image_id": "1f2d46f8-cb86-5521-a138-8ef16faaaa91"
+    },
+    "backgrounds/_raw/5_montanha_near.png": {
+      "job_id": "85896a43-b826-462f-96d6-1055bc6f780f",
+      "source_image_id": "29d6e221-b419-5213-8dd2-bf5005604867"
+    },
+    "backgrounds/_raw/1_quintal_far.png": {
+      "job_id": "8c792ae7-ee25-481f-a179-e0d420ae3f85",
+      "source_image_id": "33c27c54-e4f1-5be5-ad66-872890996362"
+    },
+    "backgrounds/_raw/2_parque_far.png": {
+      "job_id": "8b2fe7fa-5fe3-43c4-a333-53eea7cc45b2",
+      "source_image_id": "72c083ac-8dc0-5f6b-8557-331761084f18"
+    },
+    "obstacles/1_quintal_ground_birdhouse.png": {
+      "job_id": "63dc14f4-8b65-4860-931b-b0b3ed13ae81",
+      "source_image_id": "e9879bfb-2ddd-5d29-9ed7-1660d12489b9"
+    },
+    "obstacles/1_quintal_air_sparrow.png": {
+      "job_id": "bf5c2cae-c9ee-4bf8-9188-f033b59ae70a",
+      "source_image_id": "c93c3765-d7de-5976-8973-3710ebc4febc"
+    },
+    "obstacles/2_parque_ground_tree.png": {
+      "job_id": "5e64a948-f2ae-4b62-b101-1634059ddd26",
+      "source_image_id": "8a12634b-4705-5a73-80c3-da2d776d4e27"
+    },
+    "obstacles/2_parque_air_kite.png": {
+      "job_id": "766db2df-e031-4cff-9069-f190b5382774",
+      "source_image_id": "a7dd456b-7ba3-5bd2-9a23-f65e5a1fa8dc"
+    },
+    "obstacles/3_praia_ground_palm.png": {
+      "job_id": "4522675e-bb01-470b-89d2-345a15318ab6",
+      "source_image_id": "df63369f-7ed2-5aa3-8b34-e0e7684c7ea9"
+    },
+    "obstacles/3_praia_air_seagull.png": {
+      "job_id": "b13f54f6-2d8d-4314-ad81-acbe584830f6",
+      "source_image_id": "8386f97e-7b0a-5c1a-b061-bd281542eed5"
+    },
+    "obstacles/4_cidade_ground_lamppost.png": {
+      "job_id": "975c52c7-59a7-4b14-89c3-bc82a8559dc0",
+      "source_image_id": "1159a4ec-4cf5-50db-b0ea-bbc25683fdec"
+    },
+    "obstacles/4_cidade_air_drone.png": {
+      "job_id": "6bcc0614-0639-4929-8a68-8515e2ed4236",
+      "source_image_id": "36c922c8-4d17-5148-aba9-d73d3dddf304"
+    },
+    "obstacles/5_montanha_ground_pine.png": {
+      "job_id": "7bc5f3de-1a9d-432f-a1b8-4725b2a3188b",
+      "source_image_id": "554ceb79-9995-5762-bcff-2cf1e96f5f05"
+    },
+    "obstacles/5_montanha_air_eagle.png": {
+      "job_id": "98c5860d-b61d-4de0-bbc8-8661bfb0e68d",
+      "source_image_id": "dd0871be-ffbc-59a2-be45-a3d0d88ea3c8"
+    },
+    "backgrounds/_seam/1_quintal_near.png": {
+      "job_id": "5675a496-428f-48a3-b391-539c2455439f",
+      "source_image_id": "d3ee57cd-6015-5d1d-b9d2-a0653a8bba47"
+    },
+    "backgrounds/_seam/2_parque_near.png": {
+      "job_id": "25d6cb77-10f9-4a98-b1b3-aa0cfe07eb03",
+      "source_image_id": "391928a8-ca84-5763-84f8-130b0657ddda"
+    },
+    "backgrounds/_seam/3_praia_near.png": {
+      "job_id": "ed29a060-06f4-445e-84ae-93e933731ba8",
+      "source_image_id": "106b1937-5ad8-5476-a438-47b33ec337f1"
+    },
+    "backgrounds/_seam/4_cidade_near.png": {
+      "job_id": "22ee839d-cb95-4c85-aa2f-b346534e5f46",
+      "source_image_id": "c2565db1-14ae-58de-8230-2604cb7d9a49"
+    },
+    "backgrounds/_seam/5_montanha_near.png": {
+      "job_id": "a22d0392-616e-4c7b-a471-021b892e2848",
+      "source_image_id": "2fe1ccd0-0643-50dc-9e9a-9e826baf9993"
+    },
+    "backgrounds/_raw/3_praia_far.png": {
+      "job_id": "02121969-fd3f-4bcd-81f3-8a9ff5c57bb3",
+      "source_image_id": "2d74ef2c-5e86-5c85-967b-f334404cb0f0"
+    },
+    "backgrounds/_raw/4_cidade_far.png": {
+      "job_id": "2fba76d6-c6f8-4bd0-a3d4-45fcaa5aa001",
+      "source_image_id": "93c4852f-c8bb-5878-82b0-907df51aada8"
+    },
+    "backgrounds/_raw/5_montanha_far.png": {
+      "job_id": "fd3d30d7-4591-41b7-ac3b-b12a11bcb103",
+      "source_image_id": "0faf0500-0314-554d-8c2a-7eec70eb440d"
+    },
+    "icons/upgrade_paper.png": {
+      "job_id": "82664697-9f35-46ed-b6d6-05bd5f0c1276",
+      "source_image_id": "261741d0-2df3-522c-983f-5f921b3a070a"
+    },
+    "icons/upgrade_fold.png": {
+      "job_id": "b93cc7e9-3521-4889-8704-70d643373efb",
+      "source_image_id": "cc5b4366-7bc2-5d82-97dc-07858c6c2087"
+    },
+    "icons/upgrade_wind.png": {
+      "job_id": "0a806dc1-6c9f-4ea1-8a60-7e5f1531ede8",
+      "source_image_id": "445c2dde-d770-5bd6-afff-b5b09da6c497"
+    },
+    "icons/upgrade_income.png": {
+      "job_id": "9bc34a48-c473-4e30-8e6d-f2eb91d83cab",
+      "source_image_id": "c51e19b0-fa2d-5289-94cc-40acdedb8749"
+    },
+    "backgrounds/_seam/1_quintal_far.png": {
+      "job_id": "f60fffa6-997c-4662-abff-3251aae31d25",
+      "source_image_id": "141bcfea-2aa4-5cde-a471-74b8a09e2d18"
+    },
+    "backgrounds/_seam/2_parque_far.png": {
+      "job_id": "acd269fc-957e-4151-a9dc-5430b4e2c26a",
+      "source_image_id": "bed40fbc-1392-5e5e-b7d1-dd133b1ec83d"
+    },
+    "backgrounds/_seam/3_praia_far.png": {
+      "job_id": "af0e0a4d-24d3-4304-96f4-7e7e727c1959",
+      "source_image_id": "9f703a7f-1735-50b6-a10a-0ba66d6ab891"
+    },
+    "backgrounds/_seam/4_cidade_far.png": {
+      "job_id": "5063ae01-7a13-4497-993a-ce94e79564af",
+      "source_image_id": "b4893973-77c9-558a-90dc-285b3f1f1841"
+    },
+    "backgrounds/_seam/5_montanha_far.png": {
+      "job_id": "04f66bee-32d2-4367-bffb-fe7ff7439690",
+      "source_image_id": "6f7c9148-63db-523d-a56e-440bcb6d3c04"
+    },
+    "icons/_upgrade_launch_bg.png": {
+      "job_id": "3077a96f-fbc1-4387-83e4-867222a97a08",
+      "source_image_id": "cbb31f63-9b6a-5663-89cc-adb0ac13e483",
+      "note": "fundo magenta; upgrade_launch.png \u00e9 gerado por _tools/build_previews.py",
+      "rejected": [
+        "41598aee-f6ac-4ebc-a5eb-88400b640417"
+      ]
+    }
+  },
+  "tilesets": {
+    "ground/1_quintal": {
+      "tileset_id": "496c33c4-ae30-419c-8e10-cd6151c505ac"
+    },
+    "ground/2_parque": {
+      "tileset_id": "d95739af-4b5e-4930-87fd-2f5273a750b6",
+      "rejected": [
+        "54a0de04-cc3e-4b54-a750-4f0a2ef94a39"
+      ]
+    },
+    "ground/3_praia": {
+      "tileset_id": "93dfa23c-6662-4c95-8dac-ea394036061e"
+    },
+    "ground/4_cidade": {
+      "tileset_id": "b1239eeb-896f-4dc4-a389-91ecd37ee5bf"
+    },
+    "ground/5_montanha": {
+      "tileset_id": "dfbb7805-92dd-41ea-90f6-816140b8e23a",
+      "rejected": [
+        "68ae4671-2019-4f60-bf6d-154b5f198af2"
+      ]
+    }
+  },
+  "ui_assets": {
+    "ui/_kit_full.png": {
+      "ui_asset_id": "1d331951-6e98-4660-9310-eae63f835de1"
+    }
+  }
+}

@@ -109,6 +109,13 @@ const config = {
         },
         items: [
           {
+            // Página central dos protótipos jogáveis (prototipos/index.html, copiada pelo deploy-site.yml).
+            // "pathname://" faz o Docusaurus tratar o link como página estática fora do site, com o baseUrl.
+            to: 'pathname:///prototipos/',
+            label: '🎮 Protótipos',
+            position: 'left',
+          },
+          {
             href: 'https://github.com/Manguebyte/gdd',
             label: 'GitHub',
             position: 'right',
