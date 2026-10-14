@@ -231,7 +231,7 @@ function newRun() {
   const r = {
     core: save.core, skin: save.skin,
     levels: Object.fromEntries(STATS.map(s => [s.id, 0])),
-    shards: 0, totalShards: 0, shardFrac: 0,
+    shards: 5, totalShards: 0, shardFrac: 0,   // 5 Shards iniciais (Seção 4.2): dá para o 1º Upgrade
     wave: 0, waveTimer: 0, warn: 0, warnWave: 0, warnSectors: [],
     queue: [], unpaid: [], enemies: [], projectiles: [], fx: [], nums: [],
     satAngle: 90, sats: [], quadFlash: [0, 0, 0, 0],

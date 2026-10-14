@@ -82,6 +82,8 @@ O crítico é sorteado a cada disparo com probabilidade Critical Chance.
 
 Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
 
+**Definido:** toda run começa com **5 Shards** (valor inicial), o suficiente para o primeiro Upgrade de Damage ou de Hitpoints logo no início.
+
 **Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelo Planet Core.
 
 **Definido (valor inicial, ajustar via Analytics):** os valores das tabelas abaixo.
@@ -200,7 +202,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 ### 5.1 Sem moeda permanente
 
 **Definido:**
-- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 0 Shards e as 4 Target Priorities disponíveis.
+- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 5 Shards e as 4 Target Priorities disponíveis.
 - Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 13 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
 - O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e o **recorde de Wave** (Best Wave: a maior Wave alcançada, mostrada no Main Menu e no Results).
 - Consequência de design: a variedade entre runs vem do Planet Core escolhido e da estratégia de Upgrades, não de um ponto de partida que cresce. Sem Perks, nenhuma run começa mais forte que a primeira. **Em aberto:** se o começo da run (Seções 4.2 e 4.3) precisa de ajuste por causa disso (ajustar via Analytics).
@@ -4800,7 +4802,7 @@ namespace Armageddon.Economy
         [SerializeField] private PlanetHealth _planet;
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
+        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
         [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
@@ -5334,7 +5336,7 @@ Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome 
 
 #### Passo 9 — Montar a economia na cena
 
-Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`; **Satellite Costs** = `10`, `50`, `100` (já vem preenchido; Seção 4.2).
+Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `5`; **Satellite Costs** = `10`, `50`, `100` (já vem preenchido; Seção 4.2).
 
 > A partir de agora, os Stats do `SatelliteOrbit` e do `PlanetHealth` no Inspector são **sobrescritos** pelo `RunEconomy` quando o Play começa. Para testar valores, compre Upgrades (ou use **M** para ganhar Shards).
 
@@ -5370,7 +5372,7 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 `git add .` e `git commit -m "Phase 6: stats, shards, upgrades, upgrade drawer"`.
 
 **✅ Checkpoint:**
-- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `0`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
+- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `5`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
 - Dois Swarmers destruídos somam **1** Shard (0,5 cada, acumulado).
 - Tocar em **Offense** abre a gaveta com 7 cards (Damage, Attack Speed…), e o mundo desliza para o planeta ficar no centro da área livre. Tocar de novo em Offense fecha a gaveta.
 - O card de Damage mostra `Lv 0`, `10 > 13` e custo `5`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
@@ -5875,7 +5877,7 @@ namespace Armageddon.Economy
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
+        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
         [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
@@ -6814,7 +6816,7 @@ namespace Armageddon.Run
 - **L** de novo na mesma run: **não** há segunda oferta, vai direto para o Results.
 - Numa run nova (**Play again**): **L** e deixar a contagem chegar a 0 leva ao Results. Com **O** ligado (anúncio falha), **Watch ad** também leva ao Results. Com **I** ligado (sem anúncio), a oferta nem aparece.
 - O Results mostra a Wave alcançada, os inimigos destruídos, o tempo (`m:ss`) e os Shards ganhos (incluindo os gastos). O Console repete o resumo (`[Run] Fim: …`).
-- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 0, sem pausa presa. **Menu** vai para o Main Menu.
+- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 5, sem pausa presa. **Menu** vai para o Main Menu.
 - Com a oferta de Revive na tela, **Esc** não abre a pausa por cima.
 
 **Problemas comuns:**
