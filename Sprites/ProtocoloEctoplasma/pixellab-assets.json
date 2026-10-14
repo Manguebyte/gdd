@@ -1,0 +1,65 @@
+{
+  "tool": "PixelLab (Pro Flash)",
+  "assets": [
+    {
+      "file": "ghosts/errante.png",
+      "image_id": "934480f7-54ba-5d2f-afc1-cfbca848fb21",
+      "job_id": "e9348e46-2d97-4f92-9a86-c6105882356e"
+    },
+    {
+      "file": "ghosts/assombrado.png",
+      "image_id": "2b8578cf-a048-5b68-98b8-370a58073f2a",
+      "job_id": "e556d533-a370-4d39-97bb-4eb05dee0d63"
+    },
+    {
+      "file": "ghosts/poltergeist.png",
+      "image_id": "0868ec8d-4fb3-5c4f-80e4-734015793c5a",
+      "job_id": "08140da4-ae7a-4930-b954-4a91ba2a0199"
+    },
+    {
+      "file": "ghosts/residual_boss.png",
+      "image_id": "c0faaa96-96a9-5f19-ac85-de00e89858f8",
+      "job_id": "5d287fea-a292-40c4-95f3-98caa96025d4"
+    },
+    {
+      "file": "traps/armadilha_suporte.png",
+      "image_id": "390653b1-94a7-5ef7-901e-29a9f4958a3d",
+      "job_id": "f90dc650-7873-4815-a152-fd446cdfd93f"
+    },
+    {
+      "dir": "chars/operador",
+      "character_id": "e9c3c696-673f-4555-81a0-df27e6087102",
+      "source_image_id": "a9c13ccf-5dec-5026-bbd3-497d8f3aa2c6",
+      "files": [
+        "chars/operador/east.png",
+        "chars/operador/north-east.png",
+        "chars/operador/north-west.png",
+        "chars/operador/north.png",
+        "chars/operador/south-east.png",
+        "chars/operador/south-west.png",
+        "chars/operador/south.png",
+        "chars/operador/west.png"
+      ]
+    },
+    {
+      "file": "tiles/rua_calcada.png",
+      "metadata": "tiles/rua_calcada.json",
+      "tileset_id": "ad094841-36de-44c4-a5af-b3b59e3f6a8b"
+    },
+    {
+      "file": "buildings/casa_contaminada.png",
+      "image_id": "c952744a-3f39-57e4-aafc-f0ceb877a1e3",
+      "job_id": "f308ea0c-60bf-4db7-9966-20e1dfeff38a"
+    },
+    {
+      "file": "map/mapa_cidade.png",
+      "image_id": "261d40bf-da1a-5447-92e5-1de40e610fa3",
+      "job_id": "24c0116e-cc48-4fe2-9d1c-df5dd10cc60c"
+    },
+    {
+      "file": "traps/armadilha_autonoma.png",
+      "image_id": "189ce3a3-b5e0-584f-a806-2e35ff1d7396",
+      "job_id": "2c05471f-996a-414d-aecb-9010be2831f7"
+    }
+  ]
+}

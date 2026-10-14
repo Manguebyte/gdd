@@ -64,7 +64,8 @@
 ## 4. Estilo Visual
 
 - **Definido:** pixel art, estética 8-bit/16-bit.
-- **Em aberto:** paleta, referências visuais diretas, tema/ambientação da primeira run.
+- **Definido (teste de estilo aprovado em 2026-10-14):** masmorra 16-bit escura em azul-acinzentado com detalhes vermelho-sangue e contorno escuro nítido; tabuleiro visto de cima e personagens em 3/4 sobre as casas. Assets do MVP em `Sprites/DiceAndBlood/` (herói, esqueleto, goblin, morcego, chão, obstáculo e as 6 faces do d6; receita e pendências no `README.md` da pasta).
+- **Em aberto:** tema/ambientação das runs seguintes (biomas pós-MVP).
 
 ## 5. HUD / UI
 

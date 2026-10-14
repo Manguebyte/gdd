@@ -1,0 +1,55 @@
+{
+  "tool": "PixelLab (Pro Flash)",
+  "assets": [
+    {
+      "file": "chars/heroi_cavaleiro.png",
+      "image_id": "f4358bb4-82b1-5311-a5ae-19dc22b5a39a",
+      "job_id": "2aacf767-6230-4b3c-8984-80730e64090d"
+    },
+    {
+      "file": "ui/dado_icone.png",
+      "image_id": "ed864d68-b129-5ae8-abb8-57429f02e283",
+      "job_id": "2bcd900b-aa69-4d28-a3cc-ccbf274818f9",
+      "note": "dado em 3/4 aprovado no teste de estilo; ícone/decoração"
+    },
+    {
+      "file": "monsters/esqueleto.png",
+      "image_id": "09e6eb38-22ac-586b-ae52-90e16e6ca50c",
+      "job_id": "eec264f9-68bd-449d-bf33-01291e6d3992"
+    },
+    {
+      "file": "monsters/goblin.png",
+      "image_id": "24d10f03-098a-59af-b214-932f62e66308",
+      "job_id": "1dba6221-0b3c-4f2c-a539-af301e708374"
+    },
+    {
+      "file": "monsters/morcego.png",
+      "image_id": "e9d059cf-6edd-5f9c-bfc4-3534b88f6262",
+      "job_id": "f6c927a9-4bb2-4342-9a8f-72e607699b1f"
+    },
+    {
+      "file": "tiles/chao_pedra.png",
+      "image_id": "161d92b2-27c3-555c-b4c6-aebc2202b644",
+      "job_id": "649e33d6-623b-4fc7-bbcf-d3c7e1f70997"
+    },
+    {
+      "file": "tiles/pedra_obstaculo.png",
+      "image_id": "e126ea8b-6b98-5563-aad1-f553db75493a",
+      "job_id": "e98887d0-f1a8-413c-b372-201d11d93a0c"
+    }
+  ],
+  "derived": [
+    {
+      "files": [
+        "ui/dado_1.png",
+        "ui/dado_2.png",
+        "ui/dado_3.png",
+        "ui/dado_4.png",
+        "ui/dado_5.png",
+        "ui/dado_6.png"
+      ],
+      "from": "ui/dado_icone.png (paleta)",
+      "processing": "desenhado localmente por _tools/draw_dice.py: as faces geradas não tinham a contagem certa de pontos"
+    }
+  ]
+}

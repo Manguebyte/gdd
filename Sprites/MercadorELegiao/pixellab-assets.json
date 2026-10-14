@@ -1,0 +1,100 @@
+{
+  "tool": "PixelLab (Pro Flash)",
+  "assets": [
+    {
+      "file": "heroes/guerreiro.png",
+      "image_id": "c0a33d59-5457-52eb-8f50-9b5c03e8e422",
+      "job_id": "98d3308a-a778-44a8-8108-92b061d331eb"
+    },
+    {
+      "file": "monsters/slime.png",
+      "image_id": "89ef1277-e217-5e34-80f9-8b914f9977bc",
+      "job_id": "4d8637cb-8b7e-467c-8e87-e74f97a70b9a"
+    },
+    {
+      "file": "items/espada.png",
+      "image_id": "3c886af8-af5a-53eb-b0a9-543f4f47f237",
+      "job_id": "9c86fef4-8add-415e-a5c3-b8ff6e06f45c"
+    },
+    {
+      "file": "heroes/ladino.png",
+      "image_id": "ab3a6f3f-972c-5ea5-86f8-2078b234a7d1",
+      "job_id": "bcf72d2b-39c1-4858-9e53-dce82699f091"
+    },
+    {
+      "file": "heroes/mago.png",
+      "image_id": "c25b9b73-a758-5d1e-9a4e-303ccb287536",
+      "job_id": "b327323c-b41c-4bd4-a764-808a7b957eb7"
+    },
+    {
+      "file": "npcs/ferreiro.png",
+      "image_id": "f75cea88-d651-5cb7-99d8-f6926ee7bd94",
+      "job_id": "d3cf92d5-0cea-418f-9c3b-99c9ccf3d649"
+    },
+    {
+      "file": "npcs/cliente.png",
+      "image_id": "e03003ca-f161-5007-a1ed-52f7aee2a92f",
+      "job_id": "1fb6c852-f369-4623-9702-01954b42b4d5"
+    },
+    {
+      "file": "monsters/goblin.png",
+      "image_id": "2036613a-372e-5ccc-b6d9-035e390bbe23",
+      "job_id": "ce54a795-34bd-4b95-90e2-3b7c85fa4227"
+    },
+    {
+      "file": "monsters/lobo.png",
+      "image_id": "774191fe-823d-552c-9ff0-be758e7aaa81",
+      "job_id": "da09ebdc-7a8e-4d4c-a31a-097d80243999"
+    },
+    {
+      "file": "map/mapa_regioes.png",
+      "image_id": "85392070-b5c4-587b-a694-ebc4001c0209",
+      "job_id": "42f94464-dbaa-4424-81df-f01b9867765f"
+    },
+    {
+      "file": "items/elmo.png",
+      "image_id": "4e6650fc-c2de-5f12-86d7-ed9d079b314f",
+      "job_id": "93497448-b78f-4210-a510-dfbbe355eaa4"
+    },
+    {
+      "file": "items/peitoral.png",
+      "image_id": "d5afa47d-8dc7-5dc6-8fd8-bf3af84c1648",
+      "job_id": "8cae4864-47f7-4ce1-bb0e-8ea0bd68eae5"
+    },
+    {
+      "file": "items/escudo.png",
+      "image_id": "d7af5dce-203b-56ab-965a-934464bb2596",
+      "job_id": "e8d19f1f-6bfe-44d0-8c70-c614e5fc9c36"
+    },
+    {
+      "file": "items/amuleto.png",
+      "image_id": "3c066b6a-7c29-5e95-8a1a-4db76812ebaa",
+      "job_id": "d1b038e2-cd70-4a00-9a1a-d6430cd57c2e"
+    },
+    {
+      "file": "items/minerio_ferro.png",
+      "image_id": "8f9a7518-b71a-5a51-99fb-05ed02014612",
+      "job_id": "5837a303-9e8b-4d64-9c11-a7b4875bbdf5"
+    },
+    {
+      "file": "items/couro.png",
+      "image_id": "ffcb9546-99e2-5fd3-98f8-8cd5efb7592c",
+      "job_id": "72f73138-3ba2-435d-a377-73abc25ed6c9"
+    },
+    {
+      "file": "items/madeira.png",
+      "image_id": "c9771241-c77d-5833-927a-e9c4876fcabf",
+      "job_id": "4a7bd540-e9a5-4d33-b5f6-918d2cf817bd"
+    },
+    {
+      "file": "items/pocao_vida.png",
+      "image_id": "2878f07b-d16e-5632-a88f-6ab842648988",
+      "job_id": "63e777d3-ab0b-4b12-8348-a3412cc0845b"
+    },
+    {
+      "file": "items/moedas_ouro.png",
+      "image_id": "98212808-1800-52f3-870e-3ccea9c6005f",
+      "job_id": "ab5a45a4-d37f-4489-a483-82ee596638e6"
+    }
+  ]
+}

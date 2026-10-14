@@ -48,6 +48,7 @@ Você é um operador dessas empresas. Sua função: escolher zonas contaminadas 
 - **Arte:** Pixel art, paleta urbana (cinzas, neon publicitário nas zonas "limpas", verde/roxo etérico nas zonas contaminadas).
 - **Câmera:** Top-down com leve perspectiva (como Stardew Valley) — permite ver sprite do personagem e prédios com fachada.
 - **Contraste visual:** bairros limpos = cores vivas, movimento de pedestres; bairros contaminados = cores dessaturadas, névoa ectoplasmática, sprites de fantasmas semitransparentes.
+- **Assets gerados:** `Sprites/ProtocoloEctoplasma/` (PixelLab, estilo aprovado em 2026-10-14): operador em 8 direções, os 4 tipos de fantasma da §7, as 2 armadilhas da §6.3, casa contaminada, tileset de rua/calçada e o mapa da cidade. Receita e pendências no `README.md` da pasta.
 - **Áudio:** trilha corporativa/lo-fi nas fases iniciais (elevator music irônica), que vai se tornando mais melancólica/ambiente conforme a narrativa avança.
 
 ---
