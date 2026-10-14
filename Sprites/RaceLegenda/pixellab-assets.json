@@ -1,0 +1,42 @@
+{
+  "f1": {
+    "object_id": "f38c635e-f9a7-42cf-be9e-2263afdd9182",
+    "tipo": "obj8"
+  },
+  "grandstand": {
+    "object_id": "79744fa8-0321-4eb5-b90f-09f2862d4ab6",
+    "tipo": "obj1"
+  },
+  "pits": {
+    "object_id": "5e846ce3-8327-4e59-9680-81a2e46544af",
+    "tipo": "obj1"
+  },
+  "tirewall": {
+    "object_id": "5fc56d27-64a3-4906-ad01-481c15402157",
+    "tipo": "obj1"
+  },
+  "straw": {
+    "object_id": "33f7954c-02a7-426b-8b80-7e7050e810b9",
+    "tipo": "obj1"
+  },
+  "gantry": {
+    "object_id": "0eb97e23-fd73-4efe-8d64-623e27d27dca",
+    "tipo": "obj1"
+  },
+  "billboard": {
+    "object_id": "0b50e885-8a10-4af3-a960-99782c149e33",
+    "tipo": "obj1"
+  },
+  "marshal": {
+    "object_id": "973e1b3e-8412-4e60-87a0-3f06e7ce9faa",
+    "tipo": "obj1"
+  },
+  "tower": {
+    "object_id": "7b137217-9f8c-4ca6-8089-80731f33292f",
+    "tipo": "obj1"
+  },
+  "tiles/grass+asphalt": {
+    "tileset_id": "8ffea92d-06a9-4dc5-b07c-f55796357267",
+    "tipo": "topdown_tileset"
+  }
+}

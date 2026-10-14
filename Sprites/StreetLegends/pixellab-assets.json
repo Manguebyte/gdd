@@ -1,0 +1,42 @@
+{
+  "tuner": {
+    "object_id": "7d6b87ad-35f7-4522-8646-8f4c4daa17d2",
+    "tipo": "obj8"
+  },
+  "police": {
+    "object_id": "1f46fd8b-a673-48c0-80ed-52cbf05f310e",
+    "tipo": "obj8"
+  },
+  "streetlamp": {
+    "object_id": "1f419dbb-d033-4e86-a140-e9fe3ba4f77f",
+    "tipo": "obj1"
+  },
+  "dumpster": {
+    "object_id": "df7e2f11-42b7-4665-b4de-bcbf921dcbcc",
+    "tipo": "obj1"
+  },
+  "citytree": {
+    "object_id": "2d00ba69-79ee-4231-b03c-36b029390b81",
+    "tipo": "obj1"
+  },
+  "neon_checkpoint": {
+    "object_id": "352f9dcb-2224-4a6b-9503-2a6f73251992",
+    "tipo": "obj1"
+  },
+  "barrier": {
+    "object_id": "b88291d6-cba7-4a82-b43f-99cb34da6404",
+    "tipo": "obj1"
+  },
+  "roof_ac": {
+    "object_id": "08250067-dc17-4dea-b0e2-cdafa90fbe31",
+    "tipo": "obj1"
+  },
+  "roof_tank": {
+    "object_id": "b66bb16e-944c-4c06-b87d-1c1fd4b386dc",
+    "tipo": "obj1"
+  },
+  "tiles/road+sidewalk": {
+    "tileset_id": "63039311-3655-4506-abe1-bcfafb2a6d8b",
+    "tipo": "topdown_tileset"
+  }
+}

@@ -1,0 +1,20 @@
+/* Street Legends: só o que muda do estilo compartilhado (../rally-core/rally.css). */
+:root { --accent: #b04de0; --neon: #3ff0e0; }
+#menu h1 { text-shadow: 4px 4px 0 var(--ink), 0 0 24px rgba(176, 77, 224, .8); }
+.bar.busted i { background: var(--red); }
+.wallet { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+.wallet b { font-size: 26px; flex: 1; }
+.garage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.garage h3 { margin: 4px 0 6px; font-size: 18px; }
+.part { border: 3px solid var(--ink); border-radius: 4px; padding: 8px 10px; margin-bottom: 8px; background: #fff; }
+.part .lv { display: flex; gap: 4px; margin: 4px 0; }
+.part .lv i { width: 26px; height: 10px; border: 2px solid var(--ink); background: #e3dccf; }
+.part .lv i.on { background: var(--accent); }
+.part small { display: block; color: var(--muted); font-size: 13px; }
+.part .btn { font-size: 14px; padding: 5px 10px; margin-top: 4px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch { width: 64px; padding: 4px; border: 3px solid var(--ink); border-radius: 4px; background: #fff; font-size: 12px; text-align: center; }
+.swatch i { display: block; height: 22px; border: 2px solid var(--ink); margin-bottom: 3px; }
+.swatch.on { outline: 3px solid var(--accent); }
+.swatch[disabled] { opacity: .45; }
+@media (max-width: 720px) { .garage { grid-template-columns: 1fr; } }

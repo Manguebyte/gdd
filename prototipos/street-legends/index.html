@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Street Legends</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap">
+<link rel="stylesheet" href="../rally-core/rally.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div class="panel timer"><b id="time">0:00.00</b><small id="best"></small></div>
+  <div class="panel big-stat"><small>CHECKPOINT</small><b id="cp">0/0</b></div>
+  <div class="panel big-stat"><small>PROCURADO</small><b id="wanted">—</b></div>
+  <div class="panel bars"><label>VELOCIDADE</label><div class="bar"><i id="speed"></i></div><label>CERCO</label><div class="bar busted"><i id="busted"></i></div></div>
+</div>
+<div id="menu" class="hidden">
+  <h1>STREET<span>LEGENDS</span><small>corrida de rua · à noite · sem ser pego</small></h1>
+  <div id="tracks"></div>
+  <div class="side">
+    <div class="panel wallet"><span>Carteira</span><b id="money">$0</b><button class="btn go" id="garage-btn">Garagem</button></div>
+    <div id="board"></div>
+  </div>
+  <p class="tip">Toque numa rota para ver o ranking · <b>segure</b> para largar</p>
+</div>
+<div id="dialog" class="hidden"></div>
+<script src="../rally-core/rally-core.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

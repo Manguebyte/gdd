@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>RaceLegenda</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap">
+<link rel="stylesheet" href="../rally-core/rally.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div class="panel timer"><b id="time">0:00.00</b><small id="lapinfo"></small></div>
+  <div class="panel big-stat"><small>VOLTA</small><b id="lap">1/3</b></div>
+  <div class="panel big-stat" id="pos-box"><small>POSIÇÃO</small><b id="pos">1º</b></div>
+  <div class="panel bars"><label>VELOCIDADE</label><div class="bar"><i id="speed"></i></div><label>VOLTA</label><div class="bar prog"><i id="prog"></i></div></div>
+</div>
+<div id="menu" class="hidden">
+  <h1>RACE<span>LEGENDA</span><small>Fórmula dos anos 60 · circuito fechado</small></h1>
+  <div id="tracks"></div>
+  <div class="side">
+    <div class="modes"><button class="btn" data-mode="race">Contra rivais</button><button class="btn" data-mode="solo">Solo · contrarrelógio</button></div>
+    <div id="board"></div>
+  </div>
+  <p class="tip">Toque num circuito para ver o ranking · <b>segure</b> para ir ao box acertar o carro</p>
+</div>
+<div id="dialog" class="hidden"></div>
+<script src="../rally-core/rally-core.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

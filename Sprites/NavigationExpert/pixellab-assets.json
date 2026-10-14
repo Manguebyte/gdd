@@ -1,0 +1,58 @@
+{
+  "car": {
+    "object_id": "359a3925-15da-411f-ad5e-efbe1cf3c2a6",
+    "tipo": "obj8"
+  },
+  "checkpoint": {
+    "object_id": "ce49d1fd-3482-4f39-bc44-f1fafb5ad098",
+    "tipo": "obj1"
+  },
+  "oak": {
+    "object_id": "4eaf08cd-9583-4983-8323-1971332b8356",
+    "tipo": "obj1"
+  },
+  "pine": {
+    "object_id": "ab8cfa51-619d-4835-8e98-ae700040fa55",
+    "tipo": "obj1"
+  },
+  "boulders": {
+    "object_id": "0e877861-6cf5-4b3e-82d0-fb11ce09710f",
+    "tipo": "obj1"
+  },
+  "hay": {
+    "object_id": "3d7d3035-5154-4e59-809a-b68806614bc8",
+    "tipo": "obj1"
+  },
+  "barn": {
+    "object_id": "fdb54c89-4b87-4888-af83-9a401f9bdbe4",
+    "tipo": "obj1"
+  },
+  "farmhouse": {
+    "object_id": "aa23d4da-41a7-4b42-9b1e-c168e23155e4",
+    "tipo": "obj1"
+  },
+  "fence": {
+    "object_id": "3793f285-823c-4e10-9a66-4aeced9b7671",
+    "tipo": "obj1"
+  },
+  "bush": {
+    "object_id": "bb47afe6-78d3-4eca-868d-1b003c77d4dc",
+    "tipo": "obj1"
+  },
+  "cow": {
+    "object_id": "8b26d9c1-dae3-42f9-be77-f694ec23cb0b",
+    "tipo": "obj1"
+  },
+  "pond": {
+    "object_id": "4e84548e-952d-45ee-9006-5c0e81457987",
+    "tipo": "obj1"
+  },
+  "windpump": {
+    "object_id": "dba032a0-8b07-4144-ad7d-1208f8ed1a58",
+    "tipo": "obj1"
+  },
+  "tiles/grass+dirt": {
+    "tileset_id": "e11293ae-45da-4950-a393-0cfe3f1b7413",
+    "tipo": "topdown_tileset"
+  }
+}

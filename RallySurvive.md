@@ -64,6 +64,7 @@
 - 2D vetorial flat minimalista, câmera topdown fixa (rotação de câmera a definir: segue o carro ou é fixa por pista?).
 - **Definido:** a franquia usa arte **vetorial flat minimalista** (substitui o pixel art definido antes): cores chapadas e bem saturadas, bordas limpas, sombreamento mínimo e sombra projetada suave, tudo visto estritamente de cima. Vale pros 4 jogos. Referência de estilo: `Sprites/Rally2D/sheet_v1.png`, e os assets vivem em `Sprites/Rally2D/` (ver Parte 14 §7.5).
 - Paleta e ambientação variam por pista/tema (ver documentos de variante).
+- **Em aberto:** os protótipos web de Navigation Expert, RaceLegenda e Street Legends (`prototipos/navigation-expert/`, `race-legenda/`, `street-legends/`) usam **pixel art** no estilo do repositório `rally2d` — chão visto de cima, objetos e carro em 3/4, carro em 8 direções, arte do PixelLab em `Sprites/NavigationExpert/`, `Sprites/RaceLegenda/` e `Sprites/StreetLegends/` (receita em `Sprites/RallyFranquia/README.md`). Isso diverge do vetorial flat definido acima, que o protótipo do RallySurvive continua usando. Falta decidir se a franquia inteira volta ao pixel art, se fica dividida por jogo, ou se esses três migram para o vetorial.
 
 ### 5. HUD / UI Genérica
 

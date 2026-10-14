@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Navigation Expert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&display=swap">
+<link rel="stylesheet" href="../rally-core/rally.css">
+<style>:root { --accent: #2f7fd6; }</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud" class="hidden">
+  <div class="panel timer"><b id="time">0:00.00</b><small id="best"></small></div>
+  <div class="panel big-stat"><small>CHECKPOINT</small><b id="cp">0/0</b></div>
+  <div class="panel bars"><label>VELOCIDADE</label><div class="bar"><i id="speed"></i></div><label>CHÃO</label><span id="ground">estrada</span></div>
+</div>
+<div id="menu" class="hidden">
+  <h1>RALLYSURVIVE<br><span>NAVIGATION EXPERT</span><small>Vale Verde · mapa aberto com checkpoints</small></h1>
+  <div id="tracks"></div>
+  <div class="side"><div id="board"></div></div>
+  <p class="tip">Toque num percurso para ver o ranking · <b>segure</b> para largar</p>
+</div>
+<div id="dialog" class="hidden"></div>
+<script src="../rally-core/rally-core.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

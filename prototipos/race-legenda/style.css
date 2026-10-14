@@ -1,0 +1,13 @@
+/* RaceLegenda: só o que muda do estilo compartilhado (../rally-core/rally.css). */
+:root { --accent: #c8312b; }
+.modes { display: flex; gap: 8px; }
+.modes .btn { flex: 1; font-size: 15px; padding: 8px 10px; }
+.modes .btn.on { background: var(--accent); color: #fff; }
+.setup label { display: block; margin-top: 14px; font-size: 18px; }
+.setup input[type=range] { width: 100%; accent-color: var(--accent); }
+.setup .ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
+.setup .fx { font-size: 14px; color: var(--muted); min-height: 2.6em; margin: 4px 0 0; }
+.results { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 17px; }
+.results td { padding: 3px 6px; border-bottom: 2px dashed #d8cfbf; }
+.results tr.me { background: #ffe2a8; }
+.results td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
