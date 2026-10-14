@@ -11,7 +11,7 @@
 
 ## 1. Conceito Central (Pitch)
 
-O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. Os **Satellites** orbitam o planeta e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Cada queda gera **Stardust**, a moeda da meta-progressão permanente, incentivando a próxima tentativa.
+O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. Os **Satellites** orbitam o planeta e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Toda run começa do zero: não há moeda permanente nem upgrades que passam de uma run para a outra. O que fica são as conquistas, que liberam novos Planet Cores e Skins, e o recorde de Wave a bater.
 
 **Fantasia central:** "Eu sou o último ponto de defesa de um mundo. Quanto mais eu resistir, mais forte eu fico, mas os aliens também."
 
@@ -20,7 +20,7 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 ## 2. Pilares de Design
 
 1. **Automação com decisão constante:** o combate é automático (os Satellites orbitam, escolhem alvo e atiram sozinhos), mas a estratégia de Upgrade é ativa e contínua, sem tempo morto. Comprar um Upgrade custa um toque e nunca pausa o jogo.
-2. **Run curta, morte com propósito:** cada run dura de 5 a 20 minutos; morrer não é frustração, é combustível para a meta-progressão.
+2. **Run curta, morte com propósito:** cada run dura de 5 a 20 minutos e começa do zero; morrer não é frustração, é a chance de tentar outra estratégia de Upgrades ou outro Planet Core para bater o recorde.
 3. **Escalada dupla:** inimigos ficam mais fortes a cada Wave; o planeta também, através das escolhas do jogador. A tensão vem de saber se sua curva vence a deles.
 4. **Cerco legível:** o planeta é o centro fixo da tela; tudo ao redor (inimigos, projéteis, Satellites, efeitos) converge para ele. A tela é dividida em 4 **Quadrants** centrados no planeta, toda ameaça está sempre visível num deles, e o jogo sempre avisa de onde a próxima ameaça vem.
 
@@ -33,20 +33,18 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 2. A Wave começa com um timer (30 s; 60 s na Boss Wave). Os inimigos nascem nos setores sorteados e avançam até o planeta.
 3. Os **Satellites** orbitam o planeta, e cada um dispara nos inimigos do **Quadrant** por onde está passando, escolhendo o alvo pela sua **Target Priority**.
 4. Inimigo destruído → o jogador ganha **Shards**.
-5. O jogador gasta Shards em **Upgrades** (válidos só nesta run) pela gaveta na parte de baixo da tela, sem pausar o jogo.
+5. O jogador gasta Shards em **Upgrades** e em novos **Satellites** (válidos só nesta run) pela gaveta na parte de baixo da tela, sem pausar o jogo.
 6. A próxima Wave começa quando o timer acaba **ou** quando a tela fica sem inimigos, o que vier primeiro. Esvaziar a tela (**Wave Clear**) paga um bônus de Shards.
 7. Repete até o planeta ser destruído. Uma vez por run, o jogador pode assistir a um anúncio para **Revive**.
 
 ### Loop de médio prazo (fim de run)
-1. Planeta destruído (e Revive recusado ou já usado) → tela de **Results**: Wave alcançada, inimigos destruídos, tempo de sobrevivência, Shards coletados.
-2. Parte dos Shards coletados vira **Stardust**. O jogador pode assistir a um anúncio para dobrar o Stardust da run.
-3. No Main Menu, o jogador gasta Stardust em **Perks**, que melhoram o ponto de partida das próximas runs.
-4. Nova run começa, mais forte que a anterior desde o início.
+1. Planeta destruído (e Revive recusado ou já usado) → tela de **Results**: Wave alcançada, inimigos destruídos, tempo de sobrevivência, Shards coletados e o recorde de Wave.
+2. As conquistas cumpridas na run são liberadas; algumas dão um Planet Core ou uma Skin.
+3. Nova run começa do zero, com os mesmos valores base (Seção 5.1). O que muda de uma run para outra é o Planet Core escolhido e a estratégia de Upgrades.
 
 ### Loop de longo prazo (meta)
 - **Conquistas** desbloqueiam novos **Planet Cores** (variantes de planeta que mudam a build) e **Skins**.
-- O ramo **Arsenal** da árvore de Perks libera mais Satellites (até 4) e novas Target Priorities, mudando *como* o jogo é jogado, não só os números.
-- A **recompensa diária** (sequência de 7 dias) dá um motivo para voltar todo dia.
+- O **recorde de Wave** fica salvo e aparece no Main Menu e no Results: é a meta de cada run.
 
 ---
 
@@ -57,19 +55,19 @@ O jogador defende um planeta contra ondas infinitas de invasores alienígenas vi
 ### 4.1 Satellites e Quadrants
 
 **Definido:**
-- O planeta começa com **1 Satellite** e pode chegar a **4**, desbloqueados pelo ramo Arsenal dos Perks (Seção 5.2).
+- Toda run começa com **1 Satellite** e pode chegar a **4**. Os Satellites extras são **comprados durante a run, com Shards**, na aba "Satellites" da gaveta de upgrades (preços na Seção 4.2), e somem no fim da run, como os Upgrades. Não são Perks.
 - **Órbita:** todos os Satellites giram na **mesma órbita circular**, com raio de **1,75 u** a partir do centro do planeta (o planeta tem raio de 1 u), no sentido **anti-horário**, na velocidade do Stat **Orbit Speed** (graus por segundo). Ficam **espaçados igualmente** e giram juntos: 1 Satellite; 2 opostos; 3 a cada 120°; 4 a cada 90°. Com 4, cada um está sempre num Quadrant diferente e a cobertura é total. Com menos, cada Satellite "visita" um Quadrant de cada vez.
 - **Quadrants:** a tela é dividida em 4 setores de 90°, como um plano cartesiano centrado no planeta: acima à direita, acima à esquerda, abaixo à esquerda e abaixo à direita. Um inimigo exatamente sobre a linha entre dois Quadrants pertence a um só deles (regra técnica, sem efeito visível).
 - **Alvos:** um Satellite só pode atirar em inimigos que estejam **no Quadrant onde ele está agora** **e** dentro do Stat **Attack Range**, medido **a partir do centro do planeta** (assim todos os Satellites têm o mesmo alcance efetivo). Um inimigo está dentro do alcance quando a **borda** dele está: `distância do centro do inimigo − raio do inimigo ≤ Attack Range`. O raio é metade do tamanho do sprite (Grunt e Scout 0,5 u, Swarmer 0,25 u, Brute 0,75 u, Mothership 1,5 u). Se não houver ninguém válido, ele segura o tiro.
 - Todos os Satellites usam os **mesmos Stats** (Damage, Attack Speed etc.). Só a Target Priority é individual.
-- **Target Priority** escolhe qual inimigo válido (no Quadrant e no alcance) recebe o tiro. É configurada **por Satellite**, na aba "Satellites" da gaveta de upgrades:
+- **Target Priority** escolhe qual inimigo válido (no Quadrant e no alcance) recebe o tiro. É configurada **por Satellite**, na aba "Satellites" da gaveta de upgrades. As 4 estão disponíveis desde o início de toda run, sem custo:
 
-| Target Priority | Escolhe | Como desbloquear |
-|---|---|---|
-| **Closest** | O inimigo mais perto do planeta | Padrão |
-| **Weakest** | O inimigo com menos HP atual | Perk do ramo Arsenal |
-| **Strongest** | O inimigo com mais HP atual | Perk do ramo Arsenal |
-| **Farthest** | O inimigo mais longe do planeta (sinergia com Impetus) | Perk do ramo Arsenal |
+| Target Priority | Escolhe |
+|---|---|
+| **Closest** | O inimigo mais perto do planeta (padrão de todo Satellite novo) |
+| **Weakest** | O inimigo com menos HP atual |
+| **Strongest** | O inimigo com mais HP atual |
+| **Farthest** | O inimigo mais longe do planeta (sinergia com Impetus) |
 
 - **Projéteis:** cada disparo cria um projétil teleguiado que persegue o alvo, mesmo que o Satellite já tenha passado para outro Quadrant. Se o alvo morrer antes, o projétil some.
   - **Em aberto:** a velocidade do projétil. O valor inicial no código é **10 u/s** (cruza o Attack Range base de 4 u em 0,4 s).
@@ -84,20 +82,20 @@ O crítico é sorteado a cada disparo com probabilidade Critical Chance.
 
 Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
 
-**Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelos Perks e pelo Planet Core.
+**Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelo Planet Core.
 
 **Definido (valor inicial, ajustar via Analytics):** os valores das tabelas abaixo.
 
 #### ⚔️ Offense
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
-| **Damage** | Dano por disparo | 10 | +3 | — | 10 |
-| **Attack Speed** | Disparos por segundo, por Satellite | 1,0/s | +0,08/s | 6,0/s | 12 |
-| **Critical Chance** | Probabilidade de crítico | 0% | +1,5 p.p. | 80% | 15 |
-| **Critical Factor** | Multiplicador de dano no crítico | 1,5× | +0,1× | 6× | 15 |
-| **Attack Range** | Raio de detecção e disparo, medido do centro do planeta | 4,0 u | +0,15 u | 8,0 u | 12 |
-| **Impetus** | Dano extra por unidade de distância do alvo | 0%/u | +0,4%/u | 12%/u | 20 |
-| **Orbit Speed** | Velocidade da órbita dos Satellites | 45°/s | +5°/s | 180°/s | 12 |
+| **Damage** | Dano por disparo | 10 | +3 | — | 5 |
+| **Attack Speed** | Disparos por segundo, por Satellite | 1,0/s | +0,08/s | 6,0/s | 6 |
+| **Critical Chance** | Probabilidade de crítico | 0% | +1,5 p.p. | 80% | 8 |
+| **Critical Factor** | Multiplicador de dano no crítico | 1,5× | +0,1× | 6× | 8 |
+| **Attack Range** | Raio de detecção e disparo, medido do centro do planeta | 4,0 u | +0,15 u | 8,0 u | 6 |
+| **Impetus** | Dano extra por unidade de distância do alvo | 0%/u | +0,4%/u | 12%/u | 10 |
+| **Orbit Speed** | Velocidade da órbita dos Satellites | 45°/s | +5°/s | 180°/s | 6 |
 
 Observações de design:
 - Critical Chance e Critical Factor são separados para permitir builds de "chance alta + fator baixo" e o oposto.
@@ -107,10 +105,10 @@ Observações de design:
 #### 🛡️ Defense
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
-| **Hitpoints** | HP máximo do planeta | 100 | +25 | — | 10 |
-| **Regeneration** | HP recuperado por segundo | 0 | +0,4/s | — | 15 |
-| **Defense (absolute)** | Dano fixo removido de cada hit | 0 | +0,5 | — | 15 |
-| **Defense (relative)** | % de dano removido de cada hit | 0% | +1,5 p.p. | 75% | 20 |
+| **Hitpoints** | HP máximo do planeta | 100 | +25 | — | 5 |
+| **Regeneration** | HP recuperado por segundo | 0 | +0,4/s | — | 8 |
+| **Defense (absolute)** | Dano fixo removido de cada hit | 0 | +0,5 | — | 8 |
+| **Defense (relative)** | % de dano removido de cada hit | 0% | +1,5 p.p. | 75% | 10 |
 
 **Definido:** dano recebido = `max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative))`. A defesa absoluta é aplicada primeiro, e nenhum hit causa menos que 1 de dano. A absoluta é forte contra muitos hits fracos (Swarmer); a relativa, contra hits grandes (Brute, laser da Mothership).
 
@@ -119,10 +117,22 @@ Ao comprar um nível de Hitpoints, o HP atual sobe na mesma quantidade (o jogado
 #### 💰 Utility
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
-| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 20 |
-| **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 20 |
+| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 10 |
+| **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 10 |
 
 Utility é a Track "de investimento": não ataca nem defende, mas acelera o acesso às outras duas.
+
+#### 🛰️ Satellites
+Comprados na aba "Satellites" da gaveta. Não são um Stat: não têm nível nem fórmula de valor, cada compra põe mais um Satellite na órbita (Seção 4.1). O Planet Core não muda esses preços.
+
+**Definido (valor inicial, ajustar via Analytics):**
+| Compra | Custo (Shards) |
+|---|---|
+| **Satellite 2** | 15 |
+| **Satellite 3** | 150 |
+| **Satellite 4** | 600 |
+
+Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problema (Quadrants sem cobertura) e custa pouco mais que 2 níveis de Orbit Speed (6 + 7), para ser uma das primeiras compras da run. Comprar cedo deixa Damage e Hitpoints para trás; adiar deixa Quadrants descobertos por mais tempo.
 
 ### 4.3 Waves
 
@@ -185,43 +195,19 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 
 ---
 
-## 5. Meta-Progressão (entre runs)
+## 5. Progressão entre runs
 
-### 5.1 Stardust
+### 5.1 Sem moeda permanente
 
-**Definido:** Stardust ganho ao fim da run = `floor(totalShardsDaRun × conversão) + 5 × mothershipsDestruídas`, onde a conversão base é **10%** (aumentada pelo Perk Stardust Conversion). `totalShardsDaRun` conta todos os Shards ganhos, inclusive os já gastos.
+**Definido:**
+- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 0 Shards e as 4 Target Priorities disponíveis.
+- Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 13 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
+- O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e o **recorde de Wave** (Best Wave: a maior Wave alcançada, mostrada no Main Menu e no Results).
+- Consequência de design: a variedade entre runs vem do Planet Core escolhido e da estratégia de Upgrades, não de um ponto de partida que cresce. Sem Perks, nenhuma run começa mais forte que a primeira. **Em aberto:** se o começo da run (Seções 4.2 e 4.3) precisa de ajuste por causa disso (ajustar via Analytics).
 
-Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez por run).
+### 5.2 Planet Cores
 
-### 5.2 Perks
-
-**Definido:** 17 Perks em 4 **Branches**. Cada Perk tem um ou mais níveis; custo do próximo nível = `baseCost × 1.6^nível`. Os Perks "Starting X" multiplicam ou somam ao valor **base** do Stat no início da run.
-
-**Definido (valor inicial, ajustar via Analytics):**
-
-| Branch | Perk | Níveis | Efeito por nível | baseCost | Pré-requisito |
-|---|---|---|---|---|---|
-| Offense | Starting Damage | 5 | +5% Damage base | 20 | — |
-| Offense | Starting Attack Speed | 5 | +4% Attack Speed base | 20 | — |
-| Offense | Starting Crit Chance | 5 | +2 p.p. Critical Chance base | 25 | — |
-| Offense | Starting Range | 3 | +5% Attack Range base | 25 | — |
-| Offense | Starting Orbit Speed | 3 | +5°/s Orbit Speed base | 30 | — |
-| Defense | Starting Hitpoints | 5 | +10% Hitpoints base | 20 | — |
-| Defense | Starting Regeneration | 5 | +0,3 HP/s | 25 | — |
-| Defense | Starting Defense | 5 | +1 Defense (absolute) | 25 | — |
-| Utility | Starting Shards | 5 | Começa a run com +25 Shards | 20 | — |
-| Utility | Shards Bonus | 5 | +5 p.p. Resource Bonus base | 30 | — |
-| Utility | Stardust Conversion | 5 | +1 p.p. na conversão de Stardust | 40 | — |
-| Arsenal | Satellite 2 | 1 | Segundo Satellite | 300 | — |
-| Arsenal | Satellite 3 | 1 | Terceiro Satellite | 1.200 | Satellite 2 |
-| Arsenal | Satellite 4 | 1 | Quarto Satellite | 4.000 | Satellite 3 |
-| Arsenal | Target Priority: Weakest | 1 | Libera Weakest | 100 | — |
-| Arsenal | Target Priority: Strongest | 1 | Libera Strongest | 150 | — |
-| Arsenal | Target Priority: Farthest | 1 | Libera Farthest | 200 | — |
-
-### 5.3 Planet Cores
-
-**Definido:** o jogador escolhe o Planet Core na tela Core Select, antes de cada run. Planet Cores são desbloqueados **só por conquista**, nunca por Stardust, para não competir com os Perks.
+**Definido:** o jogador escolhe o Planet Core na tela Core Select, antes de cada run. Planet Cores são desbloqueados **só por conquista** (Seção 5.4).
 
 | Planet Core | Modificadores | Desbloqueio |
 |---|---|---|
@@ -229,7 +215,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | **Ice Core** | +30% em todos os Stats de Defense; −20% Attack Speed; +0,5 u de Attack Range base | Conquista *Frozen Resolve* |
 | **Magma Core** | +30% Damage; −25% Hitpoints; −0,5 u de Attack Range base; +15°/s Orbit Speed base | Conquista *Triple Threat* |
 
-### 5.4 Skins
+### 5.3 Skins
 
 **Definido:** cada Planet Core tem uma Skin padrão ("Classic") e duas Skins desbloqueáveis por conquista. Skins não afetam o gameplay.
 
@@ -239,14 +225,14 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | Ice Core | Aurora, Crystal |
 | Magma Core | Obsidian, Solar |
 
-### 5.5 Conquistas
+### 5.4 Conquistas
 
-**Definido:** as conquistas ficam dentro do jogo (sem Google Play Games Services na 1.0). O progresso das conquistas "totais" soma todas as runs.
+**Definido:** as conquistas ficam dentro do jogo (sem Google Play Games Services na 1.0). O progresso das conquistas "totais" soma todas as runs. 15 conquistas: as que liberam um Planet Core ou uma Skin dão essa recompensa; as outras valem só o troféu.
 
 | Conquista | Condição | Recompensa |
 |---|---|---|
-| First Contact | Completar a primeira run | 25 Stardust |
-| Holding the Line | Chegar à Wave 10 | 50 Stardust |
+| First Contact | Completar a primeira run | Troféu |
+| Holding the Line | Chegar à Wave 10 | Troféu |
 | Frozen Resolve | Chegar à Wave 20 | **Ice Core** |
 | Giant Slayer | Destruir a primeira Mothership | Skin Terra "Ocean" |
 | Triple Threat | Destruir 3 Motherships (total) | **Magma Core** |
@@ -255,23 +241,15 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 | Absolute Zero | Chegar à Wave 30 com Ice Core sem comprar nenhum Upgrade de Offense | Skin Ice "Crystal" |
 | Eruption | Destruir 1.000 inimigos numa run com Magma Core | Skin Magma "Obsidian" |
 | Glass Cannon | Chegar à Wave 25 com Magma Core sem comprar Hitpoints | Skin Magma "Solar" |
-| Sniper | Causar um único hit de mais de 10.000 de dano com Impetus acima de 0 | 100 Stardust |
-| Critical Mass | Dar 500 críticos numa run | 100 Stardust |
-| Untouchable | Destruir uma Mothership sem o planeta tomar dano durante a Boss Wave | 150 Stardust |
-| Clean Sweep | Fazer Wave Clear em 10 Waves seguidas antes do timer | 75 Stardust |
-| Full Arsenal | Ter 4 Satellites | 100 Stardust |
-| Dedicated | Pegar a recompensa diária 7 dias seguidos | 100 Stardust |
+| Sniper | Causar um único hit de mais de 10.000 de dano com Impetus acima de 0 | Troféu |
+| Critical Mass | Dar 500 críticos numa run | Troféu |
+| Untouchable | Destruir uma Mothership sem o planeta tomar dano durante a Boss Wave | Troféu |
+| Clean Sweep | Fazer Wave Clear em 10 Waves seguidas antes do timer | Troféu |
+| Full Arsenal | Ter 4 Satellites numa run | Troféu |
 
-### 5.6 Recompensa diária
+### 5.5 Progresso offline
 
-**Definido:**
-- Uma vez por dia (data local do aparelho), o Main Menu oferece a recompensa do dia da sequência: **10 / 15 / 20 / 25 / 30 / 40 / 75 Stardust** (dias 1 a 7).
-- Depois do dia 7, a sequência recomeça do dia 1. Perder um dia também volta ao dia 1.
-- Um anúncio recompensado **dobra** a recompensa do dia.
-
-### 5.7 Progresso offline
-
-**Definido:** não existe na 1.0. Toda a progressão vem das runs (pilar 2); a recompensa diária cumpre o papel de "motivo para voltar".
+**Definido:** não existe na 1.0. Toda a progressão vem das runs (pilar 2). Não há recompensa diária: o motivo para voltar é o recorde de Wave e as conquistas.
 
 ---
 
@@ -305,7 +283,7 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
   | Grunt / Scout | 16 px |
   | Swarmer | 8 px |
   | Satellite | 14×8 px |
-  | Ícones pequenos (Stats, Shards, Stardust, abas da gaveta) | 16 px |
+  | Ícones pequenos (Stats, Shards, abas da gaveta) | 16 px |
   | Ícones grandes (retratos dos Planet Cores, conquistas) | 32 px (a célula toda) |
 - **Definido: Quadrants na tela.** As linhas dos eixos ficam sempre visíveis, bem discretas (1 px pontilhado, quase transparente). O Quadrant onde há um Satellite ganha um preenchimento translúcido quente em forma de quarto de círculo, do tamanho do Attack Range, que pisca mais forte a cada disparo. Assim o jogador vê ao mesmo tempo o que está coberto e até onde vai o alcance. O "Mostrar Quadrants" das Settings esconde o preenchimento; as linhas continuam.
 - **Legibilidade dos efeitos:** disparos e críticos precisam ser legíveis mesmo com 150 inimigos na tela. Pixel art pede exagero visual (flash no sprite, números de dano, screen shake leve) para compensar a resolução baixa.
@@ -335,23 +313,23 @@ Na tela de Results, um anúncio recompensado **dobra** o Stardust da run (1 vez 
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
 - **Câmera:** com a gaveta aberta, a visão desliza para o planeta ficar inteiro no centro da área livre (o mundo sobe; a câmera desce). O jogo nunca pausa.
-- **Aba Satellites:** uma linha por Satellite desbloqueado, com um seletor da Target Priority (só as prioridades já desbloqueadas).
+- **Aba Satellites:** uma linha por Satellite em órbita, com um seletor da Target Priority (as 4 prioridades), e um botão para comprar o próximo Satellite com o preço em Shards (Seção 4.2). O botão some quando a órbita já tem 4.
 
 **Definido: arte da interface.**
 - **Painéis e botões:** metal cinza-escuro, com bordas mais claras e detalhes laranja, na mesma linguagem do Satellite ("equipamento do jogador"). São **9-slice** em células de 32×32, com bordas de 8 px: painel, botão (normal, pressionado e desabilitado) e a faixa da gaveta fechada.
-- **Ícones:** 16 px dentro de células de 32×32, todos numa spritesheet só (13 Stats, 4 abas, Shards, Stardust e troféu).
+- **Ícones:** 16 px dentro de células de 32×32, todos numa spritesheet só (13 Stats, 4 abas, Shards e troféu). A spritesheet ainda tem as células de Stardust e de "recompensa coletada", desenhadas antes da remoção da Stardust; elas ficam sem uso.
 - **Fonte:** **m5x7** (Daniel Linssen, CC0), com 7 px de altura, no tamanho 16 do TextMeshPro. Tem todos os acentos do português, mas em maiúsculas eles ficam espremidos, então a UI usa **maiúsculas e minúsculas**, nunca tudo em caixa alta. A fonte não tem "→": o card de Stat usa ">" entre o valor atual e o próximo. O arquivo e a licença estão em `Sprites/8-Bit-Armageddon/Fonts/`.
-- **Retratos e conquistas:** a Core Select usa o **sprite do próprio planeta** girando como retrato de cada Planet Core e Skin. As conquistas usam **um ícone de troféu em 3 estados** (bloqueada, desbloqueada, recompensa coletada), e as que dão um Core ou uma Skin mostram o planeta como recompensa.
+- **Retratos e conquistas:** a Core Select usa o **sprite do próprio planeta** girando como retrato de cada Planet Core e Skin. As conquistas usam **um ícone de troféu em 2 estados** (bloqueada, desbloqueada), e as que dão um Core ou uma Skin mostram o planeta como recompensa.
 
 **Definido: fluxo de telas.**
 1. **Boot:** logo e carregamento.
 2. **Consent:** tela de consentimento GDPR/LGPD, só no primeiro uso (e onde a lei exigir).
-3. **Main Menu:** Play, Perks, Planet Cores & Skins, Achievements, Daily Reward, Settings.
+3. **Main Menu:** Play, Planet Cores & Skins, Achievements, Settings, e o recorde de Wave.
 4. **Core Select:** escolher o Planet Core e a Skin antes da run.
 5. **Gameplay:** HUD (HP do planeta, Wave atual e timer, botão de pausa, barra de HP da Mothership quando houver) e a gaveta de upgrades.
 6. **Pause:** continuar, Settings, desistir da run (vai para Results).
 7. **Revive Offer:** ver Seção 4.6.
-8. **Results:** estatísticas da run, Stardust ganho, botão "dobrar com anúncio", botões "jogar de novo" e "menu".
+8. **Results:** estatísticas da run, o recorde de Wave (com destaque quando foi batido), botões "jogar de novo" e "menu".
 
 **Definido: Settings e acessibilidade.**
 - Volume de música e de efeitos, separados.
@@ -415,7 +393,7 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 | `UI/SPR_UI_Icons` | 32×32 | 8 colunas × 3 linhas | Ícones de 16 px centralizados na célula. Ordem das células abaixo. |
 | `Fonts/m5x7.ttf` | — | — | Fonte do jogo. Vira um *Font Asset* do TextMeshPro, usado no tamanho 16 (Seção 6.3). |
 
-**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada.
+**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust (sem uso) · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada (sem uso).
 
 ---
 
@@ -424,7 +402,7 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 ### 7.1 Anúncios
 
 **Definido:**
-- **Só anúncios recompensados**, em três momentos: Revive (Seção 4.6), dobrar o Stardust no Results (Seção 5.1) e dobrar a recompensa diária (Seção 5.6).
+- **Só anúncios recompensados**, em um único momento: o Revive (Seção 4.6).
 - **Nenhum intersticial** e **nenhuma compra no app** na 1.0.
 - Um botão de anúncio só aparece quando há um anúncio carregado. Se o anúncio falhar ou for fechado antes do fim, o jogador não recebe a recompensa e o jogo segue normalmente.
 
@@ -452,7 +430,7 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 
 ### 7.4 Analytics e diagnóstico
 
-**Definido:** Unity Gaming Services **Analytics** (sem login) + diagnóstico de crashes da Unity, ativados só depois do consentimento. Eventos mínimos: início e fim de run (Wave alcançada, duração, Planet Core), compra de Upgrade e de Perk, anúncio oferecido/assistido/recompensado por momento, conquista desbloqueada, recompensa diária coletada. São esses dados que ajustam os valores marcados como "valor inicial" neste documento.
+**Definido:** Unity Gaming Services **Analytics** (sem login) + diagnóstico de crashes da Unity, ativados só depois do consentimento. Eventos mínimos: início e fim de run (Wave alcançada, duração, Planet Core), compra de Upgrade e de Satellite, anúncio do Revive oferecido/assistido/recompensado, conquista desbloqueada. São esses dados que ajustam os valores marcados como "valor inicial" neste documento.
 
 ### 7.5 Lançamento
 
@@ -469,14 +447,12 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 1. 4 inimigos comuns (Grunt, Scout, Swarmer, Brute) + a Mothership a cada 10 Waves.
 2. Waves híbridas com Spawn Sectors e aviso na borda da tela.
 3. 13 Stats em 3 Tracks, com Upgrades pela gaveta.
-4. 1 a 4 Satellites em órbita, cada um atacando o Quadrant onde está, com Target Priority por Satellite (4 prioridades).
-5. 3 Planet Cores, 6 Skins desbloqueáveis, 16 conquistas.
-6. Árvore de 17 Perks em 4 Branches.
-7. Stardust, recompensa diária e os três anúncios recompensados.
-8. Revive, pausa (inclusive automática), Results.
-9. Settings e acessibilidade completos (Seção 6.3), dicas contextuais de onboarding.
-10. Inglês e Português (Brasil).
-11. Android (Google Play) e Web (site próprio + itch.io), com save local, consentimento e analytics.
+4. 1 a 4 Satellites em órbita, comprados durante a run, cada um atacando o Quadrant onde está, com Target Priority por Satellite (4 prioridades).
+5. 3 Planet Cores, 6 Skins desbloqueáveis, 15 conquistas, recorde de Wave.
+6. Revive (com anúncio recompensado), pausa (inclusive automática), Results.
+7. Settings e acessibilidade completos (Seção 6.3), dicas contextuais de onboarding.
+8. Inglês e Português (Brasil).
+9. Android (Google Play) e Web (site próprio + itch.io), com save local, consentimento e analytics.
 
 **Metas de performance (Definido):**
 - Android mínimo: 8.0 (API 26).
@@ -493,7 +469,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 - Novos inimigos (ex.: inimigo com escudo frontal, inimigo que ataca à distância).
 - Google Play Games Services (conquistas e placares).
 - Save na nuvem.
-- IAP "remover anúncios" ou pacotes de Stardust, se os dados indicarem.
+- IAP "remover anúncios", se os dados indicarem.
 - Versão iOS.
 - Eventos semanais e modos alternativos (ex.: desafio diário com seed fixa).
 
@@ -533,7 +509,7 @@ Cada fase segue o mesmo formato:
 | Tipo | Padrão | Exemplo |
 |---|---|---|
 | Prefab | PascalCase, nome do conceito | `Grunt.prefab`, `Satellite.prefab`, `StatCard.prefab` |
-| ScriptableObject de dados | `<Tipo>_<Nome>` | `Enemy_Grunt`, `Stat_Damage`, `Perk_StartingDamage`, `Core_Terra` |
+| ScriptableObject de dados | `<Tipo>_<Nome>` | `Enemy_Grunt`, `Stat_Damage`, `Core_Terra`, `Achievement_FirstContact` |
 | Sprite / spritesheet | `<Tipo>_<Nome>` | `SPR_Planet_Terra_Classic`, `SPR_Enemy_Scout` |
 | Áudio | `SFX_<Nome>` / `MUS_<Nome>` | `SFX_SatelliteFire`, `MUS_Gameplay` |
 | Cena | PascalCase | `Boot`, `MainMenu`, `Gameplay` |
@@ -577,8 +553,9 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
 | `Armageddon.Waves` | `WaveDevTools` | Teclas de teste das Waves (só no Editor e em builds de desenvolvimento) | 5 |
 | `Armageddon.Economy` | `StatDefinition`, `StatCatalog` | Definição dos 13 Stats e a ordem deles na gaveta | 6 |
-| `Armageddon.Economy` | `RunStats`, `StatModifier` | Nível e valor de cada Stat na run; modificadores de Perks e Planet Core | 6 |
+| `Armageddon.Economy` | `RunStats`, `StatModifier` | Nível e valor de cada Stat na run; modificadores do Planet Core | 6 |
 | `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
+| `Armageddon.Economy` | `SatelliteShop` | Compra dos Satellites 2, 3 e 4 com Shards | 6 |
 | `Armageddon.Economy` | `RunEconomy` | Cria a economia da run, transforma kills e Wave Clears em Shards e aplica os Stats | 6 |
 | `Armageddon.Economy` | `EconomyDevTools` | Teclas de teste da economia (só no Editor e em builds de desenvolvimento) | 6 |
 | `Armageddon.UI` | `IntegerCanvasScale` | Escala inteira da UI, igual à da Pixel Perfect Camera | 6 |
@@ -592,11 +569,9 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.World` | `ShockwaveView` | O anel da onda de choque do Revive, desenhado por código | 8 |
 | `Armageddon.Run` | `RunDevTools` | Teclas de teste da run (só no Editor e em builds de desenvolvimento) | 8 |
 | `Armageddon.UI` | `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView` | Telas da run | 8 |
-| `Armageddon.Meta` | `PerkDefinition`, `PerkService` | Árvore de Perks | 9 |
 | `Armageddon.Meta` | `PlanetCoreDefinition`, `SkinDefinition` | Planet Cores e Skins | 9 |
 | `Armageddon.Meta` | `AchievementDefinition`, `AchievementService` | Conquistas | 9 |
-| `Armageddon.Meta` | `DailyRewardService` | Recompensa diária | 9 |
-| `Armageddon.UI` | `MainMenuView`, `PerkTreeView`, `CoreSelectView`, `AchievementsView` | Telas do menu | 9 |
+| `Armageddon.UI` | `MainMenuView`, `CoreSelectView`, `AchievementsView` | Telas do menu | 9 |
 | `Armageddon.Platform` | `LevelPlayAdService`, `H5AdService` | Os provedores reais de anúncio por plataforma | 10 |
 | `Armageddon.Platform` | `ConsentService`, `AnalyticsService` | Consentimento (UMP) e UGS Analytics | 10 |
 | `Armageddon.Core` | `SettingsService` | Configurações e acessibilidade | 11 |
@@ -617,7 +592,7 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
 | 7 | Mothership | ✅ Escrita |
 | 8 | Run: Revive, pausa, Results | ✅ Escrita |
-| 9 | Meta-progressão: Stardust, Perks, Planet Cores, Skins, conquistas, recompensa diária | A escrever |
+| 9 | Progressão entre runs: Planet Cores, Skins, conquistas, recorde de Wave e Main Menu | A escrever |
 | 10 | Anúncios, consentimento e analytics | A escrever |
 | 11 | Localização, Settings e acessibilidade | A escrever |
 | 12 | Juice e áudio | A escrever |
@@ -726,7 +701,6 @@ Assets/
       Balance/
       Enemies/
       Stats/
-      Perks/
       PlanetCores/
       Skins/
       Achievements/
@@ -831,7 +805,7 @@ Em `Assets/_Project/Scenes/`, crie três cenas (**botão direito → Create → 
 | Cena | Para quê |
 |---|---|
 | `Boot` | Primeira cena. Inicializa os serviços e passa para o Main Menu. Nunca é recarregada. |
-| `MainMenu` | Menu, Perks, Planet Cores, conquistas, recompensa diária, Settings |
+| `MainMenu` | Menu, Planet Cores, conquistas, recorde de Wave, Settings |
 | `Gameplay` | A run |
 
 Apague a cena de exemplo que veio com o template (`SampleScene`).
@@ -931,13 +905,13 @@ using System.Collections.Generic;
 
 namespace Armageddon.Core
 {
-    // POR QUE: o jogo precisa lembrar coisas entre uma sessão e outra (Stardust, Perks comprados,
-    // Planet Cores e Skins liberados, qual Core está selecionado). Esta classe é "a ficha do jogador":
-    // tudo o que é salvo em disco mora aqui, e nada mais.
+    // POR QUE: o jogo precisa lembrar coisas entre uma sessão e outra (recorde de Wave, Planet Cores e
+    // Skins liberados, qual Core está selecionado). Não há moeda permanente nem Perks (Seção 5.1).
+    // Esta classe é "a ficha do jogador": tudo o que é salvo em disco mora aqui, e nada mais.
     // ESTRATÉGIA: é um objeto de dados puro (não é MonoBehaviour, não fica em cena, não tem lógica).
     // Quem lê e grava é o SaveService, convertendo para JSON com o JsonUtility da Unity.
     // O JsonUtility só grava campos públicos de tipos simples, List e classes/structs [Serializable]:
-    // Dictionary NÃO é suportado, por isso os níveis de Perk são uma lista de pares (PerkLevel).
+    // Dictionary NÃO é suportado: listas de ids (como unlockedCoreIds) cumprem esse papel.
     // Exceção à convenção de nomes: por ser um objeto de dados, os campos são públicos em camelCase,
     // e esses nomes viram as chaves do JSON. Renomear um campo é uma mudança de versão do save.
     // [Serializable] = "este tipo pode ser convertido em texto/bytes"; sem ele o JsonUtility ignora a classe.
@@ -946,8 +920,7 @@ namespace Armageddon.Core
     {
         public int version;          // versão do FORMATO do save (não do jogo); usada pelo SaveService.Migrate
         public int launchCount;      // quantas vezes o jogo foi aberto (incrementado pelo GameBootstrap)
-        public int stardust;         // moeda permanente
-        public List<PerkLevel> perkLevels = new List<PerkLevel>();
+        public int bestWave;         // recorde de Wave: a maior Wave alcançada em qualquer run (Seção 5.1)
         public List<string> unlockedCoreIds = new List<string>();   // ids dos Planet Cores liberados
         public List<string> unlockedSkinIds = new List<string>();   // ids no formato "<Core>_<Skin>"
         public string selectedCoreId;
@@ -968,16 +941,6 @@ namespace Armageddon.Core
                 selectedSkinId = "Terra_Classic",
             };
         }
-    }
-
-    // POR QUE: guardar "Perk X está no nível N". Seria um Dictionary<string,int>, mas o JsonUtility
-    // não sabe gravar Dictionary.
-    // ESTRATÉGIA: um struct (tipo de valor, leve, sem lógica) com [Serializable], guardado numa List.
-    [Serializable]
-    public struct PerkLevel
-    {
-        public string perkId;
-        public int level;
     }
 }
 ```
@@ -1152,7 +1115,7 @@ namespace Armageddon.Core
             Migrate(Profile);
         }
 
-        // Grava o perfil atual. Quem muda o perfil (compra de Perk, fim de run...) chama este método.
+        // Grava o perfil atual. Quem muda o perfil (conquista liberada, fim de run...) chama este método.
         public void Save()
         {
             try
@@ -1564,7 +1527,7 @@ namespace Armageddon.Core
     // POR QUE: enquanto os menus não existem, precisamos trocar de cena e mexer no save para testar.
     // ESTRATÉGIA: um MonoBehaviour no [Services] (o GameBootstrap só o adiciona em Editor/dev build)
     // que lê teclas no Update e chama os serviços. Nada de gameplay depende dele.
-    // F1 = MainMenu · F2 = Gameplay · F5 = +10 Stardust e salva · F9 = apaga o progresso.
+    // F1 = MainMenu · F2 = Gameplay · F5 = libera todos os Planet Cores e Skins e salva · F9 = apaga o progresso.
     public sealed class DevShortcuts : MonoBehaviour
     {
         // Lê as teclas de teste a cada frame. wasPressedThisFrame = true só no frame em que a tecla desceu
@@ -1579,9 +1542,19 @@ namespace Armageddon.Core
 
             if (keyboard.f5Key.wasPressedThisFrame)
             {
-                Services.Save.Profile.stardust += 10;
+                // Testar a Core Select sem cumprir as conquistas. Clear + AddRange troca o conteúdo da lista.
+                var profile = Services.Save.Profile;
+                profile.unlockedCoreIds.Clear();
+                profile.unlockedCoreIds.AddRange(new[] { "Terra", "Ice", "Magma" });
+                profile.unlockedSkinIds.Clear();
+                profile.unlockedSkinIds.AddRange(new[]
+                {
+                    "Terra_Classic", "Terra_Ocean", "Terra_Desert",
+                    "Ice_Classic", "Ice_Aurora", "Ice_Crystal",
+                    "Magma_Classic", "Magma_Obsidian", "Magma_Solar",
+                });
                 Services.Save.Save();
-                Debug.Log($"[Dev] Stardust = {Services.Save.Profile.stardust}");
+                Debug.Log("[Dev] Todos os Planet Cores e Skins liberados");
             }
 
             if (keyboard.f9Key.wasPressedThisFrame)
@@ -1708,7 +1681,7 @@ Os textos só serão traduzidos na Fase 11, mas os idiomas precisam existir desd
 - **F2** leva para o Gameplay com o planeta girando; **F1** volta para o menu. As duas trocas têm o fade.
 - No Gameplay, **Esc** congela o planeta (Console: `[GameClock] Pausado`) e **Esc** de novo o faz voltar a girar. No Main Menu, Esc não faz nada.
 - Parar e apertar Play de novo mostra `Abertura nº 2`: o save sobreviveu.
-- **F5** algumas vezes, pare o Play e abra no Explorer a pasta mostrada no log do `GameBootstrap` ("Save em: …"): o `profile.json` tem `"version":1` e o `stardust` somado. Depois de dois saves, existe também o `profile.json.bak`.
+- **F5**, pare o Play e abra no Explorer a pasta mostrada no log do `GameBootstrap` ("Save em: …"): o `profile.json` tem `"version":1` e os três Cores (`"Terra","Ice","Magma"`) em `unlockedCoreIds`. Depois de dois saves, existe também o `profile.json.bak`.
 - Apertar Play **direto na cena Gameplay** também funciona (serviços prontos, Esc pausa), sem passar pela Boot.
 - **F9** apaga o progresso: no Play seguinte, a abertura volta a ser a nº 1.
 
@@ -2238,7 +2211,7 @@ namespace Armageddon.Core
     // nos Services, este script os procura com FindAnyObjectByType — lento, mas aceitável numa ferramenta
     // de teste que nem vai para o build final. Nunca use isso no código do jogo a cada frame.
     // F1 = MainMenu · F2 = Gameplay · F3 = abre/fecha a gaveta (câmera) · F4 = Quadrant sob o mouse
-    // F5 = +10 Stardust e salva · F6 = 10 de dano no planeta · F7 = Revive com 50% · F9 = apaga o progresso.
+    // F5 = libera todos os Planet Cores e Skins · F6 = 10 de dano no planeta · F7 = Revive com 50% · F9 = apaga o progresso.
     public sealed class DevShortcuts : MonoBehaviour
     {
         // Lê as teclas de teste a cada frame (igual à Fase 1, com as teclas novas).
@@ -2265,9 +2238,19 @@ namespace Armageddon.Core
 
             if (keyboard.f5Key.wasPressedThisFrame)
             {
-                Services.Save.Profile.stardust += 10;
+                // Testar a Core Select sem cumprir as conquistas. Clear + AddRange troca o conteúdo da lista.
+                var profile = Services.Save.Profile;
+                profile.unlockedCoreIds.Clear();
+                profile.unlockedCoreIds.AddRange(new[] { "Terra", "Ice", "Magma" });
+                profile.unlockedSkinIds.Clear();
+                profile.unlockedSkinIds.AddRange(new[]
+                {
+                    "Terra_Classic", "Terra_Ocean", "Terra_Desert",
+                    "Ice_Classic", "Ice_Aurora", "Ice_Crystal",
+                    "Magma_Classic", "Magma_Obsidian", "Magma_Solar",
+                });
                 Services.Save.Save();
-                Debug.Log($"[Dev] Stardust = {Services.Save.Profile.stardust}");
+                Debug.Log("[Dev] Todos os Planet Cores e Skins liberados");
             }
 
             var planet = FindAnyObjectByType<Planet>();
@@ -2472,7 +2455,7 @@ namespace Armageddon.Combat
 {
     // POR QUE: cada Satellite pode ter uma regra diferente de escolha de alvo (Target Priority).
     // ESTRATÉGIA: um enum com as 4 regras; o Satellite guarda qual está usando.
-    // As 4 Target Priorities (Seção 4.1). Closest é a padrão; as outras são liberadas por Perks (Fase 9).
+    // As 4 Target Priorities (Seção 4.1). Closest é a padrão; todas ficam disponíveis desde o início da run.
     public enum TargetPriority
     {
         Closest,     // o mais perto do planeta
@@ -2863,7 +2846,7 @@ namespace Armageddon.Combat
             _stats = stats;
         }
 
-        // Perks Satellite 2/3/4 (Seção 5.2). Os novos entram já espaçados; ninguém "pula" de posição.
+        // Compra de Satellites na run (SatelliteShop, Fase 6). Os novos entram já espaçados; ninguém "pula" de posição.
         // Adiciona ou remove Satellites até chegar em "count".
         public void SetCount(int count)
         {
@@ -4427,11 +4410,11 @@ Próxima fase: **Fase 6 — Stats, Shards, Upgrades e gaveta**. Ela transforma o
 
 ### Fase 6 — Stats, Shards, Upgrades e gaveta
 
-> Objetivo desta fase: destruir inimigos e fazer Wave Clear dá **Shards**; a gaveta na parte de baixo da tela mostra o saldo e as 4 abas; tocar numa aba abre os cards dos Stats daquela Track, e tocar num card compra um Upgrade sem pausar o jogo. Cada compra muda o jogo na hora: mais dano, mais alcance (o preenchimento do Quadrant cresce), mais HP. A aba Satellites troca a Target Priority de cada Satellite.
+> Objetivo desta fase: destruir inimigos e fazer Wave Clear dá **Shards**; a gaveta na parte de baixo da tela mostra o saldo e as 4 abas; tocar numa aba abre os cards dos Stats daquela Track, e tocar num card compra um Upgrade sem pausar o jogo. Cada compra muda o jogo na hora: mais dano, mais alcance (o preenchimento do Quadrant cresce), mais HP. A aba Satellites troca a Target Priority de cada Satellite e compra novos Satellites (até 4).
 
 **Conceitos novos:**
 - **Definição × estado:** o `StatDefinition` (asset) diz o que um Stat **é** (base, incremento, teto, custo). O `RunStats` guarda o **nível** de cada Stat nesta run. Os assets nunca mudam durante o jogo; só o estado muda, e ele é descartado no fim da run.
-- **Modificadores:** Perks e Planet Core (Fase 9) não mexem nos níveis: eles entram como **modificadores** (`StatModifier`) que somam e multiplicam o valor. O cálculo fica num lugar só, seguindo a Seção 4.2: `base + incremento × nível`, limitado pelo teto, e depois modificado.
+- **Modificadores:** o Planet Core (Fase 9) não mexe nos níveis: ele entra como **modificadores** (`StatModifier`) que somam e multiplicam o valor. O cálculo fica num lugar só, seguindo a Seção 4.2: `base + incremento × nível`, limitado pelo teto, e depois modificado.
 - **Composição (`RunEconomy`):** um componente cria a economia da run (Stats, carteira e loja), escuta os eventos dos outros sistemas (inimigo destruído, Wave Clear) e empurra os valores novos para quem usa (Satellites e planeta). Os sistemas continuam sem se conhecer.
 - **Canvas pixel-perfect:** a UI é desenhada numa tela de referência de 320×180 e ampliada pelo mesmo fator **inteiro** da Pixel Perfect Camera (6× em 1080p). Assim, a UI tem o mesmo tamanho de pixel que o mundo.
 - **UI por eventos:** os cards não verificam o saldo a cada frame. Eles se atualizam quando a carteira ou o Stat avisam que mudaram (`BalanceChanged`, `StatChanged`).
@@ -4477,7 +4460,7 @@ namespace Armageddon.Economy
         [SerializeField] private float _base;           // valor no nível 0
         [SerializeField] private float _perLevel;       // quanto cada Upgrade soma
         [SerializeField] private float _cap;            // 0 = sem teto
-        [SerializeField] private int _baseCost = 10;    // custo do primeiro Upgrade
+        [SerializeField] private int _baseCost = 5;     // custo do primeiro Upgrade
         [SerializeField] private StatFormat _format;
 
         public StatId Id => _id;
@@ -4548,10 +4531,10 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
-    // POR QUE: Perks e Planet Core (Fase 9) alteram Stats sem serem Upgrades (ex.: "+10% de dano" o tempo todo).
-    // Se eles mexessem nos níveis, o custo dos Upgrades ficaria errado.
+    // POR QUE: o Planet Core (Fase 9) altera Stats sem ser Upgrade (ex.: "+30% de dano" o tempo todo).
+    // Se ele mexesse nos níveis, o custo dos Upgrades ficaria errado.
     // ESTRATÉGIA: um ajuste separado, aplicado DEPOIS do cálculo por nível.
-    // Um ajuste vindo de fora dos Upgrades: Perks "Starting X" e Planet Core (Fase 9).
+    // Um ajuste vindo de fora dos Upgrades: o Planet Core (Fase 9).
     // valor final = (valor dos Upgrades + add) × multiply
     [Serializable]
     public struct StatModifier
@@ -4594,7 +4577,7 @@ namespace Armageddon.Economy
         public int Level(StatId id) => _levels[id];
         public float Value(StatId id) => ValueAtLevel(id, _levels[id]);
 
-        // Seção 4.2: base + incremento × nível, limitado pelo teto, e DEPOIS modificado por Perks e Planet Core.
+        // Seção 4.2: base + incremento × nível, limitado pelo teto, e DEPOIS modificado pelo Planet Core.
         // Recebe o nível como parâmetro para o card poder mostrar "valor atual → valor do próximo nível".
         public float ValueAtLevel(StatId id, int level)
         {
@@ -4633,7 +4616,7 @@ namespace Armageddon.Economy
             StatChanged?.Invoke(id);
         }
 
-        // Registra um modificador de Perk/Planet Core e avisa que o Stat mudou.
+        // Registra um modificador do Planet Core e avisa que o Stat mudou.
         public void AddModifier(StatModifier modifier)
         {
             _modifiers.Add(modifier);
@@ -4643,7 +4626,7 @@ namespace Armageddon.Economy
 }
 ```
 
-#### Passo 3 — Os Shards e a compra: `ShardWallet`, `UpgradeService`
+#### Passo 3 — Os Shards e a compra: `ShardWallet`, `UpgradeService`, `SatelliteShop`
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Economy/ShardWallet.cs
@@ -4664,7 +4647,7 @@ namespace Armageddon.Economy
 
         public int Balance { get; private set; }
 
-        // Todos os Shards ganhos na run, inclusive os já gastos. Base do Stardust no fim da run (Seção 5.1, Fase 9).
+        // Todos os Shards ganhos na run, inclusive os já gastos. Mostrado no Results (Fase 8).
         public float TotalEarned { get; private set; }
 
         public event Action BalanceChanged;
@@ -4735,6 +4718,59 @@ namespace Armageddon.Economy
 }
 ```
 
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/SatelliteShop.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Combat;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: os Satellites 2, 3 e 4 são comprados durante a run, com Shards (Seção 4.2). Parecem um
+    // Upgrade, mas não são um Stat: não têm nível nem fórmula de valor, só "mais um na órbita" a um preço fixo.
+    // ESTRATÉGIA: classe C# pura, irmã do UpgradeService: junta a carteira e a órbita e oferece as mesmas
+    // perguntas e ações (NextCost, CanPurchase, TryPurchase). Quem cria é o RunEconomy, que também guarda
+    // a lista de preços (editável no Inspector). A órbita já sabe adicionar Satellites espaçados (SetCount).
+    // Compra o próximo Satellite da run. Nunca pausa o jogo (Pilar 1).
+    public sealed class SatelliteShop
+    {
+        private readonly SatelliteOrbit _orbit;
+        private readonly ShardWallet _wallet;
+        private readonly IReadOnlyList<int> _costs;   // índice 0 = preço do 2º Satellite, 1 = do 3º, 2 = do 4º
+
+        public event Action<int> Purchased;   // o novo número de Satellites (conquista Full Arsenal na Fase 9)
+
+        // As dependências chegam pelo construtor, como no UpgradeService.
+        public SatelliteShop(SatelliteOrbit orbit, ShardWallet wallet, IReadOnlyList<int> costs)
+        {
+            _orbit = orbit;
+            _wallet = wallet;
+            _costs = costs;
+        }
+
+        public int Count => _orbit.Satellites.Count;
+
+        // Sem mais compras quando a órbita está cheia (ou a lista de preços acabou).
+        public bool IsMaxed => Count >= SatelliteOrbit.MaxSatellites || Count - 1 >= _costs.Count;
+
+        // Com 1 Satellite em órbita, o próximo é o 2º: preço _costs[0].
+        public int NextCost => IsMaxed ? 0 : _costs[Count - 1];
+
+        public bool CanPurchase => !IsMaxed && _wallet.Balance >= NextCost;
+
+        // Faz a compra completa ou nada. O preço é lido ANTES de o Satellite entrar (depois, NextCost já é o do seguinte).
+        public bool TryPurchase()
+        {
+            if (!CanPurchase) return false;
+            _wallet.TrySpend(NextCost);
+            _orbit.SetCount(Count + 1);   // dispara o CountChanged: a aba Satellites ganha a linha nova
+            Purchased?.Invoke(Count);
+            return true;
+        }
+    }
+}
+```
+
 #### Passo 4 — A economia da run: `RunEconomy`
 
 ```csharp
@@ -4748,13 +4784,13 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
-    // POR QUE: RunStats, ShardWallet e UpgradeService são classes puras: alguém precisa criá-las a cada
-    // run e ligá-las ao resto do jogo (inimigos dão Shards, Wave Clear dá Shards, Stats mudam Satellites
-    // e planeta). Sem um "ligador", esses sistemas teriam que se conhecer.
-    // ESTRATÉGIA: composição — um MonoBehaviour na cena Gameplay que (1) cria as três classes no Awake,
+    // POR QUE: RunStats, ShardWallet, UpgradeService e SatelliteShop são classes puras: alguém precisa
+    // criá-las a cada run e ligá-las ao resto do jogo (inimigos dão Shards, Wave Clear dá Shards, Stats
+    // mudam Satellites e planeta). Sem um "ligador", esses sistemas teriam que se conhecer.
+    // ESTRATÉGIA: composição — um MonoBehaviour na cena Gameplay que (1) cria as quatro classes no Awake,
     // (2) escuta os eventos do EnemyPool, do WaveDirector e do RunStats, e (3) empurra os valores novos
-    // para o SatelliteOrbit e o PlanetHealth. A UI lê Stats/Wallet/Upgrades pelas propriedades públicas.
-    // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
+    // para o SatelliteOrbit e o PlanetHealth. A UI lê Stats/Wallet/Upgrades/Satellites pelas propriedades públicas.
+    // Cria os Stats, a carteira e as lojas da run; transforma kills e Wave Clears em Shards;
     // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
     public sealed class RunEconomy : MonoBehaviour
     {
@@ -4764,12 +4800,14 @@ namespace Armageddon.Economy
         [SerializeField] private PlanetHealth _planet;
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards;   // o Perk Starting Shards (Fase 9) soma aqui
+        [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
+        [SerializeField] private int[] _satelliteCosts = { 15, 150, 600 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
         public RunStats Stats { get; private set; }
         public ShardWallet Wallet { get; private set; }
         public UpgradeService Upgrades { get; private set; }
+        public SatelliteShop Satellites { get; private set; }
 
         // Cria a economia da run. No Awake porque outros scripts (a gaveta) leem Stats/Wallet no Start deles.
         private void Awake()
@@ -4777,6 +4815,7 @@ namespace Armageddon.Economy
             Stats = new RunStats(_catalog.Stats);
             Wallet = new ShardWallet();
             Upgrades = new UpgradeService(Stats, Wallet);
+            Satellites = new SatelliteShop(_orbit, Wallet, _satelliteCosts);
         }
 
         // Liga os eventos (OnEnable roda depois do Awake, então Stats já existe).
@@ -4801,7 +4840,7 @@ namespace Armageddon.Economy
             ApplyAll();
         }
 
-        // Perks e Planet Core (Fase 9) chamam isto no começo da run.
+        // O Planet Core (Fase 9) chama isto no começo da run.
         public void AddModifier(StatModifier modifier)
         {
             Stats.AddModifier(modifier);
@@ -5009,44 +5048,59 @@ namespace Armageddon.UI
 // Caminho: Assets/_Project/Scripts/UI/SatellitePanel.cs
 using System.Collections.Generic;
 using Armageddon.Combat;
+using Armageddon.Economy;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace Armageddon.UI
 {
-    // POR QUE: o jogador escolhe a Target Priority de cada Satellite, e só entre as que já liberou.
+    // POR QUE: o jogador escolhe a Target Priority de cada Satellite (as 4 estão sempre disponíveis) e
+    // compra novos Satellites durante a run (Seção 4.2).
     // ESTRATÉGIA: uma linha (botão) por Satellite, criada sob demanda a partir de um prefab e reaproveitada
-    // (linhas sobrando ficam escondidas). Tocar na linha avança para a próxima prioridade liberada.
-    // Redesenha quando o número de Satellites muda (evento CountChanged do SatelliteOrbit).
-    // Aba Satellites (Seção 6.3): uma linha por Satellite; tocar troca a Target Priority entre as liberadas.
+    // (linhas sobrando ficam escondidas). Tocar na linha avança para a próxima prioridade.
+    // Depois das linhas, um botão fixo compra o próximo Satellite pela SatelliteShop do RunEconomy.
+    // Redesenha quando o número de Satellites muda (CountChanged) e o botão quando o saldo muda (BalanceChanged).
+    // Aba Satellites (Seção 6.3): uma linha por Satellite; tocar troca a Target Priority.
     public sealed class SatellitePanel : MonoBehaviour
     {
         [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private RunEconomy _economy;
         [SerializeField] private Button _rowPrefab;
         [SerializeField] private Transform _rows;   // o container (com Layout Group) onde as linhas são criadas
-        // Só Closest vem liberada; os Perks do ramo Arsenal liberam as outras (Fase 9 chama SetUnlockedPriorities).
-        [SerializeField] private List<TargetPriority> _unlocked = new List<TargetPriority> { TargetPriority.Closest };
+        [SerializeField] private Button _buyButton;   // "comprar Satellite", filho do mesmo container
+        [SerializeField] private TMP_Text _buyText;
+
+        // As 4 Target Priorities, na ordem em que o toque alterna (Seção 4.1). "static readonly": uma lista
+        // fixa, compartilhada por todas as instâncias e criada uma vez só.
+        private static readonly TargetPriority[] Priorities =
+        {
+            TargetPriority.Closest, TargetPriority.Weakest, TargetPriority.Strongest, TargetPriority.Farthest,
+        };
 
         private readonly List<Button> _buttons = new List<Button>();
 
+        // O clique do botão de compra é ligado uma vez só.
+        private void Awake()
+        {
+            _buyButton.onClick.AddListener(() => _economy.Satellites.TryPurchase());
+        }
+
         // A aba só fica ativa quando está aberta: ouvir e redesenhar só enquanto visível.
+        // A carteira nasce no Awake do RunEconomy, que pode rodar depois deste OnEnable no carregamento
+        // da cena; por isso o "if". Na primeira vez que a aba é aberta de fato, ela já existe.
         private void OnEnable()
         {
             _orbit.CountChanged += Refresh;
+            if (_economy.Wallet != null) _economy.Wallet.BalanceChanged += RefreshBuyButton;
             Refresh();
         }
 
+        // Desinscrever um método que não estava inscrito é inofensivo em C#.
         private void OnDisable()
         {
             _orbit.CountChanged -= Refresh;
-        }
-
-        // Troca a lista de prioridades liberadas (Perks, Fase 9; ou a tecla U de teste).
-        public void SetUnlockedPriorities(IEnumerable<TargetPriority> priorities)
-        {
-            _unlocked = new List<TargetPriority>(priorities);
-            Refresh();
+            if (_economy != null && _economy.Wallet != null) _economy.Wallet.BalanceChanged -= RefreshBuyButton;
         }
 
         // Garante uma linha por Satellite e atualiza os textos.
@@ -5069,15 +5123,29 @@ namespace Armageddon.UI
                 _buttons[i].gameObject.SetActive(visible);
                 if (visible) _buttons[i].GetComponentInChildren<TMP_Text>().text = $"Satellite {i + 1}: {satellites[i].Priority}";
             }
+
+            _buyButton.transform.SetAsLastSibling();   // linhas novas entram no fim do container; o botão volta para depois delas
+            RefreshBuyButton();
         }
 
-        // Avança o Satellite "index" para a próxima prioridade liberada, voltando à primeira depois da última.
-        // Se a prioridade atual não estiver na lista (IndexOf = -1), cai na primeira.
+        // Mostra o preço do próximo Satellite; some com a órbita cheia; fica desabilitado sem Shards.
+        private void RefreshBuyButton()
+        {
+            var shop = _economy.Satellites;
+            if (shop == null) return;   // a economia ainda não foi criada (ver OnEnable)
+            _buyButton.gameObject.SetActive(!shop.IsMaxed);
+            if (shop.IsMaxed) return;
+            _buyButton.interactable = shop.CanPurchase;
+            _buyText.text = $"+ Satellite {shop.Count + 1}: {shop.NextCost} Shards";
+        }
+
+        // Avança o Satellite "index" para a próxima prioridade, voltando à primeira depois da última.
+        // O operador % ("resto da divisão") faz a volta: depois do índice 3 vem o 0.
         private void Cycle(int index)
         {
             var satellite = _orbit.Satellites[index];
-            int current = _unlocked.IndexOf(satellite.Priority);
-            satellite.Priority = _unlocked[(current + 1) % _unlocked.Count];
+            int current = System.Array.IndexOf(Priorities, satellite.Priority);
+            satellite.Priority = Priorities[(current + 1) % Priorities.Length];
             Refresh();
         }
     }
@@ -5196,22 +5264,19 @@ namespace Armageddon.UI
 // Caminho: Assets/_Project/Scripts/Economy/EconomyDevTools.cs
 using UnityEngine;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-using Armageddon.Combat;
-using Armageddon.UI;
 using UnityEngine.InputSystem;
 #endif
 
 namespace Armageddon.Economy
 {
-    // POR QUE: testar todos os Upgrades exige muitos Shards, e as Target Priorities só são liberadas na Fase 9.
-    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que dá Shards, libera as prioridades
-    // e escreve cada compra no Console (ouvindo o evento Purchased).
-    // M = +100 Shards · U = libera as 4 Target Priorities na aba Satellites. Registra as compras no Console.
+    // POR QUE: testar todos os Upgrades e os Satellites exige muitos Shards.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que dá Shards e escreve cada compra
+    // no Console (ouvindo o evento Purchased).
+    // M = +100 Shards. Registra as compras no Console.
     public sealed class EconomyDevTools : MonoBehaviour
     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField] private RunEconomy _economy;
-        [SerializeField] private SatellitePanel _satellitePanel;
 
         // Start: o UpgradeService só existe depois do Awake do RunEconomy.
         private void Start()
@@ -5232,14 +5297,6 @@ namespace Armageddon.Economy
             if (keyboard == null) return;
 
             if (keyboard.mKey.wasPressedThisFrame) _economy.Wallet.Add(100f);
-
-            if (keyboard.uKey.wasPressedThisFrame)
-            {
-                _satellitePanel.SetUnlockedPriorities(new[]
-                {
-                    TargetPriority.Closest, TargetPriority.Weakest, TargetPriority.Strongest, TargetPriority.Farthest,
-                });
-            }
         }
 
         // Escreve cada compra no Console.
@@ -5259,25 +5316,25 @@ Em `Assets/_Project/Data/Stats/`, **Create → Armageddon → Stat Definition**,
 
 | Asset | Id | Track | Display Name | Base | Per Level | Cap | Base Cost | Format | Icon (célula) |
 |---|---|---|---|---|---|---|---|---|---|
-| `Stat_Damage` | Damage | Offense | Damage | 10 | 3 | 0 | 10 | Number | 0 |
-| `Stat_AttackSpeed` | AttackSpeed | Offense | Attack Speed | 1 | 0.08 | 6 | 12 | PerSecond | 1 |
-| `Stat_CriticalChance` | CriticalChance | Offense | Crit Chance | 0 | 0.015 | 0.8 | 15 | Percent | 2 |
-| `Stat_CriticalFactor` | CriticalFactor | Offense | Crit Factor | 1.5 | 0.1 | 6 | 15 | Multiplier | 3 |
-| `Stat_AttackRange` | AttackRange | Offense | Range | 4 | 0.15 | 8 | 12 | Units | 4 |
-| `Stat_Impetus` | Impetus | Offense | Impetus | 0 | 0.004 | 0.12 | 20 | PercentPerUnit | 5 |
-| `Stat_OrbitSpeed` | OrbitSpeed | Offense | Orbit Speed | 45 | 5 | 180 | 12 | DegreesPerSecond | 6 |
-| `Stat_Hitpoints` | Hitpoints | Defense | Hitpoints | 100 | 25 | 0 | 10 | Number | 7 |
-| `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 15 | PerSecond | 8 |
-| `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 15 | Number | 9 |
-| `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 20 | Percent | 10 |
-| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 20 | Percent | 11 |
-| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 20 | Percent | 12 |
+| `Stat_Damage` | Damage | Offense | Damage | 10 | 3 | 0 | 5 | Number | 0 |
+| `Stat_AttackSpeed` | AttackSpeed | Offense | Attack Speed | 1 | 0.08 | 6 | 6 | PerSecond | 1 |
+| `Stat_CriticalChance` | CriticalChance | Offense | Crit Chance | 0 | 0.015 | 0.8 | 8 | Percent | 2 |
+| `Stat_CriticalFactor` | CriticalFactor | Offense | Crit Factor | 1.5 | 0.1 | 6 | 8 | Multiplier | 3 |
+| `Stat_AttackRange` | AttackRange | Offense | Range | 4 | 0.15 | 8 | 6 | Units | 4 |
+| `Stat_Impetus` | Impetus | Offense | Impetus | 0 | 0.004 | 0.12 | 10 | PercentPerUnit | 5 |
+| `Stat_OrbitSpeed` | OrbitSpeed | Offense | Orbit Speed | 45 | 5 | 180 | 6 | DegreesPerSecond | 6 |
+| `Stat_Hitpoints` | Hitpoints | Defense | Hitpoints | 100 | 25 | 0 | 5 | Number | 7 |
+| `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 8 | PerSecond | 8 |
+| `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 8 | Number | 9 |
+| `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 10 | Percent | 10 |
+| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 10 | Percent | 11 |
+| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 10 | Percent | 12 |
 
 Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome `StatCatalog`, e arraste os 13 assets **nesta ordem** para a lista **Stats**: é a ordem dos cards na gaveta.
 
 #### Passo 9 — Montar a economia na cena
 
-Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`.
+Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `0`; **Satellite Costs** = `15`, `150`, `600` (já vem preenchido; Seção 4.2).
 
 > A partir de agora, os Stats do `SatelliteOrbit` e do `PlanetHealth` no Inspector são **sobrescritos** pelo `RunEconomy` quando o Play começa. Para testar valores, compre Upgrades (ou use **M** para ganhar Shards).
 
@@ -5292,7 +5349,8 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
    - À direita da faixa: uma **UI → Image** 16 × 16 com o ícone de Shards (célula 17) e, ao lado, um **UI → Text - TextMeshPro** `ShardsText` com a fonte `m5x7 Raster`, tamanho 16, alinhado à esquerda.
 4. **Painel (a parte que abre):** dentro de `UpgradeDrawer`, uma **UI → Image** `Panel`, ancorada em cima (top stretch), **Height** `52`. **Source Image** = `SPR_UI_Panel`; **Image Type** = `Sliced`.
    - Dentro de `Panel`, uma **UI → Scroll View** `CardsView` que preenche o painel (stretch-stretch, margens de 4). Na `Scroll Rect`: **Horizontal** marcado, **Vertical** desmarcado; apague as barras de rolagem. No objeto `Content`, adicione **Horizontal Layout Group** (**Spacing** `4`, **Child Force Expand** desmarcado) e **Content Size Fitter** (**Horizontal Fit** = `Preferred Size`).
-   - Também dentro de `Panel`, um objeto de UI vazio `SatellitePanel` (stretch-stretch, margens de 4) com **Vertical Layout Group** (**Spacing** `2`) e o componente `SatellitePanel`: **Orbit** = o `SatelliteOrbit`; **Rows** = o próprio `SatellitePanel`.
+   - Também dentro de `Panel`, um objeto de UI vazio `SatellitePanel` (stretch-stretch, margens de 4) com **Grid Layout Group** (**Cell Size** `140 × 12`, **Spacing** `2 × 2`, **Constraint** = `Fixed Column Count`, **Constraint Count** `2`) e o componente `SatellitePanel`: **Orbit** = o `SatelliteOrbit`; **Economy** = o `RunEconomy`; **Rows** = o próprio `SatellitePanel`. Em 2 colunas, as 4 linhas e o botão de compra ocupam no máximo 3 fileiras de 12 px, que cabem nos 44 px do painel.
+   - Dentro de `SatellitePanel`, uma **UI → Button** `BuySatellite` com **Image** `SPR_UI_Button` (Sliced, Sprite Swap como as abas) e um TMP (m5x7, 16) dentro. O Grid define o tamanho. No `SatellitePanel`, **Buy Button** = `BuySatellite` e **Buy Text** = o TMP dele.
 5. **Prefab do card (`StatCard`):** uma **UI → Button** de **60 × 44** com **Image** `SPR_UI_Button` (Sliced, Sprite Swap como as abas) e **Layout Element** (**Preferred Width** `60`, **Preferred Height** `44`). Apague o texto padrão e crie dentro:
    - `Icon`: **UI → Image** 16 × 16 no canto de cima à esquerda (X 4, Y −4).
    - `Name`: TMP (m5x7, 16) à direita do ícone, em cima.
@@ -5303,7 +5361,7 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
    Adicione o componente `StatCard` e ligue os campos. Arraste para `Prefabs/UI/` e apague da cena.
 6. **Prefab da linha de Satellite:** uma **UI → Button** de **140 × 12** com **Image** `SPR_UI_Button` (Sliced) e um TMP (m5x7, 16) dentro, e **Layout Element** (**Preferred Height** `12`). Arraste para `Prefabs/UI/` como `SatelliteRow` e apague da cena. No `SatellitePanel`, **Row Prefab** = `SatelliteRow`.
 7. **Ligue o `UpgradeDrawer`:** **Economy** = `RunEconomy`; **Camera** = o `CameraRig` da Main Camera; **Tab Buttons** = os 4 botões, na ordem Offense, Defense, Utility, Satellites; **Shards Text** = `ShardsText`; **Panel** = `Panel`; **Cards View** = `CardsView`; **Card Container** = o `Content` da Scroll View; **Card Prefab** = `StatCard`; **Satellite Panel** = `SatellitePanel`.
-8. Em `[Systems]`, crie `EconomyDevTools` com o componente `EconomyDevTools`: **Economy** = `RunEconomy`; **Satellite Panel** = o `SatellitePanel`.
+8. Em `[Systems]`, crie `EconomyDevTools` com o componente `EconomyDevTools`: **Economy** = `RunEconomy`.
 
 > A tecla **F3** do `DevShortcuts` (Fase 2) continua movendo a câmera sozinha, sem abrir a gaveta. Agora prefira as abas.
 
@@ -5315,12 +5373,13 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `0`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
 - Dois Swarmers destruídos somam **1** Shard (0,5 cada, acumulado).
 - Tocar em **Offense** abre a gaveta com 7 cards (Damage, Attack Speed…), e o mundo desliza para o planeta ficar no centro da área livre. Tocar de novo em Offense fecha a gaveta.
-- O card de Damage mostra `Lv 0`, `10 > 13` e custo `10`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
-- Comprar Damage: o saldo cai 10, o card vira `Lv 1`, `13 > 16`, custo `12` (10 × 1,15 arredondado), e o Grunt passa a morrer igual, mas o Brute precisa de menos tiros.
+- O card de Damage mostra `Lv 0`, `10 > 13` e custo `5`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
+- Comprar Damage: o saldo cai 5, o card vira `Lv 1`, `13 > 16`, custo `6` (5 × 1,15 = 5,75, arredondado), e o Grunt passa a morrer igual, mas o Brute precisa de menos tiros.
 - Comprar **Range** faz o preenchimento do Quadrant **crescer** na hora. **Orbit Speed** faz o Satellite girar mais rápido.
 - Comprar **Hitpoints** com o planeta ferido (**F6** algumas vezes): o máximo **e** o HP atual sobem 25.
 - **Crit Chance** chega a `MAX` quando atinge 80% e deixa de ser comprável.
-- Aba **Satellites**: uma linha `Satellite 1: Closest`. Com **U** (libera as prioridades) e tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest. Com **2**–**4** (Fase 3), aparecem mais linhas.
+- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 15 Shards`, desabilitado até o saldo chegar a 15. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
+- Com **M**, compre o Satellite 2: o saldo cai 15, o segundo Satellite aparece do lado oposto da órbita, surge a linha `Satellite 2: Closest` e o botão passa a `+ Satellite 3: 150 Shards`. Depois do 4º, o botão some. As teclas **2**–**4** da Fase 3 também mudam o número de Satellites (sem cobrar), e o botão acompanha.
 - O jogo **nunca pausa** ao abrir a gaveta ou comprar.
 - Em `1920x1080`, a UI tem o mesmo tamanho de pixel que o mundo (6×). Em `1280x720`, os dois ficam em 4×.
 
@@ -5331,6 +5390,7 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - **A UI fica gigante ou minúscula:** o `Canvas Scaler` ainda está em `Scale With Screen Size`. O `IntegerCanvasScale` troca o modo no `Awake`; confira se ele está no mesmo objeto que o `Canvas Scaler`.
 - **A UI fica borrada:** o Canvas está sem **Pixel Perfect**, ou algum texto não usa o Font Asset `m5x7 Raster`.
 - **Comprar não muda nada no jogo:** o `RunEconomy` está sem o **Orbit** ou o **Planet** preenchidos, e o Console mostra um `NullReferenceException`.
+- **O botão de comprar Satellite fica sempre desabilitado ou sem texto:** o **Economy** do `SatellitePanel` está vazio, ou o **Buy Text** aponta para outro texto.
 - **O valor aparece com vírgula ou com ponto dependendo do computador:** é a cultura do sistema operacional. A Fase 11 (Localization) fixa a formatação por idioma.
 
 Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, cachos de Swarmers e a barra de HP.
@@ -5693,7 +5753,7 @@ namespace Armageddon.Enemies
         public IReadOnlyList<Mothership> Alive => _alive;   // a mais antiga é a [0] (a BossHealthBar mostra essa)
 
         public event Action<Mothership> MothershipSpawned;
-        public event Action<Mothership> MothershipKilled;   // Shards (Fase 6), Stardust e conquistas (Fase 9)
+        public event Action<Mothership> MothershipKilled;   // Shards (Fase 6) e conquistas (Fase 9)
 
         // Escuta o início das Boss Waves (e para de escutar no OnDisable).
         private void OnEnable()
@@ -5815,12 +5875,14 @@ namespace Armageddon.Economy
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards;   // o Perk Starting Shards (Fase 9) soma aqui
+        [SerializeField] private int _startingShards;   // 0 no jogo (Seção 5.1); útil para testar com saldo inicial
+        [SerializeField] private int[] _satelliteCosts = { 15, 150, 600 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
         public RunStats Stats { get; private set; }
         public ShardWallet Wallet { get; private set; }
         public UpgradeService Upgrades { get; private set; }
+        public SatelliteShop Satellites { get; private set; }
 
         // Cria a economia da run (igual à Fase 6).
         private void Awake()
@@ -5828,6 +5890,7 @@ namespace Armageddon.Economy
             Stats = new RunStats(_catalog.Stats);
             Wallet = new ShardWallet();
             Upgrades = new UpgradeService(Stats, Wallet);
+            Satellites = new SatelliteShop(_orbit, Wallet, _satelliteCosts);
         }
 
         // Liga os eventos (agora também o da Mothership).
@@ -5854,7 +5917,7 @@ namespace Armageddon.Economy
             ApplyAll();
         }
 
-        // Perks e Planet Core (Fase 9) chamam isto no começo da run.
+        // O Planet Core (Fase 9) chama isto no começo da run.
         public void AddModifier(StatModifier modifier)
         {
             Stats.AddModifier(modifier);
@@ -6020,7 +6083,7 @@ Próxima fase: **Fase 8 — Run: Revive, pausa e Results**. Ela junta tudo num c
 - **Controlador da run (`RunController`):** o único dono do estado da run (`Running`, `ReviveOffer`, `Ended`). As telas não decidem nada: elas mostram o estado e chamam métodos como `AcceptRevive` ou `GiveUp`. Assim, a regra "o Revive só existe uma vez por run e só com anúncio disponível" fica num lugar só.
 - **Interface de anúncios (`IAdService`):** o Revive precisa de um anúncio recompensado, mas os anúncios reais só entram na Fase 10. A interface define o que o jogo precisa ("tem anúncio pronto?", "mostre e me avise se foi assistido"). Até a Fase 10, o Editor usa um **anúncio simulado** e o build final usa um "sem anúncio". Quando os anúncios reais chegarem, nada nesta fase muda.
 - **Tempo "unscaled" na UI:** a oferta de Revive tem uma contagem regressiva de 5 s **com o jogo congelado** (`timeScale = 0`). Por isso ela conta com `Time.unscaledDeltaTime`.
-- **Resumo da run (`RunSummary`):** um objeto de dados com tudo o que aconteceu na run (Wave, kills, tempo, Shards). O Results mostra, e a Fase 9 usa o mesmo objeto para calcular o Stardust e as conquistas.
+- **Resumo da run (`RunSummary`):** um objeto de dados com tudo o que aconteceu na run (Wave, kills, tempo, Shards). O Results mostra, e a Fase 9 usa o mesmo objeto para as conquistas e o recorde de Wave.
 
 #### Passo 1 — Anúncios, por enquanto simulados: `IAdService`
 
@@ -6032,8 +6095,8 @@ using UnityEngine;
 namespace Armageddon.Platform
 {
     // POR QUE: cada ponto de anúncio recompensado precisa de um nome (para Analytics e para o provedor).
-    // Os três momentos de anúncio recompensado (Seção 7.1).
-    public enum AdPlacement { Revive, DoubleStardust, DoubleDailyReward }
+    // Os momentos de anúncio recompensado (Seção 7.1). Na 1.0, só o Revive; o enum deixa espaço para outros.
+    public enum AdPlacement { Revive }
 
     // POR QUE: o Revive precisa de anúncio já nesta fase, mas os SDKs reais (LevelPlay, H5 Ads) só entram
     // na Fase 10 e são diferentes por plataforma.
@@ -6209,11 +6272,11 @@ using System;
 
 namespace Armageddon.Run
 {
-    // POR QUE: no fim da run, várias partes precisam dos mesmos números (Results, Stardust e conquistas
+    // POR QUE: no fim da run, várias partes precisam dos mesmos números (Results, conquistas e recorde
     // na Fase 9, Analytics na Fase 10). Passar cada número separado seria frágil.
     // ESTRATÉGIA: um objeto de dados puro (como o PlayerProfile), criado uma vez pelo RunController e
     // entregue no evento RunEnded. [Serializable] deixa pronto para salvar ou enviar como JSON, se preciso.
-    // O que aconteceu na run. O Results mostra; a Fase 9 usa para Stardust, conquistas e Analytics.
+    // O que aconteceu na run. O Results mostra; a Fase 9 usa para conquistas e recorde; a Fase 10, para Analytics.
     [Serializable]
     public sealed class RunSummary
     {
@@ -6221,7 +6284,7 @@ namespace Armageddon.Run
         public int enemiesDestroyed;        // inimigos comuns + Motherships
         public int mothershipsDestroyed;
         public float survivalSeconds;
-        public float shardsEarned;          // todos os Shards ganhos, inclusive os gastos (Seção 5.1)
+        public float shardsEarned;          // todos os Shards ganhos, inclusive os gastos (mostrado no Results, Seção 6.3)
         public bool revived;
         public bool gaveUp;
     }
@@ -6624,9 +6687,9 @@ namespace Armageddon.UI
 {
     // POR QUE: o fim da run precisa de um fechamento: o que o jogador conseguiu e para onde ir depois.
     // ESTRATÉGIA: uma view que só reage ao evento RunEnded e escreve os números do RunSummary. Os botões
-    // pedem ao RunController para trocar de cena. Não calcula nada (o Stardust entra na Fase 9).
+    // pedem ao RunController para trocar de cena. Não calcula nada.
     // Results (Seção 6.3): estatísticas da run e os botões "jogar de novo" e "menu".
-    // O Stardust e o botão "dobrar com anúncio" entram na Fase 9.
+    // O recorde de Wave entra na Fase 9, junto com o save do Best Wave.
     public sealed class ResultsView : MonoBehaviour
     {
         [SerializeField] private RunController _run;
@@ -6635,8 +6698,6 @@ namespace Armageddon.UI
         [SerializeField] private TMP_Text _enemiesText;
         [SerializeField] private TMP_Text _timeText;
         [SerializeField] private TMP_Text _shardsText;
-        [SerializeField] private TMP_Text _stardustText;
-        [SerializeField] private Button _doubleStardustButton;
         [SerializeField] private Button _playAgainButton;
         [SerializeField] private Button _menuButton;
 
@@ -6645,7 +6706,6 @@ namespace Armageddon.UI
         {
             _playAgainButton.onClick.AddListener(() => _run.PlayAgain());
             _menuButton.onClick.AddListener(() => _run.GoToMenu());
-            _doubleStardustButton.gameObject.SetActive(false);   // Fase 9
             _root.SetActive(false);
         }
 
@@ -6662,7 +6722,6 @@ namespace Armageddon.UI
             // m:ss — divisão inteira dá os minutos; o resto (%) dá os segundos; ":00" força 2 dígitos.
             _timeText.text = $"{seconds / 60}:{seconds % 60:00}";
             _shardsText.text = Mathf.FloorToInt(summary.shardsEarned).ToString();
-            _stardustText.text = "-";   // a Fase 9 calcula o Stardust da run
             _root.SetActive(true);
         }
     }
@@ -6739,7 +6798,7 @@ namespace Armageddon.Run
    - Um objeto `HUD` com o componente `HudView`, com todos esses campos ligados.
 3. **Pausa:** no `HUDCanvas`, um objeto `PauseView` com o componente `PauseView` e um filho `Root`: uma **Image** preta com alfa ~50% cobrindo a tela inteira (para escurecer o jogo e bloquear os toques) e, no centro, um painel `SPR_UI_Panel` (Sliced) de **120 × 80** com o título `Paused` e três botões de **100 × 16** (`SPR_UI_Button`): `Continue`, `Settings` e `Give up`. Ligue os campos.
 4. **Revive:** mesmo formato: `ReviveOfferView` com o `Root` (fundo escuro e painel de **140 × 80**), o texto `Watch an ad to revive?`, o `CountdownText` (o número grande) e dois botões: `Watch ad` e `No thanks`.
-5. **Results:** `ResultsView` com o `Root` (fundo escuro e painel de **160 × 120**), o título `Results`, as linhas `Wave`, `Enemies`, `Time`, `Shards` e `Stardust` (um TMP de rótulo e um TMP de valor em cada) e três botões: `Double with ad` (o `DoubleStardustButton`, escondido até a Fase 9), `Play again` e `Menu`.
+5. **Results:** `ResultsView` com o `Root` (fundo escuro e painel de **160 × 120**), o título `Results`, as linhas `Wave`, `Enemies`, `Time` e `Shards` (um TMP de rótulo e um TMP de valor em cada) e dois botões: `Play again` e `Menu`.
 6. **Ordem de desenho do Canvas:** na hierarquia do `HUDCanvas`, deixe nesta ordem, de cima para baixo: `HUD`, `BossHealthBar`, `UpgradeDrawer`, `PauseView`, `ReviveOfferView`, `ResultsView`. Na UI, quem vem depois na lista é desenhado por cima.
 
 > Os textos das telas estão em inglês porque o inglês é o idioma base da tabela de Localization (Fase 1). A Fase 11 troca cada texto por uma chave traduzida.
@@ -6766,4 +6825,4 @@ namespace Armageddon.Run
 - **`The type or namespace name 'Clock' does not exist in the namespace 'Armageddon.Services'`:** algum arquivo foi criado no namespace `Armageddon.Services`. Os provedores de plataforma usam `Armageddon.Platform` (Passo 1); não existe namespace `Armageddon.Services`.
 - **Os inimigos voltam a dar dano logo depois do Revive:** os que estavam longe continuam vindo (a onda só limpa 4 u). É o esperado; o planeta tem 50% do HP para aguentar.
 
-Próxima fase: **Fase 9 — Meta-progressão**. Ela transforma a run em Stardust, cria a árvore de Perks, os Planet Cores e Skins, as conquistas e a recompensa diária, e monta o Main Menu.
+Próxima fase: **Fase 9 — Progressão entre runs**. Ela salva o recorde de Wave, cria os Planet Cores e Skins e as conquistas, e monta o Main Menu e a Core Select.

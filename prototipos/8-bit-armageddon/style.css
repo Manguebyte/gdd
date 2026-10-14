@@ -1,0 +1,243 @@
+/* 8-Bit Armageddon — protótipo web.
+   Toda medida em px aqui é "pixel de jogo" (resolução de referência 320x180).
+   O #ui é escalado por um fator inteiro (Pixel Perfect), igual ao canvas do mundo. */
+
+@font-face {
+  font-family: "m5x7";
+  src: url("../../Sprites/8-Bit-Armageddon/Fonts/m5x7.ttf") format("truetype");
+}
+
+:root {
+  --offense: #f28e17;
+  --defense: #4a9be8;
+  --utility: #5cc45c;
+  --satellites: #a8aab2;
+  --text: #e8e8ee;
+  --dim: #8a8c96;
+  --space: #12103a;
+  --shard: #ffd25a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #07061a;
+  overflow: hidden;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#stage { position: absolute; left: 0; top: 0; }
+
+#world, #ui { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+
+#ui {
+  transform-origin: 0 0;
+  font-family: "m5x7", monospace;
+  font-size: 16px;
+  line-height: 10px;
+  color: var(--text);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+}
+
+.hidden { display: none !important; }
+
+/* Celular em pé: o jogo é em paisagem (Seção 6.1). */
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 10;
+  align-items: center; justify-content: center; padding: 24px; text-align: center;
+  background: #12103a; color: #e8e8ee; font: 32px "m5x7", monospace;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+/* O html/body bloqueiam gestos (touch-action: none); as listas que rolam liberam o arraste. */
+.cards { touch-action: pan-x; }
+.scroll { touch-action: pan-y; }
+
+/* ---------- peças de UI com a arte do jogo ---------- */
+
+.panel {
+  border-style: solid;
+  border-width: 8px;
+  border-image: url("../../Sprites/8-Bit-Armageddon/UI/SPR_UI_Panel.png") 8 fill / 8px stretch;
+  image-rendering: pixelated;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 18px;
+  padding: 3px 6px 4px;
+  border: 0;
+  border-image: url("ui/btn_normal.png") 8 fill / 8px stretch;
+  image-rendering: pixelated;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  line-height: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn:active:not(.disabled) { border-image-source: url("ui/btn_pressed.png"); padding-top: 4px; padding-bottom: 3px; }
+.btn.disabled { border-image-source: url("ui/btn_disabled.png"); color: var(--dim); cursor: default; }
+.btn.selected { color: var(--shard); }
+
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  background-image: url("../../Sprites/8-Bit-Armageddon/UI/SPR_UI_Icons.png");
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.planet-spin {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  animation: planet-spin 8s steps(32) infinite;
+}
+@keyframes planet-spin { from { background-position: 0 0; } to { background-position: -1024px 0; } }
+.planet-spin.locked { filter: brightness(0) opacity(.55); animation: none; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  background: rgba(10, 8, 30, .72);
+}
+
+.title { font-size: 32px; line-height: 20px; color: var(--offense); text-shadow: 1px 1px 0 #000; }
+.subtitle { color: var(--dim); }
+.h { color: var(--shard); margin-bottom: 4px; }
+.row { display: flex; align-items: center; gap: 4px; }
+.col { display: flex; flex-direction: column; gap: 3px; }
+.spacer { flex: 1; }
+.money { display: inline-flex; align-items: center; gap: 1px; }
+.money.shards { color: var(--shard); }
+.scroll { overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+
+.topbar { width: 100%; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+
+/* ---------- menu ---------- */
+.menu-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 220px; margin-top: 8px; }
+.menu-buttons .btn { width: 100%; }
+.menu-buttons .play { grid-column: 1 / -1; color: var(--shard); }
+.badge { color: var(--shard); }
+
+/* ---------- core select ---------- */
+.cores { display: flex; gap: 6px; }
+.core { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 96px; padding: 6px 4px; }
+.core.sel { outline: 1px solid var(--shard); }
+.core .mods { color: var(--dim); text-align: center; min-height: 30px; }
+.skins { display: flex; gap: 2px; }
+.skin { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
+.skin.sel { border-color: var(--shard); }
+.skin.locked { cursor: default; }
+
+/* ---------- achievements ---------- */
+.ach-list { width: 100%; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px; align-content: start; }
+.ach { display: flex; align-items: center; gap: 4px; padding: 3px 5px; min-height: 26px; border-image: url("ui/btn_normal.png") 8 fill / 8px stretch; }
+.ach.locked { border-image-source: url("ui/btn_disabled.png"); }
+.ach .txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.ach .cond { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ach.locked .name { color: var(--dim); }
+.ach .reward { display: flex; align-items: center; }
+
+/* ---------- settings ---------- */
+.settings { width: 180px; display: flex; flex-direction: column; gap: 2px; }
+.settings .btn { justify-content: space-between; }
+
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud > * { pointer-events: auto; }
+.hpbar { position: absolute; left: 4px; top: 4px; display: flex; align-items: center; gap: 2px; }
+.bar { position: relative; width: 70px; height: 9px; background: #000; border: 1px solid #000; outline: 1px solid #55565e; }
+.bar > i { position: absolute; left: 0; top: 0; bottom: 0; background: #5cc45c; }
+.bar > b { position: absolute; inset: -1px 0 0; text-align: center; font-weight: normal; font-size: 16px; line-height: 10px; color: #fff; text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000; }
+.wave-info { position: absolute; left: 0; right: 0; top: 4px; text-align: center; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+.wave-info .t { color: var(--dim); }
+.pause-btn { position: absolute; right: 4px; top: 3px; min-height: 16px; padding: 2px 5px 3px; }
+.boss-bar { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; }
+.boss-bar .bar { width: 120px; height: 5px; }
+.boss-bar .bar > i { background: #c74dff; }
+.boss-bar span { color: #d9a0ff; text-shadow: 1px 1px 0 #000; }
+
+.toast {
+  position: absolute; left: 50%; top: 34px; transform: translateX(-50%);
+  padding: 1px 5px 2px; background: rgba(20, 20, 28, .9); border: 1px solid #000; outline: 1px solid var(--offense); outline-offset: -2px; display: flex; align-items: center; gap: 3px;
+  white-space: nowrap; pointer-events: none;
+  animation: toast 3s forwards;
+}
+@keyframes toast { 0% { opacity: 0; } 8% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
+
+.hint {
+  position: absolute; padding: 2px 5px 3px; white-space: nowrap; pointer-events: none;
+  color: #fff; background: #23222c; border: 1px solid var(--offense);
+  animation: bob 1s ease-in-out infinite;
+}
+@keyframes bob { 50% { transform: translateY(-2px); } }
+
+/* ---------- gaveta de upgrades ---------- */
+#drawer { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; }
+.drawer-body { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #26282e; border-top: 1px solid #000; }
+.drawer-strip {
+  height: 22px; flex: none; display: flex; align-items: center; gap: 2px; padding: 3px 4px 0;
+  background: url("../../Sprites/8-Bit-Armageddon/UI/SPR_UI_DrawerStrip.png") repeat-x 0 0;
+  image-rendering: pixelated;
+}
+.tab { min-height: 17px; padding: 1px 4px 2px 2px; }
+.tab.open { color: #fff; }
+.tab[data-track="offense"] .lbl { color: var(--offense); }
+.tab[data-track="defense"] .lbl { color: var(--defense); }
+.tab[data-track="utility"] .lbl { color: var(--utility); }
+.tab[data-track="satellites"] .lbl { color: var(--satellites); }
+.tab.open .lbl { text-decoration: underline; }
+.drawer-body { flex-direction: row; }
+.qty { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 3px 0 3px 4px; }
+.qty .btn { min-height: 13px; padding: 0 4px 1px; flex: 1; }
+.cards-wrap { flex: 1; min-width: 0; position: relative; display: flex; }
+.arrow { position: absolute; top: 50%; transform: translateY(-50%); min-height: 22px; padding: 2px 3px 3px; z-index: 1; }
+.arrow.l { left: 1px; }
+.arrow.r { right: 1px; }
+.cards {
+  flex: 1; min-height: 0; min-width: 0; display: flex; gap: 3px; padding: 3px 4px;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+.cards::-webkit-scrollbar { display: none; }
+.card {
+  flex: none; min-width: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px;
+  padding: 2px 5px 3px; cursor: pointer; line-height: 9px;
+  border-image: url("ui/btn_normal.png") 8 fill / 8px stretch;
+}
+.card.poor { border-image-source: url("ui/btn_disabled.png"); }
+.card.poor .cost { color: var(--dim); }
+.card.can { animation: pulse 1s ease-in-out infinite; }
+.card:active:not(.poor) { border-image-source: url("ui/btn_pressed.png"); }
+.card .name { white-space: nowrap; }
+.card .lvl { color: var(--dim); }
+.card .vals { white-space: nowrap; padding-left: 2px; }
+.card .cost .icon { margin: -4px -2px -3px -3px; }
+.card .vals em { font-style: normal; color: var(--utility); }
+@keyframes pulse { 50% { filter: brightness(1.35); } }
+.sat-row { flex: none; width: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px; padding: 2px 5px 3px; line-height: 9px; }
+.sat-row.framed { border-image: url("ui/btn_disabled.png") 8 fill / 8px stretch; }
+.sat-row .btn { min-height: 14px; padding: 1px 4px 2px; }
+
+/* ---------- resultados / pausa ---------- */
+.dialog { margin: auto; padding: 6px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 150px; }
+.stats { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 4px 0; }
+.stats span:nth-child(even) { text-align: right; color: var(--shard); }

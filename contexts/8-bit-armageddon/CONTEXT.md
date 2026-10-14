@@ -35,11 +35,11 @@ _Avoid_: continue, segunda chance
 ## Planeta
 
 **Planet Core**:
-Variante do planeta escolhida antes da run, com pontos fortes e fracos próprios: Terra Core (equilibrado), Ice Core, Magma Core. Desbloqueado por conquista, nunca por Stardust.
+Variante do planeta escolhida antes da run, com pontos fortes e fracos próprios: Terra Core (equilibrado), Ice Core, Magma Core. Desbloqueado por conquista.
 _Avoid_: núcleo planetário, planet type, Núcleo Estelar
 
 **Satellite**:
-Arma do planeta que orbita em volta dele e só ataca inimigos no Quadrant por onde está passando; o planeta começa com um e pode ter até quatro, todos na mesma órbita e igualmente espaçados.
+Arma do planeta que orbita em volta dele e só ataca inimigos no Quadrant por onde está passando; toda run começa com um, e o jogador compra até mais três com Shards durante a run; todos ficam na mesma órbita e igualmente espaçados.
 _Avoid_: Turret, drone, orbital, canhão
 
 **Quadrant**:
@@ -69,19 +69,13 @@ A compra de um nível de Stat com Shards, válida só até o fim da run.
 _Avoid_: melhoria
 
 **Shards**:
-Moeda temporária ganha matando inimigos e completando Waves; zera a cada run.
+A única moeda do jogo: ganha matando inimigos e completando Waves, gasta em Upgrades e Satellites; zera a cada run.
 _Avoid_: Energy Shards (só no texto de marketing), recurso, resource, cash
 
 ## Progressão permanente
 
-**Stardust**:
-Moeda permanente, obtida ao fim de cada run a partir dos Shards coletados.
-_Avoid_: Núcleo Estelar, recurso permanente, currency, PermanentCurrency
+Não existe moeda permanente nem Perks: além do Best Wave, só Planet Cores, Skins e conquistas passam de uma run para a outra.
 
-**Perk**:
-Um nó da árvore de meta-progressão, comprado com Stardust e mantido entre runs.
-_Avoid_: upgrade permanente, meta upgrade
-
-**Branch**:
-Um dos quatro ramos da árvore de Perks: Offense, Defense, Utility e Arsenal. Os três primeiros espelham as Tracks; Arsenal libera Satellites e Target Priorities.
-_Avoid_: Track (Track é só para Stats da run), categoria, category
+**Best Wave**:
+O recorde do jogador: a maior Wave alcançada em qualquer run, mostrada no Main Menu e no Results.
+_Avoid_: high score, pontuação, recorde (no código)
