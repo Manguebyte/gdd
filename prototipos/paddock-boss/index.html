@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Paddock Boss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <div id="left">
+    <div id="map-wrap" class="panel">
+      <canvas id="map"></canvas>
+      <div id="track-card" class="panel"></div>
+      <button id="speed-btn" title="Velocidade da simulação (Em aberto no GDD §3)"><span></span></button>
+    </div>
+    <div id="upgrades"></div>
+    <div id="notifications"></div>
+  </div>
+  <div id="right">
+    <div id="lap-header"><div id="lap-text"></div>
+      <div id="col-heads"><span>POS</span><span>PILOTO</span><span>DIF</span><span>PNEU</span><span>BOX</span></div>
+    </div>
+    <div id="standings" class="panel"></div>
+    <div id="money" class="panel"></div>
+    <div id="cars"></div>
+  </div>
+  <div id="overlay" class="hidden"><div id="modal" class="panel"></div></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

@@ -45,7 +45,7 @@ jobs:
         run: |
           cp -r ../prototipos build/prototipos
           mkdir -p build/Sprites
-          cp -r ../Sprites/StarExpeditionCo ../Sprites/8-Bit-Armageddon build/Sprites/
+          cp -r ../Sprites/StarExpeditionCo ../Sprites/8-Bit-Armageddon ../Sprites/PaddockBoss build/Sprites/
           find build/Sprites -type d \( -name _candidatos_descartados -o -name tools -o -name _tools -o -name _previews -o -name _referencia \) -prune -exec rm -rf {} +
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -14,7 +14,9 @@ This is a **game design document (GDD) repository**, not a code project. It cont
 - `GDD_8-Bit_Armageddon.md`, `RequiemOfBlessings.md`, `DiceAndBlood.md`, `GDD_Protocolo_Ectoplasma.md` — other separate games (see the `GAMES` table in `site/scripts/split-gdds.mjs` for one-line descriptions).
 - `tutorial-mvp-completo-unity.md` — Unity tutorial only (Mercador & Legião), no GDD of its own.
 
-There is no Unity project, no source code, no build system, and no test suite here — the repository's "product" is the design documents themselves. There are no lint/build/test commands to run.
+`prototipos/` is the one exception to "no code": plain HTML/JS playable prototypes of a GDD's Parte 1 (open `index.html`, no build) — `8-bit-armageddon/` (`GDD_8-Bit_Armageddon.md`), `star-expedition-co/` (`StarExpeditionCo.md`, balance numbers from its §16) and `paddock-boss/` (`PaddockBoss.md`, a JS port of its Unity guide's simulation/economy/AI with §14 numbers; tracks are control points in `TRACKS` in its `game.js`). Each loads art straight from its `Sprites/<Game>/` folder, so renaming those sprites breaks it; dev URL shortcuts are in each prototype's `README.md`.
+
+There is no Unity project, no build system, and no test suite here — the repository's "product" is the design documents themselves. There are no lint/build/test commands to run.
 
 Each GDD file is self-contained: its own "Parte 1 — GDD" (or GDD Core) section plus its own Unity implementation guide. Don't assume content from one file applies to another — they are separate games with separate mechanics, only sharing the repo's overall Markdown conventions (see "Conventions when editing this document" below, which apply repo-wide, not just to `RallySurvive.md`).
 
