@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>DiceAndBlood</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen&family=VT323&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <header id="hud"></header>
+  <canvas id="board" width="512" height="512"></canvas>
+  <section id="roll">
+    <div class="die-box"><img id="d6" src="../../Sprites/DiceAndBlood/ui/dado_icone.png" alt=""><span>Movimento</span></div>
+    <div class="die-box"><div id="d20">—</div><span>Ataque (d20)</span></div>
+    <p id="rolltext">Toque em "Começar".</p>
+  </section>
+  <nav id="actions">
+    <button class="btn" data-act="move">Mover</button>
+    <button class="btn red" data-act="attack">Atacar</button>
+    <button class="btn blue" data-act="parry">Parry</button>
+  </nav>
+  <ul id="log"></ul>
+  <div id="screen" class="hidden"></div>
+</div>
+<script src="game.js"></script>
+</body>
+</html>

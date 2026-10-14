@@ -1,0 +1,58 @@
+/* Protocolo Ectoplasma — protótipo web. Cena em 480×270 (pixel art) desenhada em 2× (960×540) e escalada para a janela. */
+:root { --bg: #14121c; --ink: #e9ecef; --dim: #9aa3b5; --ecto: #8cff4a; --ecto2: #3fd17a; --purple: #a05bd6; --neon: #36d6ff; --pink: #ff5fb4; --hp: #ff5a5a; --gold: #ffd166; --panel: #1d1b29ee; --line: #3a3650; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #08070c; font-family: 'VT323', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+.hidden { display: none !important; }
+h1, h2, h3 { font-family: 'Silkscreen', monospace; font-weight: 400; margin: 0; }
+b { font-weight: 400; color: var(--ecto); }
+
+#app { position: absolute; width: 960px; height: 540px; transform-origin: 0 0; overflow: hidden; background: var(--bg); }
+#view { position: absolute; inset: 0; width: 960px; height: 540px; image-rendering: pixelated; cursor: crosshair; }
+
+.btn { background: #2a2740; border: 2px solid #565077; border-radius: 4px; padding: 4px 14px; font-size: 22px; box-shadow: 0 3px 0 #08070c; }
+.btn:not(:disabled):hover { border-color: var(--ecto); }
+.btn:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
+.btn.go { border-color: var(--ecto); color: var(--ecto); }
+.btn.neon { border-color: var(--neon); color: var(--neon); }
+
+#hud { position: absolute; inset: 0 0 auto; padding: 8px 10px 14px; background: linear-gradient(#08070cd9 60%, #08070c00); display: flex; align-items: flex-start; gap: 18px; font-size: 22px; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+#hud .grow { flex: 1; }
+#hud .bar { width: 170px; height: 14px; background: #08070ccc; border: 2px solid #000; position: relative; margin-top: 2px; }
+#hud .bar i { position: absolute; inset: 0 auto 0 0; }
+#hud .bar span { position: absolute; inset: 0; text-align: center; font-size: 15px; line-height: 10px; }
+#hud .lbl { font-size: 16px; color: var(--dim); line-height: 1; }
+#hud .plasma { color: var(--ecto); }
+#hud .traps { display: flex; gap: 10px; }
+#hud .traps div { display: flex; align-items: center; gap: 2px; background: #08070caa; border: 2px solid var(--line); padding: 0 6px 0 0; }
+#hud .traps img { width: 32px; height: 32px; image-rendering: pixelated; }
+#hud .traps kbd { font: inherit; color: var(--gold); }
+#hud button { pointer-events: auto; }
+#hud .hint { position: absolute; left: 10px; top: 506px; font-size: 18px; color: var(--dim); }
+
+#panel { position: absolute; background: var(--panel); border: 2px solid var(--line); border-radius: 6px; padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; font-size: 21px; }
+#panel h2 { font-size: 20px; color: var(--ecto); }
+#panel .row { display: flex; gap: 8px; align-items: center; }
+#panel .cast img { width: 40px; height: 40px; image-rendering: pixelated; opacity: .9; }
+.threat { color: var(--pink); letter-spacing: 1px; }
+.risk-0 { color: #6dff8a; } .risk-1 { color: var(--gold); } .risk-2 { color: #ff7a4a; } .risk-3 { color: #c77dff; }
+
+#toast { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); max-width: 720px; text-align: center; background: #0d0b14e6; border: 2px solid var(--purple); padding: 4px 16px; font-size: 21px; color: #d9c6ff; }
+
+#screen { position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, #1c2a1ef0, #08070cf5 70%); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 30px 90px; text-align: center; }
+#screen h1 { font-size: 46px; color: var(--ecto); text-shadow: 0 0 18px #8cff4a66; line-height: 1; }
+#screen h2 { font-size: 22px; color: var(--neon); }
+#screen p { margin: 0; font-size: 23px; max-width: 720px; line-height: 1.15; }
+#screen .memo { text-align: left; background: #e9ecef; color: #1d1b29; padding: 12px 18px; border-radius: 2px; font-size: 21px; max-width: 620px; box-shadow: 6px 6px 0 #000; }
+#screen .memo b { color: #2a7a3a; }
+#screen small { color: var(--dim); font-size: 18px; }
+#screen .cast { display: flex; gap: 10px; align-items: flex-end; }
+#screen .cast img { image-rendering: pixelated; }
+
+.shop { display: grid; grid-template-columns: repeat(2, 330px); gap: 8px; }
+.shop button { text-align: left; background: #1d1b29; border: 2px solid var(--line); border-radius: 4px; padding: 6px 10px; display: grid; grid-template-columns: 1fr auto; gap: 0 8px; }
+.shop button:not(:disabled):hover { border-color: var(--ecto); }
+.shop button span { color: var(--dim); font-size: 17px; grid-column: 1 / -1; line-height: 1; }
+.shop button em { font-style: normal; color: var(--ecto); }
+.pips { color: var(--ecto); letter-spacing: 2px; }

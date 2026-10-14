@@ -60,8 +60,6 @@
   <div class="grid" id="grid"></div>
   <h2>Só GDD, ainda sem protótipo</h2>
   <div class="plain">
-    <a href="../dice-and-blood/gdd"><b>DiceAndBlood</b><span>RPG tático roguelike em tabuleiro 8×8, com movimento por dado.</span></a>
-    <a href="../protocolo-ectoplasma/gdd"><b>Protocolo Ectoplasma</b><span>Ação top-down: capturar fantasmas em zonas contaminadas da cidade.</span></a>
     <a href="../mercador-e-legiao/guia-unity"><b>Mercador &amp; Legião</b><span>Tutorial Unity do MVP completo (heróis, quests, combate, crafting e loja).</span></a>
   </div>
 </main>
@@ -78,6 +76,8 @@
     ['paper-flight', 'Paper Flight', 'Lance o avião de papel com o estilingue, plane o mais longe possível e compre upgrades.', 'paper-flight', false, 'Incremental'],
     ['star-expedition-co', 'Star Expedition Co.', 'Gerencie a tripulação e mande expedições idle pelos planetas em tempo real.', 'star-expedition-co', true, 'Idle'],
     ['8-bit-armageddon', '8-Bit Armageddon', 'Roguelike de defesa automática de planeta, com upgrades entre as ondas.', '8-bit-armageddon', false, 'Roguelike'],
+    ['protocolo-ectoplasma', 'Protocolo Ectoplasma', 'Escolha um imóvel contaminado no mapa, sugue o plasma dos fantasmas e compre upgrades.', 'protocolo-ectoplasma', false, 'Ação top-down'],
+    ['dice-and-blood', 'DiceAndBlood', 'RPG tático no tabuleiro 8×8: o d6 diz até onde você anda, o d20 decide o golpe.', 'dice-and-blood', true, 'RPG tático'],
   ];
   document.getElementById('grid').innerHTML = GAMES.map(([dir, name, desc, gdd, portrait, tag]) => `
     <article class="card">

@@ -1,0 +1,56 @@
+/* DiceAndBlood — protótipo web. Tela em retrato (480×860) escalada para a janela; tabuleiro 8×8 de casas de 32 px desenhado em 2×. */
+:root { --bg: #161923; --panel: #222736; --line: #3b4257; --ink: #ece4d6; --dim: #9198ab; --blood: #b3202c; --blood2: #ff6b6b; --bone: #f6eedd; --blue: #5d8fe0; --gold: #f2c94c; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0c0e14; font-family: 'VT323', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .35; cursor: default; }
+.hidden { display: none !important; }
+h1, h2, h3 { font-family: 'Silkscreen', monospace; font-weight: 400; margin: 0; }
+
+#app { position: absolute; width: 480px; height: 860px; transform-origin: 0 0; overflow: hidden; background: radial-gradient(circle at 50% 30%, #262c3d, var(--bg) 70%); display: flex; flex-direction: column; align-items: center; padding: 12px 16px; gap: 10px; }
+
+#hud { width: 100%; display: flex; justify-content: space-between; align-items: center; font-size: 24px; }
+#hud .who { display: flex; align-items: center; gap: 8px; }
+#hud .who img { width: 40px; height: 40px; image-rendering: pixelated; }
+#hud .bar { width: 150px; height: 16px; background: #0c0e14; border: 2px solid #000; position: relative; }
+#hud .bar i { position: absolute; inset: 0 auto 0 0; background: var(--blood); transition: width .3s; }
+#hud .bar span { position: absolute; inset: 0; text-align: center; font-size: 16px; line-height: 12px; }
+#hud .tags { color: var(--dim); text-align: right; line-height: 1; }
+#hud .tags b { color: var(--blue); }
+
+#board { width: 448px; height: 448px; image-rendering: pixelated; border: 3px solid #0c0e14; box-shadow: 0 0 0 2px var(--line), 0 10px 30px #000a; cursor: pointer; }
+
+#roll { width: 100%; display: grid; grid-template-columns: 96px 96px 1fr; gap: 10px; align-items: center; background: var(--panel); border: 2px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.die-box { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.die-box span { font-size: 15px; color: var(--dim); }
+#d6 { width: 64px; height: 64px; image-rendering: pixelated; }
+#d20 { width: 64px; height: 64px; display: grid; place-items: center; font-family: 'Silkscreen', monospace; font-size: 30px; color: var(--blood); background: var(--bone); clip-path: polygon(50% 0, 96% 25%, 96% 75%, 50% 100%, 4% 75%, 4% 25%); }
+#d20.hit { color: #fff; background: var(--blood); }
+#d20.miss { color: var(--dim); background: #3b4257; }
+.spin { animation: spin .09s infinite alternate; }
+@keyframes spin { from { transform: rotate(-12deg) scale(.92); } to { transform: rotate(12deg) scale(1.05); } }
+#rolltext { margin: 0; font-size: 22px; line-height: 1.05; }
+#rolltext b { color: var(--blood2); font-weight: 400; }
+#rolltext em { color: var(--blue); font-style: normal; }
+
+#actions { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.btn { background: #2d3448; border: 2px solid #56607d; border-radius: 4px; padding: 8px 6px; font-size: 26px; box-shadow: 0 4px 0 #0a0c12; }
+.btn:not(:disabled):hover { border-color: var(--gold); }
+.btn:not(:disabled):active { transform: translateY(3px); box-shadow: none; }
+.btn.on { border-color: var(--gold); color: var(--gold); }
+.btn.red { color: var(--blood2); }
+.btn.blue { color: #9cc0ff; }
+.btn.big { font-size: 30px; padding: 10px 26px; border-color: var(--blood); }
+
+#log { width: 100%; flex: 1; margin: 0; padding: 6px 10px; list-style: none; overflow: hidden; font-size: 19px; line-height: 1.1; color: var(--dim); background: #0c0e1480; border-radius: 6px; display: flex; flex-direction: column; }
+#log li:first-child { color: var(--ink); }
+
+#screen { position: absolute; inset: 0; background: rgba(8,9,14,.9); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 30px; text-align: center; }
+#screen h1 { font-size: 44px; color: var(--blood2); line-height: 1; }
+#screen h2 { font-size: 22px; color: var(--gold); }
+#screen p { margin: 0; font-size: 23px; color: var(--ink); max-width: 400px; }
+#screen .cast { display: flex; gap: 8px; }
+#screen .cast img { width: 64px; height: 64px; image-rendering: pixelated; }
+#screen table { border-collapse: collapse; font-size: 22px; }
+#screen td { padding: 1px 12px; border-bottom: 1px solid var(--line); }
+#screen small { color: var(--dim); font-size: 18px; max-width: 400px; }
