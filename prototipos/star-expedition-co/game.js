@@ -996,9 +996,11 @@ function tick() {
 }
 
 function fit() {
-  const w = innerWidth, h = innerHeight;
-  let k = Math.min(w / REF_W, h / REF_H);
-  if (k >= 1) k = Math.floor(k);   // fator inteiro (GDD §10.2); abaixo de 1x, encolhe livre
+  const w = innerWidth, h = innerHeight, dpr = devicePixelRatio || 1;
+  // Fator inteiro em pixels FÍSICOS (GDD §10.2): num celular de 412 px CSS com dpr 2,625 dá 3x
+  // (1081 px físicos), que enche a tela e continua nítido. Abaixo de 1x físico, encolhe livre.
+  const kDev = Math.min(w * dpr / REF_W, h * dpr / REF_H);
+  const k = (kDev >= 1 ? Math.floor(kDev) : kDev) / dpr;
   const app = $('#app');
   app.style.transform = `scale(${k})`;
   app.style.left = Math.round((w - REF_W * k) / 2) + 'px';
