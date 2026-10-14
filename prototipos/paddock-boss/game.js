@@ -1,6 +1,8 @@
 // Paddock Boss — protótipo jogável em JavaScript puro.
 // Segue a Parte 1 do GDD (PaddockBoss.md) e porta as regras do guia Unity: TrackPath, RaceSimulator,
 // RaceEconomy, UpgradeService, RivalAI e Championship, com os números da §14 (GameBalance).
+// Além do guia: Túnel de vento e Ultrapassagem (§4), disputa de posição com ar sujo e vácuo (§3),
+// ritmo Poupar pneus (§5) e campeonato de 5 etapas (§8).
 // A arte vem direto de Sprites/PaddockBoss/ (fonte única), sem cópias.
 'use strict';
 
@@ -38,6 +40,22 @@ const BAL = {
   pointsByPosition: [25, 18, 15, 12, 10, 8, 6, 4, 2, 1],
   maxLevel: 20,
   aiThinkInterval: 2,
+  // Disputa de posição (§3): colado atrás de outro carro, o mais rápido só ganha um pouco por segundo
+  // (ar sujo); na reta, o vácuo dá velocidade extra. A Ultrapassagem aumenta as duas coisas.
+  aeroCornerBonusPerLevel: 0.04,   // Túnel de vento: +4% de velocidade por nível, proporcional à curva
+  blockGap: 1.0,                   // distância (unidades) em que o carro de trás fica preso
+  passEdgeCorner: 0.008,           // quanto pode andar mais rápido que o da frente, colado, na curva
+  passEdgeStraight: 0.025,         // ... e na reta
+  passEdgeLapped: 0.08,            // retardatário abre caminho
+  passEdgePerLevel: 0.006,         // Ultrapassagem: + margem por nível
+  attackPerLevel: 0.004,           // Ultrapassagem: ataca mesmo com ritmo até 0,4% pior por nível
+  slipstreamGap: 3.5,              // vácuo na reta até esta distância
+  slipstreamBonus: 0.03,           // +3% de velocidade no vácuo
+  slipstreamPerLevel: 0.012,       // Ultrapassagem: + vácuo por nível
+  straightCornerMax: 0.25,         // trecho conta como reta abaixo deste fator de curva
+  repassWindow: 8,                 // s: retomar a posição de quem acabou de passar não paga bônus
+  saveWearMultiplier: 0.6,         // ritmo Poupar: pneu gasta 40% menos
+  saveSpeedMultiplier: 0.97,       // ... e o carro anda 3% mais devagar
 };
 const byPosition = (table, pos) => table[pos - 1] || 0;
 
@@ -48,27 +66,31 @@ const COMPOUNDS = {
 };
 
 const UPGRADES = {
-  eng:    { name: 'Engenharia',      base: 150, growth: 1.35, row: 'upgrade_row_engineering' },
-  mkt:    { name: 'Propaganda',      base: 120, growth: 1.40, row: 'upgrade_row_marketing' },
-  pit:    { name: 'Equipe de boxes', base: 100, growth: 1.35, row: 'upgrade_row_pitcrew' },
-  driver: { name: 'Treino',          base: 130, growth: 1.35, row: 'upgrade_row_driver' },
+  eng:    { name: 'Engenharia',      base: 150, growth: 1.35, row: 'upgrade_row_engineering', help: 'Velocidade em todo o traçado, nos dois carros.' },
+  aero:   { name: 'Túnel de vento',  base: 130, growth: 1.35, row: 'upgrade_row_aero',        help: 'Velocidade nas curvas: rende mais nas pistas sinuosas.' },
+  ovt:    { name: 'Ultrapassagem',   base: 120, growth: 1.35, row: 'upgrade_row_overtake',    help: 'Mais vácuo na reta e mais facilidade para passar quem está colado à frente.' },
+  mkt:    { name: 'Propaganda',      base: 120, growth: 1.40, row: 'upgrade_row_marketing',   help: 'Renda de patrocínio por segundo.' },
+  pit:    { name: 'Equipe de boxes', base: 100, growth: 1.35, row: 'upgrade_row_pitcrew',     help: 'Tempo de serviço no pit stop.' },
+  driver: { name: 'Treino',          base: 130, growth: 1.35, row: 'upgrade_row_driver',      help: 'Velocidade e consistência de um piloto.' },
 };
 
 // Equipes (guia Fase 1B + personalidades da 6B). Nomes e identidades estão Em aberto (GDD §9/§15):
-// os daqui são provisórios. ai = [gana de gastar, pesos eng/mkt/pit/driver, limite de desgaste p/ box].
+// os daqui são provisórios. ai = [gana de gastar, pesos eng/mkt/pit/driver, limite de desgaste p/ box];
+// os pesos de Túnel de vento e Ultrapassagem saem dos de engenharia e treino (aiSpend).
 const TEAMS = [
-  { id: 'player', name: 'Mangue Racing',  short: 'MNG', color: '#F2C230', eng: 0, mkt: 0, pit: 0, skill: [0, 0], drivers: ['J. Clarke', 'R. Bennett'] },
-  { id: 'rival_1', name: 'Scuderia Rossa', short: 'ROS', color: '#E8483C', eng: 5, mkt: 2, pit: 2, skill: [3, 2], drivers: ['M. Rossi', 'L. Bianchi'],   ai: [0.9, [3, 1, 1, 1], 0.70] },
-  { id: 'rival_2', name: 'Équipe Bleue',   short: 'BLE', color: '#3C7BE8', eng: 3, mkt: 4, pit: 1, skill: [2, 2], drivers: ['P. Moreau', 'A. Perrot'],   ai: [0.6, [1, 3, 0.5, 1], 0.80] },
-  { id: 'rival_3', name: 'Verde Motori',   short: 'VER', color: '#3CC27A', eng: 2, mkt: 1, pit: 3, skill: [1, 3], drivers: ['N. Moretti', 'G. de Vries'], ai: [0.5, [1, 1, 3, 1], 0.75] },
-  { id: 'rival_4', name: 'Viola Racing',   short: 'VIO', color: '#A64CE0', eng: 1, mkt: 1, pit: 1, skill: [2, 1], drivers: ['K. Lahti', 'T. Sato'],      ai: [0.5, [1, 0.5, 1, 3], 0.75] },
-  { id: 'rival_5', name: 'Arancia GP',     short: 'ARA', color: '#F28A30', eng: 1, mkt: 0, pit: 2, skill: [0, 1], drivers: ['D. Harrison', 'E. Petrov'], ai: [0.2, [1, 1, 1, 1], 0.65] },
-  { id: 'rival_6', name: 'Argento Werke',  short: 'ARG', color: '#9AA3AE', eng: 0, mkt: 1, pit: 0, skill: [1, 0], drivers: ['H. Müller', "B. O'Connor"], ai: [0.5, [1, 1, 1, 1], 0.75] },
+  { id: 'player', name: 'Mangue Racing',  short: 'MNG', color: '#F2C230', eng: 0, aero: 0, ovt: 0, mkt: 0, pit: 0, skill: [0, 0], drivers: ['J. Clarke', 'R. Bennett'] },
+  { id: 'rival_1', name: 'Scuderia Rossa', short: 'ROS', color: '#E8483C', eng: 5, aero: 3, ovt: 2, mkt: 2, pit: 2, skill: [3, 2], drivers: ['M. Rossi', 'L. Bianchi'],   ai: [0.9, [3, 1, 1, 1], 0.70] },
+  { id: 'rival_2', name: 'Équipe Bleue',   short: 'BLE', color: '#3C7BE8', eng: 3, aero: 2, ovt: 1, mkt: 4, pit: 1, skill: [2, 2], drivers: ['P. Moreau', 'A. Perrot'],   ai: [0.6, [1, 3, 0.5, 1], 0.80] },
+  { id: 'rival_3', name: 'Verde Motori',   short: 'VER', color: '#3CC27A', eng: 2, aero: 1, ovt: 2, mkt: 1, pit: 3, skill: [1, 3], drivers: ['N. Moretti', 'G. de Vries'], ai: [0.5, [1, 1, 3, 1], 0.75] },
+  { id: 'rival_4', name: 'Viola Racing',   short: 'VIO', color: '#A64CE0', eng: 1, aero: 1, ovt: 2, mkt: 1, pit: 1, skill: [2, 1], drivers: ['K. Lahti', 'T. Sato'],      ai: [0.5, [1, 0.5, 1, 3], 0.75] },
+  { id: 'rival_5', name: 'Arancia GP',     short: 'ARA', color: '#F28A30', eng: 1, aero: 0, ovt: 1, mkt: 0, pit: 2, skill: [0, 1], drivers: ['D. Harrison', 'E. Petrov'], ai: [0.2, [1, 1, 1, 1], 0.65] },
+  { id: 'rival_6', name: 'Argento Werke',  short: 'ARG', color: '#9AA3AE', eng: 0, aero: 1, ovt: 0, mkt: 1, pit: 0, skill: [1, 0], drivers: ['H. Müller', "B. O'Connor"], ai: [0.5, [1, 1, 1, 1], 0.75] },
 ];
 const TEAM_DEF = Object.fromEntries(TEAMS.map(t => [t.id, t]));
 
 // Pistas: pontos de controle (unidades, cabe em ~40 × 25, como na Etapa 2C) suavizados em waypoints
 // a cada ~1 unidade. O ponto 0 é a largada e fica no meio de uma reta. Nomes provisórios (Em aberto).
+// 5 etapas (§8): a última, Mangue Seco, é a casa da equipe do jogador.
 const TRACKS = [
   { id: 'track_a', name: 'Montebello', country: 'Itália', laps: 12,
     pts: [[16, 3.5], [26, 3.5], [32, 4.5], [36, 8], [36.5, 12.5], [33.5, 16], [28.5, 16.5], [25.5, 19.5], [27, 22.5], [23, 24], [14, 23.5], [8, 21.5], [5, 17.5], [9, 13.5], [7.5, 9.5], [5, 7], [8, 4]] },
@@ -76,6 +98,10 @@ const TRACKS = [
     pts: [[18, 4], [28, 4.5], [35, 7], [37.5, 12], [35, 16.5], [29, 17], [24, 13.5], [19, 14.5], [15, 20], [8, 22], [3.5, 17], [3.5, 10], [8, 5]] },
   { id: 'track_c', name: 'Costa Azul', country: 'França', laps: 12,
     pts: [[12, 4], [19, 4], [23, 6.5], [27, 4], [33, 4], [37, 7.5], [34, 11.5], [36.5, 16], [35, 21.5], [29, 23], [23, 19], [17, 22.5], [10, 22.5], [5, 19], [8.5, 14], [4.5, 10], [6, 5]] },
+  { id: 'track_d', name: 'Aintree Park', country: 'Inglaterra', laps: 12,
+    pts: [[14, 3.5], [30, 3.5], [36, 6], [37, 11], [33, 14], [34, 19], [30, 23], [20, 23], [16, 19], [11, 22.5], [5, 21], [3.5, 15], [7, 11], [4, 7], [7, 4]] },
+  { id: 'track_e', name: 'Mangue Seco', country: 'Brasil', laps: 12,
+    pts: [[15, 4], [25, 4], [31, 5.5], [33, 9.5], [29, 12.5], [33, 15.5], [36.5, 19], [33, 23], [26, 22], [22, 18], [17, 21], [11, 23.5], [5.5, 21], [4, 16], [9, 13], [6, 8.5], [9, 4.5]] },
 ].map(t => ({ ...t, baseSpeed: 6, cornerSpeedFactor: 0.55, sharpCornerDegreesPerUnit: 15, cornerInfluence: 4, pitLaneLossSeconds: 6, width: 2.4 }));
 
 // Catmull-Rom centrípeta fechada: transforma os pontos de controle num traçado liso e denso.
@@ -162,7 +188,7 @@ function mulberry32(a) {
 // ============================================================ estado das equipes (TeamState) e compras (UpgradeService)
 
 function newTeamState(def) {
-  return { id: def.id, isPlayer: def.id === 'player', money: BAL.startingMoney, eng: def.eng, mkt: def.mkt, pit: def.pit, skill: [...def.skill], points: 0 };
+  return { id: def.id, isPlayer: def.id === 'player', money: BAL.startingMoney, eng: def.eng, aero: def.aero, ovt: def.ovt, mkt: def.mkt, pit: def.pit, skill: [...def.skill], points: 0 };
 }
 const def = team => TEAM_DEF[team.id];
 const levelOf = (team, type, driver = 0) => type === 'driver' ? team.skill[driver] : team[type];
@@ -191,7 +217,7 @@ class Race {
       this.cars.push({
         id: this.cars.length, team, driver: d, seed: this.rng() * 1000,
         distance: 0, laps: 0, lapStart: 0, lastLap: 0, bestLap: 0, speed: 0,
-        compound: BAL.startingCompound, wear: 0, pitRequested: false, pitCompound: 'M', pitLeft: 0, stops: 0,
+        compound: BAL.startingCompound, wear: 0, save: false, corner: 0, pitRequested: false, pitCompound: 'M', pitLeft: 0, stops: 0,
         done: false, finishTime: 0, pos: 0, prevPos: 0, warned: false,
       });
     }
@@ -213,12 +239,17 @@ class Race {
     if (this.finished || dt <= 0) return;
     this.time += dt;
     const lapEvents = [], finishEvents = [];
+    const running = [];
     for (const car of this.cars) {
       if (car.done) continue;
       if (car.pitLeft > 0) { this.tickPit(car, dt); continue; }
       car.speed = this.computeSpeed(car);
+      running.push(car);
+    }
+    this.applyTraffic(running);
+    for (const car of running) {
       car.distance += car.speed * dt;
-      car.wear = Math.min(1, car.wear + COMPOUNDS[car.compound].wear * dt);
+      car.wear = Math.min(1, car.wear + COMPOUNDS[car.compound].wear * (car.save ? BAL.saveWearMultiplier : 1) * dt);
       this.checkLap(car, lapEvents, finishEvents);
     }
     this.updateStandings();
@@ -229,15 +260,47 @@ class Race {
     if (this.cars.every(c => c.done)) { this.finished = true; this.emit('raceFinished'); }
   }
 
-  // velocidade = base da pista × curva × desempenho × pneu × oscilação do piloto (GDD §3)
+  // velocidade = base da pista × curva × desempenho × pneu × oscilação do piloto (GDD §3),
+  // com o Túnel de vento ganhando nas curvas e o ritmo Poupar tirando um pouco (§4, §5)
   computeSpeed(car) {
-    const t = car.team, skill = t.skill[car.driver];
-    const trackSpeed = this.track.baseSpeed * lerp(1, this.track.cornerSpeedFactor, this.path.cornerAt(car.distance));
+    const t = car.team, skill = t.skill[car.driver], corner = this.path.cornerAt(car.distance);
+    car.corner = corner;
+    const trackSpeed = this.track.baseSpeed * lerp(1, this.track.cornerSpeedFactor, corner) * (1 + t.aero * BAL.aeroCornerBonusPerLevel * corner);
     const perf = 1 + t.eng * BAL.engineeringBonusPerLevel + skill * BAL.driverBonusPerLevel + COMPOUNDS[car.compound].grip;
     const tire = car.wear < 1 ? lerp(1, BAL.wornTireSpeedMultiplier, car.wear) : BAL.deadTireSpeedMultiplier;
     const consistency = clamp01(skill * BAL.consistencyPerDriverLevel);
     const noise = (smoothNoise(car.seed, this.time * 0.25) * 2 - 1) * BAL.noiseAmplitude * (1 - consistency);
-    return trackSpeed * perf * tire * (1 + noise);
+    return trackSpeed * perf * tire * (1 + noise) * (car.save ? BAL.saveSpeedMultiplier : 1);
+  }
+
+  // Disputa de posição (§3). Para cada carro, acha o carro logo à frente na pista (não o da frente na
+  // classificação): colado nele, só pode andar um pouco mais rápido que ele (ar sujo), e mais na reta;
+  // a alguns carros de distância, na reta, ganha o vácuo. Retardatário abre caminho.
+  applyTraffic(running) {
+    const L = this.path.length, raw = new Map(running.map(c => [c, c.speed]));
+    for (const car of running) {
+      let ahead = null, gap = Infinity;
+      for (const o of running) {
+        if (o === car) continue;
+        const g = ((o.distance - car.distance) % L + L) % L;
+        if (g > 0 && g < gap) { gap = g; ahead = o; }
+      }
+      if (!ahead) continue;
+      const ovt = car.team.ovt, straight = car.corner < BAL.straightCornerMax;
+      const mine = raw.get(car), theirs = raw.get(ahead);
+      const lapped = ahead.distance < car.distance;   // à frente na pista, mas uma volta atrás: abre caminho
+      if (gap >= BAL.blockGap) {
+        // Vácuo: ajuda a encostar no carro da frente, não a passar sozinho.
+        if (straight && gap < BAL.slipstreamGap) car.speed = mine * (1 + BAL.slipstreamBonus + ovt * BAL.slipstreamPerLevel);
+      } else if (lapped) {
+        car.speed = Math.min(mine, theirs * (1 + BAL.passEdgeLapped));
+      } else {
+        // Colado: só ataca quem tem ritmo melhor; a Ultrapassagem soma ao ritmo para isso e aumenta a margem.
+        const attack = mine * (1 + ovt * BAL.attackPerLevel) > theirs;
+        const edge = (straight ? BAL.passEdgeStraight : BAL.passEdgeCorner) + ovt * BAL.passEdgePerLevel;
+        car.speed = attack ? Math.min(mine * (1 + ovt * BAL.attackPerLevel) * (1 + edge), theirs * (1 + edge)) : Math.min(mine, theirs);
+      }
+    }
   }
 
   checkLap(car, lapEvents, finishEvents) {
@@ -272,7 +335,7 @@ class Race {
     this.emit('pitStart', car);
   }
   tickPit(car, dt) {
-    car.speed = 0;
+    car.speed = 0; car.save = false;   // pneu novo: volta ao ritmo Normal
     car.pitLeft -= dt;
     if (car.pitLeft > 0) return;
     car.pitLeft = 0; car.compound = car.pitCompound; car.wear = 0; car.stops++; car.warned = false;
@@ -286,7 +349,13 @@ class Race {
       if (car.pos >= car.prevPos) continue;
       for (const other of this.cars) {
         if (other === car || other.pitLeft > 0 || other.done) continue;
-        if (other.prevPos < car.prevPos && other.pos > car.pos) this.pay(car.team, BAL.overtakeBonus, 'Ultrapassagem', car);
+        if (other.prevPos < car.prevPos && other.pos > car.pos) {
+          // Devolver uma posição que o outro tomou há pouco não conta como ultrapassagem nova (sem bônus).
+          const key = other.id + '>' + car.id, back = car.id + '>' + other.id;
+          this.passes = this.passes || {};
+          if (!(this.time - (this.passes[key] ?? -99) < BAL.repassWindow)) this.pay(car.team, BAL.overtakeBonus, 'Ultrapassagem', car);
+          this.passes[back] = this.time;
+        }
       }
     }
   }
@@ -326,18 +395,22 @@ class Race {
     const lapsLeft = this.track.laps - car.laps;
     if (lapsLeft <= 1) return;
     const lapTime = car.lastLap > 0 ? car.lastLap : this.path.length / (this.track.baseSpeed * 0.75);
-    const lastsToEnd = car.wear + COMPOUNDS[car.compound].wear * lapsLeft * lapTime < 1;
+    const wearLeft = COMPOUNDS[car.compound].wear * lapsLeft * lapTime;
+    const lastsToEnd = car.wear + wearLeft * (car.save ? BAL.saveWearMultiplier : 1) < 1;
+    // Perto do fim, se poupando o pneu dá para chegar sem parar, a IA poupa em vez de ir ao box.
+    if (!lastsToEnd && lapsLeft <= 4 && car.wear + wearLeft * BAL.saveWearMultiplier < 0.95) { car.save = true; return; }
     if (lastsToEnd || car.wear < def(car.team).ai[2]) return;
     const after = lapsLeft - 1;
     const compound = ['S', 'M'].find(c => COMPOUNDS[c].wear * after * lapTime < 0.9) || 'H';
     this.requestPit(car, compound);
   }
   aiSpend(team) {
-    const [eager, weights] = def(team).ai;
-    const types = ['eng', 'mkt', 'pit', 'driver'];
+    const [eager, w4] = def(team).ai;
+    const types = ['eng', 'mkt', 'pit', 'driver', 'aero', 'ovt'];
+    const weights = [...w4, w4[0] * 0.7, w4[3] * 0.6];
     const total = weights.reduce((s, w) => s + Math.max(0, w), 0);
     let roll = this.rng() * total, type = types[3];
-    for (let i = 0; i < 4; i++) { roll -= Math.max(0, weights[i]); if (roll <= 0) { type = types[i]; break; } }
+    for (let i = 0; i < types.length; i++) { roll -= Math.max(0, weights[i]); if (roll <= 0) { type = types[i]; break; } }
     const driver = team.skill[0] <= team.skill[1] ? 0 : 1;
     if (team.money >= costOf(team, type, driver) * lerp(2, 1, eager)) tryBuy(team, type, driver);
   }
@@ -350,7 +423,14 @@ let season;   // { race: índice da próxima etapa, teams: TeamState[], last: re
 function newSeason() { return { race: 0, teams: TEAMS.map(newTeamState), last: null }; }
 function saveSeason() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(season)); } catch (e) {} }
 function loadSeason() {
-  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s && s.teams && s.teams.length === TEAMS.length) return s; } catch (e) {}
+  try {
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    // Save de antes do Túnel de vento e da Ultrapassagem: as áreas novas começam no nível de largada.
+    if (s && s.teams && s.teams.length === TEAMS.length) {
+      s.teams.forEach(t => { t.aero ??= TEAM_DEF[t.id].aero; t.ovt ??= TEAM_DEF[t.id].ovt; });
+      return s;
+    }
+  } catch (e) {}
   return null;
 }
 const teamStandings = () => [...season.teams].sort((a, b) => b.points - a.points || b.money - a.money);
@@ -510,25 +590,21 @@ function buildRaceUI() {
     <div class="info">Etapa ${season.race + 1}/${TRACKS.length} · ${track.laps} voltas · ${track.country}</div>`;
   updateSpeedBtn();
 
-  // Investimentos: 4 áreas do MVP, treino por piloto, + 1 vaga trancada (fora do MVP).
+  // Investimentos (§4): 5 áreas da equipe e o treino de cada piloto; a 8ª vaga mostra o campeonato.
   const up = $('upgrades'); up.innerHTML = '';
-  const slots = [['eng', 0], ['mkt', 0], ['pit', 0], ['driver', 0], ['driver', 1], [null]];
+  const slots = [['eng', 0], ['aero', 0], ['ovt', 0], ['mkt', 0], ['pit', 0], ['driver', 0], ['driver', 1]];
   for (const [type, driver] of slots) {
     const b = el('button', 'upg');
-    if (!type) {
-      b.classList.add('locked'); b.disabled = true;
-      b.style.backgroundImage = `url('${UI}upgrade_rows/upgrade_row_locked.png')`;
-      b.innerHTML = `<div class="patch"><div class="t">Túnel de vento <small>· fora do MVP</small></div></div>`;
-    } else {
-      b.style.backgroundImage = `url('${UI}upgrade_rows/${UPGRADES[type].row}.png')`;
-      b.innerHTML = `<div class="patch"><div class="t"></div><div class="c"></div><div class="bar"><i></i></div></div>`;
-      b.onclick = () => {
-        if (tryBuy(player, type, driver)) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); updateUI(); }
-      };
-      b.dataset.type = type; b.dataset.driver = driver;
-    }
+    b.style.borderImageSource = `url('${UI}upgrade_rows/${UPGRADES[type].row}.png')`;
+    b.innerHTML = `<div class="patch"><div class="t"></div><div class="c"></div><div class="e"></div><div class="bar"><i></i></div></div>`;
+    b.title = UPGRADES[type].help;
+    b.onclick = () => {
+      if (tryBuy(player, type, driver)) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); updateUI(); }
+    };
+    b.dataset.type = type; b.dataset.driver = driver;
     up.appendChild(b);
   }
+  up.appendChild(el('div', 'champ'));
 
   // Cartões dos dois carros do jogador.
   const cars = $('cars'); cars.innerHTML = '';
@@ -541,6 +617,7 @@ function buildRaceUI() {
       <div class="wear-l"><span>PNEU <span class="cmp"></span></span><b class="pct"></b></div>
       <div class="wear"><i></i></div>
       <div class="compounds">${['S', 'M', 'H'].map(c => `<button data-c="${c}" title="${COMPOUNDS[c].name}"><img src="${UI}tyre_badges/${COMPOUNDS[c].badge}.png" alt="${COMPOUNDS[c].name}"></button>`).join('')}<span class="sel-name"></span></div>
+      <div class="pace"><span>RITMO</span><button data-save="0">Normal</button><button data-save="1">Poupar</button></div>
       <button class="boxbtn"><span></span></button>
       <div class="hint"></div>
       <div class="best"><span>Melhor volta <b class="bl">—</b></span><span>Paradas <b class="st">0</b></span></div>`;
@@ -548,6 +625,12 @@ function buildRaceUI() {
       selectedCompound[d] = btn.dataset.c;
       const car = playerCar(d);
       if (car.pitRequested) car.pitCompound = selectedCompound[d];
+      updateUI();
+    });
+    // Ordem tática (§5): poupar pneu gasta menos borracha e custa um pouco de ritmo.
+    card.querySelectorAll('.pace button').forEach(btn => btn.onclick = () => {
+      const car = playerCar(d);
+      if (!car.done) car.save = btn.dataset.save === '1';
       updateUI();
     });
     card.querySelector('.boxbtn').onclick = () => {
@@ -593,13 +676,22 @@ function updateUI() {
     const type = b.dataset.type, driver = +b.dataset.driver, lvl = levelOf(player, type, driver), cost = costOf(player, type, driver);
     const max = lvl >= BAL.maxLevel;
     const title = type === 'driver' ? `Treino ${def(player).drivers[driver].split(' ').pop()}` : UPGRADES[type].name;
-    const effect = { eng: `+${lvl * 2}% vel.`, mkt: `+${(lvl * 15)}% patroc.`, pit: `serviço ${pitService(player).toFixed(1).replace('.', ',')}s`, driver: `+${(lvl * 1.5).toFixed(1).replace('.', ',')}% vel.` }[type];
-    b.querySelector('.t').innerHTML = `${title} <small>Nv ${lvl} · ${effect}</small>`;
+    const pct = v => v.toFixed(1).replace('.', ',').replace(',0', '');
+    const effect = {
+      eng: `+${lvl * 2}% velocidade`, aero: `+${lvl * 4}% na curva fechada`,
+      ovt: `vácuo +${pct((BAL.slipstreamBonus + lvl * BAL.slipstreamPerLevel) * 100)}%`,
+      mkt: `+${lvl * 15}% patrocínio`, pit: `serviço ${pct(pitService(player))}s`, driver: `+${pct(lvl * 1.5)}% velocidade`,
+    }[type];
+    b.querySelector('.t').textContent = title;
+    b.querySelector('.e').textContent = `Nv ${lvl} · ${effect}`;
     b.querySelector('.c').textContent = max ? 'MÁX' : fmtMoney(cost);
     b.querySelector('.bar i').style.width = `${lvl / BAL.maxLevel * 100}%`;
     b.classList.toggle('poor', !max && player.money < cost);
     b.classList.toggle('max', max);
   });
+
+  const st = teamStandings(), me = st.indexOf(player) + 1;
+  document.querySelector('.champ').innerHTML = `<small>CAMPEONATO · ETAPA ${season.race + 1}/${TRACKS.length}</small><b>${season.race ? me + 'º' : '—'}</b><span>${player.points} pts · líder ${st[0].points}</span>`;
 
   document.querySelectorAll('.car').forEach((card, d) => {
     const car = playerCar(d), life = 1 - car.wear;
@@ -610,6 +702,7 @@ function updateUI() {
     card.querySelector('.wear').classList.toggle('low', life < 0.25);
     card.querySelectorAll('.compounds button').forEach(b => b.classList.toggle('sel', b.dataset.c === selectedCompound[d]));
     card.querySelector('.sel-name').textContent = COMPOUNDS[selectedCompound[d]].name;
+    card.querySelectorAll('.pace button').forEach(b => { b.classList.toggle('sel', (b.dataset.save === '1') === car.save); b.disabled = car.done; });
     card.querySelector('.bl').textContent = car.bestLap ? fmtTime(car.bestLap) : '—';
     card.querySelector('.st').textContent = car.stops;
     const btn = card.querySelector('.boxbtn'), hint = card.querySelector('.hint');
@@ -626,7 +719,8 @@ function updateUI() {
     } else {
       btn.disabled = false; btn.style.backgroundImage = `url('${UI}box_buttons/box_button_green.png')`;
       btn.firstElementChild.textContent = 'BOX';
-      hint.textContent = `parada ≈ ${(track.pitLaneLossSeconds + pitService(player)).toFixed(1).replace('.', ',')}s`;
+      hint.textContent = car.save ? 'poupando: −40% de desgaste'
+        : `parada ≈ ${(track.pitLaneLossSeconds + pitService(player)).toFixed(1).replace('.', ',')}s`;
     }
   });
 }
@@ -663,7 +757,7 @@ function startRace() {
   race.on.pitStart = car => { if (car.team.isPlayer) notify('blue', `Carro ${car.driver + 1} no box`, `${car.pitLeft.toFixed(1).replace('.', ',')}s · ${COMPOUNDS[car.pitCompound].name}`); };
   race.on.lap = car => {
     if (car.team.isPlayer && !car.warned && car.wear >= 0.75) {
-      car.warned = true; notify('red', `Carro ${car.driver + 1}: pneu gasto`, `${Math.round((1 - car.wear) * 100)}% restante · chame o box`);
+      car.warned = true; notify('red', `Carro ${car.driver + 1}: pneu gasto`, `${Math.round((1 - car.wear) * 100)}% restante · box ou Poupar pneus`);
     }
     if (car === race.standings[0] && car.laps === track.laps - 1) notify('blue', 'Última volta', `${def(car.team).drivers[car.driver]} lidera`);
   };
@@ -720,7 +814,8 @@ function showSeason() {
     ? `<div><h3>Resultado · ${season.last.track}</h3>${resultsTable(season.last.results)}</div>`
     : `<div><h3>Como jogar</h3><p>Você não pilota: a corrida anda sozinha. O dinheiro entra por patrocínio, voltas e ultrapassagens.<br><br>
        Compre <b>Engenharia</b>, <b>Propaganda</b>, <b>Equipe de boxes</b> e <b>Treino</b> durante a prova: vale na hora e fica para a temporada inteira.<br><br>
-       O pneu gasta e o carro perde ritmo: escolha o composto e aperte <b>BOX</b>; o carro entra ao fim da volta.</p></div>`;
+       O pneu gasta e o carro perde ritmo: escolha o composto e aperte <b>BOX</b> (o carro entra ao fim da volta), ou mande o piloto <b>Poupar pneus</b>.<br><br>
+       Colado atrás de outro carro, o seu fica preso no ar sujo; na reta, pega o vácuo. <b>Ultrapassagem</b> ajuda a passar, e o <b>Túnel de vento</b> rende nas pistas cheias de curva.</p></div>`;
   body = `<div class="cols">${last}<div><h3>Campeonato de equipes</h3>${championshipTable()}
     <p style="margin-top:10px;color:var(--muted)">Pontos 25-18-15-12-10-8-6-4-2-1 por carro, somados por equipe. O dinheiro fica de uma etapa para outra.</p></div></div>`;
   m.innerHTML = head + body + `<div class="actions">${actions}</div>`;

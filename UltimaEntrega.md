@@ -232,6 +232,7 @@ O visual contrapõe o cinza sujo da superfície ao luxo frio dos bunkers, e a lo
 - Pixel art de alta resolução (sprites de 64 px de altura para o entregador) com iluminação 2D do URP para sombras e lanternas.
 - Paleta da superfície: cinzas, ferrugem e um verde doentio perto dos fragmentos. Bunkers: dourado, branco e mármore.
 - Monstros desenhados para serem vistos parcialmente: silhuetas, olhos em excesso, formas que não fecham.
+- Assets gerados: `Sprites/UltimaEntrega/` (PixelLab, estilo aprovado em 2026-10-14, com o entregador de roupa amarela): entregador parado, andando, pulando e agachado, os 4 tipos de caixa da demo, Observador, Rastejante e Coro, fundos (céu com a criatura, ruínas, Bunker Aurum, depósito), tilesets de plataforma da superfície e do bunker e os objetos das fases. Receita e pendências no `README.md` da pasta. Protótipo jogável do MVP em `prototipos/ultima-entrega/`.
 - Parallax de 4 a 5 camadas, com a camada mais distante mostrando a criatura colossal em algumas fases.
 
 **Áudio**

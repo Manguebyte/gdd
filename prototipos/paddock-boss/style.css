@@ -29,7 +29,7 @@ button:disabled { cursor: default; }
 }
 
 /* ------------------------------------------------------------------ coluna esquerda */
-#left { display: grid; grid-template-rows: 770px 140px 106px; gap: 12px; min-height: 0; }
+#left { display: grid; grid-template-rows: 740px 170px 106px; gap: 12px; min-height: 0; }
 #map-wrap { position: relative; padding: 0; overflow: hidden; }
 #map { position: absolute; inset: 0; width: 100%; height: 100%; }
 #track-card { position: absolute; left: 10px; top: 10px; padding: 2px 10px; min-width: 300px; }
@@ -44,15 +44,20 @@ button:disabled { cursor: default; }
   font-size: 22px; font-weight: 700; padding: 0 8px; border-radius: 4px;
 }
 
-#upgrades { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 64px); gap: 12px 14px; }
-.upg { position: relative; background: center/100% 100% no-repeat; text-align: left; }
-.upg .patch {
-  position: absolute; left: 19.5%; right: 4%; top: 16%; bottom: 20%;
-  background: var(--cream); border-radius: 3px; padding: 0 6px;
-  display: grid; grid-template-columns: 1fr auto; grid-template-rows: 22px 1fr; align-items: center;
+/* 7 investimentos + cartão do campeonato, em 4 colunas. A linha do kit é um 9-slice: o ícone (96 px à
+   esquerda) não estica, só a moldura do meio. */
+#upgrades { display: grid; grid-template-columns: repeat(4, 1fr); grid-template-rows: repeat(2, 79px); gap: 12px 14px; }
+.upg {
+  position: relative; text-align: left;
+  border-style: solid; border-width: 7px 7px 7px 92px; border-image-slice: 7 7 7 92 fill; border-image-repeat: stretch;
 }
-.upg .t { font-size: 20px; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
-.upg .t small { font-size: 16px; color: var(--muted); font-weight: 600; text-transform: none; }
+.upg .patch {
+  position: absolute; inset: 1px 2px 2px 0;
+  background: var(--cream); border-radius: 3px; padding: 0 6px;
+  display: grid; grid-template-columns: 1fr auto; grid-template-rows: 22px 18px 8px; align-content: center; row-gap: 2px;
+}
+.upg .t { font-size: 20px; font-weight: 700; text-transform: uppercase; white-space: nowrap; overflow: hidden; line-height: 22px; }
+.upg .e { grid-column: 1 / 3; font-size: 16px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; line-height: 18px; }
 .upg .c { font-size: 20px; font-weight: 700; color: var(--green); padding-left: 8px; }
 .upg .bar { grid-column: 1 / 3; height: 8px; background: #d8c7a3; border: 1px solid var(--ink); border-radius: 2px; position: relative; overflow: hidden; }
 .upg .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--green); }
@@ -60,7 +65,11 @@ button:disabled { cursor: default; }
 .upg.poor .c { color: var(--red); }
 .upg:not(.poor):not(.max):hover { filter: brightness(1.05); }
 .upg:not(.poor):not(.max):active { transform: translateY(2px); }
-.upg.locked .patch { color: var(--muted); grid-template-rows: 1fr; }
+/* 8ª vaga: posição no campeonato. */
+.champ { background: var(--green); color: var(--cream); border-radius: 6px; padding: 6px 12px; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto 1fr; column-gap: 12px; align-items: center; }
+.champ small { grid-column: 1 / 3; font-size: 16px; font-weight: 700; letter-spacing: 1px; opacity: .8; }
+.champ b { font-size: 40px; line-height: 1; }
+.champ span { font-size: 19px; font-weight: 600; }
 .upg.flash { animation: flash .35s; }
 @keyframes flash { 50% { transform: scale(1.04); filter: brightness(1.15); } }
 
@@ -131,6 +140,10 @@ button:disabled { cursor: default; }
 .boxbtn:disabled { filter: grayscale(1); opacity: .6; }
 .boxbtn:not(:disabled):active { transform: translateY(2px); }
 .car .best { font-size: 18px; font-weight: 600; display: flex; justify-content: space-between; border-top: 1px solid #dccaa5; padding-top: 6px; margin-top: auto; }
+.pace { display: grid; grid-template-columns: auto 1fr 1fr; gap: 6px; align-items: center; font-size: 16px; font-weight: 700; color: var(--muted); }
+.pace button { border: 2px solid #cdb98f; border-radius: 4px; font-size: 17px; font-weight: 700; padding: 2px 4px; color: var(--ink); }
+.pace button.sel { background: var(--green); border-color: var(--green); color: var(--cream); }
+.pace button:disabled { opacity: .5; }
 .car .hint { font-size: 16px; font-weight: 600; color: var(--muted); text-align: center; min-height: 19px; }
 
 /* ------------------------------------------------------------------ telas entre corridas */

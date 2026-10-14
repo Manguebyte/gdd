@@ -1,0 +1,53 @@
+/* Última Entrega — protótipo web. Cena em 640×360 (pixel art) escalada para a janela; sem HUD fixo (UI diegética). */
+:root { --ink: #e8e2d4; --dim: #9a9488; --yellow: #f2c230; --sick: #9bd36a; --red: #e0574a; --gold: #d9b45a; --panel: #15140fee; --line: #3c392f; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #050504; font-family: 'VT323', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { opacity: .4; cursor: default; }
+.hidden { display: none !important; }
+h1, h2, h3 { font-family: 'Silkscreen', monospace; font-weight: 400; margin: 0; }
+b { color: var(--yellow); font-weight: 400; }
+
+#app { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: #0b0b09; }
+#view { position: absolute; inset: 0; width: 1280px; height: 720px; image-rendering: pixelated; }
+
+/* Relógio de pulso (Tab): pedidos, créditos e o estado do entregador, sem HUD fixo. */
+#watch { position: absolute; left: 24px; bottom: 24px; width: 330px; background: #1b1a14f2; border: 6px solid #4a4536; border-radius: 26px; padding: 14px 18px; font-size: 22px; line-height: 1.1; box-shadow: 0 0 0 3px #11100c, 0 8px 30px #000; }
+#watch h3 { font-size: 15px; color: var(--sick); letter-spacing: 1px; margin-bottom: 4px; }
+#watch .row { display: flex; justify-content: space-between; }
+#watch .meter { height: 8px; background: #000; margin-top: 4px; }
+#watch .meter i { display: block; height: 100%; background: var(--red); }
+#watch small { color: var(--dim); font-size: 17px; }
+
+#prompt { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); background: #000c; border: 2px solid var(--line); padding: 2px 12px; font-size: 24px; }
+#say { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); max-width: 860px; text-align: center; background: #000d; border-left: 4px solid var(--yellow); padding: 6px 16px; font-size: 25px; line-height: 1.15; }
+#say i { color: var(--dim); }
+
+#screen { position: absolute; inset: 0; background: #070706e8; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 30px 120px; text-align: center; }
+#screen.clear { background: transparent; justify-content: flex-end; padding-bottom: 40px; }
+#screen h1 { font-size: 46px; color: var(--yellow); line-height: 1; letter-spacing: 2px; }
+#screen h2 { font-size: 22px; color: var(--sick); }
+#screen p { margin: 0; font-size: 25px; max-width: 900px; line-height: 1.15; }
+#screen small { color: var(--dim); font-size: 19px; max-width: 900px; }
+.btn { background: #2a281f; border: 2px solid #5d5745; border-radius: 3px; padding: 4px 16px; font-size: 25px; box-shadow: 0 3px 0 #000; }
+.btn:not(:disabled):hover { border-color: var(--yellow); }
+.btn:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
+.btn.go { border-color: var(--yellow); color: var(--yellow); }
+.btn.red { border-color: var(--red); color: #ff9a8f; }
+.row { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+
+.hub { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 900px; }
+.panel { background: var(--panel); border: 2px solid var(--line); border-radius: 4px; padding: 12px 16px; text-align: left; font-size: 22px; width: 900px; }
+.panel h3 { font-size: 17px; color: var(--sick); margin-bottom: 6px; }
+.boxes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.boxes label { display: flex; gap: 8px; align-items: center; background: #24221a; border: 2px solid var(--line); padding: 4px 8px; cursor: pointer; }
+.boxes label.on { border-color: var(--yellow); }
+.boxes input { display: none; }
+.boxes img { width: 48px; height: 48px; image-rendering: pixelated; }
+.boxes small { display: block; color: var(--dim); font-size: 17px; line-height: 1; }
+.shop { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.shop button { text-align: left; background: #24221a; border: 2px solid var(--line); padding: 6px 10px; }
+.shop button span { display: block; color: var(--dim); font-size: 18px; }
+.diary { max-height: 330px; overflow: auto; font-size: 21px; }
+.diary div { border-bottom: 1px dashed var(--line); padding: 3px 0; }
+.stars { color: var(--yellow); letter-spacing: 2px; }

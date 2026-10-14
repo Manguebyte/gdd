@@ -1,0 +1,140 @@
+{
+  "tool": "PixelLab (Pro Flash, animate_image, sidescroller tileset)",
+  "assets": [
+    {
+      "file": "chars/entregador_pulo.png",
+      "image_id": "2c6d95d3-12f3-5ef8-b02a-20b65de38780",
+      "job_id": "e71e8ead-e1b6-4c44-a712-d351695acc43"
+    },
+    {
+      "file": "chars/entregador_agachado.png",
+      "image_id": "006d5cdb-3c8a-59b9-a4de-0c81954e082c",
+      "job_id": "445fc6b1-12f8-4b3d-bb29-440857ea5365"
+    },
+    {
+      "file": "chars/colega_sem_capacete.png",
+      "image_id": "a6930d16-2ca6-5ce1-bf74-54817b9a9a9e",
+      "job_id": "eae6a8e6-9475-4e4f-a55c-220c6b15a21d"
+    },
+    {
+      "file": "boxes/comum.png",
+      "image_id": "d01292fd-b575-53d1-841e-83bef46d0bf3",
+      "job_id": "c5375c61-9331-408f-bf53-eb8c7da482dc"
+    },
+    {
+      "file": "boxes/fragil.png",
+      "image_id": "aefb26c1-e18d-59d7-8163-684a9b47c530",
+      "job_id": "902dd4f8-f1ca-4125-9d94-b7f4dc3a29ec"
+    },
+    {
+      "file": "boxes/pesada.png",
+      "image_id": "5735eaf4-41b3-5d73-ac26-1e232579a605",
+      "job_id": "2d4ca0fc-b717-47d0-a7d1-08e622e26e46"
+    },
+    {
+      "file": "boxes/selada.png",
+      "image_id": "5ce9b82b-8ebe-5802-882e-12f29614319c",
+      "job_id": "e9102d32-3da3-4f1c-a3a4-0452b300a671"
+    },
+    {
+      "file": "monsters/rastejante.png",
+      "image_id": "59cb4e46-9723-54fc-a243-200640c05274",
+      "job_id": "360abc77-4604-47af-8ea3-eaa51a0860b1"
+    },
+    {
+      "file": "monsters/coro.png",
+      "image_id": "11a4b7c6-f774-5eee-bfac-ce65060d0d36",
+      "job_id": "04c1cf22-74a4-4c85-81b5-9d129040fafa"
+    },
+    {
+      "file": "bg/ceu_criatura.png",
+      "image_id": "6fd516fd-bb8b-562e-98f6-0a9b2a8af3a1",
+      "job_id": "0bfc057c-e178-42fc-b18e-bfe205f76884"
+    },
+    {
+      "file": "bg/ruinas.png",
+      "image_id": "8d994303-fbba-57e7-a957-eb236487a308",
+      "job_id": "60d4de0c-5015-4f55-90d7-f509d1fa601a"
+    },
+    {
+      "file": "bg/bunker.png",
+      "image_id": "a39a3941-5e6b-581b-8f45-bf2aab854bdd",
+      "job_id": "b599a818-c979-48c8-9f7b-f7ffbd11b5e9"
+    },
+    {
+      "file": "bg/deposito.png",
+      "image_id": "83042d21-b755-5bf5-9991-3b38bab7fb7d",
+      "job_id": "c18853ec-1d25-42f0-ab1d-b5812c0c99b3"
+    },
+    {
+      "file": "props/carro_destrocado.png",
+      "image_id": "f6fa2dda-61b1-50e9-b9a2-3e28a320d9d0",
+      "job_id": "19fd1cd0-a5b2-4c99-bd12-41d02d0ca77e"
+    },
+    {
+      "file": "props/porta_bunker.png",
+      "image_id": "46c55af7-71de-5863-abf7-60e2b6fdd3f2",
+      "job_id": "5541dbd0-bb69-4b0e-a9b2-215f9454234b"
+    },
+    {
+      "file": "props/banca_mercado.png",
+      "image_id": "f55c7428-6efa-5420-8f33-81c107d04e08",
+      "job_id": "cf55615a-e1a4-46ee-9124-6cc62998299f"
+    },
+    {
+      "file": "props/capsula_clone.png",
+      "image_id": "dc828475-e304-5b28-b21b-1cb1f45e2937",
+      "job_id": "c169d3f7-82bb-45af-a888-856fc9fedea1"
+    },
+    {
+      "file": "props/fragmento_asteroide.png",
+      "image_id": "09d8b710-b6a8-519e-8e9c-fe382674e0a2",
+      "job_id": "d2535f03-a69d-4045-abeb-1f8a9e4e2360"
+    },
+    {
+      "file": "chars/entregador.png",
+      "image_id": "26f315f5-a558-5f29-9186-7aed2d7490ae",
+      "job_id": "6cc53644-acbc-4b5a-893d-28dad80963ff",
+      "note": "roupa amarela pedida no teste de estilo; cópia de _style-test/entregador_amarelo.png"
+    },
+    {
+      "files": [
+        "chars/entregador_andando_0.png",
+        "chars/entregador_andando_1.png",
+        "chars/entregador_andando_2.png",
+        "chars/entregador_andando_3.png",
+        "chars/entregador_andando_4.png",
+        "chars/entregador_andando_5.png",
+        "chars/entregador_andando_6.png",
+        "chars/entregador_andando_7.png"
+      ],
+      "job_id": "fd722b62-4520-4ff4-89a5-c59c729a6b7d",
+      "asset_id": "08af36ea-a854-5b90-9af4-9867537d6371",
+      "note": "animate_image do entregador, 8 quadros"
+    },
+    {
+      "file": "monsters/observador.png",
+      "image_id": "19bc918c-dbbc-5273-9d28-5e0eb049fbf7",
+      "job_id": "3bf2588e-d14a-482a-bafe-9f7cbfe28159",
+      "note": "do teste de estilo"
+    },
+    {
+      "file": "bg/cena_referencia.png",
+      "image_id": "4d675f09-4f97-56f7-b6ff-1f3e3a6d90fe",
+      "job_id": "3d84cc30-249a-4286-8d12-0cb334bcaae6",
+      "note": "cena do teste de estilo (referência de estilo das telas grandes)"
+    },
+    {
+      "file": "tiles/superficie.png",
+      "metadata": "tiles/superficie.json",
+      "tileset_id": "7ec3e801-cca9-4b1a-8c2b-f1a9fef2dc69",
+      "note": "cores ajustadas por _tools/recolor_tiles.py; original em tiles/_raw/"
+    },
+    {
+      "file": "tiles/bunker.png",
+      "metadata": "tiles/bunker.json",
+      "tileset_id": "4d294192-5a11-4bd3-939b-1c50688daae0",
+      "note": "cores ajustadas por _tools/recolor_tiles.py; original em tiles/_raw/"
+    }
+  ]
+}

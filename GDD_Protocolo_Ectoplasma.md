@@ -57,14 +57,19 @@ Você é um operador dessas empresas. Sua função: escolher zonas contaminadas 
 
 ```
 [Mapa da Cidade] 
-   → Escolher bairro/imóvel contaminado
+   → Escolher bairro contaminado
+   → [Mapa do Bairro] escolher imóvel
    → Ver nível de ameaça (referência visual de força vs seu upgrade atual)
-   → Entrar na cena da casa/rua (gameplay top-down)
-   → Sugar fantasmas (combate) + usar armadilhas
-   → Casa 100% limpa → volta ao mapa
+   → Entrar no imóvel: etapa 1 (quintal/rua) → etapa 2 (térreo) → etapa 3 (porão/andar de cima)
+       · em cada etapa: sugar fantasmas (combate) + usar armadilhas
+       · ao fim de cada etapa: descer para a próxima OU evacuar guardando o plasma
+   → Imóvel 100% limpo (todas as etapas) → volta ao mapa do bairro
    → Gastar plasma coletado em upgrades
+   → Último imóvel do bairro = Residual (chefe) → bairro valorizado no mapa da cidade
    → Repetir até cidade 100% limpa
 ```
+
+Estrutura de fases e etapas detalhada na §6.6.
 
 ---
 
@@ -105,6 +110,29 @@ Você é um operador dessas empresas. Sua função: escolher zonas contaminadas 
 - Jogo termina quando 100% dos imóveis/bairros da cidade estão limpos.
 - Dispara sequência final narrativa (ver seção 3.2).
 
+### 6.6 Bairros, imóveis e etapas
+
+- **Definido (2026-10-14):** a cidade tem três níveis de fase:
+  1. **Bairros:** os 4 do mapa da cidade, cada um com um tema próprio que muda a arte, os fantasmas que aparecem e os riscos do cenário.
+  2. **Imóveis:** cada bairro tem um mapa próprio com vários imóveis. O último é o **chefe Residual** (o "boss de bairro" da §7); vencê-lo valoriza o bairro inteiro no mapa da cidade e libera o bairro seguinte.
+  3. **Etapas:** cada imóvel tem 3 etapas jogadas em sequência:
+     - **Quintal/rua:** fantasmas fracos, serve de aquecimento.
+     - **Térreo:** interior com paredes que bloqueiam o movimento e cortam o feixe. O Poltergeist arremessa os móveis que estão na sala.
+     - **Porão ou andar de cima:** escuro, só se enxerga ao redor da lanterna. Fica aqui o fantasma mais forte e a memória principal da casa.
+- **Definido:** regra entre etapas (pilar 1, risco × recompensa, dentro do imóvel):
+  - A vida e o tanque **não** se recuperam entre as etapas, e a loja só abre no fim do imóvel.
+  - Ao terminar uma etapa, o jogador escolhe: **descer** para a próxima ou **evacuar** guardando 100% do plasma já coletado.
+  - O imóvel só conta como limpo com todas as etapas concluídas, mas as etapas já limpas não voltam a contaminar: na próxima entrada, ele recomeça da primeira etapa pendente.
+  - Morrer ou abandonar no meio de uma etapa mantém a penalidade de hoje (perde metade do plasma da mochila) e a etapa em curso volta a contaminar.
+- **Definido:** a narrativa acompanha os bairros: o 1º é o Ato 1, o 2º e o 3º trazem as pistas do Ato 2 (bilhetes e memórias achados nas etapas de interior) e o 4º leva ao Ato 3 (§3.2).
+- **Em aberto:**
+  - Número de imóveis por bairro (proposta: 3 a 4, uns 14 no total).
+  - Temas dos bairros. Proposta: Vila Operária (casas simples), Beira-rio (alagado, poças que deixam lento), Bairro nobre (mansões, mais Poltergeists) e Centro antigo (o final).
+  - Variantes de fantasma por tema de bairro, além dos 4 tipos da §7.
+  - Se o mapa de cada bairro é uma arte própria ou o mapa da cidade ampliado e recolorido.
+  - Se as etapas de interior são uma tela fixa (como a cena de rua do protótipo) ou têm câmera que segue o operador.
+  - Upgrade de lanterna (raio de visão no porão) como item da árvore da §6.4.
+
 ---
 
 ## 7. Tipos de Fantasmas (sugestão inicial)
@@ -129,6 +157,8 @@ Você é um operador dessas empresas. Sua função: escolher zonas contaminadas 
 ---
 
 ## 9. Escopo de MVP (sugestão)
+
+> O MVP abaixo continua sendo o primeiro marco. O passo seguinte é **1 bairro completo com imóveis de 3 etapas** (§6.6), para testar o ritmo antes de produzir os outros 3 bairros.
 
 Para um protótipo jogável rápido:
 1. 1 bairro do mapa com 3-4 imóveis.
@@ -311,6 +341,8 @@ public class CameraFollow : MonoBehaviour
 ### 11.2 Fase 2 — Cena do Mapa da Cidade (Hub)
 
 **Objetivo:** uma cena separada (`CityMapScene`) com ícones clicáveis representando os bairros/imóveis.
+
+> Esta fase monta o hub do MVP (§9): um mapa com os imóveis de um bairro. A camada de bairros e as 3 etapas por imóvel (§6.6) ainda não estão no guia (**Em aberto**).
 
 1. Crie a cena `CityMapScene` dentro de `_Scenes/`.
 2. Crie um `Canvas` (UI > Canvas).
@@ -754,8 +786,10 @@ Se quiser, posso pegar qualquer uma dessas fases e detalhar ainda mais (por exem
 
 ## 12. Pontos em Aberto (para decidirmos juntos)
 
+> A estrutura de bairros → imóveis → etapas foi definida na §6.6; os detalhes que ainda faltam estão listados lá.
+
 - Nome final do jogo.
 - Se o jogador controla um único personagem fixo ou pode customizar/trocar de operador.
 - Se existe narrativa ramificada (finais múltiplos) ou um único final fixo.
 - Se haverá NPCs vivos na cidade (moradores, outras empresas concorrentes) ou o foco fica 100% nas casas/fantasmas.
-- Duração alvo do jogo (quantos bairros/imóveis no total).
+- Duração alvo do jogo: **definido** que são 4 bairros (§6.6); o número de imóveis por bairro segue em aberto.

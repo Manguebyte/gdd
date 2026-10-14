@@ -60,6 +60,114 @@
       "file": "traps/armadilha_autonoma.png",
       "image_id": "189ce3a3-b5e0-584f-a806-2e35ff1d7396",
       "job_id": "2c05471f-996a-414d-aecb-9010be2831f7"
+    },
+    {
+      "file": "interior/piso_madeira.png",
+      "image_id": "882e8982-4430-51a0-922c-7a24bf7a5896",
+      "job_id": "46b297b6-a939-4f27-a9d9-45d03fe20652",
+      "note": "repetível sem emenda por _tools/seamless.py; original em interior/_raw/"
+    },
+    {
+      "file": "interior/piso_concreto.png",
+      "image_id": "833edb33-6a33-59ca-9e5f-33f2f369bd8a",
+      "job_id": "c05b6952-7073-4fd9-98c3-19e5407f5388",
+      "note": "repetível sem emenda por _tools/seamless.py; original em interior/_raw/"
+    },
+    {
+      "file": "interior/parede_sala.png",
+      "image_id": "0670509c-b0d4-53df-9fd8-a78d1825619c",
+      "job_id": "7731fad3-e626-4c33-a06f-b969a2ef2545",
+      "note": "repetível sem emenda por _tools/seamless.py; original em interior/_raw/"
+    },
+    {
+      "file": "interior/parede_porao.png",
+      "image_id": "a020ef28-3ee9-52d0-b3db-6894b8fcd658",
+      "job_id": "60653fe0-3da9-44ad-9323-8df2fbb3ad8c"
+    },
+    {
+      "file": "props/sofa.png",
+      "image_id": "06c71eaa-0741-5b87-98b5-f51a6fe3345a",
+      "job_id": "72cbb365-e9fd-40c4-bb75-1e8a44318821"
+    },
+    {
+      "file": "props/piano.png",
+      "image_id": "19e9b09b-dfc2-5ec2-9ec2-ba64c43577dc",
+      "job_id": "db8ac98f-7105-4a54-a39b-16ddbc8a3ee7"
+    },
+    {
+      "file": "props/mesa.png",
+      "image_id": "78b03190-da2f-51b1-a715-87db7ac4d0fc",
+      "job_id": "352e3e1e-4656-4f62-bbec-0815ddc5e3e7"
+    },
+    {
+      "file": "props/cama.png",
+      "image_id": "2c3c3db8-4e8b-5bbb-9c73-1a9f365651e3",
+      "job_id": "1db9a4a8-edd0-446d-80b6-786544457e87"
+    },
+    {
+      "file": "props/estante.png",
+      "image_id": "b7fa2045-c781-5f99-9a0f-ce9a1da37acf",
+      "job_id": "29d92119-6adc-4f71-853c-fad305bffb8f"
+    },
+    {
+      "file": "props/caldeira.png",
+      "image_id": "0fcc657b-79d9-58cb-a721-3a1e7c3d6a1d",
+      "job_id": "cdb421b6-1949-4b22-98a7-a1d6c8833ac0"
+    },
+    {
+      "file": "props/geladeira.png",
+      "image_id": "4435f128-09b5-511c-8d46-ab0919233ff0",
+      "job_id": "5d50a350-d7f0-4a19-ad6f-ee076b238bfa"
+    },
+    {
+      "file": "props/caixas.png",
+      "image_id": "76b5107a-0637-5323-a67d-06555a26e1ad",
+      "job_id": "5cac1cea-03bb-4bbf-9849-7b209ef9e096"
+    },
+    {
+      "file": "props/escada_descida.png",
+      "image_id": "90c8a020-4073-5edb-bab3-b8a354b1caa1",
+      "job_id": "ea933497-4b86-40a0-8d23-71cb0e805109"
+    },
+    {
+      "file": "props/tapete.png",
+      "image_id": "5cadde55-c535-5843-9522-9a1033ca44ac",
+      "job_id": "3014daea-4dff-4c36-8b97-f37990124135"
+    },
+    {
+      "file": "props/cadeira.png",
+      "image_id": "52ab4811-eb0c-5f26-9d33-b3e76d097615",
+      "job_id": "ec5e50b0-f6e8-48d9-854c-a65c50ef6489"
+    },
+    {
+      "file": "props/abajur.png",
+      "image_id": "5cf0595e-ff55-56b3-9b81-18e9daf60ad9",
+      "job_id": "411a10f0-4f8d-4cc9-b26c-0878ee9ef178"
+    },
+    {
+      "file": "props/poca_ecto.png",
+      "image_id": "4db9c271-0e31-5475-88ed-506f460ffee8",
+      "job_id": "573ae007-0084-42ad-bd82-94f2a56de339"
+    },
+    {
+      "file": "props/bilhete.png",
+      "image_id": "d19f314b-b6f0-5085-9a12-503c786c56e6",
+      "job_id": "f02f871f-603f-4306-b466-713a8737bee0"
+    },
+    {
+      "file": "props/poltrona.png",
+      "image_id": "4db612b2-76ee-5bc0-abe7-5b6aa588e33f",
+      "job_id": "f6d7431c-5a0f-4d69-9e04-830696f677a0"
+    },
+    {
+      "file": "_style-test/interior_terreo.png",
+      "image_id": "2d553f91-3db0-569b-96be-eef5b152200d",
+      "job_id": "81ede0cf-9d76-4154-afd4-9b9527adafa0"
+    },
+    {
+      "file": "_style-test/interior_porao.png",
+      "image_id": "86d4c80e-21df-5f7d-978c-05b804526576",
+      "job_id": "6f5adeb4-0b65-4ebb-871b-0cd226dda4bc"
     }
   ]
 }

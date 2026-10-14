@@ -82,15 +82,22 @@
   - **Desempenho:** 1 + bônus de engenharia + bônus do piloto + aderência do composto de pneu.
   - **Estado do pneu:** cai conforme o desgaste; com pneu 100% gasto, a perda é grande.
   - **Variação do piloto:** oscilação suave de ritmo (ruído). Pilotos mais treinados oscilam menos.
-- Não há colisão nem bloqueio: quem é mais rápido passa. Uma **ultrapassagem** é contada quando um carro ganha a posição de outro que está na pista (passar um carro parado no box não conta).
+- Não há colisão. Uma **ultrapassagem** é contada quando um carro ganha a posição de outro que está na pista (passar um carro parado no box não conta).
+
+**Definido (2026-10-14): disputa de posição.** Ser mais rápido não basta para passar na hora:
+- **Ar sujo:** colado atrás de outro carro, o de trás só ataca se tiver ritmo melhor. Mesmo assim, só anda um pouco mais rápido que o da frente: pouco na curva, mais na reta. Sem ritmo melhor, ele fica preso atrás.
+- **Vácuo:** na reta, a poucos carros de distância, o de trás ganha velocidade para encostar. O vácuo ajuda a chegar, não a passar sozinho.
+- **Retardatário** (uma volta atrás) abre caminho.
+- Retomar a posição de quem acabou de passar não paga o bônus de ultrapassagem. Sem essa regra, dois carros de ritmo igual trocariam de posição a cada reta e cada troca pagaria bônus.
+- O upgrade **Ultrapassagem** (§4) aumenta o vácuo e a margem para passar.
+- **Proposta inicial (Em aberto):** os números estão na §14, validados no protótipo web.
 
 **Em aberto:**
 - Ordem de largada: o guia usa grid sorteado. Classificação (*qualifying*)? Ordem inversa do campeonato?
-- Disputa de posição/bloqueio (carro mais lento segurando o mais rápido).
 - Quebras, acidentes, abandono, safety car, clima.
 - Duração-alvo de uma corrida (o **valor inicial** do guia dá cerca de 3–6 minutos).
 - Se o jogador pode acelerar a simulação (1×/2×/4×) ou se o ritmo é fixo.
-- Ordens táticas além do pit stop (ritmo agressivo/poupar pneu, ordens de equipe entre os dois carros).
+- Ordens táticas além do pit stop e do ritmo Poupar pneus (§5): ritmo agressivo, ordens de equipe entre os dois carros.
 
 ## 4. Áreas de Investimento
 
@@ -99,12 +106,15 @@
 | Área | O que melhora | Alcance (proposta) |
 |---|---|---|
 | **Engenharia do carro** | Velocidade em todo o traçado | Os dois carros da equipe |
+| **Túnel de vento** | Velocidade nas curvas, proporcional a quão fechada é a curva: rende mais nas pistas sinuosas | Os dois carros da equipe |
+| **Ultrapassagem** | Mais vácuo na reta e mais facilidade para passar quem está colado à frente (§3) | Os dois carros da equipe |
 | **Treino de piloto** | Velocidade e consistência (menos oscilação de ritmo) | Um piloto por vez (compra separada para cada um) |
 | **Propaganda** | Renda de patrocínio por segundo | Equipe |
 | **Equipe de boxes (mecânicos)** | Tempo parado no pit stop | Os dois carros |
 
+- **Definido (2026-10-14):** Túnel de vento e Ultrapassagem entram junto com as áreas do MVP. O Túnel de vento é a parte aerodinâmica separada da engenharia. A Ultrapassagem só tem efeito por causa da disputa de posição da §3.
 - **Proposta inicial (Em aberto):** cada área tem **níveis**. O custo do próximo nível cresce exponencialmente (`custo-base × crescimento^nível`), no estilo tycoon. Há um nível máximo.
-- **Em aberto:** se engenharia se divide em subáreas (motor, aerodinâmica, confiabilidade...) ou continua um valor único.
+- **Em aberto:** outras subáreas da engenharia (motor, confiabilidade...).
 - **Em aberto:** se o "treino de piloto" com efeito instantâneo no meio da corrida deve ser apresentado de outro jeito na ficção (ex.: "coaching pelo rádio"), já que treino costuma levar tempo.
 - **Em aberto:** contratação/troca de pilotos e funcionários (fora do MVP).
 
@@ -117,6 +127,10 @@
   - O jogador toca/clica em **"Box"** num dos seus carros e escolhe o composto. O carro entra no box ao completar a volta atual, fica parado (tempo do pit lane + tempo de serviço) e volta com pneus novos.
   - O **tempo de serviço** diminui com o nível da equipe de boxes.
   - Todos largam com o composto Médio.
+- **Definido (2026-10-14): ritmo Poupar pneus.** Cada carro do jogador tem uma ordem de ritmo, **Normal** ou **Poupar**. Poupando, o pneu gasta menos e o carro anda um pouco mais devagar. Assim dá para esticar um stint e trocar uma parada por algumas posições.
+  - **Proposta inicial (Em aberto):** −40% de desgaste e −3% de velocidade.
+  - Ao sair do box com pneu novo, o carro volta ao ritmo Normal.
+  - A IA poupa perto do fim quando isso a deixa chegar sem parar.
 - **Em aberto:** escolha do composto de largada; regra obrigatória de usar dois compostos; reabastecimento; reparos.
 
 ## 6. Economia
@@ -145,9 +159,10 @@
 
 ## 8. Campeonato
 
-- **Definido (MVP):** campeonato de **3 etapas** (3 pistas diferentes).
+- **Definido (2026-10-14):** campeonato de **5 etapas** (5 pistas diferentes). Antes eram 3.
 - **Proposta inicial (Em aberto):** pontos por posição de cada carro, tabela estilo F1 (25-18-15-12-10-8-6-4-2-1). A classificação do MVP é **por equipe** (soma dos dois carros).
-- **Em aberto:** classificação de pilotos; nomes e temas das 3 pistas; o que acontece entre temporadas (§2).
+- **Proposta inicial (Em aberto):** calendário do protótipo web: Montebello (Itália), Ardenas (Bélgica), Costa Azul (França), Aintree Park (Inglaterra) e Mangue Seco (Brasil, a casa da equipe do jogador, como etapa final). Os nomes são provisórios.
+- **Em aberto:** classificação de pilotos; nomes e temas definitivos das pistas; o que acontece entre temporadas (§2).
 
 ## 9. Estilo Visual
 
@@ -181,11 +196,11 @@
 ## 13. Escopo do MVP
 
 **Dentro do MVP — Definido:**
-- Campeonato de 3 etapas, 3 pistas.
+- Campeonato de 5 etapas, 5 pistas.
 - 7 equipes (jogador + 6 IA), 2 carros cada.
-- Corrida simulada ao vivo em mapa topdown 2D.
-- Investimentos durante a corrida: engenharia, propaganda, treino de piloto (por piloto), equipe de boxes, com efeito imediato e permanente.
-- Pit stop com escolha de composto de pneu.
+- Corrida simulada ao vivo em mapa topdown 2D, com disputa de posição (ar sujo e vácuo).
+- Investimentos durante a corrida: engenharia, túnel de vento, ultrapassagem, propaganda, treino de piloto (por piloto), equipe de boxes, com efeito imediato e permanente.
+- Pit stop com escolha de composto de pneu e ritmo Poupar pneus.
 - Economia: patrocínio, bônus de posição/ultrapassagem, prêmio de chegada.
 - Save local.
 - Builds para PC, Mobile e WebGL.
@@ -216,8 +231,14 @@ Todos os números abaixo são **valor inicial** e ficam num único asset (`GameB
 | Pneu Macio / Médio / Duro: desgaste | 1,0% / 0,6% / 0,4% por segundo |
 | Pneu gasto (100%) | 88% da velocidade; "morto" (no limite): 60% |
 | Pit stop | perda no pit lane (por pista, 6 s) + serviço 8 s, −0,5 s por nível de boxes (mínimo 2,5 s) |
-| Custo-base / crescimento por nível | Engenharia 150 / ×1,35 · Propaganda 120 / ×1,40 · Boxes 100 / ×1,35 · Treino 130 / ×1,35 |
+| Custo-base / crescimento por nível | Engenharia 150 / ×1,35 · Túnel de vento 130 / ×1,35 · Ultrapassagem 120 / ×1,35 · Propaganda 120 / ×1,40 · Boxes 100 / ×1,35 · Treino 130 / ×1,35 |
 | Nível máximo | 20 |
+| Túnel de vento | +4% de velocidade por nível × fator de curva (0 na reta, 1 na curva mais fechada) |
+| Disputa de posição | Colado = a menos de 1 unidade. Margem para passar: +0,8% na curva, +2,5% na reta; retardatário +8%. Retomar posição em até 8 s não paga bônus |
+| Vácuo | Na reta, de 1 a 3,5 unidades atrás: +3% de velocidade |
+| Ultrapassagem | Por nível: +1,2% de vácuo, +0,6% de margem para passar e ataca mesmo com ritmo até 0,4% pior |
+| Ritmo Poupar pneus | −40% de desgaste, −3% de velocidade |
+| Níveis de largada (Túnel de vento / Ultrapassagem) | Jogador 0/0; rivais de 0 a 3 |
 
 ## 15. Em aberto
 
@@ -227,10 +248,10 @@ Lista consolidada, para revisão rápida:
 2. Fim de temporada: continuar a equipe, recomeçar, divisões?
 3. Modelo de simulação (§3) e todos os valores da §14: validar no protótipo.
 4. Ordem de largada / classificação.
-5. Disputa de posição, quebras, acidentes, clima, safety car.
+5. Quebras, acidentes, clima, safety car. A disputa de posição foi definida na §3; só os números ainda são propostos.
 6. Duração-alvo da corrida; controle de velocidade da simulação.
-7. Ordens táticas além do pit stop.
-8. Subdivisão da engenharia; ficção do "treino instantâneo".
+7. Ordens táticas além do pit stop e do ritmo Poupar pneus.
+8. Outras subdivisões da engenharia além do Túnel de vento; ficção do "treino instantâneo".
 9. Alcance de cada investimento (equipe vs. piloto) — proposta na §4.
 10. Compostos de pneu, regras de pneu obrigatório, composto de largada.
 11. Custos fixos, nome da moeda, patrocinadores com metas, monetização.
@@ -239,12 +260,15 @@ Lista consolidada, para revisão rápida:
 14. Orientação no mobile.
 15. Áudio.
 16. Save no meio da corrida; save na nuvem.
+17. O guia Unity (Parte 2) ainda está na versão anterior: 3 etapas, 4 áreas, sem disputa de posição e sem o ritmo Poupar. As regras novas da §3, §4, §5 e §8 só existem no protótipo web.
 
 ---
 
 # Parte 2 — Guia de Implementação Unity
 
 Este guia leva o MVP do Paddock Boss de um projeto vazio até as builds de PC, Mobile e WebGL. Ele implementa a **proposta inicial** da Parte 1. Onde a Parte 1 diz **Em aberto**, o guia escolhe a solução mais simples e avisa. Todos os números ficam em dados (ScriptableObjects), então mudar o balanceamento não exige mexer em código.
+
+> **Atenção (2026-10-14):** este guia ainda cobre a versão anterior da Parte 1: 3 etapas, 4 áreas de investimento, sem disputa de posição e sem o ritmo Poupar pneus. O Túnel de vento, a Ultrapassagem, o ar sujo/vácuo, o ritmo Poupar e as 5 etapas (§3, §4, §5, §8) só estão no protótipo web (`prototipos/paddock-boss/`), que serve de referência até o guia ser atualizado (§15, item 17).
 
 ## Como usar este guia
 

@@ -1,30 +1,32 @@
 // Protocolo Ectoplasma — protótipo jogável em JavaScript puro.
-// Segue a Parte 1 do GDD_Protocolo_Ectoplasma.md: core loop da §5 (mapa → imóvel → sugar → upgrade), mapa da
-// cidade como hub com nível de ameaça visível e sem bloqueio (§6.1), sucção segurando o botão com regeneração ao
-// soltar e estabilidade de mira (§6.2), as duas armadilhas (§6.3), a árvore de upgrades (§6.4), os 4 tipos de
-// fantasma da §7 e o MVP da §9 (1 bairro com 4 imóveis), com o gancho do Ato 1, uma pista do Ato 2 e o final do
-// Ato 3 (§3.2). Arte: Sprites/ProtocoloEctoplasma/.
+// Segue a Parte 1 do GDD_Protocolo_Ectoplasma.md: core loop da §5 e estrutura da §6.6 (cidade → 4 bairros →
+// imóveis → 3 etapas: rua, térreo e porão), ameaça visível e sem bloqueio dentro do bairro (§6.1), sucção segurando
+// o botão com regeneração ao soltar e estabilidade de mira (§6.2), as duas armadilhas (§6.3), a árvore de upgrades
+// (§6.4), os 4 tipos de fantasma da §7 com o Residual como chefe de cada bairro, e o arco do Ato 1 ao Ato 3 (§3.2).
+// Arte: Sprites/ProtocoloEctoplasma/.
 'use strict';
 
 const ART = '../../Sprites/ProtocoloEctoplasma/';
 const W = 480, H = 270;           // cena em pixels de arte, desenhada em 2×
-const SAVE_KEY = 'ectoplasma-save-v1';
+const SAVE_KEY = 'ectoplasma-save-v2';
 const DEV = new Set(location.hash.slice(1).split(',').filter(Boolean));
 if (DEV.has('reset')) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 
 // ============================================================ dados de design (números do protótipo)
 
 // §6.4. Preço do nível seguinte; o decodificador é o "upgrade de história" (lê a memória antes de sugar).
+// A lanterna é a proposta "Em aberto" da §6.6 para o escuro do porão.
 const UPG = {
   suck:    { name: 'Velocidade de sucção', desc: '+30% de plasma sugado por segundo', max: 5 },
   tank:    { name: 'Tanque da mochila',    desc: '+30 de energia de sucção',          max: 5 },
   range:   { name: 'Alcance de mira',      desc: '+18 px de alcance do feixe',        max: 5 },
   resist:  { name: 'Resistência',          desc: '−12% de dano dos contra-ataques',    max: 4 },
   traps:   { name: 'Armadilhas',           desc: '+1 armadilha em campo, +30% de força', max: 3 },
+  lamp:    { name: 'Lanterna',             desc: '+22 px de luz no escuro',            max: 3 },
   decoder: { name: 'Decodificador de memórias', desc: 'lê a memória de cada fantasma antes de sugar', max: 1 },
 };
 const PRICES = [40, 90, 160, 250, 360];
-const upgPrice = (id, lvl) => id === 'decoder' ? 150 : PRICES[lvl];
+const upgPrice = (id, lvl) => id === 'decoder' ? 150 : id === 'lamp' ? [60, 140, 240][lvl] : PRICES[lvl];
 
 const stat = {
   suck:    () => 20 * (1 + 0.3 * S.up.suck),     // plasma/s sugado com a mira parada
@@ -33,10 +35,12 @@ const stat = {
   resist:  () => 1 - 0.12 * S.up.resist,
   slots:   () => 2 + S.up.traps,
   trapPow: () => 1 + 0.3 * S.up.traps,
+  light:   () => 62 + 22 * S.up.lamp,           // raio da lanterna no escuro
 };
 const TANK_DRAIN = 22, TANK_REFILL = 18;         // energia/s gasta sugando e recuperada parado
 const MOVING_PENALTY = 0.5;                       // §6.2: sugar andando rende metade
 const REGEN_DELAY = 1.2;                          // s sem ser sugado antes de o plasma voltar
+const SPEED = 72, PUDDLE_SLOW = 0.55;             // px/s do operador; poças do Beira-rio deixam lento
 
 const TRAPS = {
   auto: { name: 'Armadilha autônoma', img: 'traps/armadilha_autonoma', price: 25, key: 'Q', radius: 55, desc: 'suga sozinha o fantasma mais perto, mais devagar que você' },
@@ -47,17 +51,36 @@ const TRAPS = {
 const GHOSTS = {
   errante:     { name: 'Errante',     img: 'ghosts/errante',       size: 48, r: 12, plasma: 60,  regen: 6,  reward: 40,  speed: 12 },
   assombrado:  { name: 'Assombrado',  img: 'ghosts/assombrado',    size: 48, r: 13, plasma: 70,  regen: 8,  reward: 55,  speed: 20, flee: 62 },
-  poltergeist: { name: 'Poltergeist', img: 'ghosts/poltergeist',   size: 48, r: 15, plasma: 90,  regen: 8,  reward: 70,  speed: 16, dmg: 6, throwEvery: 3 },
+  poltergeist: { name: 'Poltergeist', img: 'ghosts/poltergeist',   size: 48, r: 15, plasma: 90,  regen: 8,  reward: 70,  speed: 16, dmg: 5, throwEvery: 3.4 },
   residual:    { name: 'Residual',    img: 'ghosts/residual_boss', size: 96, r: 30, plasma: 360, regen: 12, reward: 250, speed: 9,  dmg: 8, boss: true },
 };
 
-// §6.1 / §9: um bairro com 4 imóveis. mx/my = posição do ícone de casa no mapa (em 960×540).
-const HOUSES = [
-  { id: 'acacia',  name: 'Casa da Rua das Acácias, 12', threat: 1, mx: 622, my: 91,  ghosts: ['errante', 'errante', 'errante'] },
-  { id: 'largo',   name: 'Sobrado do Largo do Rio',     threat: 2, mx: 825, my: 221, ghosts: ['errante', 'assombrado', 'errante', 'assombrado'] },
-  { id: 'vila',    name: 'Vila Operária, casa 4',       threat: 3, mx: 611, my: 455, ghosts: ['assombrado', 'poltergeist', 'errante', 'poltergeist'] },
-  { id: 'casarao', name: 'Casarão da Ponte',            threat: 5, mx: 825, my: 480, ghosts: ['residual', 'poltergeist'] },
+// §6.6: 4 bairros (os ícones do mapa, em 960×540), cada um com imóveis de 3 etapas; o último é o chefe Residual.
+// Temas da proposta "Em aberto" da §6.6: poças no Beira-rio, mais Poltergeists no Nobre, escuro no Centro Antigo.
+const E = 'errante', A = 'assombrado', P = 'poltergeist', R = 'residual';
+const BAIRROS = [
+  { id: 'vila', name: 'Vila Operária', mx: 622, my: 91, theme: 'Casas simples de uma rua só. Bom lugar para aprender o serviço.', imoveis: [
+    { id: 'acacias', name: 'Casa da Rua das Acácias, 12', threat: 1, etapas: [[E, E], [E, E, E], [E, A]] },
+    { id: 'largo',   name: 'Sobrado do Largo',            threat: 2, etapas: [[E, A], [A, E, A], [A, E, E]] },
+    { id: 'vila4',   name: 'Vila Operária, casa 4',       threat: 2, boss: true, etapas: [[E, A, E], [P, A], [R]] },
+  ] },
+  { id: 'rio', name: 'Beira-rio', mx: 825, my: 221, puddles: true, theme: 'Alagado: poças de ectoplasma deixam o operador lento.', imoveis: [
+    { id: 'palafita', name: 'Casa da Palafita',      threat: 2, etapas: [[E, A, E], [A, P, E], [A, A, E]] },
+    { id: 'cais',     name: 'Sobrado do Cais',       threat: 3, etapas: [[A, E, A], [P, A, E], [P, A, A]] },
+    { id: 'ponte',    name: 'Casarão da Ponte',      threat: 3, boss: true, etapas: [[A, P, E], [P, P, A], [R, E]] },
+  ] },
+  { id: 'nobre', name: 'Bairro Nobre', mx: 611, my: 455, theme: 'Mansões cheias de móveis: mais Poltergeists.', imoveis: [
+    { id: 'jardins',  name: 'Mansão dos Jardins',    threat: 3, etapas: [[P, E, A], [P, P, E], [P, A, A]] },
+    { id: 'ipes',     name: 'Palacete dos Ipês',     threat: 4, etapas: [[P, A, P], [P, P, A], [P, P, A]] },
+    { id: 'baronesa', name: 'Solar da Baronesa',     threat: 4, boss: true, etapas: [[P, A, A], [P, P, P], [R, P]] },
+  ] },
+  { id: 'centro', name: 'Centro Antigo', mx: 825, my: 480, dark: true, theme: 'Sem luz desde a contaminação: até o térreo fica no escuro.', imoveis: [
+    { id: 'pensao',   name: 'Pensão São Jorge',      threat: 4, etapas: [[A, P, E], [P, A, A], [P, P, A]] },
+    { id: 'cinema',   name: 'Antigo Cine Avenida',   threat: 5, etapas: [[P, A, P], [P, P, A], [A, P, P]] },
+    { id: 'matriz',   name: 'Casa Paroquial da Matriz', threat: 5, boss: true, etapas: [[P, A, P], [P, P, A], [R, P, A]] },
+  ] },
 ];
+const ETAPA_NAMES = ['Rua', 'Térreo', 'Porão'];
 const threatMul = t => 1 + 0.3 * (t - 1);         // ameaça vira números (§6.1), não bloqueio: regeneração e plasma
 const dmgMul = t => 1 + 0.15 * (t - 1);           // e, mais suave, o dano dos contra-ataques
 const RECOMMENDED = [0, 0, 1, 3, 6, 9];           // níveis de upgrade somados sugeridos por ameaça
@@ -66,10 +89,17 @@ const CONTRACT = 60;                              // bônus por imóvel limpo, �
 
 // Memórias (§7: cada tipo tem uma memória associada; §3.2 Ato 2: pistas de que eram pessoas).
 const MEMORIES = {
-  errante:     ['"Já coloquei a mesa, Antônio. Vem jantar."', 'Uma cantiga de ninar, sempre pela metade.', '"Quem vai regar as samambaias agora?"', 'Cheiro de café passado às seis da manhã.'],
-  assombrado:  ['Passos de criança subindo a escada, correndo.', '"Não me tira daqui. Essa casa é minha."', 'Um nome riscado no batente: LÚCIA, 1987.'],
-  poltergeist: ['A poltrona favorita, onde ninguém mais podia sentar.', '"Vocês venderam o meu piano!"', 'O abajur que sempre acendia às seis da tarde.'],
+  errante:     ['"Já coloquei a mesa, Antônio. Vem jantar."', 'Uma cantiga de ninar, sempre pela metade.', '"Quem vai regar as samambaias agora?"', 'Cheiro de café passado às seis da manhã.', '"Fecha a janela, que vai chover."'],
+  assombrado:  ['Passos de criança subindo a escada, correndo.', '"Não me tira daqui. Essa casa é minha."', 'Um nome riscado no batente: LÚCIA, 1987.', '"Esconde-esconde! Conta até dez!"'],
+  poltergeist: ['A poltrona favorita, onde ninguém mais podia sentar.', '"Vocês venderam o meu piano!"', 'O abajur que sempre acendia às seis da tarde.', '"Tira a mão das minhas coisas."'],
   residual:    ['Dezenas de vozes da mesma rua, ao mesmo tempo: "a gente morava aqui".'],
+};
+// Bilhetes achados no térreo (§3.2): do tom de "job" no 1º bairro às pistas do Ato 2 e ao gancho do Ato 3.
+const NOTES = {
+  vila:   ['Recibo de aluguel: "Família Souza, três gerações nesta casa."', 'Lista de compras: pão, leite, remédio da vó.', 'Folheto da LimpaCorp: "Seu bairro de volta ao mercado!"'],
+  rio:    ['Carta: "Mãe, eu sei que é você que liga a luz da cozinha."', 'Foto molhada de um aniversário. Atrás: "nossa última festa aqui".', 'Abaixo-assinado: "Não à extração no Cais".'],
+  nobre:  ['Diário: "Ele toca o piano toda noite. Eu não tenho coragem de vender."', 'Contrato rasgado com a LimpaCorp. Na margem: "assassinos".', 'Bilhete infantil: "Vovô, a gente ainda te escuta."'],
+  centro: ['Crachá: "LimpaCorp — Projeto PONTE — acesso restrito".', 'Relatório: "Sujeito respondeu ao próprio nome. Recomendo pausa." Carimbo: IGNORADO.', 'E-mail impresso: "Comunicação não gera plasma. Arquivem a PONTE."'],
 };
 
 // Tileset Wang rua/calçada: cantos NW NE SW SE (1 = calçada) → coluna/linha do tile (tirado do rua_calcada.json).
@@ -78,32 +108,69 @@ const WANG = { '0000': [2, 1], '0001': [3, 1], '0010': [2, 2], '0011': [1, 2], '
 
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 
+// ============================================================ cenas das etapas (feitas à mão)
+
+// Cada cena: piso, parede do fundo, paredes internas (retângulo no chão, com face de 22 px), móveis (posição = pés)
+// e pontos de nascimento dos fantasmas. Objetos planos (flat) são desenhados centrados no ponto, no chão. Móveis com throw podem ser arremessados pelo Poltergeist (§7).
+const PROPS = {
+  sofa: {}, poltrona: {}, piano: {}, mesa: {}, cama: {}, estante: {}, geladeira: {}, caldeira: {},
+  caixas: { throw: true }, cadeira: { throw: true }, abajur: { throw: true },
+  tapete: { flat: true }, poca_ecto: { flat: true }, escada_descida: { flat: true }, bilhete: { flat: true },
+};
+const ROOMS = {
+  sala: { floor: 'piso_madeira', wall: 'parede_sala',
+    walls: [{ x: 300, y: 60, w: 12, h: 104 }],
+    props: [['tapete', 160, 214], ['sofa', 120, 112], ['poltrona', 54, 176], ['abajur', 24, 104], ['estante', 252, 96], ['piano', 384, 100],
+      ['mesa', 392, 206], ['cadeira', 352, 206], ['cadeira', 432, 206], ['abajur', 280, 250]],
+    exit: [440, 236], start: [60, 240], note: [210, 168], spawns: [[200, 170], [370, 160], [100, 236], [250, 238], [420, 140]] },
+  cozinha: { floor: 'piso_madeira', wall: 'parede_sala',
+    walls: [{ x: 6, y: 156, w: 186, h: 12 }],
+    props: [['geladeira', 46, 102], ['estante', 116, 100], ['caixas', 170, 104], ['mesa', 320, 160], ['cadeira', 284, 160], ['cadeira', 356, 160],
+      ['abajur', 440, 104], ['caixas', 440, 250], ['poltrona', 230, 250]],
+    exit: [60, 236], start: [380, 238], note: [380, 230], spawns: [[260, 120], [400, 200], [120, 220], [320, 240], [210, 190]] },
+  quarto: { floor: 'piso_madeira', wall: 'parede_sala',
+    walls: [{ x: 184, y: 60, w: 12, h: 92 }, { x: 300, y: 186, w: 174, h: 12 }],
+    props: [['cama', 80, 170], ['abajur', 140, 104], ['tapete', 250, 230], ['estante', 250, 98], ['caixas', 420, 120], ['cadeira', 340, 120],
+      ['poltrona', 40, 250], ['caixas', 150, 250]],
+    exit: [440, 236], start: [240, 246], note: [100, 210], spawns: [[260, 150], [380, 140], [120, 230], [300, 250], [420, 240]] },
+  porao: { floor: 'piso_concreto', wall: 'parede_porao', dark: 0.94,
+    walls: [{ x: 150, y: 150, w: 16, h: 16 }, { x: 320, y: 150, w: 16, h: 16 }],
+    props: [['caldeira', 56, 112], ['caixas', 120, 104], ['estante', 410, 98], ['caixas', 440, 240], ['caixas', 40, 250], ['cadeira', 250, 110], ['poca_ecto', 240, 200]],
+    start: [70, 200], spawns: [[240, 160], [380, 200], [100, 190], [250, 240], [420, 150]] },
+};
+const INTERIORS = ['sala', 'cozinha', 'quarto'];
+
 // ============================================================ save
 
 const S = loadSave();
 function loadSave() {
-  const fresh = { plasma: 0, up: { suck: 0, tank: 0, range: 0, resist: 0, traps: 0, decoder: 0 }, traps: { auto: 1, sup: 0 }, clean: {}, mem: [], intro: false, note: false };
+  const fresh = { plasma: 0, up: { suck: 0, tank: 0, range: 0, resist: 0, traps: 0, lamp: 0, decoder: 0 }, traps: { auto: 1, sup: 0 },
+    prog: {}, clean: {}, mem: [], notes: [], intro: false, note: false };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s) return { ...fresh, ...s, up: { ...fresh.up, ...s.up }, traps: { ...fresh.traps, ...s.traps } }; } catch (e) {}
   return fresh;
 }
 function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
-if (DEV.has('rich')) S.plasma += 600;
-const cleanCount = () => HOUSES.filter(h => S.clean[h.id]).length;
+if (DEV.has('rich')) S.plasma += 1500;
+const bairroDone = b => b.imoveis.every(i => S.clean[i.id]);
+const bairroOpen = b => DEV.has('all') || BAIRROS.indexOf(b) === 0 || bairroDone(BAIRROS[BAIRROS.indexOf(b) - 1]);
+const imoveisClean = () => BAIRROS.reduce((s, b) => s + b.imoveis.filter(i => S.clean[i.id]).length, 0);
+const imoveisTotal = BAIRROS.reduce((s, b) => s + b.imoveis.length, 0);
 const power = () => S.up.suck + S.up.tank + S.up.range + S.up.resist + S.up.traps;
-const riskOf = h => { const d = RECOMMENDED[h.threat] - power(); return d <= 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : 3; };
+const riskOf = im => { const d = RECOMMENDED[im.threat] - power(); return d <= 0 ? 0 : d <= 2 ? 1 : d <= 4 ? 2 : 3; };
 
 // ============================================================ arte
 
 const IMG = {};
 function loadImages() {
   const names = ['map/mapa_cidade', 'buildings/casa_contaminada', 'tiles/rua_calcada', ...DIRS.map(d => 'chars/operador/' + d),
-    ...Object.values(GHOSTS).map(g => g.img), ...Object.values(TRAPS).map(t => t.img)];
+    ...Object.values(GHOSTS).map(g => g.img), ...Object.values(TRAPS).map(t => t.img),
+    ...Object.keys(PROPS).map(p => 'props/' + p), ...['piso_madeira', 'piso_concreto', 'parede_sala', 'parede_porao'].map(n => 'interior/' + n)];
   return Promise.all(names.map(n => new Promise(res => {
     const im = new Image(); im.onload = res; im.onerror = res; im.src = ART + n + '.png'; IMG[n] = im;
   })));
 }
 
-// Chão da cena: calçada em cima (frente da casa), meio-fio e asfalto embaixo, montado pelos cantos do Wang.
+// Chão da rua: calçada em cima (frente da casa), meio-fio e asfalto embaixo, montado pelos cantos do Wang.
 let ground = null;
 function buildGround() {
   ground = document.createElement('canvas'); ground.width = W; ground.height = 288;
@@ -121,95 +188,112 @@ function buildGround() {
 
 const $ = id => document.getElementById(id);
 const cv = $('view'), ctx = cv.getContext('2d');
+const darkCv = document.createElement('canvas'); darkCv.width = W; darkCv.height = H;
+const dctx = darkCv.getContext('2d');
 let scene = 'map';               // map · mission · screen
-let M = null;                    // missão em andamento
-let hoverHouse = null, openHouse = null;
+let M = null;                    // etapa em andamento (e a entrada no imóvel que a contém)
+let hoverBairro = null;
 const keys = new Set();
 const mouse = { x: 0, y: 0, down: false };
 const rnd = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const hyp = (x, y) => Math.hypot(x, y);
+const inRect = (x, y, r, pad = 0) => x > r.x - pad && x < r.x + r.w + pad && y > r.y - pad && y < r.y + r.h + pad;
 
 function toast(html, ms = 3200) {
   const t = $('toast'); t.innerHTML = html; t.classList.remove('hidden');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), ms);
 }
-function showScreen(html) { const s = $('screen'); s.innerHTML = html; s.classList.remove('hidden'); scene = 'screen'; $('panel').classList.add('hidden'); }
+function showScreen(html) { const s = $('screen'); s.innerHTML = html; s.classList.remove('hidden'); scene = 'screen'; }
 function hideScreen() { $('screen').classList.add('hidden'); }
 
-// ============================================================ mapa da cidade (§6.1, §8)
+// ============================================================ mapa da cidade (§6.1, §6.6, §8)
 
 function goMap() {
-  hideScreen(); M = null; scene = 'map'; openHouse = null; $('panel').classList.add('hidden');
+  hideScreen(); M = null; scene = 'map';
   mapHud();
-  // Ato 2 (§3.2): depois de duas casas limpas aparece a primeira pista de que os fantasmas eram gente.
-  if (cleanCount() >= 2 && !S.note) {
+  // Ato 2 (§3.2): depois do primeiro bairro aparece a primeira pista forte de que os fantasmas eram gente.
+  if (bairroDone(BAIRROS[0]) && !S.note) {
     S.note = true; save();
-    toast('Bilhete preso no portão do Largo: <i>"Minha mãe ainda está naquela casa. Por favor, não. — Iracema"</i>', 7000);
+    toast('Bilhete preso no portão da Vila: <i>"Minha mãe ainda estava naquela casa. Vocês não tinham o direito. — Iracema"</i>', 7000);
   }
 }
 
 function mapHud() {
   $('hud').innerHTML = `<div><div class="lbl">LimpaCorp Espectral · operador nº 0451</div><div class="plasma">◆ ${S.plasma} de plasma</div></div>
-    <div><div class="lbl">Cidade limpa</div>${cleanCount()}/${HOUSES.length} imóveis</div>
-    <div><div class="lbl">Memórias</div>${S.mem.length}</div><div class="grow"></div>
+    <div><div class="lbl">Cidade limpa</div>${imoveisClean()}/${imoveisTotal} imóveis</div>
+    <div><div class="lbl">Memórias</div>${S.mem.length + S.notes.length}</div><div class="grow"></div>
     <button class="btn neon" id="shopBtn">Loja da empresa [U]</button>
-    <div class="hint">Clique num imóvel para ver a ameaça e entrar.</div>`;
-  $('shopBtn').onclick = openShop;
+    <div class="hint">Clique num bairro para ver os imóveis.</div>`;
+  $('shopBtn').onclick = () => openShop(goMap);
 }
 
-function houseAt(x, y) { return HOUSES.find(h => hyp(h.mx - x, h.my - y) < 34); }
-
-function openPanel(h) {
-  openHouse = h;
-  const p = $('panel');
-  const mul = threatMul(h.threat), risk = riskOf(h);
-  const est = Math.round(h.ghosts.reduce((s, g) => s + GHOSTS[g].reward, 0) * mul) + CONTRACT * h.threat;
-  p.innerHTML = `<h2>${h.name}</h2>
-    <div>Ameaça <span class="threat">${'☠'.repeat(h.threat)}${'·'.repeat(5 - h.threat)}</span></div>
-    <div class="row cast">${h.ghosts.map(g => `<img src="${ART + GHOSTS[g].img}.png" title="${GHOSTS[g].name}" alt="">`).join('')}</div>
-    ${S.clean[h.id] ? '<div class="risk-0">Limpo · imóvel valorizado</div>' :
-      `<div>Seu equipamento: <span class="risk-${risk}">${RISK[risk]}</span></div><div>Contrato: até <b>◆ ${est}</b></div>
-       <div class="row"><button class="btn go" id="enter">Entrar</button><button class="btn" id="close">Fechar</button></div>`}`;
-  p.style.left = (h.mx > 480 ? h.mx - 380 : h.mx + 40) + 'px';
-  p.style.top = clamp(h.my - 60, 60, 330) + 'px';
-  p.style.width = '330px';
-  p.classList.remove('hidden');
-  if ($('enter')) $('enter').onclick = () => startMission(h);
-  if ($('close')) $('close').onclick = () => { p.classList.add('hidden'); openHouse = null; };
-}
+function bairroAt(x, y) { return BAIRROS.find(b => hyp(b.mx - x, b.my - y) < 34); }
 
 function drawMap(now) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(IMG['map/mapa_cidade'], 0, 0, 960, 540);
-  for (const h of HOUSES) {
-    const clean = S.clean[h.id], hot = h === hoverHouse || h === openHouse;
-    const pulse = (Math.sin(now / 300 + h.mx) + 1) / 2;
+  for (const b of BAIRROS) {
+    const done = bairroDone(b), open = bairroOpen(b), hot = b === hoverBairro;
+    const pulse = (Math.sin(now / 300 + b.mx) + 1) / 2;
+    const n = b.imoveis.filter(i => S.clean[i.id]).length;
     ctx.save();
-    if (clean) {
+    if (done) {
       // Bairro valorizado (§6.1): a névoa dá lugar ao neon.
-      const g = ctx.createRadialGradient(h.mx, h.my, 4, h.mx, h.my, 90);
+      const g = ctx.createRadialGradient(b.mx, b.my, 4, b.mx, b.my, 90);
       g.addColorStop(0, 'rgba(54,214,255,.55)'); g.addColorStop(1, 'rgba(54,214,255,0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.mx, h.my, 90, 0, 7); ctx.fill();
-    }
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.mx, b.my, 90, 0, 7); ctx.fill();
+    } else if (!open) { ctx.fillStyle = 'rgba(8,7,12,.55)'; ctx.beginPath(); ctx.arc(b.mx, b.my, 32, 0, 7); ctx.fill(); }
     ctx.lineWidth = hot ? 4 : 3;
-    ctx.strokeStyle = clean ? '#36d6ff' : `rgba(200,120,255,${0.5 + pulse * 0.5})`;
-    ctx.beginPath(); ctx.arc(h.mx, h.my, 30 + (clean ? 0 : pulse * 4), 0, 7); ctx.stroke();
-    // Etiqueta com o nível de ameaça (caveiras) ou o selo de limpo.
-    const label = clean ? 'VALORIZADO' : '☠'.repeat(h.threat);
+    ctx.strokeStyle = done ? '#36d6ff' : open ? `rgba(200,120,255,${0.5 + pulse * 0.5})` : 'rgba(150,150,170,.6)';
+    ctx.beginPath(); ctx.arc(b.mx, b.my, 30 + (done || !open ? 0 : pulse * 4), 0, 7); ctx.stroke();
+    const maxT = Math.max(...b.imoveis.map(i => i.threat));
+    const label = done ? 'VALORIZADO' : !open ? 'BLOQUEADO' : `${'☠'.repeat(maxT)} ${n}/${b.imoveis.length}`;
     ctx.font = '18px Silkscreen, monospace';
-    const tw = ctx.measureText(label).width + 14, lx = clamp(h.mx - tw / 2, 4, 956 - tw), ly = h.my > 440 ? h.my - 62 : h.my + 36;
+    const tw = ctx.measureText(label).width + 14, lx = clamp(b.mx - tw / 2, 4, 956 - tw), ly = b.my > 440 ? b.my - 62 : b.my + 36;
     ctx.fillStyle = 'rgba(8,7,12,.85)'; ctx.fillRect(lx, ly, tw, 24);
-    ctx.fillStyle = clean ? '#36d6ff' : ['', '#8cff4a', '#ffd166', '#ff9a4a', '#ff5a5a', '#c77dff'][h.threat];
+    ctx.fillStyle = done ? '#36d6ff' : !open ? '#9aa3b5' : ['', '#8cff4a', '#ffd166', '#ff9a4a', '#ff5a5a', '#c77dff'][maxT];
     ctx.textAlign = 'left'; ctx.fillText(label, lx + 7, ly + 18);
+    // Nome do bairro sob o mouse.
+    if (hot) {
+      const nt = b.name.toUpperCase(), nw = ctx.measureText(nt).width + 14, nx = clamp(b.mx - nw / 2, 4, 956 - nw), ny = ly + (b.my > 440 ? -28 : 28);
+      ctx.fillStyle = 'rgba(8,7,12,.9)'; ctx.fillRect(nx, ny, nw, 24); ctx.fillStyle = '#e9ecef'; ctx.fillText(nt, nx + 7, ny + 18);
+    }
     ctx.restore();
   }
 }
 
+// ============================================================ bairro: lista de imóveis (§6.6)
+
+function openBairro(b) {
+  M = null;
+  const cards = b.imoveis.map(im => {
+    const done = S.prog[im.id] || 0, clean = S.clean[im.id], risk = riskOf(im);
+    const pips = ETAPA_NAMES.map((n, k) => `<span class="${k < done ? 'ok' : ''}" title="${n}">${k < done ? '■' : '□'}</span>`).join('');
+    const ghosts = [...new Set(im.etapas.flat())];
+    return `<div class="card${clean ? ' clean' : ''}">
+      <img class="house" src="${ART}buildings/casa_contaminada.png" alt="">
+      <h3>${im.name}</h3>
+      <div>Ameaça <span class="threat">${'☠'.repeat(im.threat)}${'·'.repeat(5 - im.threat)}</span>${im.boss ? ' · <b style="color:var(--pink)">chefe</b>' : ''}</div>
+      <div class="row cast">${ghosts.map(g => `<img src="${ART + GHOSTS[g].img}.png" title="${GHOSTS[g].name}" alt="">`).join('')}</div>
+      <div class="pips">Etapas ${pips}</div>
+      ${clean ? '<div class="risk-0">Limpo · imóvel valorizado</div>' :
+        `<div>Equipamento: <span class="risk-${risk}">${RISK[risk]}</span></div>
+         <button class="btn go" data-im="${im.id}">${done ? `Continuar: ${ETAPA_NAMES[done]}` : 'Entrar'}</button>`}
+    </div>`;
+  }).join('');
+  showScreen(`<h1>${b.name}</h1><p>${b.theme}</p><div class="imoveis">${cards}</div>
+    <small>Vida e tanque não se recuperam entre as etapas. Etapa limpa não volta a contaminar.</small>
+    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn" id="back">Mapa da cidade</button></div>`);
+  document.querySelectorAll('[data-im]').forEach(btn => btn.onclick = () => startImovel(b, b.imoveis.find(i => i.id === btn.dataset.im)));
+  $('shop').onclick = () => openShop(() => openBairro(b));
+  $('back').onclick = goMap;
+}
+
 // ============================================================ loja (§6.4, §6.3, §8)
 
-function openShop() {
+function openShop(back) {
   const ups = Object.entries(UPG).map(([id, u]) => {
     const lvl = S.up[id], maxed = lvl >= u.max, price = maxed ? 0 : upgPrice(id, lvl);
     return `<button data-up="${id}" ${maxed || S.plasma < price ? 'disabled' : ''}>${u.name} <em>${maxed ? 'máx.' : '◆ ' + price}</em>
@@ -220,33 +304,58 @@ function openShop() {
   showScreen(`<h1>Loja da empresa</h1><h2>◆ ${S.plasma} de plasma</h2>
     <div class="shop">${ups}${traps}</div>
     <small>Armadilhas são gastas ao serem colocadas. Em campo cabem ${stat.slots()} de uma vez.</small>
-    <button class="btn go" id="back">Voltar ao mapa</button>`);
+    <button class="btn go" id="back">Voltar</button>`);
   document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => {
-    const id = b.dataset.up; S.plasma -= upgPrice(id, S.up[id]); S.up[id]++; save(); openShop();
+    const id = b.dataset.up; S.plasma -= upgPrice(id, S.up[id]); S.up[id]++; save(); openShop(back);
   });
   document.querySelectorAll('[data-trap]').forEach(b => b.onclick = () => {
-    const id = b.dataset.trap; S.plasma -= TRAPS[id].price; S.traps[id]++; save(); openShop();
+    const id = b.dataset.trap; S.plasma -= TRAPS[id].price; S.traps[id]++; save(); openShop(back);
   });
-  $('back').onclick = goMap;
+  $('back').onclick = back;
 }
 
-// ============================================================ missão (§6.2, §6.3, §7)
+// ============================================================ imóvel e etapas (§6.6)
 
-function startMission(h) {
-  hideScreen(); $('panel').classList.add('hidden');
-  const mul = threatMul(h.threat);
-  M = { house: h, mul, dmg: dmgMul(h.threat), t: 0, bag: 0, traps: [], shots: [], parts: [], ghosts: [], over: false,
-    op: { x: 240, y: 240, hp: 100, dir: 6, hurt: -9, moving: false }, tank: stat.tankMax(), overheat: false, beam: null };
-  h.ghosts.forEach((g, i) => spawnGhost(g, 70 + (i * 337) % 340, 120 + (i * 53) % 90));
+// Uma entrada no imóvel: vida, tanque e mochila passam de uma etapa para a outra; começa na 1ª etapa ainda suja.
+function startImovel(b, im, etapa) {
+  hideScreen();
+  const mul = threatMul(im.threat);
+  M = { bairro: b, im, mul, dmg: dmgMul(im.threat), bag: 0, etapa: etapa ?? (S.prog[im.id] || 0),
+    op: { x: 240, y: 240, hp: 100, dir: 6, hurt: -9, moving: false }, tank: stat.tankMax(), overheat: false };
+  enterEtapa();
+}
+
+function enterEtapa() {
+  const im = M.im, k = M.etapa, b = M.bairro;
+  const kind = k === 0 ? 'rua' : k === 1 ? INTERIORS[b.imoveis.indexOf(im) % INTERIORS.length] : 'porao';
+  Object.assign(M, { kind, t: 0, traps: [], shots: [], parts: [], ghosts: [], over: false, cleared: false, beam: null, note: null });
+  const room = ROOMS[kind];
+  M.walls = room ? room.walls : [{ x: 190, y: 30, w: 102, h: 70 }];   // na rua, a casa é o obstáculo
+  M.props = room ? room.props.map(([name, x, y]) => ({ name, x, y, ...PROPS[name] })) : [];
+  M.dark = room && room.dark ? room.dark : (b.dark && k === 1 ? 0.8 : 0);
+  M.exit = k === 2 ? null : room ? { x: room.exit[0] - 20, y: room.exit[1] - 14, w: 40, h: 28 } : { x: 226, y: 96, w: 34, h: 16 };
+  if (room && room.exit) M.props.push({ name: 'escada_descida', x: room.exit[0], y: room.exit[1], flat: true });
+  // Bilhete do térreo (§3.2): uma pista por imóvel, que muda de tom a cada bairro.
+  if (k === 1 && !S.notes.includes(noteFor(im))) M.note = { x: room.note[0], y: room.note[1], text: noteFor(im) };
+  // Beira-rio: poças de ectoplasma que deixam o operador lento.
+  M.puddles = b.puddles ? [0, 1, 2, 3, 4].map(i => ({ x: 60 + i * 90 + rnd(-20, 20), y: rnd(120, 250) })) : [];
+  const spawns = room ? room.spawns : [[90, 150], [400, 140], [160, 220], [330, 210], [240, 170]];
+  im.etapas[k].forEach((g, i) => { const [x, y] = spawns[i % spawns.length]; spawnGhost(g, x + rnd(-10, 10), y + rnd(-8, 8)); });
   M.total = M.ghosts.reduce((s, g) => s + g.max, 0);
+  [M.op.x, M.op.y] = room ? room.start : [240, 246];
   scene = 'mission';
   buildMissionHud();
-  toast(`<b>${h.name}</b> · segure o botão do mouse sobre um fantasma para sugar. Q/E: armadilhas.`, 4000);
+  toast(`<b>${im.name}</b> · Etapa ${k + 1}/3: ${ETAPA_NAMES[k]}${k === 0 ? ' · segure o botão do mouse sobre um fantasma para sugar' : ''}${M.dark ? ' · está escuro: fique perto da luz' : ''}`, 3600);
+}
+
+function noteFor(im) {
+  const b = BAIRROS.find(x => x.imoveis.includes(im));
+  return NOTES[b.id][b.imoveis.indexOf(im) % NOTES[b.id].length];
 }
 
 function spawnGhost(kind, x, y) {
   const k = GHOSTS[kind];
-  const g = { kind, ...k, x, y, tx: x, ty: y, max: k.plasma, p: k.plasma, lastHit: -9, aimed: -9, cd: rnd(1, 2.5), phase: 1, seed: Math.random() * 9 };
+  const g = { kind, ...k, x, y, tx: x, ty: y, max: k.plasma, p: k.plasma, lastHit: -9, aimed: -9, cd: rnd(1.5, 3), phase: 1, seed: Math.random() * 9 };
   g.memory = MEMORIES[kind][(S.mem.length + M.ghosts.length) % MEMORIES[kind].length];
   M.ghosts.push(g);
   return g;
@@ -259,30 +368,49 @@ function nozzle() {
 }
 
 function hurt(dmg) {
-  if (DEV.has('god')) return;
+  if (DEV.has('god') || M.over) return;
   M.op.hp -= dmg * M.dmg * stat.resist();
   M.op.hurt = M.t;
-  if (M.op.hp <= 0) { M.op.hp = 0; endMission(false); }
+  if (M.op.hp <= 0) { M.op.hp = 0; leave('dead'); }
+}
+
+// Obstáculos para andar: paredes, a casa (na rua) e a base dos móveis que não são planos.
+function solidAt(x, y) {
+  if (M.kind !== 'rua' && y < 70) return true;
+  for (const r of M.walls) if (inRect(x, y, r, 4)) return true;
+  for (const p of M.props) if (!p.flat && Math.abs(x - p.x) < IMG['props/' + p.name].width * 0.38 && y > p.y - 12 && y < p.y + 2) return true;
+  return false;
+}
+
+// Paredes cortam o feixe (§6.6): devolve onde o segmento bate numa parede (contando a face de 22 px), ou null.
+function wallHit(x1, y1, x2, y2) {
+  if (M.kind === 'rua') return null;
+  const d = hyp(x2 - x1, y2 - y1), n = Math.ceil(d / 3);
+  for (let i = 1; i <= n; i++) {
+    const x = x1 + (x2 - x1) * i / n, y = y1 + (y2 - y1) * i / n;
+    for (const r of M.walls) if (x > r.x && x < r.x + r.w && y > r.y - 22 && y < r.y + r.h) return { x, y };
+  }
+  return null;
 }
 
 function updateMission(dt) {
   const op = M.op;
   M.t += dt;
-  // Movimento (WASD/setas), preso na cena e sem atravessar a casa.
+  // Movimento (WASD/setas), sem atravessar paredes nem móveis; poças deixam lento.
   let vx = (keys.has('d') || keys.has('arrowright')) - (keys.has('a') || keys.has('arrowleft'));
   let vy = (keys.has('s') || keys.has('arrowdown')) - (keys.has('w') || keys.has('arrowup'));
   const len = hyp(vx, vy) || 1;
   op.moving = !!(vx || vy);
-  const nx = clamp(op.x + vx / len * 72 * dt, 14, W - 14), ny = clamp(op.y + vy / len * 72 * dt, 64, H - 4);
-  const inHouse = (x, y) => x > 190 && x < 292 && y > 30 && y < 100;
-  if (!inHouse(nx, op.y)) op.x = nx;
-  if (!inHouse(op.x, ny)) op.y = ny;
+  const slow = M.puddles.some(p => hyp(p.x - op.x, (p.y - op.y) * 1.6) < 22) ? PUDDLE_SLOW : 1;
+  const nx = clamp(op.x + vx / len * SPEED * slow * dt, 14, W - 14), ny = clamp(op.y + vy / len * SPEED * slow * dt, 64, H - 4);
+  if (!solidAt(nx, op.y)) op.x = nx;
+  if (!solidAt(op.x, ny)) op.y = ny;
   const nz = nozzle();
   op.dir = ((Math.round(nz.a / (Math.PI / 4)) % 8) + 8) % 8;
 
-  // Sucção (§6.2): segurar gasta o tanque; o feixe pega o fantasma sob a mira se estiver no alcance.
+  // Sucção (§6.2): segurar gasta o tanque; o feixe pega o fantasma sob a mira se estiver no alcance e sem parede no meio.
   M.beam = null;
-  const sucking = mouse.down && !M.overheat && M.tank > 0;
+  const sucking = mouse.down && !M.overheat && M.tank > 0 && !M.over;
   if (sucking) {
     M.tank = Math.max(0, M.tank - TANK_DRAIN * dt);
     if (M.tank === 0) { M.overheat = true; toast('Tanque vazio! Espere recarregar.', 1600); }
@@ -292,15 +420,17 @@ function updateMission(dt) {
       const dm = hyp(g.x - mouse.x, g.y - g.size * 0.45 - mouse.y), dn = hyp(g.x - nz.x, g.y - g.size * 0.45 - nz.y);
       if (dm < g.r + 8 && dn <= reach + g.r && dm < best) { best = dm; target = g; }
     }
-    if (target) {
+    const end = target ? { x: target.x, y: target.y - target.size * 0.45 } : (() => {
+      const d = Math.min(reach, hyp(mouse.x - nz.x, mouse.y - nz.y));
+      return { x: nz.x + Math.cos(nz.a) * d, y: nz.y + Math.sin(nz.a) * d };
+    })();
+    const block = wallHit(nz.x, nz.y, end.x, end.y);
+    if (target && !block) {
       target.p -= stat.suck() * (op.moving ? MOVING_PENALTY : 1) * dt;
       target.lastHit = target.aimed = M.t;
-      M.beam = { x: target.x, y: target.y - target.size * 0.45, hit: true };
+      M.beam = { ...end, hit: true };
       if (target.p <= 0) capture(target);
-    } else {
-      const d = Math.min(reach, hyp(mouse.x - nz.x, mouse.y - nz.y));
-      M.beam = { x: nz.x + Math.cos(nz.a) * d, y: nz.y + Math.sin(nz.a) * d, hit: false };
-    }
+    } else M.beam = { ...(block || end), hit: false, blocked: !!block };
   } else {
     M.tank = Math.min(stat.tankMax(), M.tank + TANK_REFILL * dt);
     if (M.overheat && M.tank >= stat.tankMax() * 0.35) M.overheat = false;
@@ -308,13 +438,11 @@ function updateMission(dt) {
 
   // Armadilhas (§6.3).
   for (const tr of M.traps) {
-    const R = TRAPS[tr.type].radius;
-    if (tr.type === 'auto') {
-      let g = null, best = R;
-      for (const o of M.ghosts) { const d = hyp(o.x - tr.x, o.y - tr.y); if (d < best) { best = d; g = o; } }
-      tr.link = g;
-      if (g) { g.p -= 6 * stat.trapPow() * dt; g.lastHit = M.t; if (g.p <= 0) capture(g); }
-    }
+    if (tr.type !== 'auto') continue;
+    let g = null, best = TRAPS.auto.radius;
+    for (const o of M.ghosts) { const d = hyp(o.x - tr.x, o.y - tr.y); if (d < best) { best = d; g = o; } }
+    tr.link = g;
+    if (g) { g.p -= 6 * stat.trapPow() * dt; g.lastHit = M.t; if (g.p <= 0) capture(g); }
   }
 
   for (const g of [...M.ghosts]) updateGhost(g, dt);
@@ -322,12 +450,27 @@ function updateMission(dt) {
   for (const s of M.shots) {
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.rot += dt * 8;
     if (hyp(s.x - op.x, s.y - (op.y - 16)) < 13) { s.life = 0; hurt(s.dmg); burst(s.x, s.y, '#ff9a4a', 8); }
+    else if (M.kind !== 'rua' && M.walls.some(r => s.x > r.x && s.x < r.x + r.w && s.y > r.y - 22 && s.y < r.y + r.h)) { s.life = 0; burst(s.x, s.y, '#c77dff', 8); }
   }
   M.shots = M.shots.filter(s => s.life > 0 && s.x > -20 && s.x < W + 20 && s.y > -20 && s.y < H + 20);
   for (const p of M.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 10 * dt; p.life -= dt; }
   M.parts = M.parts.filter(p => p.life > 0);
 
-  if (!M.ghosts.length && !M.over) { M.over = true; setTimeout(() => endMission(true), 1200); }
+  // Bilhete do térreo.
+  if (M.note && hyp(M.note.x - op.x, M.note.y - op.y) < 16) {
+    S.notes.push(M.note.text); save();
+    toast(`Bilhete: <i>${M.note.text}</i>`, 6000);
+    M.note = null;
+  }
+
+  // Etapa limpa: salva o progresso (não volta a contaminar) e abre a saída; na última, o imóvel acaba.
+  if (!M.ghosts.length && !M.cleared) {
+    M.cleared = true;
+    S.prog[M.im.id] = M.etapa + 1; save();
+    if (M.etapa === 2) { M.over = true; setTimeout(() => finishImovel(), 1200); }
+    else toast(`Etapa limpa! ${M.etapa === 0 ? 'Entre pela porta da casa' : 'Desça pela escada'} para seguir, ou <b>Esc</b> para evacuar com todo o plasma.`, 6000);
+  }
+  if (M.cleared && M.exit && !M.over && inRect(op.x, op.y, M.exit)) { M.etapa++; enterEtapa(); return; }
   missionHud();
 }
 
@@ -338,17 +481,17 @@ function updateGhost(g, dt) {
   for (const tr of M.traps) if (tr.type === 'sup' && hyp(g.x - tr.x, g.y - tr.y) < TRAPS.sup.radius * (g.boss ? 0.8 : 1)) { slow = 0.4; sup = tr; }
   if (!sup && M.t - g.lastHit > REGEN_DELAY) g.p = Math.min(g.max, g.p + g.regen * M.mul * dt);
 
-  const dOp = hyp(g.x - op.x, g.y - op.y);
+  const dOp = hyp(g.x - op.x, g.y - op.y) || 1;
   let vx = 0, vy = 0;
   if (g.kind === 'assombrado' && M.t - g.aimed < 0.25) {
-    // Foge quando mirado (§7): obriga a reposicionar.
+    // Foge quando mirado (§7): obriga a reposicionar; atrás de uma parede, o feixe não alcança.
     vx = (g.x - op.x) / dOp * g.flee; vy = (g.y - op.y) / dOp * g.flee;
   } else if (g.kind === 'poltergeist') {
-    // Mantém distância e arremessa objetos da casa contra o operador (§7).
+    // Mantém distância e arremessa objetos da casa contra o operador (§7): no interior, os móveis da própria sala.
     if (dOp < 95) { vx = (g.x - op.x) / dOp * g.speed * 2; vy = (g.y - op.y) / dOp * g.speed * 2; }
     else wander(g);
     g.cd -= dt;
-    if (g.cd <= 0) { g.cd = g.throwEvery * rnd(0.8, 1.2); throwAt(g, Math.random() < 0.5 ? 'chair' : 'lamp', 105); }
+    if (g.cd <= 0 && !M.over) { g.cd = g.throwEvery * rnd(0.8, 1.2); throwFurniture(g); }
   } else if (g.boss) {
     // Residual (§7): avança devagar, machuca de perto, divide-se em fases e cospe ectoplasma a partir da 2ª.
     if (dOp > 20) { vx = (op.x - g.x) / dOp * g.speed; vy = (op.y - g.y) / dOp * g.speed; }
@@ -357,27 +500,38 @@ function updateGhost(g, dt) {
     if (phase > g.phase) {
       g.phase = phase;
       toast(`O Residual se parte! Fase ${phase}.`, 1800);
-      for (let i = 0; i < 2; i++) spawnGhost('errante', clamp(g.x + rnd(-70, 70), 40, 440), clamp(g.y + rnd(-40, 40), 90, 240));
+      for (let i = 0; i < 2; i++) spawnGhost('errante', clamp(g.x + rnd(-70, 70), 40, 440), clamp(g.y + rnd(-40, 40), 100, 240));
       burst(g.x, g.y - 40, '#8cff4a', 30);
       if (dOp < 80) hurt(10);
     }
-    if (g.phase >= 2) { g.cd -= dt; if (g.cd <= 0) { g.cd = g.phase === 2 ? 3.2 : 2.4; throwAt(g, 'blob', 95); } }
+    if (g.phase >= 2) { g.cd -= dt; if (g.cd <= 0) { g.cd = g.phase === 2 ? 3.2 : 2.4; throwAt(g.x, g.y - g.size * 0.4, 'blob', 95, g.dmg); } }
   } else wander(g);
 
   if (sup && !g.boss) { vx += (sup.x - g.x) * 0.6; vy += (sup.y - g.y) * 0.6; }
   g.x = clamp(g.x + vx * slow * dt, 24, W - 24);
-  g.y = clamp(g.y + vy * slow * dt, 70 + (g.boss ? 30 : 0), H - 8);
+  g.y = clamp(g.y + vy * slow * dt, 84 + (g.boss ? 20 : 0), H - 8);
 
   function wander(o) {
     if (hyp(o.tx - o.x, o.ty - o.y) < 4) { o.tx = rnd(40, W - 40); o.ty = rnd(110, H - 20); }
-    const d = hyp(o.tx - o.x, o.ty - o.y);
+    const d = hyp(o.tx - o.x, o.ty - o.y) || 1;
     vx = (o.tx - o.x) / d * o.speed; vy = (o.ty - o.y) / d * o.speed;
   }
 }
 
-function throwAt(g, kind, speed) {
-  const sx = g.x, sy = g.y - g.size * 0.4, d = hyp(M.op.x - sx, M.op.y - 16 - sy) || 1;
-  M.shots.push({ kind, x: sx, y: sy, vx: (M.op.x - sx) / d * speed, vy: (M.op.y - 16 - sy) / d * speed, life: 4, rot: 0, dmg: g.dmg });
+// O Poltergeist pega o móvel arremessável mais perto dele (some do lugar) e joga no operador; na rua, objetos soltos.
+function throwFurniture(g) {
+  let best = null, bd = 160;
+  for (const p of M.props) if (p.throw) { const d = hyp(p.x - g.x, p.y - g.y); if (d < bd) { bd = d; best = p; } }
+  if (best) {
+    M.props = M.props.filter(p => p !== best);
+    burst(best.x, best.y - 10, '#c77dff', 10);
+    throwAt(best.x, best.y - 12, best.name, 100, g.dmg);
+  } else throwAt(g.x, g.y - g.size * 0.4, Math.random() < 0.5 ? 'chair' : 'lamp', 105, g.dmg);
+}
+
+function throwAt(sx, sy, kind, speed, dmg) {
+  const d = hyp(M.op.x - sx, M.op.y - 16 - sy) || 1;
+  M.shots.push({ kind, x: sx, y: sy, vx: (M.op.x - sx) / d * speed, vy: (M.op.y - 16 - sy) / d * speed, life: 4, rot: 0, dmg });
 }
 
 function capture(g) {
@@ -398,30 +552,44 @@ function placeTrap(type) {
   if (S.traps[type] <= 0) return toast(`Sem ${TRAPS[type].name.toLowerCase()}. Compre na loja.`, 1600);
   if (M.traps.length >= stat.slots()) return toast(`Só cabem ${stat.slots()} armadilhas em campo (upgrade Armadilhas).`, 1600);
   const d = hyp(mouse.x - M.op.x, mouse.y - M.op.y), k = Math.min(1, 70 / (d || 1));
-  M.traps.push({ type, x: clamp(M.op.x + (mouse.x - M.op.x) * k, 20, W - 20), y: clamp(M.op.y + (mouse.y - M.op.y) * k, 110, H - 6) });
+  M.traps.push({ type, x: clamp(M.op.x + (mouse.x - M.op.x) * k, 20, W - 20), y: clamp(M.op.y + (mouse.y - M.op.y) * k, 100, H - 6) });
   S.traps[type]--; save();
 }
 
-function endMission(won) {
+// Imóvel 100% limpo: bônus do contrato; bairro inteiro limpo valoriza no mapa e libera o próximo (§6.6).
+function finishImovel() {
   if (scene !== 'mission') return;
-  const h = M.house;
-  if (won) {
-    const bonus = CONTRACT * h.threat;
-    S.plasma += M.bag + bonus; S.clean[h.id] = true; save();
-    if (cleanCount() === HOUSES.length) return ending();
-    showScreen(`<h1>Imóvel 100% limpo</h1><h2>${h.name}</h2>
-      <p>Plasma extraído: <b>◆ ${M.bag}</b> · bônus do contrato: <b>◆ ${bonus}</b></p>
-      <p>A cidade agradece. O metro quadrado da rua subiu ${8 * h.threat}%.</p>
-      <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="map">Mapa</button></div>`);
-  } else {
-    const kept = Math.floor(M.bag / 2);
-    S.plasma += kept; save();
-    showScreen(`<h1 style="color:var(--hp)">Evacuado</h1><h2>${h.name}</h2>
-      <p>${M.op.hp <= 0 ? 'O operador foi retirado pela equipe de resgate.' : 'Você abandonou o imóvel.'} Metade do plasma da mochila se perdeu: ficou <b>◆ ${kept}</b>.</p>
-      <p>Os fantasmas regeneram. O imóvel continua contaminado.</p>
-      <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="map">Mapa</button></div>`);
-  }
-  $('shop').onclick = openShop; $('map').onclick = goMap;
+  const { im, bairro: b } = M;
+  const bonus = CONTRACT * im.threat;
+  S.plasma += M.bag + bonus; S.clean[im.id] = true; save();
+  if (BAIRROS.every(bairroDone)) return ending();
+  const nextB = BAIRROS[BAIRROS.indexOf(b) + 1];
+  const bairroMsg = bairroDone(b) ? `<p><b>${b.name} valorizado!</b>${nextB ? ` ${nextB.name} liberado no mapa.` : ''}</p>` : '';
+  showScreen(`<h1>Imóvel 100% limpo</h1><h2>${im.name}</h2>
+    <p>Plasma extraído: <b>◆ ${M.bag}</b> · bônus do contrato: <b>◆ ${bonus}</b></p>${bairroMsg}
+    <p>A cidade agradece. O metro quadrado da rua subiu ${8 * im.threat}%.</p>
+    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="bairro">${bairroDone(b) ? 'Mapa' : b.name}</button></div>`);
+  $('shop').onclick = () => openShop(() => openBairro(b));
+  $('bairro').onclick = () => bairroDone(b) ? goMap() : openBairro(b);
+}
+
+// Saída antes do fim (§6.6): evacuar entre etapas guarda tudo; morrer ou abandonar no meio perde metade.
+function leave(why) {
+  if (scene !== 'mission' || M.over) return;
+  M.over = true;
+  const { im, bairro: b } = M;
+  const full = why === 'evac' && M.cleared;
+  const kept = full ? M.bag : Math.floor(M.bag / 2);
+  S.plasma += kept; save();
+  const done = S.prog[im.id] || 0;
+  const title = full ? 'Evacuação segura' : why === 'dead' ? 'Resgatado' : 'Abandonou o imóvel';
+  const text = full ? `Você saiu entre as etapas e guardou todo o plasma: <b>◆ ${kept}</b>.`
+    : `${why === 'dead' ? 'O operador foi retirado pela equipe de resgate.' : 'Você saiu no meio da etapa.'} Metade do plasma da mochila se perdeu: ficou <b>◆ ${kept}</b>. A etapa ${ETAPA_NAMES[M.etapa].toLowerCase()} volta a contaminar.`;
+  showScreen(`<h1 style="color:${full ? 'var(--ecto)' : 'var(--hp)'}">${title}</h1><h2>${im.name}</h2><p>${text}</p>
+    <p>Etapas limpas: ${done}/3. Na próxima entrada você começa ${done < 3 ? 'no ' + ETAPA_NAMES[done].toLowerCase() : ''}, com vida cheia.</p>
+    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="bairro">${b.name}</button></div>`);
+  $('shop').onclick = () => openShop(() => openBairro(b));
+  $('bairro').onclick = () => openBairro(b);
 }
 
 // Ato 3 (§3.2) e vitória vazia: a cidade limpa, sem ninguém.
@@ -430,11 +598,11 @@ function ending() {
     <div class="memo">ARQUIVO INTERNO — LimpaCorp Espectral<br><br>
     Projeto PONTE (protótipo de <b>comunicação</b> espectral): os testes confirmaram contato estável com residentes falecidos.
     Os familiares reconheceram as vozes.<br><br>Status: <b>arquivado</b>. Motivo: retorno financeiro inferior à extração de plasma.</div>
-    <p>Você guardou ${S.mem.length} memórias de pessoas que alguém amou.</p>
+    <p>Você guardou ${S.mem.length} memórias e ${S.notes.length} bilhetes de pessoas que alguém amou.</p>
     <button class="btn" id="next">Continuar</button>`);
   $('next').onclick = () => {
     showScreen(`<h2>Fim</h2><p>Os imóveis foram valorizados. As ruas estão vazias.<br>Ninguém mais chama ninguém para jantar.</p>
-      <small>Protótipo do MVP (§9): o final alternativo da §3.2 ainda está em aberto.</small>
+      <small>O final alternativo da §3.2 (comunicar em vez de sugar) ainda está em aberto.</small>
       <div class="row"><button class="btn go" id="map">Ver a cidade</button> <button class="btn" id="again">Recomeçar do zero</button></div>`);
     $('map').onclick = goMap;
     $('again').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} location.hash = ''; location.reload(); };
@@ -443,15 +611,15 @@ function ending() {
 
 // ============================================================ HUD da missão (§8)
 
-// Montado uma vez por missão; a cada quadro só os números e as barras mudam (o botão Sair não é recriado).
+// Montado uma vez por etapa; a cada quadro só os números e as barras mudam (o botão de sair não é recriado).
 function buildMissionHud() {
   $('hud').innerHTML = `<div><div class="lbl">Operador</div><div class="bar"><i id="hpBar" style="background:var(--hp)"></i><span id="hpTxt"></span></div></div>
     <div><div class="lbl">Tanque<span id="heat" style="color:var(--hp)"></span></div><div class="bar"><i id="tkBar"></i><span id="tkTxt"></span></div></div>
     <div><div class="lbl">Mochila</div><span class="plasma" id="bag"></span></div>
-    <div><div class="lbl">Fantasmas</div><span id="left"></span></div>
+    <div><div class="lbl">Etapa ${M.etapa + 1}/3</div>${ETAPA_NAMES[M.etapa]} · <span id="left"></span></div>
     <div class="traps">${Object.entries(TRAPS).map(([id, t]) => `<div title="${t.name}: ${t.desc}"><img src="${ART + t.img}.png" alt=""><kbd>${t.key}</kbd>×<span id="tr-${id}"></span></div>`).join('')}</div>
     <div class="grow"></div><button class="btn" id="quit">Sair [Esc]</button>`;
-  $('quit').onclick = () => endMission(false);
+  $('quit').onclick = () => leave('evac');
 }
 
 function missionHud() {
@@ -462,27 +630,49 @@ function missionHud() {
   $('tkTxt').textContent = Math.round(M.tank);
   $('heat').textContent = M.overheat ? ' · recarregando' : '';
   $('bag').textContent = '◆ ' + M.bag;
-  $('left').textContent = M.ghosts.length;
+  $('left').textContent = M.cleared ? 'limpa!' : '👻 ' + M.ghosts.length;
+  $('quit').textContent = M.cleared ? 'Evacuar com tudo [Esc]' : 'Sair [Esc]';
+  $('quit').classList.toggle('go', M.cleared);
   for (const id in TRAPS) $('tr-' + id).textContent = S.traps[id];
 }
 
-// ============================================================ desenho da missão
+// ============================================================ desenho da etapa
 
 function drawMission(now) {
   const op = M.op;
   ctx.setTransform(2, 0, 0, 2, 0, 0);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(ground, 0, 0);
-  ctx.drawImage(IMG['buildings/casa_contaminada'], 176, -26);
+  const room = ROOMS[M.kind];
+  if (!room) {
+    ctx.drawImage(ground, 0, 0);
+    ctx.drawImage(IMG['buildings/casa_contaminada'], 176, -26);
+  } else {
+    ctx.fillStyle = ctx.createPattern(IMG['interior/' + room.floor], 'repeat'); ctx.fillRect(0, 0, W, H);
+    for (let x = 0; x < W; x += 128) ctx.drawImage(IMG['interior/' + room.wall], x, -2);
+    ctx.fillStyle = '#120f1a'; ctx.fillRect(0, 0, 6, H); ctx.fillRect(W - 6, 0, 6, H); ctx.fillRect(0, H - 3, W, 3);
+  }
+  for (const p of M.puddles) ctx.drawImage(IMG['props/poca_ecto'], p.x - 32, p.y - 20, 64, 40);
 
-  // Contaminação: névoa verde/roxa que some conforme o plasma da casa é sugado.
-  const left = M.ghosts.reduce((s, g) => s + g.p, 0) / M.total;
-  ctx.fillStyle = `rgba(60,25,90,${0.12 + 0.28 * left})`; ctx.fillRect(0, 0, W, H);
+  // Contaminação: névoa verde/roxa que some conforme o plasma da etapa é sugado.
+  const left = M.total ? M.ghosts.reduce((s, g) => s + g.p, 0) / M.total : 0;
+  ctx.fillStyle = `rgba(60,25,90,${0.08 + 0.24 * left})`; ctx.fillRect(0, 0, W, H);
   for (let i = 0; i < 5; i++) {
     const fx = (i * 113 + now / 60 * (i % 2 ? 1 : -1)) % (W + 160) - 80, fy = 70 + i * 40;
     const g = ctx.createRadialGradient(fx, fy, 4, fx, fy, 90);
-    g.addColorStop(0, `rgba(120,255,80,${0.10 * left})`); g.addColorStop(1, 'rgba(120,255,80,0)');
+    g.addColorStop(0, `rgba(120,255,80,${0.09 * left})`); g.addColorStop(1, 'rgba(120,255,80,0)');
     ctx.fillStyle = g; ctx.fillRect(fx - 90, fy - 90, 180, 180);
+  }
+
+  // Objetos planos no chão (tapete, gosma, escada, bilhete) antes de tudo.
+  for (const p of M.props) if (p.flat) drawProp(p);
+  if (M.exit && M.cleared) {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 160);
+    ctx.strokeStyle = `rgba(140,255,74,${0.4 + 0.5 * pulse})`; ctx.lineWidth = 2;
+    ctx.strokeRect(M.exit.x, M.exit.y, M.exit.w, M.exit.h); ctx.lineWidth = 1;
+  }
+  if (M.note) {
+    const bob = Math.sin(now / 250) * 2;
+    ctx.drawImage(IMG['props/bilhete'], M.note.x - 16, M.note.y - 24 + bob);
   }
 
   for (const tr of M.traps) {
@@ -493,45 +683,38 @@ function drawMission(now) {
     if (tr.link) beam(tr.x, tr.y - 22, tr.link.x, tr.link.y - tr.link.size * 0.45, now, 0.5);
   }
 
-  // Operador e fantasmas por altura (pés); fantasmas semitransparentes (§4) e flutuando.
-  const list = [{ op: true, y: op.y }, ...M.ghosts].sort((a, b) => a.y - b.y);
+  // Paredes, móveis, operador e fantasmas por altura (pés); fantasmas semitransparentes (§4) e flutuando.
+  const list = [{ op: true, y: op.y }, ...M.ghosts.map(g => ({ g, y: g.y })),
+    ...M.props.filter(p => !p.flat).map(p => ({ p, y: p.y })), ...(room ? M.walls.map(w => ({ w, y: w.y + w.h })) : [])]
+    .sort((a, b) => a.y - b.y);
   for (const e of list) {
-    if (e.op) {
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(op.x, op.y - 2, 11, 4, 0, 0, 7); ctx.fill();
-      const bob = op.moving ? Math.abs(Math.sin(now / 90)) * 2 : 0;
-      if (M.t - op.hurt < 0.2) ctx.filter = 'brightness(2) saturate(0)';
-      ctx.drawImage(IMG['chars/operador/' + DIRS[op.dir]], Math.round(op.x - 24), Math.round(op.y - 46 - bob));
-      ctx.filter = 'none';
-      continue;
-    }
-    const g = e, s = g.size, bob = Math.sin(now / 400 + g.seed) * 3;
-    ctx.fillStyle = 'rgba(80,255,120,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y - 2, s * 0.25, s * 0.08, 0, 0, 7); ctx.fill();
-    ctx.globalAlpha = 0.82 + 0.1 * Math.sin(now / 200 + g.seed);
-    if (M.t - g.aimed < 0.1) ctx.filter = 'brightness(1.4)';
-    ctx.drawImage(IMG[g.img], Math.round(g.x - s / 2), Math.round(g.y - s - 6 + bob));
-    ctx.filter = 'none'; ctx.globalAlpha = 1;
-    if (g.p < g.max || M.t - g.aimed < 1) {
-      const w = g.boss ? 60 : 30, bx = g.x - w / 2, by = g.y - s - 12 + bob;
-      ctx.fillStyle = '#000'; ctx.fillRect(bx - 1, by - 1, w + 2, 5);
-      ctx.fillStyle = '#8cff4a'; ctx.fillRect(bx, by, w * Math.max(0, g.p) / g.max, 3);
-    }
+    if (e.op) drawOperator(now);
+    else if (e.p) drawProp(e.p);
+    else if (e.w) drawWall(e.w, room);
+    else drawGhost(e.g, now);
   }
 
   for (const s of M.shots) {
     ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.rot);
-    if (s.kind === 'chair') { ctx.fillStyle = '#7a4a2a'; ctx.fillRect(-5, -5, 10, 3); ctx.fillRect(-5, -5, 3, 11); ctx.fillRect(2, -2, 3, 8); }
+    const im = IMG['props/' + s.kind];
+    if (im) ctx.drawImage(im, -im.width * 0.35, -im.height * 0.35, im.width * 0.7, im.height * 0.7);
+    else if (s.kind === 'chair') { ctx.fillStyle = '#7a4a2a'; ctx.fillRect(-5, -5, 10, 3); ctx.fillRect(-5, -5, 3, 11); ctx.fillRect(2, -2, 3, 8); }
     else if (s.kind === 'lamp') { ctx.fillStyle = '#f2c46b'; ctx.fillRect(-5, -6, 10, 5); ctx.fillStyle = '#5a4a3a'; ctx.fillRect(-1, -1, 2, 8); }
     else { ctx.fillStyle = '#8cff4a'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#c77dff'; ctx.fillRect(-1, -1, 3, 3); }
     ctx.restore();
   }
 
-  if (M.beam) { const nz = nozzle(); beam(nz.x, nz.y, M.beam.x, M.beam.y, now, M.beam.hit ? 1 : 0.45); }
+  if (M.beam) {
+    const nz = nozzle(); beam(nz.x, nz.y, M.beam.x, M.beam.y, now, M.beam.hit ? 1 : 0.45);
+    if (M.beam.blocked) burst(M.beam.x, M.beam.y, '#8cff4a', 1);
+  }
   if (mouse.down && !M.overheat) {
     ctx.strokeStyle = 'rgba(140,255,74,.18)'; ctx.beginPath(); ctx.arc(op.x, op.y - 18, stat.range(), 0, 7); ctx.stroke();
   }
-
   for (const p of M.parts) { ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); }
   ctx.globalAlpha = 1;
+
+  if (M.dark) drawDarkness(now);
 
   // Decodificador (upgrade de história, §6.4): a memória aparece ao passar a mira sobre o fantasma.
   if (S.up.decoder) {
@@ -545,6 +728,72 @@ function drawMission(now) {
       ctx.fillStyle = '#d9c6ff'; ctx.fillText(g.memory, tx, ty);
     }
   }
+}
+
+function drawProp(p) {
+  const im = IMG['props/' + p.name];
+  if (!p.flat) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 3, im.width * 0.38, 4, 0, 0, 7); ctx.fill(); }
+  ctx.drawImage(im, Math.round(p.x - im.width / 2), Math.round(p.flat ? p.y - im.height / 2 : p.y - im.height + 4));
+}
+
+// Parede interna em 3/4: tampo escuro em cima e a face com a textura da parede do cômodo embaixo.
+function drawWall(w, room) {
+  const face = 22;
+  ctx.fillStyle = '#2b2236'; ctx.fillRect(w.x, w.y - face, w.w, w.h);
+  ctx.fillStyle = '#4a3d5c'; ctx.fillRect(w.x, w.y - face, w.w, 2);
+  ctx.save(); ctx.beginPath(); ctx.rect(w.x, w.y + w.h - face, w.w, face); ctx.clip();
+  for (let x = w.x - (w.x % 128); x < w.x + w.w; x += 128) ctx.drawImage(IMG['interior/' + room.wall], x, w.y + w.h - face - 30);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(w.x, w.y + w.h, w.w, 3);
+}
+
+function drawOperator(now) {
+  const op = M.op;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(op.x, op.y - 2, 11, 4, 0, 0, 7); ctx.fill();
+  const bob = op.moving ? Math.abs(Math.sin(now / 90)) * 2 : 0;
+  if (M.t - op.hurt < 0.2) ctx.filter = 'brightness(2) saturate(0)';
+  ctx.drawImage(IMG['chars/operador/' + DIRS[op.dir]], Math.round(op.x - 24), Math.round(op.y - 46 - bob));
+  ctx.filter = 'none';
+}
+
+function drawGhost(g, now) {
+  const s = g.size, bob = Math.sin(now / 400 + g.seed) * 3;
+  ctx.fillStyle = 'rgba(80,255,120,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y - 2, s * 0.25, s * 0.08, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = 0.82 + 0.1 * Math.sin(now / 200 + g.seed);
+  if (M.t - g.aimed < 0.1) ctx.filter = 'brightness(1.4)';
+  ctx.drawImage(IMG[g.img], Math.round(g.x - s / 2), Math.round(g.y - s - 6 + bob));
+  ctx.filter = 'none'; ctx.globalAlpha = 1;
+  if (g.p < g.max || M.t - g.aimed < 1) {
+    const w = g.boss ? 60 : 30, bx = g.x - w / 2, by = g.y - s - 12 + bob;
+    ctx.fillStyle = '#000'; ctx.fillRect(bx - 1, by - 1, w + 2, 5);
+    ctx.fillStyle = '#8cff4a'; ctx.fillRect(bx, by, w * Math.max(0, g.p) / g.max, 3);
+  }
+}
+
+// Escuro do porão (e do térreo no Centro Antigo): máscara com o círculo da lanterna; fantasmas, gosma e armadilhas
+// brilham um pouco, então dá para vê-los de longe, mas móveis e objetos arremessados só aparecem na luz.
+function drawDarkness(now) {
+  dctx.globalCompositeOperation = 'source-over';
+  dctx.clearRect(0, 0, W, H);
+  dctx.fillStyle = `rgba(4,3,9,${M.dark})`; dctx.fillRect(0, 0, W, H);
+  dctx.globalCompositeOperation = 'destination-out';
+  const hole = (x, y, r, a) => {
+    const g = dctx.createRadialGradient(x, y, r * 0.2, x, y, r);
+    g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    dctx.fillStyle = g; dctx.beginPath(); dctx.arc(x, y, r, 0, 7); dctx.fill();
+  };
+  const flick = 1 + Math.sin(now / 70) * 0.02;
+  hole(M.op.x, M.op.y - 14, stat.light() * flick, 1);
+  const nz = nozzle();
+  hole(nz.x + Math.cos(nz.a) * 40, nz.y + Math.sin(nz.a) * 30, stat.light() * 0.7, 0.8);    // facho na direção da mira
+  for (const g of M.ghosts) hole(g.x, g.y - g.size * 0.45, g.size * 0.55, 0.6);
+  for (const s of M.shots) if (s.kind === 'blob') hole(s.x, s.y, 10, 0.8);
+  for (const tr of M.traps) hole(tr.x, tr.y - 12, 18, 0.7);
+  for (const p of M.props) if (p.name === 'poca_ecto') hole(p.x, p.y, 18, 0.5);
+  if (M.exit && M.cleared) hole(M.exit.x + M.exit.w / 2, M.exit.y + M.exit.h / 2, 30, 0.8);
+  if (M.note) hole(M.note.x, M.note.y - 12, 16, 0.7);
+  if (M.beam) hole(M.beam.x, M.beam.y, 16, 0.7);
+  ctx.drawImage(darkCv, 0, 0);
 }
 
 // Feixe de sucção: duas linhas onduladas verdes do bico até o alvo.
@@ -571,13 +820,18 @@ cv.addEventListener('contextmenu', ev => ev.preventDefault());
 cv.addEventListener('pointermove', ev => {
   const p = viewPos(ev);
   mouse.x = p.x / 2; mouse.y = p.y / 2;
-  if (scene === 'map') { hoverHouse = houseAt(p.x, p.y); cv.style.cursor = hoverHouse ? 'pointer' : 'default'; }
+  if (scene === 'map') { hoverBairro = bairroAt(p.x, p.y); cv.style.cursor = hoverBairro ? 'pointer' : 'default'; }
   else cv.style.cursor = 'crosshair';
 });
 cv.addEventListener('pointerdown', ev => {
   const p = viewPos(ev);
   mouse.x = p.x / 2; mouse.y = p.y / 2;
-  if (scene === 'map') { const h = houseAt(p.x, p.y); if (h) openPanel(h); else { $('panel').classList.add('hidden'); openHouse = null; } return; }
+  if (scene === 'map') {
+    const b = bairroAt(p.x, p.y);
+    if (b && bairroOpen(b)) openBairro(b);
+    else if (b) toast(`${b.name} está bloqueado: limpe o bairro anterior, chefe incluído.`, 2600);
+    return;
+  }
   if (scene === 'mission') mouse.down = true;   // §6.2 usa o botão direito; o esquerdo também suga (touchpad)
 });
 addEventListener('pointerup', () => { mouse.down = false; });
@@ -588,8 +842,8 @@ addEventListener('keydown', ev => {
   if (scene === 'mission') {
     if (k === 'q') placeTrap('auto');
     if (k === 'e') placeTrap('sup');
-    if (k === 'escape') endMission(false);
-  } else if (scene === 'map' && k === 'u') openShop();
+    if (k === 'escape') leave('evac');
+  } else if (scene === 'map' && k === 'u') openShop(goMap);
 });
 addEventListener('keyup', ev => keys.delete(ev.key.toLowerCase()));
 
@@ -598,7 +852,7 @@ addEventListener('keyup', ev => keys.delete(ev.key.toLowerCase()));
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (scene === 'mission' && M) { updateMission(dt); drawMission(now); }
+  if (scene === 'mission' && M) { updateMission(dt); if (M && scene === 'mission') drawMission(now); }
   else if (M && scene === 'screen') drawMission(now);
   else drawMap(now);
   requestAnimationFrame(frame);
@@ -617,8 +871,8 @@ fit();
 function intro() {
   showScreen(`<h1>Protocolo Ectoplasma</h1>
     <div class="cast"><img src="${ART}chars/operador/south.png" width="96" alt=""><img src="${ART}ghosts/errante.png" width="96" alt=""><img src="${ART}ghosts/poltergeist.png" width="96" alt=""></div>
-    <div class="memo">MEMORANDO — LimpaCorp Espectral<br><br>Bem-vindo(a), operador(a) nº 0451! Nosso bairro piloto tem <b>4 imóveis contaminados</b>.
-    Escolha um no mapa, entre e <b>sugue o plasma</b> de cada presença. Cada casa limpa valoriza a rua e enche o seu bônus. Lembre-se: fantasma não é gente. É estoque.</div>
+    <div class="memo">MEMORANDO — LimpaCorp Espectral<br><br>Bem-vindo(a), operador(a) nº 0451! A cidade tem <b>4 bairros contaminados</b>. Comece pela Vila Operária:
+    entre em cada imóvel, limpe a rua, o térreo e o porão, e <b>sugue o plasma</b> de cada presença. Lembre-se: fantasma não é gente. É estoque.</div>
     <small>WASD move · segure o botão do mouse sobre o fantasma para sugar (parado rende o dobro) · Q/E armadilhas · Esc sai</small>
     <button class="btn go" id="start">Bater o ponto</button>`);
   $('start').onclick = () => { S.intro = true; save(); goMap(); };
@@ -627,8 +881,10 @@ function intro() {
 loadImages().then(() => {
   buildGround();
   requestAnimationFrame(frame);
-  const h = [...DEV].map(d => /^h(\d)$/.exec(d)).find(Boolean);
-  if (h) startMission(HOUSES[+h[1] - 1]);
+  // Atalho #t<bairro><imóvel>, com #e<etapa> opcional: #t13,e3 = Vila Operária, casa 4, porão.
+  const t = [...DEV].map(d => /^t(\d)(\d)$/.exec(d)).find(Boolean);
+  const e = [...DEV].map(d => /^e(\d)$/.exec(d)).find(Boolean);
+  if (t) { const b = BAIRROS[+t[1] - 1]; startImovel(b, b.imoveis[+t[2] - 1], e ? +e[1] - 1 : undefined); }
   else if (DEV.has('go') || S.intro) goMap();
   else intro();
 });
