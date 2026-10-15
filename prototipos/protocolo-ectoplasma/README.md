@@ -36,6 +36,15 @@ Versão jogável em HTML/JS puro da Parte 1 do [`GDD_Protocolo_Ectoplasma.md`](.
   - Um bilhete aparece no mapa depois do 1º bairro.
   - Ato 3: o arquivo interno e a vitória vazia no fim.
 
+## Sensação de jogo (ajustes de 2026-10-15)
+- **Operador anda** com a animação de caminhada do PixelLab nas 8 direções.
+- **Rua com cenário:** carro abandonado, postes, árvore seca, cercas, placa de "vende-se", lixeiras e hidrante (PixelLab), faixa tracejada, bueiro e rachaduras no asfalto. Imóveis pares usam a cena espelhada. A lixeira pode ser arremessada pelo Poltergeist.
+- **Paredes internas** desenhadas como parede de verdade (tampo de reboco com moldura, face com rodapé e sombra no piso), no lugar do retângulo escuro que parecia um pilar.
+- **Captura com peso:** o fantasma treme e estica enquanto é sugado, solta fiapos de plasma que voam para o bico, e na captura é esticado e puxado para dentro, com uma pausa de impacto curta e tremor de tela (maiores no chefe).
+- **Aviso antes do ataque:** o Poltergeist faz o móvel tremer, subir e brilhar em roxo por 0,6 s antes de arremessar; sem móvel por perto, um objeto gira sobre ele. O Residual incha e brilha por 0,45 s antes de cuspir ectoplasma.
+- **Retorno de dano:** cada golpe empurra o operador para longe da origem, treme a tela, acende uma borda vermelha e dá 0,5 s de invencibilidade (o operador pisca). O contato com o Residual virou golpe com empurrão (6 de dano) em vez de dano contínuo; na prática ele tira cerca de metade da vida por segundo que tirava antes.
+- **Sons sintetizados** no navegador, sem arquivos: ronco do aspirador que sobe de tom conforme o fantasma esvazia, captura, golpe, aviso, arremesso, batida, cuspe, armadilha, porta e etapa limpa. **M** liga e desliga. O áudio está "Em aberto" no GDD; estes sons são do protótipo.
+
 ## Escolhas do protótipo
 - O GDD pede o botão direito para sugar; aqui qualquer botão do mouse suga, para funcionar em touchpad.
 - **Números do protótipo:**
@@ -47,7 +56,7 @@ Versão jogável em HTML/JS puro da Parte 1 do [`GDD_Protocolo_Ectoplasma.md`](.
 ## O que ficou de fora
 - O andar de cima, alternativa ao porão.
 - O final alternativo da §3.2, comunicar em vez de sugar.
-- NPCs, áudio e animação de caminhada: o operador só troca entre as 8 direções paradas.
+- NPCs e trilha sonora.
 
 ## Atalhos
 Na URL:

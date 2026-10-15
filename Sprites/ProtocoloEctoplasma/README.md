@@ -7,13 +7,14 @@ Arte do `GDD_Protocolo_Ectoplasma.md` (§4 Estilo Visual): pixel art no ângulo 
 | Pasta | Conteúdo | Tamanho |
 |---|---|---|
 | `chars/operador/` | O operador da empresa de limpeza nas 8 direções (`south.png`, `north-east.png`…), parado | 48×48 |
+| `chars/operador/walk/` | Caminhada nas 8 direções, 8 quadros cada (`south_0.png`…`south_7.png`), template `walking-8-frames`. Nos quadros de andar o operador não segura o bico do aspirador (só nas poses paradas) | 48×48 |
 | `ghosts/` | `errante` (parado/lento), `assombrado` (foge), `poltergeist` (arremessa objetos), `residual_boss` (chefe de bairro) — os 4 tipos do §7 | 48×48 (chefe 96×96) |
 | `traps/` | `armadilha_autonoma` (suga sozinha) e `armadilha_suporte` (atrai/desacelera) — as duas variantes do §6.3 | 32×32 |
 | `buildings/casa_contaminada.png` | Casa abandonada com ectoplasma escorrendo | 128×128 |
 | `tiles/rua_calcada.png` + `.json` | Tileset Wang asfalto ↔ calçada, 16 tiles de 32 px. O `.json` traz `bounding_box` e cantos de cada tile (use o `bounding_box`, não o nome `wang_N`) | 32 px |
 | `map/mapa_cidade.png` | Mapa da cidade (hub, §6.1): bairros limpos em neon, contaminados na névoa | 256×144 |
 | `interior/` | Etapas de interior (§6.6): `piso_madeira` e `piso_concreto` (repetem em grade), `parede_sala` e `parede_porao` (repetem na horizontal). Originais sem tratamento em `interior/_raw/` | 64×64 / 128×64 |
-| `props/` | Móveis e objetos das etapas de interior: `sofa`, `poltrona`, `piano`, `mesa`, `cadeira`, `abajur`, `tapete`, `cama`, `estante`, `geladeira`, `caixas`, `caldeira`, `escada_descida` (saída para o porão), `poca_ecto` (gosma no chão) e `bilhete` (memória coletável, §3.2) | 32 a 96 px |
+| `props/` | Móveis e objetos das etapas de interior: `sofa`, `poltrona`, `piano`, `mesa`, `cadeira`, `abajur`, `tapete`, `cama`, `estante`, `geladeira`, `caixas`, `caldeira`, `escada_descida` (saída para o porão), `poca_ecto` (gosma no chão) e `bilhete` (memória coletável, §3.2). Rua (etapa 1): `carro`, `poste`, `arvore_seca`, `lixeira`, `cerca`, `placa_vende`, `hidrante`, recortados na caixa do alfa | 16 a 96 px |
 
 Ids do PixelLab em `pixellab-assets.json`.
 
@@ -25,6 +26,6 @@ Ids do PixelLab em `pixellab-assets.json`.
 - Fantasmas: descreva sempre "bright glowing ectoplasm green… purple edges"; sem isso o modelo faz fantasma branco (aconteceu no teste).
 
 ## Pendências
-1. Animações: caminhada do operador (`animate_character`, template `walking-8-frames`), flutuar dos fantasmas, feixe de sucção.
+1. Animações: flutuar dos fantasmas e feixe de sucção (a caminhada do operador foi feita em 2026-10-15). A caminhada perdeu o bico do aspirador; se incomodar, refazer com `mode="skeleton-v3"` (mantém melhor a identidade) ou com uma `action_description` que cite o bico.
 2. Andar de cima (alternativa ao porão na 3ª etapa, §6.6) e móveis por tema de bairro.
 3. Variações "limpas" da casa e do mapa (bairro valorizado, §6.1) e ícones de HUD (plasma, ameaça).

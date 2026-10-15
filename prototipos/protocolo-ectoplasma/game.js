@@ -107,6 +107,81 @@ const WANG = { '0000': [2, 1], '0001': [3, 1], '0010': [2, 2], '0011': [1, 2], '
   '1000': [1, 1], '1001': [2, 3], '1010': [1, 0], '1011': [0, 2], '1100': [3, 0], '1101': [0, 0], '1110': [1, 3], '1111': [0, 3] };
 
 const DIRS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
+const WALK_FRAMES = 8;                            // caminhada do operador (PixelLab, template walking-8-frames)
+
+// ============================================================ sons (sintetizados no navegador, sem arquivos)
+
+// O áudio está "Em aberto" no GDD; estes sons existem para dar peso à sucção, à captura e aos golpes.
+// M liga e desliga. O navegador só libera o áudio depois do primeiro clique ou tecla (SFX.unlock).
+const SFX = (() => {
+  let ac = null, master = null, noiseBuf = null, hum = null, muted = false;
+  function audio() {
+    if (!ac) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ac = new AC(); master = ac.createGain(); master.gain.value = 0.45; master.connect(ac.destination);
+      noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    if (ac.state === 'suspended') ac.resume();
+    return ac;
+  }
+  // Nota com glissando de f0 para f1.
+  function tone(type, f0, f1, dur, vol, delay = 0) {
+    if (!ac || muted) return;
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  // Ruído filtrado com o filtro indo de f0 para f1 (batidas, assobios).
+  function noise(filter, f0, f1, dur, vol, q = 1, delay = 0) {
+    if (!ac || muted) return;
+    const t = ac.currentTime + delay, src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = noiseBuf; f.type = filter; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(f).connect(g).connect(master); src.start(t); src.stop(t + dur + 0.02);
+  }
+  // Ronco contínuo do aspirador: serra grave + ruído soprado. Fica ligado o tempo todo, com volume zero em silêncio.
+  function buildHum() {
+    const o = ac.createOscillator(), lp = ac.createBiquadFilter(), go = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 70; lp.type = 'lowpass'; lp.frequency.value = 500; go.gain.value = 0;
+    o.connect(lp).connect(go).connect(master); o.start();
+    const n = ac.createBufferSource(), bp = ac.createBiquadFilter(), gn = ac.createGain();
+    n.buffer = noiseBuf; n.loop = true; bp.type = 'bandpass'; bp.Q.value = 1.4; bp.frequency.value = 900; gn.gain.value = 0;
+    n.connect(bp).connect(gn).connect(master); n.start();
+    return { o, go, bp, gn };
+  }
+  return {
+    unlock() { audio(); },
+    toggleMute() { muted = !muted; if (hum) { hum.go.gain.value = 0; hum.gn.gain.value = 0; } return muted; },
+    // on: sugando; pull: 0..1 do plasma já tirado do alvo; hit: o feixe está pegando um fantasma.
+    hum(on, pull = 0, hit = false) {
+      if (!ac) return;
+      if (!hum) hum = buildHum();
+      const t = ac.currentTime, v = on && !muted ? 1 : 0;
+      hum.go.gain.setTargetAtTime(0.10 * v, t, 0.04);
+      hum.gn.gain.setTargetAtTime((hit ? 0.22 : 0.12) * v, t, 0.04);
+      hum.o.frequency.setTargetAtTime(hit ? 80 + 70 * pull : 62, t, 0.08);
+      hum.bp.frequency.setTargetAtTime(hit ? 900 + 1500 * pull : 650, t, 0.08);
+    },
+    capture(big) {
+      tone('square', 260, 1100, 0.18, 0.12); tone('sine', 520, 1900, 0.28, 0.16, 0.06);
+      if (big) { noise('lowpass', 900, 60, 0.9, 0.5); tone('sawtooth', 110, 40, 0.9, 0.2); }
+    },
+    hurt() { noise('lowpass', 900, 90, 0.22, 0.55); tone('sawtooth', 170, 55, 0.22, 0.16); },
+    windup() { tone('triangle', 70, 150, 0.55, 0.10); noise('bandpass', 200, 600, 0.55, 0.06, 6); },
+    whoosh() { noise('bandpass', 350, 1800, 0.32, 0.30, 2.5); },
+    smash() { noise('bandpass', 2400, 250, 0.25, 0.40, 1.2); tone('square', 140, 70, 0.12, 0.08); },
+    spit() { noise('lowpass', 1400, 200, 0.3, 0.3); tone('sine', 300, 90, 0.3, 0.12); },
+    trap() { tone('square', 880, 880, 0.05, 0.07); tone('square', 660, 660, 0.06, 0.07, 0.06); },
+    clear() { [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.22, 0.12, i * 0.09)); },
+    door() { noise('lowpass', 600, 80, 0.45, 0.4); tone('sine', 110, 70, 0.4, 0.12); },
+    split() { tone('sawtooth', 220, 50, 0.6, 0.18); noise('lowpass', 1200, 100, 0.6, 0.4); },
+    denied() { tone('square', 200, 150, 0.12, 0.08); },
+  };
+})();
 
 // ============================================================ cenas das etapas (feitas à mão)
 
@@ -116,7 +191,12 @@ const PROPS = {
   sofa: {}, poltrona: {}, piano: {}, mesa: {}, cama: {}, estante: {}, geladeira: {}, caldeira: {},
   caixas: { throw: true }, cadeira: { throw: true }, abajur: { throw: true },
   tapete: { flat: true }, poca_ecto: { flat: true }, escada_descida: { flat: true }, bilhete: { flat: true },
+  // Rua (etapa 1): objetos do PixelLab gerados em 2026-10-15 com a mesma receita dos móveis.
+  carro: {}, poste: {}, arvore_seca: {}, cerca: {}, placa_vende: {}, hidrante: {}, lixeira: { throw: true },
 };
+// Rua: calçada em cima (frente da casa), asfalto embaixo. Imóveis de índice ímpar usam a cena espelhada.
+const STREET = [['arvore_seca', 36, 104], ['cerca', 104, 106], ['poste', 156, 112], ['placa_vende', 316, 108], ['cerca', 376, 106],
+  ['lixeira', 440, 112], ['hidrante', 58, 262], ['carro', 404, 262], ['lixeira', 150, 264], ['poste', 470, 268]];
 const ROOMS = {
   sala: { floor: 'piso_madeira', wall: 'parede_sala',
     walls: [{ x: 300, y: 60, w: 12, h: 104 }],
@@ -164,7 +244,8 @@ const IMG = {};
 function loadImages() {
   const names = ['map/mapa_cidade', 'buildings/casa_contaminada', 'tiles/rua_calcada', ...DIRS.map(d => 'chars/operador/' + d),
     ...Object.values(GHOSTS).map(g => g.img), ...Object.values(TRAPS).map(t => t.img),
-    ...Object.keys(PROPS).map(p => 'props/' + p), ...['piso_madeira', 'piso_concreto', 'parede_sala', 'parede_porao'].map(n => 'interior/' + n)];
+    ...Object.keys(PROPS).map(p => 'props/' + p), ...['piso_madeira', 'piso_concreto', 'parede_sala', 'parede_porao'].map(n => 'interior/' + n),
+    ...DIRS.flatMap(d => [...Array(WALK_FRAMES).keys()].map(i => `chars/operador/walk/${d}_${i}`))];
   return Promise.all(names.map(n => new Promise(res => {
     const im = new Image(); im.onload = res; im.onerror = res; im.src = ART + n + '.png'; IMG[n] = im;
   })));
@@ -179,6 +260,19 @@ function buildGround() {
   for (let y = 0; y < 9; y++) for (let x = 0; x < 15; x++) {
     const [tx, ty] = WANG['' + side(x, y) + side(x + 1, y) + side(x, y + 1) + side(x + 1, y + 1)];
     g.drawImage(IMG['tiles/rua_calcada'], tx * 32, ty * 32, 32, 32, x * 32, y * 32, 32, 32);
+  }
+  // Asfalto: faixa central tracejada e gasta, bueiro e rachaduras, para o meio da rua não ficar liso.
+  g.fillStyle = 'rgba(232,212,120,.5)';
+  for (let x = 6; x < W; x += 40) if (x % 120 !== 46) g.fillRect(x, 186, 22, 3);
+  g.fillStyle = '#2a2733'; g.beginPath(); g.ellipse(300, 226, 13, 7, 0, 0, 7); g.fill();
+  g.fillStyle = '#4a4656'; g.beginPath(); g.ellipse(300, 225, 11, 5.5, 0, 0, 7); g.fill();
+  g.fillStyle = '#2a2733'; for (let i = -8; i <= 8; i += 4) g.fillRect(300 + i, 222, 1, 7);
+  g.strokeStyle = 'rgba(25,22,32,.7)'; g.lineWidth = 1;
+  for (const [x, y] of [[70, 150], [210, 230], [380, 160], [140, 200], [440, 214]]) {
+    g.beginPath(); g.moveTo(x, y);
+    let cx = x, cy = y;
+    for (let i = 0; i < 5; i++) { cx += 4 + (i * 7) % 5; cy += ((i * 5) % 7) - 3; g.lineTo(cx, cy); }
+    g.stroke();
   }
   // Calçada abandonada: escurece o bege claro do tileset para combinar com o bairro contaminado.
   g.fillStyle = 'rgba(40,36,60,.38)'; g.fillRect(0, 0, W, 288);
@@ -321,17 +415,22 @@ function startImovel(b, im, etapa) {
   hideScreen();
   const mul = threatMul(im.threat);
   M = { bairro: b, im, mul, dmg: dmgMul(im.threat), bag: 0, etapa: etapa ?? (S.prog[im.id] || 0),
-    op: { x: 240, y: 240, hp: 100, dir: 6, hurt: -9, moving: false }, tank: stat.tankMax(), overheat: false };
+    op: { x: 240, y: 240, hp: 100, dir: 6, hurt: -9, moving: false, walk: 0, kx: 0, ky: 0 }, tank: stat.tankMax(), overheat: false };
   enterEtapa();
 }
 
 function enterEtapa() {
   const im = M.im, k = M.etapa, b = M.bairro;
   const kind = k === 0 ? 'rua' : k === 1 ? INTERIORS[b.imoveis.indexOf(im) % INTERIORS.length] : 'porao';
-  Object.assign(M, { kind, t: 0, traps: [], shots: [], parts: [], ghosts: [], over: false, cleared: false, beam: null, note: null });
+  Object.assign(M, { kind, t: 0, traps: [], shots: [], parts: [], ghosts: [], dying: [], over: false, cleared: false, beam: null, note: null,
+    shake: 0, shakeMag: 0, hitstop: 0, red: 0 });
+  Object.assign(M.op, { kx: 0, ky: 0, hurt: -9 });
+  if (k > 0) SFX.door();
   const room = ROOMS[kind];
   M.walls = room ? room.walls : [{ x: 190, y: 30, w: 102, h: 70 }];   // na rua, a casa é o obstáculo
-  M.props = room ? room.props.map(([name, x, y]) => ({ name, x, y, ...PROPS[name] })) : [];
+  const flip = !room && b.imoveis.indexOf(im) % 2 === 1;
+  M.props = room ? room.props.map(([name, x, y]) => ({ name, x, y, ...PROPS[name] }))
+    : STREET.map(([name, x, y]) => ({ name, x: flip ? W - x : x, y, ...PROPS[name] }));
   M.dark = room && room.dark ? room.dark : (b.dark && k === 1 ? 0.8 : 0);
   M.exit = k === 2 ? null : room ? { x: room.exit[0] - 20, y: room.exit[1] - 14, w: 40, h: 28 } : { x: 226, y: 96, w: 34, h: 16 };
   if (room && room.exit) M.props.push({ name: 'escada_descida', x: room.exit[0], y: room.exit[1], flat: true });
@@ -367,12 +466,22 @@ function nozzle() {
   return { x: M.op.x + Math.cos(a) * 14, y: M.op.y - 18 + Math.sin(a) * 8, a };
 }
 
-function hurt(dmg) {
-  if (DEV.has('god') || M.over) return;
-  M.op.hp -= dmg * M.dmg * stat.resist();
-  M.op.hurt = M.t;
-  if (M.op.hp <= 0) { M.op.hp = 0; leave('dead'); }
+// Golpe no operador, vindo de (sx, sy): meio segundo de invencibilidade, empurrão para longe da origem,
+// tremor de tela, borda vermelha e som. Sem a invencibilidade, dois objetos juntos (ou o chefe colado) somavam
+// dano sem dar tempo de reagir.
+const IFRAMES = 0.5;
+function hurt(dmg, sx, sy) {
+  if (DEV.has('god') || M.over || M.t - M.op.hurt < IFRAMES) return;
+  const op = M.op;
+  op.hp -= dmg * M.dmg * stat.resist();
+  op.hurt = M.t;
+  const d = hyp(op.x - sx, op.y - sy) || 1;
+  op.kx = (op.x - sx) / d * 170; op.ky = (op.y - sy) / d * 170;
+  shake(0.25, 3); M.red = 0.45; M.hitstop = 0.05;
+  SFX.hurt();
+  if (op.hp <= 0) { op.hp = 0; leave('dead'); }
 }
+function shake(time, mag) { M.shakeMag = M.shake > 0 ? Math.max(M.shakeMag, mag) : mag; M.shake = Math.max(M.shake, time); }
 
 // Obstáculos para andar: paredes, a casa (na rua) e a base dos móveis que não são planos.
 function solidAt(x, y) {
@@ -395,6 +504,9 @@ function wallHit(x1, y1, x2, y2) {
 
 function updateMission(dt) {
   const op = M.op;
+  M.shake = Math.max(0, M.shake - dt); M.red = Math.max(0, M.red - dt);
+  // Pausa de impacto: congela o jogo por alguns centésimos na captura e no golpe, para eles "pesarem".
+  if (M.hitstop > 0) { M.hitstop -= dt; missionHud(); return; }
   M.t += dt;
   // Movimento (WASD/setas), sem atravessar paredes nem móveis; poças deixam lento.
   let vx = (keys.has('d') || keys.has('arrowright')) - (keys.has('a') || keys.has('arrowleft'));
@@ -405,6 +517,14 @@ function updateMission(dt) {
   const nx = clamp(op.x + vx / len * SPEED * slow * dt, 14, W - 14), ny = clamp(op.y + vy / len * SPEED * slow * dt, 64, H - 4);
   if (!solidAt(nx, op.y)) op.x = nx;
   if (!solidAt(op.x, ny)) op.y = ny;
+  if (op.moving) op.walk += dt * 10 * slow;
+  // Empurrão do golpe, que se esgota rápido e também não atravessa paredes.
+  if (Math.abs(op.kx) + Math.abs(op.ky) > 1) {
+    const kx = clamp(op.x + op.kx * dt, 14, W - 14), ky = clamp(op.y + op.ky * dt, 64, H - 4);
+    if (!solidAt(kx, op.y)) op.x = kx;
+    if (!solidAt(op.x, ky)) op.y = ky;
+    const f = Math.exp(-12 * dt); op.kx *= f; op.ky *= f;
+  }
   const nz = nozzle();
   op.dir = ((Math.round(nz.a / (Math.PI / 4)) % 8) + 8) % 8;
 
@@ -429,9 +549,16 @@ function updateMission(dt) {
       target.p -= stat.suck() * (op.moving ? MOVING_PENALTY : 1) * dt;
       target.lastHit = target.aimed = M.t;
       M.beam = { ...end, hit: true };
+      // Fiapos de plasma saindo do fantasma em direção ao bico.
+      if (Math.random() < dt * 40) {
+        const a = Math.random() * 7;
+        M.parts.push({ x: end.x + Math.cos(a) * target.r, y: end.y + Math.sin(a) * target.r * 0.7, home: true, life: 0.5, color: Math.random() < 0.7 ? '#8cff4a' : '#c77dff' });
+      }
+      SFX.hum(true, 1 - target.p / target.max, true);
       if (target.p <= 0) capture(target);
-    } else M.beam = { ...(block || end), hit: false, blocked: !!block };
+    } else { M.beam = { ...(block || end), hit: false, blocked: !!block }; SFX.hum(true); }
   } else {
+    SFX.hum(false);
     M.tank = Math.min(stat.tankMax(), M.tank + TANK_REFILL * dt);
     if (M.overheat && M.tank >= stat.tankMax() * 0.35) M.overheat = false;
   }
@@ -449,12 +576,19 @@ function updateMission(dt) {
 
   for (const s of M.shots) {
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.rot += dt * 8;
-    if (hyp(s.x - op.x, s.y - (op.y - 16)) < 13) { s.life = 0; hurt(s.dmg); burst(s.x, s.y, '#ff9a4a', 8); }
-    else if (M.kind !== 'rua' && M.walls.some(r => s.x > r.x && s.x < r.x + r.w && s.y > r.y - 22 && s.y < r.y + r.h)) { s.life = 0; burst(s.x, s.y, '#c77dff', 8); }
+    if (hyp(s.x - op.x, s.y - (op.y - 16)) < 13) { s.life = 0; hurt(s.dmg, s.x - s.vx, s.y - s.vy); burst(s.x, s.y, '#ff9a4a', 8); if (s.kind !== 'blob') SFX.smash(); }
+    else if (M.kind !== 'rua' && M.walls.some(r => s.x > r.x && s.x < r.x + r.w && s.y > r.y - 22 && s.y < r.y + r.h)) { s.life = 0; burst(s.x, s.y, '#c77dff', 8); SFX.smash(); }
   }
   M.shots = M.shots.filter(s => s.life > 0 && s.x > -20 && s.x < W + 20 && s.y > -20 && s.y < H + 20);
-  for (const p of M.parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 10 * dt; p.life -= dt; }
+  const nzz = nozzle();
+  for (const p of M.parts) {
+    if (p.home) { p.x += (nzz.x - p.x) * Math.min(1, dt * 9); p.y += (nzz.y - p.y) * Math.min(1, dt * 9); if (hyp(nzz.x - p.x, nzz.y - p.y) < 3) p.life = 0; }
+    else { p.x += p.vx * dt; p.y += p.vy * dt; p.vy -= 10 * dt; }
+    p.life -= dt;
+  }
   M.parts = M.parts.filter(p => p.life > 0);
+  for (const d of M.dying) d.t += dt;
+  M.dying = M.dying.filter(d => d.t < CAPTURE_TIME);
 
   // Bilhete do térreo.
   if (M.note && hyp(M.note.x - op.x, M.note.y - op.y) < 16) {
@@ -466,6 +600,7 @@ function updateMission(dt) {
   // Etapa limpa: salva o progresso (não volta a contaminar) e abre a saída; na última, o imóvel acaba.
   if (!M.ghosts.length && !M.cleared) {
     M.cleared = true;
+    SFX.clear();
     S.prog[M.im.id] = M.etapa + 1; save();
     if (M.etapa === 2) { M.over = true; setTimeout(() => finishImovel(), 1200); }
     else toast(`Etapa limpa! ${M.etapa === 0 ? 'Entre pela porta da casa' : 'Desça pela escada'} para seguir, ou <b>Esc</b> para evacuar com todo o plasma.`, 6000);
@@ -488,23 +623,35 @@ function updateGhost(g, dt) {
     vx = (g.x - op.x) / dOp * g.flee; vy = (g.y - op.y) / dOp * g.flee;
   } else if (g.kind === 'poltergeist') {
     // Mantém distância e arremessa objetos da casa contra o operador (§7): no interior, os móveis da própria sala.
-    if (dOp < 95) { vx = (g.x - op.x) / dOp * g.speed * 2; vy = (g.y - op.y) / dOp * g.speed * 2; }
-    else wander(g);
-    g.cd -= dt;
-    if (g.cd <= 0 && !M.over) { g.cd = g.throwEvery * rnd(0.8, 1.2); throwFurniture(g); }
+    // Antes de arremessar há um aviso de WINDUP s: o objeto treme e sobe (§7), para o jogador poder desviar.
+    if (g.windup) {
+      g.windup.t -= dt;
+      if (g.windup.t <= 0) { releaseThrow(g); g.windup = null; }
+    } else {
+      if (dOp < 95) { vx = (g.x - op.x) / dOp * g.speed * 2; vy = (g.y - op.y) / dOp * g.speed * 2; }
+      else wander(g);
+      g.cd -= dt;
+      if (g.cd <= 0 && !M.over) { g.cd = g.throwEvery * rnd(0.8, 1.2); startThrow(g); }
+    }
   } else if (g.boss) {
     // Residual (§7): avança devagar, machuca de perto, divide-se em fases e cospe ectoplasma a partir da 2ª.
     if (dOp > 20) { vx = (op.x - g.x) / dOp * g.speed; vy = (op.y - g.y) / dOp * g.speed; }
-    if (dOp < 36) hurt(g.dmg * dt);
+    if (dOp < 36) hurt(6, g.x, g.y);   // contato: golpe com empurrão (antes era dano contínuo)
     const phase = g.p > g.max * 2 / 3 ? 1 : g.p > g.max / 3 ? 2 : 3;
     if (phase > g.phase) {
       g.phase = phase;
       toast(`O Residual se parte! Fase ${phase}.`, 1800);
+      SFX.split(); shake(0.4, 4);
       for (let i = 0; i < 2; i++) spawnGhost('errante', clamp(g.x + rnd(-70, 70), 40, 440), clamp(g.y + rnd(-40, 40), 100, 240));
       burst(g.x, g.y - 40, '#8cff4a', 30);
-      if (dOp < 80) hurt(10);
+      if (dOp < 80) hurt(10, g.x, g.y);
     }
-    if (g.phase >= 2) { g.cd -= dt; if (g.cd <= 0) { g.cd = g.phase === 2 ? 3.2 : 2.4; throwAt(g.x, g.y - g.size * 0.4, 'blob', 95, g.dmg); } }
+    // A partir da 2ª fase cospe ectoplasma, com 0,45 s de aviso (o chefe incha e brilha).
+    if (g.phase >= 2) {
+      g.cd -= dt;
+      if (g.spit > 0) { g.spit -= dt; if (g.spit <= 0) { throwAt(g.x, g.y - g.size * 0.4, 'blob', 95, g.dmg); SFX.spit(); } }
+      else if (g.cd <= 0) { g.cd = g.phase === 2 ? 3.2 : 2.4; g.spit = 0.45; }
+    }
   } else wander(g);
 
   if (sup && !g.boss) { vx += (sup.x - g.x) * 0.6; vy += (sup.y - g.y) * 0.6; }
@@ -518,15 +665,24 @@ function updateGhost(g, dt) {
   }
 }
 
-// O Poltergeist pega o móvel arremessável mais perto dele (some do lugar) e joga no operador; na rua, objetos soltos.
-function throwFurniture(g) {
+// O Poltergeist escolhe o móvel arremessável mais perto dele, que treme e flutua durante o aviso; depois o móvel
+// some do lugar e voa no operador. Sem móvel por perto, o objeto solto aparece girando sobre o próprio fantasma.
+const WINDUP = 0.6, LIFT = 10;                    // duração do aviso (s) e quanto o móvel sobe (px)
+function startThrow(g) {
   let best = null, bd = 160;
-  for (const p of M.props) if (p.throw) { const d = hyp(p.x - g.x, p.y - g.y); if (d < bd) { bd = d; best = p; } }
-  if (best) {
-    M.props = M.props.filter(p => p !== best);
-    burst(best.x, best.y - 10, '#c77dff', 10);
-    throwAt(best.x, best.y - 12, best.name, 100, g.dmg);
-  } else throwAt(g.x, g.y - g.size * 0.4, Math.random() < 0.5 ? 'chair' : 'lamp', 105, g.dmg);
+  for (const p of M.props) if (p.throw && !p.lift) { const d = hyp(p.x - g.x, p.y - g.y); if (d < bd) { bd = d; best = p; } }
+  if (best) best.lift = M.t;
+  g.windup = { t: WINDUP, prop: best, kind: Math.random() < 0.5 ? 'chair' : 'lamp' };
+  SFX.windup();
+}
+function releaseThrow(g) {
+  const w = g.windup, p = w.prop;
+  if (p && M.props.includes(p)) {
+    M.props = M.props.filter(o => o !== p);
+    burst(p.x, p.y - 10, '#c77dff', 10);
+    throwAt(p.x, p.y - 12 - LIFT, p.name, 100, g.dmg);
+  } else throwAt(g.x, g.y - g.size * 0.4, w.kind, 105, g.dmg);
+  SFX.whoosh();
 }
 
 function throwAt(sx, sy, kind, speed, dmg) {
@@ -534,11 +690,17 @@ function throwAt(sx, sy, kind, speed, dmg) {
   M.shots.push({ kind, x: sx, y: sy, vx: (M.op.x - sx) / d * speed, vy: (M.op.y - 16 - sy) / d * speed, life: 4, rot: 0, dmg });
 }
 
+// Captura: o fantasma não some de uma vez; ele é esticado e puxado para dentro do bico em CAPTURE_TIME s.
+const CAPTURE_TIME = 0.35;
 function capture(g) {
   M.ghosts = M.ghosts.filter(o => o !== g);
+  if (g.windup && g.windup.prop) g.windup.prop.lift = 0;
   const gain = Math.round(g.reward * M.mul);
   M.bag += gain;
+  M.dying.push({ g, t: 0, x: g.x, y: g.y - g.size * 0.45 });
   burst(g.x, g.y - g.size * 0.45, '#8cff4a', g.boss ? 60 : 22);
+  M.hitstop = g.boss ? 0.18 : 0.06; shake(g.boss ? 0.6 : 0.12, g.boss ? 5 : 2);
+  SFX.capture(g.boss);
   if (!S.mem.includes(g.memory)) { S.mem.push(g.memory); save(); }
   toast(`${g.name} sugado · <b>+◆ ${gain}</b><br><i>${g.memory}</i>`, 3600);
 }
@@ -553,12 +715,14 @@ function placeTrap(type) {
   if (M.traps.length >= stat.slots()) return toast(`Só cabem ${stat.slots()} armadilhas em campo (upgrade Armadilhas).`, 1600);
   const d = hyp(mouse.x - M.op.x, mouse.y - M.op.y), k = Math.min(1, 70 / (d || 1));
   M.traps.push({ type, x: clamp(M.op.x + (mouse.x - M.op.x) * k, 20, W - 20), y: clamp(M.op.y + (mouse.y - M.op.y) * k, 100, H - 6) });
+  SFX.trap();
   S.traps[type]--; save();
 }
 
 // Imóvel 100% limpo: bônus do contrato; bairro inteiro limpo valoriza no mapa e libera o próximo (§6.6).
 function finishImovel() {
   if (scene !== 'mission') return;
+  SFX.hum(false);
   const { im, bairro: b } = M;
   const bonus = CONTRACT * im.threat;
   S.plasma += M.bag + bonus; S.clean[im.id] = true; save();
@@ -577,6 +741,7 @@ function finishImovel() {
 function leave(why) {
   if (scene !== 'mission' || M.over) return;
   M.over = true;
+  SFX.hum(false);
   const { im, bairro: b } = M;
   const full = why === 'evac' && M.cleared;
   const kept = full ? M.bag : Math.floor(M.bag / 2);
@@ -640,7 +805,8 @@ function missionHud() {
 
 function drawMission(now) {
   const op = M.op;
-  ctx.setTransform(2, 0, 0, 2, 0, 0);
+  const sh = M.shake > 0 ? M.shakeMag : 0;
+  ctx.setTransform(2, 0, 0, 2, Math.round(rnd(-sh, sh)) * 2, Math.round(rnd(-sh, sh)) * 2);
   ctx.imageSmoothingEnabled = false;
   const room = ROOMS[M.kind];
   if (!room) {
@@ -713,8 +879,16 @@ function drawMission(now) {
   }
   for (const p of M.parts) { ctx.globalAlpha = Math.min(1, p.life * 2); ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); }
   ctx.globalAlpha = 1;
+  for (const d of M.dying) drawDying(d);
 
   if (M.dark) drawDarkness(now);
+
+  // Borda vermelha logo depois de um golpe.
+  if (M.red > 0) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+    g.addColorStop(0, 'rgba(255,40,40,0)'); g.addColorStop(1, `rgba(255,40,40,${0.55 * M.red / 0.45})`);
+    ctx.fillStyle = g; ctx.fillRect(-8, -8, W + 16, H + 16);
+  }
 
   // Decodificador (upgrade de história, §6.4): a memória aparece ao passar a mira sobre o fantasma.
   if (S.up.decoder) {
@@ -732,36 +906,82 @@ function drawMission(now) {
 
 function drawProp(p) {
   const im = IMG['props/' + p.name];
+  if (!im || !im.width) return;
   if (!p.flat) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(p.x, p.y - 3, im.width * 0.38, 4, 0, 0, 7); ctx.fill(); }
-  ctx.drawImage(im, Math.round(p.x - im.width / 2), Math.round(p.flat ? p.y - im.height / 2 : p.y - im.height + 4));
+  // Durante o aviso do Poltergeist o móvel treme, sobe e ganha um contorno roxo.
+  let dx = 0, dy = 0;
+  if (p.lift) {
+    const k = clamp((M.t - p.lift) / WINDUP, 0, 1);
+    dx = Math.round(rnd(-1, 1) * (1 + k)); dy = -Math.round(LIFT * k);
+    ctx.filter = `drop-shadow(0 0 2px #c77dff) brightness(${1 + 0.4 * k})`;
+  }
+  ctx.drawImage(im, Math.round(p.x - im.width / 2) + dx, Math.round(p.flat ? p.y - im.height / 2 : p.y - im.height + 4) + dy);
+  ctx.filter = 'none';
 }
 
-// Parede interna em 3/4: tampo escuro em cima e a face com a textura da parede do cômodo embaixo.
+// Fantasma capturado: estica na direção do bico, encolhe e é puxado para dentro.
+function drawDying(d) {
+  const g = d.g, k = d.t / CAPTURE_TIME, nz = nozzle(), im = IMG[g.img];
+  const x = d.x + (nz.x - d.x) * k * k, y = d.y + (nz.y - d.y) * k * k;
+  const a = Math.atan2(nz.y - d.y, nz.x - d.x), sc = 1 - k * 0.9;
+  ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+  ctx.scale(sc * (1 + k * 1.5), sc * (1 - k * 0.5));
+  ctx.rotate(-a);
+  ctx.globalAlpha = 0.9 - k * 0.5; ctx.filter = `brightness(${1.3 + k})`;
+  ctx.drawImage(im, -g.size / 2, -g.size * 0.55);
+  ctx.restore(); ctx.filter = 'none'; ctx.globalAlpha = 1;
+}
+
+// Parede interna em 3/4 (como as de Stardew Valley): o tampo é uma faixa de reboco com moldura clara e sombra
+// interna, a face embaixo usa a textura da parede do cômodo com rodapé, e a parede projeta sombra no piso.
+// Antes o tampo era um retângulo escuro liso, que parecia um pilar solto no meio da sala.
 function drawWall(w, room) {
-  const face = 22;
-  ctx.fillStyle = '#2b2236'; ctx.fillRect(w.x, w.y - face, w.w, w.h);
-  ctx.fillStyle = '#4a3d5c'; ctx.fillRect(w.x, w.y - face, w.w, 2);
-  ctx.save(); ctx.beginPath(); ctx.rect(w.x, w.y + w.h - face, w.w, face); ctx.clip();
-  for (let x = w.x - (w.x % 128); x < w.x + w.w; x += 128) ctx.drawImage(IMG['interior/' + room.wall], x, w.y + w.h - face - 30);
+  const face = 22, top = w.y - face, topH = w.h;
+  ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(w.x + 2, w.y + w.h, w.w, 4);              // sombra no piso
+  ctx.fillStyle = '#5a4870'; ctx.fillRect(w.x, top, w.w, topH);                              // tampo
+  ctx.fillStyle = '#6e5a88'; ctx.fillRect(w.x + 1, top + 1, w.w - 2, topH - 2);
+  ctx.fillStyle = '#4a3a5e';
+  for (let y = top + 6; y < top + topH - 2; y += 8) ctx.fillRect(w.x + 2, y, w.w - 4, 1);      // juntas do reboco
+  ctx.fillStyle = '#8a76a6'; ctx.fillRect(w.x, top, w.w, 1); ctx.fillRect(w.x, top, 1, topH); // luz de cima/esquerda
+  ctx.fillStyle = '#2b2236'; ctx.fillRect(w.x + w.w - 1, top, 1, topH);
+  const fy = w.y + w.h - face;                                                               // face
+  ctx.save(); ctx.beginPath(); ctx.rect(w.x, fy, w.w, face); ctx.clip();
+  for (let x = w.x - (w.x % 128); x < w.x + w.w; x += 128) ctx.drawImage(IMG['interior/' + room.wall], x, fy - 30);
   ctx.restore();
-  ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(w.x, w.y + w.h, w.w, 3);
+  ctx.fillStyle = '#1a1424'; ctx.fillRect(w.x, fy, w.w, 1);
+  ctx.fillStyle = '#3b2c22'; ctx.fillRect(w.x, w.y + w.h - 3, w.w, 3);                      // rodapé
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(w.x, fy, 1, face); ctx.fillRect(w.x + w.w - 1, fy, 1, face);
 }
 
 function drawOperator(now) {
   const op = M.op;
   ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(op.x, op.y - 2, 11, 4, 0, 0, 7); ctx.fill();
-  const bob = op.moving ? Math.abs(Math.sin(now / 90)) * 2 : 0;
-  if (M.t - op.hurt < 0.2) ctx.filter = 'brightness(2) saturate(0)';
-  ctx.drawImage(IMG['chars/operador/' + DIRS[op.dir]], Math.round(op.x - 24), Math.round(op.y - 46 - bob));
-  ctx.filter = 'none';
+  // Andando: quadros da caminhada do PixelLab; parado (ou se a animação não carregou): a pose da direção.
+  const walkIm = IMG[`chars/operador/walk/${DIRS[op.dir]}_${Math.floor(op.walk) % WALK_FRAMES}`];
+  const im = op.moving && walkIm && walkIm.width ? walkIm : IMG['chars/operador/' + DIRS[op.dir]];
+  const bob = op.moving && im !== walkIm ? Math.abs(Math.sin(now / 90)) * 2 : 0;
+  // Invencível depois do golpe: pisca.
+  if (M.t - op.hurt < IFRAMES && Math.floor(M.t * 20) % 2 === 0) ctx.globalAlpha = 0.45;
+  if (M.t - op.hurt < 0.12) ctx.filter = 'brightness(2) saturate(0)';
+  ctx.drawImage(im, Math.round(op.x - im.width / 2), Math.round(op.y - 46 - bob - (im.height - 48)));
+  ctx.filter = 'none'; ctx.globalAlpha = 1;
 }
 
 function drawGhost(g, now) {
   const s = g.size, bob = Math.sin(now / 400 + g.seed) * 3;
   ctx.fillStyle = 'rgba(80,255,120,.18)'; ctx.beginPath(); ctx.ellipse(g.x, g.y - 2, s * 0.25, s * 0.08, 0, 0, 7); ctx.fill();
   ctx.globalAlpha = 0.82 + 0.1 * Math.sin(now / 200 + g.seed);
-  if (M.t - g.aimed < 0.1) ctx.filter = 'brightness(1.4)';
-  ctx.drawImage(IMG[g.img], Math.round(g.x - s / 2), Math.round(g.y - s - 6 + bob));
+  const sucked = M.t - g.lastHit < 0.05 && M.beam && M.beam.hit;
+  const warn = (g.windup && !g.windup.prop) || g.spit > 0;
+  if (sucked || warn) ctx.filter = `brightness(${warn ? 1.6 + 0.4 * Math.sin(now / 40) : 1.4})`;
+  else if (M.t - g.aimed < 0.1) ctx.filter = 'brightness(1.4)';
+  // Sendo sugado: treme e estica um pouco; chefe prestes a cuspir: incha.
+  const jx = sucked ? Math.round(rnd(-1, 1)) : 0, sx = sucked ? 0.92 : 1, sy = sucked ? 1.08 : g.spit > 0 ? 1.06 : 1;
+  ctx.drawImage(IMG[g.img], Math.round(g.x - s * sx / 2) + jx, Math.round(g.y - s * sy - 6 + bob), s * sx, s * sy);
+  if (g.windup && !g.windup.prop) {   // objeto solto girando sobre o fantasma durante o aviso
+    ctx.save(); ctx.translate(g.x, g.y - s - 4 + bob); ctx.rotate(now / 80);
+    ctx.fillStyle = g.windup.kind === 'chair' ? '#7a4a2a' : '#f2c46b'; ctx.fillRect(-4, -4, 8, 8); ctx.restore();
+  }
   ctx.filter = 'none'; ctx.globalAlpha = 1;
   if (g.p < g.max || M.t - g.aimed < 1) {
     const w = g.boss ? 60 : 30, bx = g.x - w / 2, by = g.y - s - 12 + bob;
@@ -823,6 +1043,7 @@ cv.addEventListener('pointermove', ev => {
   if (scene === 'map') { hoverBairro = bairroAt(p.x, p.y); cv.style.cursor = hoverBairro ? 'pointer' : 'default'; }
   else cv.style.cursor = 'crosshair';
 });
+addEventListener('pointerdown', () => SFX.unlock());
 cv.addEventListener('pointerdown', ev => {
   const p = viewPos(ev);
   mouse.x = p.x / 2; mouse.y = p.y / 2;
@@ -839,6 +1060,8 @@ addEventListener('blur', () => { mouse.down = false; keys.clear(); });
 addEventListener('keydown', ev => {
   const k = ev.key.toLowerCase();
   keys.add(k);
+  SFX.unlock();
+  if (k === 'm') toast(SFX.toggleMute() ? 'Som desligado [M]' : 'Som ligado [M]', 1200);
   if (scene === 'mission') {
     if (k === 'q') placeTrap('auto');
     if (k === 'e') placeTrap('sup');
@@ -873,7 +1096,7 @@ function intro() {
     <div class="cast"><img src="${ART}chars/operador/south.png" width="96" alt=""><img src="${ART}ghosts/errante.png" width="96" alt=""><img src="${ART}ghosts/poltergeist.png" width="96" alt=""></div>
     <div class="memo">MEMORANDO — LimpaCorp Espectral<br><br>Bem-vindo(a), operador(a) nº 0451! A cidade tem <b>4 bairros contaminados</b>. Comece pela Vila Operária:
     entre em cada imóvel, limpe a rua, o térreo e o porão, e <b>sugue o plasma</b> de cada presença. Lembre-se: fantasma não é gente. É estoque.</div>
-    <small>WASD move · segure o botão do mouse sobre o fantasma para sugar (parado rende o dobro) · Q/E armadilhas · Esc sai</small>
+    <small>WASD move · segure o botão do mouse sobre o fantasma para sugar (parado rende o dobro) · Q/E armadilhas · Esc sai · M som</small>
     <button class="btn go" id="start">Bater o ponto</button>`);
   $('start').onclick = () => { S.intro = true; save(); goMap(); };
 }
