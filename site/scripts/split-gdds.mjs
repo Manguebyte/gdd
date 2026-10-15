@@ -126,6 +126,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'FuryHauler.md',
+    slug: 'fury-hauler',
+    label: 'Fury Hauler',
+    description: 'Tower defense em movimento e roguelite isométrico: arme um caminhão estilo Mad Max que segue sozinho de A até B.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'CacaAsBruxas.md',
     slug: 'caca-as-bruxas',
