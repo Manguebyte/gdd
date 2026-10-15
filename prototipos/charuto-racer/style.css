@@ -1,0 +1,108 @@
+/* Charuto Racer — protótipo web. Tela de referência 640×360 (o dobro da arte de 320×180),
+   escalada para caber na janela (game.js → fit()). */
+:root {
+  --ink: #f3ead2;
+  --muted: #a9b7a0;
+  --panel: #1d2a22;
+  --panel-2: #25382c;
+  --line: #3d5446;
+  --gold: #f2c230;
+  --red: #c42a2a;
+  --green: #2f8a4a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0d140f; }
+body { font-family: 'VT323', monospace; color: var(--ink); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+.hidden { display: none !important; }
+
+#app { position: absolute; width: 640px; height: 360px; transform-origin: 0 0; overflow: hidden; background: #000; }
+#view { position: absolute; inset: 0; width: 640px; height: 360px; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 10; align-items: center; justify-content: center;
+  padding: 24px; text-align: center; background: #0d140f; color: var(--ink); font-size: 28px;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+/* ------------------------------------------------------------------ HUD */
+#hud { position: absolute; inset: 0; pointer-events: none; text-shadow: 2px 2px 0 #000; font-size: 20px; line-height: 1; }
+#hud-pos { position: absolute; left: 10px; top: 6px; font-family: 'Press Start 2P', monospace; }
+#hud-pos b { font-size: 26px; color: var(--gold); font-weight: normal; }
+#hud-pos span { font-size: 12px; }
+#hud-lap { position: absolute; left: 10px; top: 38px; display: flex; flex-direction: column; gap: 2px; }
+#hud-right { position: absolute; right: 10px; top: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+#h-nitro { color: #7fd0ff; }
+#hud-gauges { position: absolute; left: 10px; bottom: 10px; display: grid; grid-template-columns: auto 90px; gap: 4px 6px; align-items: center; font-size: 16px; }
+.bar { height: 8px; background: rgba(0,0,0,.55); border: 1px solid #000; }
+.bar i { display: block; height: 100%; background: var(--gold); }
+#h-tire { background: #9ad06a; }
+#hud-speed { position: absolute; right: 10px; bottom: 8px; text-align: right; }
+#hud-speed b { font-family: 'Press Start 2P', monospace; font-size: 20px; font-weight: normal; }
+#h-gear { display: inline-block; min-width: 44px; color: var(--gold); }
+#h-rpm { display: flex; gap: 2px; justify-content: flex-end; margin-bottom: 4px; }
+#h-rpm i { width: 7px; height: 10px; background: rgba(0,0,0,.5); border: 1px solid #000; }
+#h-rpm i.on { background: #e8e2c4; }
+#h-rpm i.on.hot { background: var(--red); }
+#h-center {
+  position: absolute; left: 0; right: 0; top: 120px; text-align: center; white-space: pre-line;
+  font-family: 'Press Start 2P', monospace; font-size: 18px; line-height: 1.5; color: #fff;
+}
+#h-center.big { font-size: 44px; color: var(--gold); top: 110px; }
+
+/* ------------------------------------------------------------------ overlay (resultado, pausa) */
+#overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); }
+#modal { background: var(--panel); border: 2px solid var(--line); box-shadow: 0 0 0 2px #000; padding: 10px 16px; min-width: 300px; max-width: 560px; }
+#modal h2 { font-family: 'Press Start 2P', monospace; font-size: 13px; margin: 2px 0 8px; color: var(--gold); text-align: center; }
+#modal table { width: 100%; border-collapse: collapse; font-size: 17px; }
+#modal td { padding: 0 6px; }
+#modal tr.me td { color: var(--gold); }
+#modal .sum { margin: 8px 0 2px; text-align: center; font-size: 19px; }
+#modal .buttons { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+.btn { background: var(--green); padding: 4px 14px; border: 2px solid #000; box-shadow: inset 0 -3px 0 rgba(0,0,0,.3); font-size: 20px; }
+.btn:hover:not(:disabled) { filter: brightness(1.15); }
+.btn.red { background: var(--red); }
+
+/* ------------------------------------------------------------------ garagem */
+#garage {
+  position: absolute; inset: 0; display: flex; flex-direction: column; padding: 6px 8px;
+  background: repeating-linear-gradient(0deg, #16211a 0 2px, #142019 2px 4px);
+}
+#garage header { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; gap: 12px; }
+#garage h1 { font-family: 'Press Start 2P', monospace; font-size: 14px; margin: 0; color: var(--gold); letter-spacing: 1px; }
+#g-season { color: var(--muted); font-size: 18px; }
+#g-money { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #9ad06a; }
+#g-cols { flex: 1; display: grid; grid-template-columns: 186px 1fr 150px; gap: 6px; margin-top: 6px; min-height: 0; }
+#garage footer { font-size: 13px; white-space: nowrap; color: var(--muted); text-align: center; margin-top: 4px; }
+.card { background: var(--panel); border: 2px solid var(--line); padding: 4px 6px; }
+#g-left, #g-right { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+#g-left .card:last-child { flex: 1; min-height: 0; overflow: hidden; }
+h2 { font-family: 'Press Start 2P', monospace; font-size: 9px; margin: 2px 0 4px; color: var(--muted); }
+#g-next .gp { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--gold); }
+#g-next .name { font-size: 20px; line-height: 1; margin: 2px 0; }
+#g-next .info { color: var(--muted); font-size: 15px; line-height: 1; }
+#g-next .last { font-size: 15px; line-height: 1; margin-top: 2px; }
+#g-standings { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 0.95; }
+#g-standings td:last-child { text-align: right; }
+#g-standings tr.me td { color: var(--gold); }
+#g-shop { display: flex; flex-direction: column; min-height: 0; }
+#g-tabs { display: flex; gap: 3px; margin-bottom: 4px; }
+#g-tabs button { flex: 1; background: var(--panel-2); border: 2px solid var(--line); font-size: 17px; padding: 1px 0; }
+#g-tabs button.on { background: var(--gold); color: #1d2a22; border-color: #000; }
+#g-parts { flex: 1; display: flex; flex-direction: column; gap: 3px; overflow: auto; }
+.part { display: grid; grid-template-columns: 32px 1fr auto; gap: 6px; align-items: center; background: var(--panel-2); border: 1px solid var(--line); padding: 2px 4px; }
+.part canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+.part .n { font-size: 18px; line-height: 1; }
+.part .d { font-size: 14px; color: var(--muted); line-height: 1; }
+.part button { min-width: 84px; font-size: 16px; padding: 2px 6px; border: 2px solid #000; background: var(--green); }
+.part button.owned { background: #4d6b58; }
+.part button.equipped { background: transparent; border-color: var(--gold); color: var(--gold); }
+.part .price { display: block; font-size: 14px; color: #9ad06a; text-align: center; }
+#g-car { display: block; width: 128px; height: 72px; margin: 0 auto 2px; image-rendering: pixelated; }
+#g-stats { font-size: 15px; line-height: 1.05; }
+#g-stats div { display: flex; justify-content: space-between; }
+#g-repair-text { font-size: 15px; margin-bottom: 3px; }
+#g-repair, #g-gearbox { display: block; width: 100%; margin-top: 3px; background: var(--panel-2); border: 2px solid var(--line); font-size: 17px; }
+#g-race { margin-top: auto; background: var(--red); border: 2px solid #000; font-family: 'Press Start 2P', monospace; font-size: 13px; padding: 9px 0; box-shadow: inset 0 -4px 0 rgba(0,0,0,.3); }
+#g-race:hover:not(:disabled) { filter: brightness(1.15); }

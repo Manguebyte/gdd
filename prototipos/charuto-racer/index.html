@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Charuto Racer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="view" width="320" height="180"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="hud-pos"><b id="h-pos">P10</b><span id="h-pos-total">/10</span></div>
+    <div id="hud-lap"><span id="h-lap">VOLTA 1/4</span><span id="h-time">0:00.0</span></div>
+    <div id="hud-right"><span id="h-damage">DANO 0%</span><span id="h-nitro">NITRO ●●●</span></div>
+    <div id="hud-gauges">
+      <label>COMB.</label><div class="bar"><i id="h-fuel"></i></div>
+      <label>PNEUS</label><div class="bar"><i id="h-tire"></i></div>
+    </div>
+    <div id="hud-speed">
+      <div id="h-rpm"></div>
+      <div><b id="h-speed">0</b> km/h <span id="h-gear">1ª A</span></div>
+    </div>
+    <div id="h-center"></div>
+  </div>
+
+  <div id="overlay" class="hidden"><div id="modal"></div></div>
+
+  <div id="garage" class="hidden">
+    <header>
+      <h1>CHARUTO RACER</h1>
+      <div id="g-season"></div>
+      <div id="g-money"></div>
+    </header>
+    <div id="g-cols">
+      <section id="g-left">
+        <div id="g-next" class="card"></div>
+        <div class="card"><h2>CAMPEONATO</h2><table id="g-standings"></table></div>
+      </section>
+      <section id="g-shop" class="card">
+        <div id="g-tabs"></div>
+        <div id="g-parts"></div>
+      </section>
+      <section id="g-right">
+        <div class="card">
+          <canvas id="g-car" width="64" height="36"></canvas>
+          <div id="g-stats"></div>
+        </div>
+        <div class="card">
+          <div id="g-repair-text"></div>
+          <button id="g-repair">CONSERTAR</button>
+          <button id="g-gearbox"></button>
+        </div>
+        <button id="g-race">CORRER ▶</button>
+      </section>
+    </div>
+    <footer>↑ acelera · ↓ freia · ←→ vira · Espaço nitro · E/Q marchas (manual) · Esc pausa · Enter corre · controle também</footer>
+  </div>
+</div>
+<div id="rotate">Gire o celular ou jogue no computador (teclado ou controle)</div>
+<script src="data.js"></script>
+<script src="sim.js"></script>
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

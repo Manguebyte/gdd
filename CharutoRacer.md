@@ -822,6 +822,8 @@ public class GameConfig : ScriptableObject
     public float maxOffsetX = 2.5f;
     [Tooltip("Multiplica a aceleração com câmbio automático. 1 = sem diferença (Parte 1 §3.2, Em aberto).")]
     public float automaticAccelFactor = 1f;
+    [Tooltip("Velocidade de referência da direção e da força centrífuga. Usar a velocidade real (e não a fração da velocidade máxima do carro) faz um motor melhor também exigir mais aderência.")]
+    public float referenceSpeedKmh = 200f;
 
     [Header("Combustível, pneus e nitro")]
     public float fuelCapacity = 100f;      // em %
@@ -1737,7 +1739,10 @@ public class PlayerCarController : MonoBehaviour
         HandleGears();
 
         var seg = track.FindSegment(Car.z);
-        float speedPercent = Mathf.Clamp01(Car.speed / (Stats.maxSpeedKmh * K));
+        // Fração de uma velocidade fixa de referência, não da velocidade máxima
+        // deste carro: um carro mais rápido sente mais a curva e precisa de
+        // pneus e chassi melhores. Passa de 1 acima da referência.
+        float speedPercent = Car.speed / (config.referenceSpeedKmh * K);
 
         // Direção: virar rende mais quanto mais rápido o carro vai.
         float dx = dt * config.steerSpeed * speedPercent;
@@ -3359,7 +3364,7 @@ Todos dependem de decisões **Em aberto** da Parte 1 §14:
 - **Chuva:** menos aderência (multiplicador em `PlayerCarController`), partículas e paleta mais escura.
 - **IA mais rica:** adversários que gastam combustível, param no box, batem e abandonam; evolução durante a temporada.
 - **Mini-mapa e menu principal.**
-- **Protótipo web:** como os outros jogos do estúdio, um protótipo jogável em `prototipos/charuto-racer/` (HTML/JS, sem build) seguindo a Parte 1 ajudaria a fechar o balanceamento antes do Unity.
+- **Protótipo web:** já existe em `prototipos/charuto-racer/` (HTML/JS, sem build), com as regras deste guia portadas para JavaScript. O `README.md` de lá traz a primeira leitura do balanceamento dos placeholders.
 
 ---
 *Versão: rascunho inicial — a refinar conforme prototipagem.*
