@@ -9,9 +9,14 @@
   const { CONFIG, DEFENSES, DEFENSE_ORDER, ABILITIES } = window.FH_DATA;
   const { Sim, autoPlay, levelMult } = window.FH;
 
-  const W = 1280, H = 720;
+  // A altura lógica é fixa (720). A largura acompanha a tela entre 16:9 e
+  // ~21:9, para celulares largos não ficarem com faixas pretas dos lados.
+  let W = 1280;
+  const H = 720;
+  // Toque (celular/tablet): áreas de toque maiores, sem hover e textos de toque.
+  const TOUCH = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
   const HW = 16, HH = 8;          // meia largura / meia altura de 1 metro de chão, em px
-  const CAM_Y = H * 0.56;         // o caminhão fica um pouco abaixo do centro
+  const CAM_Y = H * (TOUCH ? 0.48 : 0.56); // no toque a barra de baixo é maior: o caminhão sobe um pouco
   const SLOT_H = 27;              // altura do teto do caminhão, em px
   const ZOOM = 1.25;              // aproximação da câmera (tudo é desenhado em escala 1 e ampliado)
 
@@ -40,12 +45,16 @@
 
   // ------------------------------------------------------------------ DOM
   const $ = (id) => document.getElementById(id);
-  const app = $('app'), canvas = $('view'), ctx = canvas.getContext('2d');
+  const app = $('app'), canvas = $('view');
+  let ctx = canvas.getContext('2d');
   const hud = $('hud'), overlay = $('overlay'), modal = $('modal');
   const shopEl = $('shop'), abilitiesEl = $('abilities'), panel = $('panel');
 
   let scale = 1, k = 1;
   function fit() {
+    W = Math.round(Math.min(1700, Math.max(1280, H * innerWidth / innerHeight)));
+    app.style.width = `${W}px`;
+    canvas.style.width = `${W}px`;
     scale = Math.min(innerWidth / W, innerHeight / H);
     const ox = (innerWidth - W * scale) / 2, oy = (innerHeight - H * scale) / 2;
     app.style.transform = `translate(${ox}px, ${oy}px) scale(${scale})`;
@@ -55,6 +64,8 @@
     k = canvas.width / W;
   }
   addEventListener('resize', fit);
+  addEventListener('orientationchange', () => setTimeout(fit, 200));
+  document.body.classList.toggle('touch', TOUCH);
   fit();
 
   // ------------------------------------------------------------------ Estado da tela
@@ -65,6 +76,7 @@
   let shownScreen = undefined;
   let runStartShop = [];    // defesas liberadas no começo da run (para avisar desbloqueios)
   let autoTimer = 0;
+  let refMode = false;      // exportando referências para o PixelLab (#refs): sem sombras
 
   const cam = { gx: 0 };
   let camWX = 0, camWY = 0, shake = 0, shakeX = 0, shakeY = 0;
@@ -134,7 +146,63 @@
     ellipse(P(gx, gy, base + r * 0.6), r * 0.4, r * 0.3, '#5b5450');
   }
   function shadow(gx, gy, L, Wd) {
+    if (refMode) return;
     groundRect(gx - L / 2 - 0.2, gx + L / 2 + 0.4, gy - Wd / 2 - 0.4, gy + Wd / 2 + 0.1, 'rgba(40,20,5,.22)');
+  }
+
+  // ------------------------------------------------------------------ Sprites PixelLab
+  // POR QUE: a arte final é pixel art do PixelLab (Sprites/FuryHauler/). Cada
+  // sprite é um redesenho da forma vetorial, no mesmo ângulo e tamanho, então
+  // basta colar o ponto de apoio (âncora, em px do PNG) no chão.
+  // ESTRATÉGIA: 1 px de arte = 1 px da tela de baixa resolução (metade da tela
+  // lógica), que depois é ampliada sem suavização. Sprite que não carregou (ou
+  // #vector na URL) cai de volta no desenho vetorial.
+  const SPRITE_BASE = '../../Sprites/FuryHauler/';
+  // Nome → { path, ax, ay }. Gerado por Sprites/FuryHauler/_tools/baixar.py.
+  const SPRITES = {};
+  for (const [name, sp] of Object.entries(window.FH_SPRITES || {})) SPRITES[name] = Object.assign({}, sp);
+  const TURRET_DIRS = ['south', 'south-east', 'east', 'north-east', 'north', 'north-west', 'west', 'south-west'];
+  const SPRITE_PARTS = { boss: ['boss-cab', 'boss-hull'] }; // desenhadas nessa ordem
+  const hasSprite = (name) => (SPRITE_PARTS[name] || [name]).every((n) => SPRITES[n] && SPRITES[n].img);
+  if (!flags.has('vector')) {
+    for (const sp of Object.values(SPRITES)) {
+      const img = new Image();
+      img.onload = () => {
+        // Versão branca do sprite, para a piscada de dano.
+        const c = document.createElement('canvas');
+        c.width = img.width; c.height = img.height;
+        const g = c.getContext('2d');
+        g.drawImage(img, 0, 0);
+        g.globalCompositeOperation = 'source-in';
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        sp.white = c;
+        sp.img = img;
+      };
+      img.src = `${SPRITE_BASE}${sp.path}.png`;
+    }
+  }
+  const ART = 1;            // px de arte por px da tela lógica
+  const LOW = ZOOM * ART;   // px de arte por px sem zoom
+  // Desenha um sprite com a âncora no ponto do chão. Devolve false se não houver sprite.
+  function drawSprite(name, gx, gy, h = 0, flash = false) {
+    if (refMode) return false;
+    const sp = SPRITES[name];
+    if (!sp || !sp.img) return false;
+    const p = P(gx, gy, h);
+    const lx = Math.round(p[0] * LOW + (W / 2) * (1 - ZOOM) * ART);
+    const ly = Math.round(p[1] * LOW + CAM_Y * (1 - ZOOM) * ART);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(flash ? sp.white : sp.img, lx - sp.ax, ly - sp.ay);
+    ctx.restore();
+    return true;
+  }
+  // Direção da torre: a mais perto, entre as 8 da tela, da direção da mira no chão.
+  function turretSprite(id, aim) {
+    const sx = (aim[0] - aim[1]) * HW, sy = -(aim[0] + aim[1]) * HH; // vetor da mira na tela
+    const ang = Math.atan2(sx, sy); // 0 = para baixo (south), cresce para a direita (east)
+    const i = ((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8;
+    return `turret-${id}-${TURRET_DIRS[i]}`;
   }
 
   function hash(ix, iy, salt = 0) {
@@ -181,33 +249,41 @@
     deco.sort((a, c) => (c.gx + c.gy) - (a.gx + a.gy));
     for (const d of deco) {
       if (d.v >= 0.22) continue;
-      if (d.v < 0.1) {
-        const n = 1 + Math.floor(d.r * 3);
-        for (let i = 0; i < n; i++) {
-          const s = 0.5 + hash(i, d.gx | 0, 7) * 0.9;
-          box(d.gx + i * 0.7, d.gy - i * 0.4, s, s * 0.9, 4 + s * 6, 0, tones(i % 2 ? '#8a6a4a' : '#7a5c40'));
-        }
-      } else if (d.v < 0.16) {
-        const p = P(d.gx, d.gy);
-        ctx.strokeStyle = '#6e5a2e'; ctx.lineWidth = 1.5;
-        for (let i = 0; i < 6; i++) {
-          const a = -Math.PI / 2 + (i - 2.5) * 0.35;
-          ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0] + Math.cos(a) * 9, p[1] + Math.sin(a) * 9 - 2); ctx.stroke();
-        }
-      } else if (d.v < 0.19) {
-        const p = P(d.gx, d.gy);
-        ellipse([p[0], p[1] - 3], 5, 4, '#efe6d2', 'rgba(0,0,0,.3)');
-        ellipse([p[0] - 2, p[1] - 3], 1.2, 1.2, '#2a1e14');
-        ellipse([p[0] + 2, p[1] - 3], 1.2, 1.2, '#2a1e14');
-        line([p[0] + 6, p[1]], [p[0] + 14, p[1] + 2], '#efe6d2', 2);
-      } else if (d.v < 0.212) {
-        ellipse(P(d.gx, d.gy, 3), 8, 5, '#2a2420', 'rgba(0,0,0,.4)');
-        ellipse(P(d.gx, d.gy, 3), 3.5, 2.2, '#c49a64');
-      } else {
-        shadow(d.gx, d.gy, 3.2, 1.8);
-        box(d.gx, d.gy, 3.2, 1.7, 7, 0, tones('#7a4a2a'));
-        box(d.gx - 0.4, d.gy, 1.3, 1.4, 5, 7, tones('#5a3a24'));
+      drawDeco(d);
+    }
+  }
+
+  // Um objeto de cenário (pedras, arbusto, caveira, pneu, carcaça).
+  function drawDeco(d) {
+    const name = d.v < 0.1 ? `rocks-${1 + Math.floor(d.r * 3)}` : d.v < 0.16 ? 'bush' : d.v < 0.19 ? 'skull' : d.v < 0.212 ? 'tire' : 'wreck';
+    if (name === 'wreck') shadow(d.gx, d.gy, 3.2, 1.8);
+    if (drawSprite(name, d.gx, d.gy)) return;
+    if (d.v < 0.1) {
+      const n = 1 + Math.floor(d.r * 3);
+      for (let i = 0; i < n; i++) {
+        const s = 0.5 + hash(i, d.gx | 0, 7) * 0.9;
+        box(d.gx + i * 0.7, d.gy - i * 0.4, s, s * 0.9, 4 + s * 6, 0, tones(i % 2 ? '#8a6a4a' : '#7a5c40'));
       }
+    } else if (d.v < 0.16) {
+      const p = P(d.gx, d.gy);
+      ctx.strokeStyle = '#6e5a2e'; ctx.lineWidth = 1.5;
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i - 2.5) * 0.35;
+        ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0] + Math.cos(a) * 9, p[1] + Math.sin(a) * 9 - 2); ctx.stroke();
+      }
+    } else if (d.v < 0.19) {
+      const p = P(d.gx, d.gy);
+      ellipse([p[0], p[1] - 3], 5, 4, '#efe6d2', 'rgba(0,0,0,.3)');
+      ellipse([p[0] - 2, p[1] - 3], 1.2, 1.2, '#2a1e14');
+      ellipse([p[0] + 2, p[1] - 3], 1.2, 1.2, '#2a1e14');
+      line([p[0] + 6, p[1]], [p[0] + 14, p[1] + 2], '#efe6d2', 2);
+    } else if (d.v < 0.212) {
+      ellipse(P(d.gx, d.gy, 3), 8, 5, '#2a2420', 'rgba(0,0,0,.4)');
+      ellipse(P(d.gx, d.gy, 3), 3.5, 2.2, '#c49a64');
+    } else {
+      shadow(d.gx, d.gy, 3.2, 1.8);
+      box(d.gx, d.gy, 3.2, 1.7, 7, 0, tones('#7a4a2a'));
+      box(d.gx - 0.4, d.gy, 1.3, 1.4, 5, 7, tones('#5a3a24'));
     }
   }
 
@@ -322,7 +398,7 @@
   // ------------------------------------------------------------------ Caminhão
   const TRUCK = { cargoX: -0.85, cargoL: 5.5, cabX: 2.9, cabL: 1.8, width: 2.6 };
 
-  function drawTruck() {
+  function drawTruck(bodyOnly = false) {
     const t = sim.truck;
     const gx = t.x, gy = 0;
     const bob = sim.running ? Math.sin(time * 22) * 0.7 : 0;
@@ -330,6 +406,12 @@
     const base = 5 + bob;
 
     shadow(gx - 0.2, gy, 8.6, TRUCK.width);
+    if (!drawSprite('truck', gx, gy, bob, flash)) drawTruckVector(gx, gy, base, flash);
+    if (bodyOnly) return;
+    drawTruckTop(bob);
+  }
+
+  function drawTruckVector(gx, gy, base, flash) {
     for (const x of [-3.0, -1.9, 0.9, 2.9]) wheel(gx + x, gy - 1.25, 5.5);
     for (const x of [-3.0, -1.9]) wheel(gx + x - 0.1, gy + 1.0, 5.5);
 
@@ -361,7 +443,10 @@
       }
     }
 
-    // Slots, defesas e saqueadores: de trás para frente.
+  }
+
+  // Slots, defesas e saqueadores: de trás para frente.
+  function drawTruckTop(bob) {
     const order = sim.slots.slice().sort((a, b) => (b.offset[0] + b.offset[1]) - (a.offset[0] + a.offset[1]));
     for (const slot of order) {
       const [sx, sy] = sim.slotGround(slot);
@@ -399,7 +484,9 @@
     const aim = d.aim || [1, 0];
     const tip = (len, hh) => P(gx + aim[0] * len, gy + aim[1] * len, h + hh);
     ellipse(P(gx, gy, h), 8, 4, '#1c1612');
-    switch (def.kind) {
+    if (drawSprite(turretSprite(def.id, aim), gx, gy, h)) {
+      if (def.kind === 'mg' && muzzle[slot.index] > 0) ellipse(tip(1.3, 5), 4, 3, '#ffe58a');
+    } else switch (def.kind) {
       case 'mg': {
         box(gx, gy, 0.7, 0.7, 6, h, tones('#55585e'));
         for (const off of [-0.12, 0.12]) {
@@ -448,6 +535,7 @@
 
   function drawRaider(e, h) {
     const p = P(e.x, e.y, h);
+    if (drawSprite('raider', e.x, e.y, h, e.flash > 0)) { drawHpBar(p[0], p[1] - 32, e); return; }
     const sway = Math.sin(time * 10 + e.seed) * 2;
     const white = e.flash > 0;
     line([p[0] - 3, p[1]], [p[0] - 2, p[1] - 8], '#2a1e14', 2.5);
@@ -469,7 +557,11 @@
     const flash = e.flash > 0, stunned = e.stun > 0;
     const b = stunned ? 0 : Math.sin(time * 20 + e.seed) * 0.8;
     const { x, y } = e;
-    switch (e.kind) {
+    const SHADOWS = { biker: [1.8, 0.6], rammer: [3.2, 1.9], boarder: [3.4, 2.1], boss: [9.4, 3.8] };
+    if (hasSprite(e.kind) && !refMode) {
+      shadow(x, y, ...SHADOWS[e.kind]);
+      for (const part of SPRITE_PARTS[e.kind] || [e.kind]) drawSprite(part, x, y, b, flash);
+    } else switch (e.kind) {
       case 'biker': {
         shadow(x, y, 1.8, 0.6);
         wheel(x + 0.7, y - 0.1, 4); wheel(x - 0.7, y - 0.1, 4);
@@ -512,27 +604,8 @@
       }
       case 'boss': {
         shadow(x, y, 9.4, 3.8);
-        for (const ox of [-3.6, -2.2, 0.4, 2.0, 3.6]) wheel(x + ox, y - 1.7, 7);
-        for (const yy of [1.4, 0.5, -0.4, -1.3]) {
-          poly([P(x + 4.6, yy - 0.3, 8), P(x + 4.6, yy + 0.3, 8), P(x + 5.8, yy, 12)], flash ? '#fff' : '#a8a296');
-        }
-        box(x + 3.6, y, 1.9, 3.3, 38, 6 + b, tones('#2e2c2a', flash));
-        for (const yy of [1.1, -1.1]) {
-          const a = P(x + 2.5, yy, 44), c = P(x + 2.5, yy, 64);
-          line(a, c, '#8a8478', 5);
-          if (!flash) ellipse([c[0], c[1] - 3], 4, 5, Math.sin(time * 30 + yy) > 0 ? '#ff8a2a' : '#ffd24a');
-        }
-        const hull = box(x - 1, y, 7.2, 3.6, 30, 6 + b, tones('#3c2a20', flash));
-        if (!flash) {
-          const sk = P(x - 1, hull.y0, 6 + b + 16);
-          ellipse(sk, 9, 8, '#e8dcc4', 'rgba(0,0,0,.5)');
-          ellipse([sk[0] - 3.5, sk[1] - 1], 2.5, 2.5, '#1a0e08');
-          ellipse([sk[0] + 3.5, sk[1] - 1], 2.5, 2.5, '#1a0e08');
-          for (let i = 0; i < 4; i++) line(P(hull.x0 + 0.6 + i * 1.8, hull.y0, 10), P(hull.x0 + 1.4 + i * 1.8, hull.y0, 30), 'rgba(160,60,20,.5)', 3);
-        }
-        box(x - 1.6, y, 1.6, 1.6, 8, hull.top, tones('#4a4038', flash));
-        const dx = sim.truck.x - x, dy = -y, len = Math.hypot(dx, dy) || 1;
-        line(P(x - 1.6, y, hull.top + 5), P(x - 1.6 + dx / len * 2.4, y + dy / len * 2.4, hull.top + 5), '#1a1612', 5);
+        drawBossCab(x, y, b, flash);
+        drawBossHull(x, y, b, flash);
         break;
       }
     }
@@ -547,6 +620,35 @@
       const p = P(x, y, enemyTop(e) + 6);
       drawHpBar(p[0], p[1], e);
     }
+  }
+
+  // O chefe é desenhado em duas peças (cabine e carroceria), porque inteiro
+  // ele passa do tamanho máximo de um sprite do PixelLab (256 px).
+  function drawBossCab(x, y, b, flash) {
+    for (const ox of [3.6]) wheel(x + ox, y - 1.7, 7);
+    for (const yy of [1.4, 0.5, -0.4, -1.3]) {
+      poly([P(x + 4.6, yy - 0.3, 8), P(x + 4.6, yy + 0.3, 8), P(x + 5.8, yy, 12)], flash ? '#fff' : '#a8a296');
+    }
+    box(x + 3.6, y, 1.9, 3.3, 38, 6 + b, tones('#2e2c2a', flash));
+    for (const yy of [1.1, -1.1]) {
+      const a = P(x + 2.5, yy, 44), c = P(x + 2.5, yy, 64);
+      line(a, c, '#8a8478', 5);
+      if (!flash) ellipse([c[0], c[1] - 3], 4, 5, Math.sin(time * 30 + yy) > 0 ? '#ff8a2a' : '#ffd24a');
+    }
+  }
+  function drawBossHull(x, y, b, flash) {
+    for (const ox of [-3.6, -2.2, 0.4, 2.0]) wheel(x + ox, y - 1.7, 7);
+    const hull = box(x - 1, y, 7.2, 3.6, 30, 6 + b, tones('#3c2a20', flash));
+    if (!flash) {
+      const sk = P(x - 1, hull.y0, 6 + b + 16);
+      ellipse(sk, 9, 8, '#e8dcc4', 'rgba(0,0,0,.5)');
+      ellipse([sk[0] - 3.5, sk[1] - 1], 2.5, 2.5, '#1a0e08');
+      ellipse([sk[0] + 3.5, sk[1] - 1], 2.5, 2.5, '#1a0e08');
+      for (let i = 0; i < 4; i++) line(P(hull.x0 + 0.6 + i * 1.8, hull.y0, 10), P(hull.x0 + 1.4 + i * 1.8, hull.y0, 30), 'rgba(160,60,20,.5)', 3);
+    }
+    box(x - 1.6, y, 1.6, 1.6, 8, hull.top, tones('#4a4038', flash));
+    const dx = sim.truck.x - x, dy = -y, len = Math.hypot(dx, dy) || 1;
+    line(P(x - 1.6, y, hull.top + 5), P(x - 1.6 + dx / len * 2.4, y + dy / len * 2.4, hull.top + 5), '#1a1612', 5);
   }
 
   function drawHpBar(cx, cy, e) {
@@ -787,8 +889,21 @@
   }
 
   // ------------------------------------------------------------------ Quadro
+  // O mundo é desenhado numa tela com metade da resolução lógica (1 px = 1 px
+  // de arte dos sprites) e ampliado 2× sem suavização: estrada, cenário,
+  // efeitos e sprites ficam na mesma grade de pixels.
+  const low = document.createElement('canvas');
+  const lowCtx = low.getContext('2d');
+  const mainCtx = ctx;
+
   function render() {
-    ctx.setTransform(k * ZOOM, 0, 0, k * ZOOM, k * (W / 2) * (1 - ZOOM), k * CAM_Y * (1 - ZOOM));
+    const lw = Math.ceil(W * ART), lh = H * ART;
+    if (low.width !== lw || low.height !== lh) { low.width = lw; low.height = lh; }
+    ctx = lowCtx;
+    ctx.imageSmoothingEnabled = false;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, lw, lh);
+    ctx.setTransform(LOW, 0, 0, LOW, (W / 2) * (1 - ZOOM) * ART, CAM_Y * (1 - ZOOM) * ART);
     camWX = cam.gx * HW; camWY = -cam.gx * HH;
     shakeX = (Math.random() - 0.5) * shake; shakeY = (Math.random() - 0.5) * shake;
 
@@ -807,6 +922,12 @@
 
     drawParticles('high');
     drawTracers();
+
+    ctx = mainCtx;
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(low, 0, 0, lw / ART, H);
+    ctx.setTransform(k * ZOOM, 0, 0, k * ZOOM, k * (W / 2) * (1 - ZOOM), k * CAM_Y * (1 - ZOOM));
     drawFloaters();
     ctx.setTransform(k, 0, 0, k, 0, 0);
     drawVignette();
@@ -819,7 +940,8 @@
   }
   function pickSlot(lx, ly) {
     [lx, ly] = unzoom(lx, ly);
-    let best = null, bestSqr = 22 * 22;
+    const radius = TOUCH ? 34 : 22; // dedo é menos preciso que o mouse
+    let best = null, bestSqr = radius * radius;
     for (const slot of sim.slots) {
       const p = slotScreen[slot.index];
       if (!p) continue;
@@ -830,6 +952,7 @@
   }
 
   canvas.addEventListener('pointermove', (ev) => {
+    if (ev.pointerType === 'touch') return; // no toque não existe "passar por cima"
     if (sim.phase !== 'trip') { ui.hover = null; return; }
     const [lx, ly] = toLogical(ev);
     ui.hover = pickSlot(lx, ly);
@@ -842,7 +965,7 @@
     if (ev.button !== 0) return;
     const [lx, ly] = toLogical(ev);
     const index = pickSlot(lx, ly);
-    ui.hover = index;
+    ui.hover = ev.pointerType === 'touch' ? null : index;
     if (index === null) { cancelAll(); return; }
     const slot = sim.slots[index];
     if (ui.pending && !slot.defense) {
@@ -872,6 +995,18 @@
     if (ev.code === 'KeyV' && ui.selected !== null) doSell();
   });
   addEventListener('blur', () => { if (sim.phase === 'trip' && sim.running && !paused) togglePause(); });
+  // No celular, trocar de app ou bloquear a tela também pausa.
+  document.addEventListener('visibilitychange', () => { if (document.hidden && sim.phase === 'trip' && sim.running && !paused) togglePause(); });
+
+  // Tela cheia e paisagem no celular (o navegador só deixa pedir depois de um toque).
+  function goFullscreen() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req || document.fullscreenElement || document.webkitFullscreenElement) return;
+    Promise.resolve(req.call(el)).then(() => {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+    }).catch(() => {});
+  }
 
   function togglePause() {
     if (sim.phase !== 'trip' || !sim.running) return;
@@ -950,7 +1085,15 @@
     const btn = document.createElement('button');
     btn.className = 'buy plate';
     btn.innerHTML = `<span class="key">${BUY_KEYS[i].slice(3)}</span><span class="name">${def.name}</span><span class="cost"></span>`;
-    btn.prepend(iconCanvas(56, 44, (g) => drawDefenseIcon(g, id)));
+    // Ícone: o sprite PixelLab da torre (virada para a câmera); se não houver, o desenho vetorial.
+    const sp = SPRITES[`turret-${id}-south`];
+    if (sp) {
+      const img = document.createElement('img');
+      img.className = 'icon';
+      img.src = `${SPRITE_BASE}${sp.path}.png`;
+      img.onerror = () => img.replaceWith(iconCanvas(56, 44, (g) => drawDefenseIcon(g, id)));
+      btn.prepend(img);
+    } else btn.prepend(iconCanvas(56, 44, (g) => drawDefenseIcon(g, id)));
     btn.addEventListener('click', () => selectBuy(id));
     shopEl.appendChild(btn);
     return { id, def, btn, cost: btn.querySelector('.cost') };
@@ -1082,7 +1225,7 @@
   }
 
   function act(name) {
-    if (name === 'start') startRun();
+    if (name === 'start') { if (TOUCH) goFullscreen(); startRun(); }
     else if (name === 'menu') { sim.phase = 'menu'; shownScreen = undefined; }
     else if (name === 'resume') { paused = false; shownScreen = undefined; }
     else if (name === 'abandon') { paused = false; sim.abandon(); }
@@ -1093,11 +1236,15 @@
     return `
       <div class="title">FURY HAULER</div>
       <div class="subtitle">Leve o caminhão de A até B. Ele dirige sozinho: você monta as armas.</div>
-      <div class="howto plate">
+      <div class="howto plate">${TOUCH ? `
+        <b>Comprar:</b> toque numa defesa na barra de baixo e depois num slot vazio do caminhão.<br>
+        <b>Melhorar ou vender:</b> toque numa defesa já montada.<br>
+        <b>Slots:</b> cada um atira para um lado. O teto atira para todos.<br>
+        <b>Habilidades:</b> botões no canto. <b>Cancelar:</b> toque fora do caminhão.` : `
         <b>Comprar:</b> clique numa defesa na barra de baixo e depois num slot vazio do caminhão.<br>
         <b>Melhorar ou vender:</b> clique numa defesa já montada.<br>
         <b>Slots:</b> cada um atira para um lado. O teto atira para todos.<br>
-        <b>Habilidades:</b> teclas 1 e 2. <b>Cancelar:</b> botão direito ou Esc. <b>Pausa:</b> P.
+        <b>Habilidades:</b> teclas 1 e 2. <b>Cancelar:</b> botão direito ou Esc. <b>Pausa:</b> P.`}
       </div><br>
       <button class="big-btn" data-act="start">PARTIR</button>
       <div class="stats">Viagens: ${m.runsStarted} · Chegadas em B: ${m.runsCompleted} · Melhor run: ${m.bestTrips} ${m.bestTrips === 1 ? 'trecho' : 'trechos'}</div>`;
@@ -1166,6 +1313,62 @@
       <div class="title" style="font-size:90px">PAUSA</div><br>
       <button class="big-btn" data-act="resume">CONTINUAR</button><button class="big-btn secondary" data-act="abandon">ABANDONAR VIAGEM</button>`;
   }
+
+  // ------------------------------------------------------------------ Referências para o PixelLab (#refs)
+  // POR QUE: os sprites PixelLab são redesenhos destas formas vetoriais, no
+  // mesmo ângulo e tamanho, para encaixarem na lógica sem ajuste à mão.
+  // ESTRATÉGIA: desenha cada objeto sozinho numa tela transparente, na escala
+  // dos sprites (1 px de arte = 1,6 px sem zoom = 2 px de tela), recorta e
+  // escreve no DOM o PNG e o ponto de apoio no chão (âncora).
+  function exportRefs() {
+    const S = LOW, SIZE = 640, AX = 320, AY = 420;
+    const big = document.createElement('canvas');
+    big.width = SIZE; big.height = SIZE;
+    const g = big.getContext('2d');
+    const saved = ctx;
+    refMode = true;
+    const out = {};
+    const render = (name, gx, gy, draw) => {
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, SIZE, SIZE);
+      ctx = g; camWX = 0; camWY = 0; shakeX = 0; shakeY = 0;
+      const p = P(gx, gy, 0);
+      g.setTransform(S, 0, 0, S, AX - p[0] * S, AY - p[1] * S);
+      draw();
+      const data = g.getImageData(0, 0, SIZE, SIZE).data;
+      let x0 = SIZE, y0 = SIZE, x1 = 0, y1 = 0;
+      for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+        if (data[(y * SIZE + x) * 4 + 3] < 24) continue;
+        x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+      }
+      const pad = 4;
+      const w = Math.max(32, Math.ceil((x1 - x0 + 1 + pad * 2) / 4) * 4), h = Math.max(32, Math.ceil((y1 - y0 + 1 + pad * 2) / 4) * 4);
+      const cx = Math.round((x0 + x1) / 2 - w / 2), cy = Math.round((y0 + y1) / 2 - h / 2);
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(big, cx, cy, w, h, 0, 0, w, h);
+      out[name] = { png: c.toDataURL('image/png'), ax: AX - cx, ay: AY - cy, w, h };
+    };
+    const fake = (kind, extra = {}) => Object.assign({ kind, def: window.FH_DATA.ENEMIES[kind], x: 0, y: 0, hp: window.FH_DATA.ENEMIES[kind].maxHp, flash: 0, stun: 0, seed: 0, left: 2 }, extra);
+
+    sim.truck.x = 0;
+    render('truck', 0, 0, () => drawTruck(true));
+    sim.truck.x = 60; // inimigos miram para a frente
+    for (const kind of ['biker', 'rammer', 'boarder']) render(kind, 0, 0, () => drawEnemy(fake(kind)));
+    render('boss-cab', 0, 0, () => drawBossCab(0, 0, 0, false));
+    render('boss-hull', 0, 0, () => drawBossHull(0, 0, 0, false));
+    render('raider', 0, 0, () => drawRaider(fake('raider'), 0));
+    const aim = [-Math.SQRT1_2, -Math.SQRT1_2]; // virada para a câmera (o "south" do PixelLab)
+    for (const id of DEFENSE_ORDER) {
+      render(`turret-${id}`, 0, 0, () => drawTurret(DEFENSES[id], { level: 1, aim, cooldown: 0, firing: false }, { index: 0, facing: 225 }, 0, 0, 0, 1));
+    }
+    const decos = { 'rocks-1': { v: 0.05, r: 0.1 }, 'rocks-2': { v: 0.05, r: 0.5 }, 'rocks-3': { v: 0.05, r: 0.9 }, bush: { v: 0.12, r: 0 }, skull: { v: 0.17, r: 0 }, tire: { v: 0.2, r: 0 }, wreck: { v: 0.215, r: 0 } };
+    for (const [name, d] of Object.entries(decos)) render(name, 0, 0, () => drawDeco(Object.assign({ gx: 0, gy: 0 }, d)));
+
+    ctx = saved; refMode = false; sim.truck.x = 0;
+    const pre = document.createElement('pre');
+    pre.id = 'REFS'; pre.textContent = JSON.stringify(out);
+    document.body.appendChild(pre);
+  }
+  if (flags.has('refs')) exportRefs();
 
   // ------------------------------------------------------------------ Laço principal
   let last = performance.now();

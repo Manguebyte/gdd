@@ -1,0 +1,88 @@
+{
+  "truck": {
+    "job_id": "4bf3aae1-946d-4afb-9d74-3e18f605f20e",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/truck.png"
+  },
+  "enemies/biker": {
+    "job_id": "8a174b24-ee65-4c6e-a2ad-3edcc901954f",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/biker.png"
+  },
+  "enemies/rammer": {
+    "job_id": "1c1c9034-61f1-4740-b4d1-601549cd6c41",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rammer.png"
+  },
+  "enemies/boarder": {
+    "job_id": "9f73bd96-b1d4-4243-82d9-8fd260e463df",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/boarder.png"
+  },
+  "enemies/raider": {
+    "job_id": "1258e8f6-1257-4e6a-a351-ecd328ca0d23",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/raider.png"
+  },
+  "enemies/boss-cab": {
+    "job_id": "d0c01fed-69a0-4165-9a2e-7f85027a9af5",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/boss-cab.png"
+  },
+  "enemies/boss-hull": {
+    "job_id": "0db95f42-bd7c-47af-a3cc-79c190e23a1b",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/boss-hull.png"
+  },
+  "decor/wreck": {
+    "job_id": "fa0eaa21-ace2-441e-a886-c433803385f4",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/wreck.png"
+  },
+  "decor/rocks-2": {
+    "job_id": "80c5cf2b-4b90-45e7-8585-c40fd375d128",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rocks-2.png"
+  },
+  "decor/rocks-3": {
+    "job_id": "10b3e6aa-3c5a-4f5c-bb8f-fb2f8b1513dd",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rocks-3.png"
+  },
+  "decor/rocks-1": {
+    "job_id": "04e85975-3811-47af-9b73-2a3d77d78b2a",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rocks-1.png"
+  },
+  "decor/bush": {
+    "job_id": "655eb679-d0c3-4933-a841-d23967682780",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/bush.png"
+  },
+  "decor/skull": {
+    "job_id": "9b90d5cc-56ba-4c70-906a-2450f1b2355d",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/skull.png"
+  },
+  "decor/tire": {
+    "job_id": "748681b3-ade0-4e23-ae73-fa66549be9eb",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/tire.png"
+  },
+  "turrets/mg": {
+    "object_id": "6614d772-28b9-4fd3-97a8-8c54aca73383",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/flame": {
+    "object_id": "84962944-fbac-43a7-bc9d-1351fe7bda44",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/harpoon": {
+    "object_id": "7de49ea2-68a7-4c17-8a32-234df186e08a",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/armor": {
+    "object_id": "b029f703-7688-429c-8025-d655068141e4",
+    "tool": "create_object_pro_flash (8 direções)"
+  }
+}

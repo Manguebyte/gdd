@@ -1,8 +1,10 @@
 # Fury Hauler — protótipo web (JavaScript)
 
-Versão jogável em HTML/JS puro da Parte 1 do [`FuryHauler.md`](../../FuryHauler.md). Não precisa de build nem servidor: abra `index.html` no navegador. Joga-se com mouse (teclado opcional), em PC.
+Versão jogável em HTML/JS puro da Parte 1 do [`FuryHauler.md`](../../FuryHauler.md). Não precisa de build nem servidor: abra `index.html` no navegador. Joga-se no PC (mouse, teclado opcional) e no navegador do celular, deitado (toque).
 
 ## O que tem
+- **Arte PixelLab** em `Sprites/FuryHauler/` (ver o `README.md` de lá): caminhão, inimigos, chefe, saqueador, as 4 torres em 8 direções e o cenário. O mundo é desenhado numa tela de baixa resolução e ampliado sem suavização, para estrada, efeitos e sprites ficarem na mesma grade de pixels. Se um sprite não carregar, aquele objeto volta ao desenho vetorial.
+- **Celular:** toque no lugar do mouse, botões e textos maiores, a tela lógica alarga para preencher celulares largos (até ~21:9), tela cheia e paisagem ao tocar em "Partir", e pausa ao trocar de app.
 - **Estrada isométrica** com a mesma projeção do guia Unity (`IsoProjection`, Fase 1): toda a lógica acontece no "chão" em metros e só o desenho converte para a tela. Deserto com pedras, ossos, pneus e carcaças; placas de distância a cada 100 m; portais de partida (A) e de fim do trecho (B no último).
 - **Caminhão** que anda sozinho, com 500 de vida e os 6 slots placeholder do GDD (teto 360°, laterais 180° para o próprio lado, traseira 180° para trás).
 - **As 4 defesas** (metralhadora, lança-chamas, arpão, blindagem com espinhos), que miram sozinhas dentro do leque do slot. Cada uma tem 3 níveis.
@@ -21,6 +23,7 @@ As regras ficam em `sim.js`, um porte direto do guia Unity (`TruckController`, `
 - **U / V:** melhorar / vender a defesa selecionada.
 - **Shift + clique** num slot: monta e mantém a mesma defesa escolhida, para montar várias seguidas.
 - **Esc:** cancela. **P:** pausa (o jogo também pausa sozinho se a janela perder o foco).
+- **Celular:** toque numa defesa da barra e depois num slot vazio; toque numa defesa montada para melhorar ou vender; toque fora do caminhão para cancelar. Habilidades e pausa são botões na tela. Com o celular em pé, o jogo pede para girar.
 
 ## Atalhos de desenvolvimento
 Junte quantos quiser depois do `#`, separados por vírgula (ex.: `index.html#unlock,rich,boss`):
@@ -33,6 +36,8 @@ Junte quantos quiser depois do `#`, separados por vírgula (ex.: `index.html#unl
 | `#boss` | Pula direto para o último trecho (o do chefe). |
 | `#auto` | Piloto automático: escolhe a rota, compra, melhora e usa habilidades sozinho (`autoPlay` em `sim.js`). |
 | `#warp30` | Quando o primeiro trecho começa, simula 30 s de uma vez (usado para gerar a miniatura do hub). |
+| `#vector` | Ignora os sprites e usa só o desenho vetorial (para comparar). |
+| `#refs` | Exporta as referências vetoriais para o PixelLab (usado por `Sprites/FuryHauler/_tools/exportar_refs.py`). |
 
 ## Escolhas do protótipo onde o GDD diz "Em aberto"
 Todas seguem os **placeholders** que o próprio GDD já propõe:
@@ -44,7 +49,7 @@ Todas seguem os **placeholders** que o próprio GDD já propõe:
 - **Tipos de nó** só variam o risco (§8).
 
 E escolhas só do protótipo:
-- **Arte provisória desenhada por código** (caixas isométricas). A arte final está Em aberto (§11).
+- **Pixel art isométrica do PixelLab**, redesenhada a partir das formas vetoriais do protótipo. O estilo de arte ainda está Em aberto no GDD (§11); esta é a escolha do protótipo.
 - **Defesas bloqueadas aparecem na barra**, cinzas, com o requisito ("Concluir 1 trecho"). O guia Unity só mostra as liberadas.
 - **Atalhos de teclado** Q/W/E/R e U/V, que o GDD não define.
 - **As ligações do mapa de rota são desenhadas como linhas.** O guia Unity, para simplificar, só escreve "Segue: A, B" em cada nó.
