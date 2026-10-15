@@ -119,6 +119,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'CharutoRacer.md',
+    slug: 'charuto-racer',
+    label: 'Charuto Racer',
+    description: 'Corrida pseudo-3D em pixel art no estilo Top Gear, com F1 dos anos 60: cada GP paga dinheiro para comprar peças.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'CacaAsBruxas.md',
     slug: 'caca-as-bruxas',
