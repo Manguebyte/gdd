@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Fury Hauler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Rubik+Dirt&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="top-left">
+      <div id="scrap-box"><span class="cog"></span><b id="scrap">0</b><small>SUCATA</small></div>
+      <div id="hp-box">
+        <div class="bar"><i id="hp-fill"></i></div>
+        <span id="hp-text"></span>
+      </div>
+    </div>
+    <div id="top-center">
+      <div id="trip-label"></div>
+      <div id="progress">
+        <i id="progress-fill"></i>
+        <span class="end start">A</span><span class="end finish" id="progress-end">FIM</span>
+        <em id="progress-truck"></em>
+      </div>
+      <div id="boss-bar" class="hidden"><span>CAMINHÃO DE GUERRA</span><div class="bar"><i id="boss-fill"></i></div></div>
+    </div>
+    <button id="pause-btn" title="Pausa (P)">II</button>
+
+    <div id="abilities"></div>
+    <div id="shop"></div>
+    <div id="panel" class="hidden">
+      <div id="panel-title"></div>
+      <div id="panel-info"></div>
+      <div class="buttons">
+        <button id="upgrade-btn"></button>
+        <button id="sell-btn"></button>
+      </div>
+    </div>
+    <div id="toast"></div>
+    <div id="banner"></div>
+  </div>
+
+  <div id="overlay" class="hidden"><div id="modal"></div></div>
+</div>
+<div id="rotate">Gire o celular para jogar na horizontal</div>
+<script src="data.js"></script>
+<script src="sim.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
