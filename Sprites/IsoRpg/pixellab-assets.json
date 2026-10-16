@@ -1,0 +1,287 @@
+{
+  "hero": {
+    "character_id": "8e931a51-629e-4c7f-8ddf-f52a09358e58",
+    "direction": "north-east",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "pawn": {
+    "character_id": "363aa266-7f7f-490c-ae26-54fbb3dc6147",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "archer": {
+    "character_id": "c3b7aedb-0db7-4185-aa0d-3ced438a163e",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "boss": {
+    "character_id": "210966c1-5abf-4200-b723-c5a8bf21e9cf",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "yeti": {
+    "character_id": "d94c7ea4-eb86-4034-be2b-061c804da979",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "wolf": {
+    "character_id": "f4cc9ace-e7b8-4137-a616-2b653defe378",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "spirit": {
+    "character_id": "21614f5b-430c-4973-b775-aa2098af699a",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "giant": {
+    "character_id": "6f674885-bf0e-43f3-bc55-58bc07c6daf2",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "orc": {
+    "character_id": "e3c6ac8d-8b3a-43cc-a36f-a54a93459c6e",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "shaman": {
+    "character_id": "122722c7-f89a-4290-9445-8c0dac91b162",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "warlord": {
+    "character_id": "26ccbeaf-ffcb-47e5-a703-5a9c7b86f285",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "thief": {
+    "character_id": "7933b626-fe7a-404a-98d7-a3a2f01cdd86",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "scarecrow": {
+    "character_id": "bcf85a81-1d58-4cf7-a88d-9599fd06d579",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "dryad": {
+    "character_id": "185bac27-2bcc-4ac5-bc4a-5d5bf6f617a6",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "tree": {
+    "character_id": "314bf742-a822-402d-a1f5-41e32c37ffb9",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "frogman": {
+    "character_id": "6ead9fe2-2394-48ea-aacc-a8cfd104127e",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "zombie": {
+    "character_id": "721695e8-2c38-4865-aee3-dba0fbee2f95",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "witch": {
+    "character_id": "68b49aaa-8086-408e-909e-b09df103c182",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "frogking": {
+    "character_id": "195950c1-f1ef-4227-8f06-9eef013a1199",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "firegob": {
+    "character_id": "582c7b87-2b6d-4b77-b95b-265f8b64a357",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "salamander": {
+    "character_id": "c1fb031b-a9c9-4e33-8119-ead7f2719af4",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "golem": {
+    "character_id": "bc29c30d-5449-42e3-9158-13fe0157c4cc",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "demon": {
+    "character_id": "dd37e054-51a4-4a45-9d00-dd7be6beb8fb",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "apprentice": {
+    "character_id": "17d91441-7d56-48f7-9f2d-47b2c90f3e21",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "gargoyle": {
+    "character_id": "1f5a2edf-70a7-4b73-8239-26fe1d1019ac",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "armor": {
+    "character_id": "338e4c61-41d4-46ab-8b0b-295b0c7b29e8",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "archmage": {
+    "character_id": "8707b52c-5071-477b-aefb-edc9aab3de26",
+    "direction": "south-west",
+    "tool": "create_character v3 (referência) + animate_character"
+  },
+  "slime": {
+    "pose": "868c5592-e294-424c-abe4-d172acd97f02",
+    "idle": "e1212093-fd06-4b16-91a0-2754cdbfe926",
+    "attack": "8e0596cc-a1f9-4887-812c-c10af12fe195",
+    "death": "e18a21d5-aa80-4eb4-b6f2-1c90bb4cb67a",
+    "tool": "create_image_pro_flash + animate_image"
+  },
+  "slimeking": {
+    "pose": "c15572e8-7b93-45f5-853a-8d98d4d50d28",
+    "idle": "6fe48fba-3876-4fae-a0b5-491ef2ddaf74",
+    "attack": "2610c293-aea3-46c5-9711-25da7c5db68c",
+    "death": "abd7f9ba-76b3-4056-88ce-f15946b18059",
+    "tool": "create_image_pro_flash + animate_image"
+  },
+  "tiles/orcs": {
+    "floor_tiles_pro_id": "8bb8f1f4-9838-4e05-b357-9589b19d84eb",
+    "wall_tiles_pro_id": "460103f9-8979-4641-8105-a30a4c45ddc9"
+  },
+  "tiles/ice": {
+    "floor_tiles_pro_id": "d4045f41-1ba3-431a-8760-aecd02834c34",
+    "wall_tiles_pro_id": "a34f4f7a-8d4b-410e-9709-91d87ca0fc3f"
+  },
+  "tiles/forest": {
+    "floor_tiles_pro_id": "61715483-3fe6-4438-8d2e-6d3f165a109d",
+    "wall_tiles_pro_id": "aac0b01f-c507-48bb-8eba-4f123785d449"
+  },
+  "tiles/swamp": {
+    "floor_tiles_pro_id": "189f9721-9412-4c85-8ed8-af755f695dca",
+    "wall_tiles_pro_id": "111207bc-e022-47b4-b190-7270d2a9fb69"
+  },
+  "tiles/volcano": {
+    "floor_tiles_pro_id": "84036d80-9fec-495f-a16b-00ebff0bf0c7",
+    "wall_tiles_pro_id": "df2d14a3-39f2-4cf0-9be0-2e102067889b"
+  },
+  "tiles/academy": {
+    "floor_tiles_pro_id": "20b2d58f-32db-44f0-b87e-b8f845e85a49",
+    "wall_tiles_pro_id": "3325f74f-0422-4426-a05d-f8e21a47c3ad"
+  },
+  "decor/barrel": {
+    "job_id": "d06f9cb5-51c4-4cf5-bfd4-974bb37a85ce",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/bones": {
+    "job_id": "e9deb2a7-0316-4517-90ab-5c9741b006cb",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/pillar": {
+    "job_id": "84858889-f834-4cfb-b032-e18dcf4ef140",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/campfire": {
+    "job_id": "d04e58ba-fb7b-4424-b807-2ffff009bc9a",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/chest": {
+    "job_id": "d5b7dce6-992c-4846-8b70-821580565c5b",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/crates": {
+    "job_id": "db989216-6818-49ab-aa8c-a37bf6967b40",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/ice-crystals": {
+    "job_id": "0a8f01d4-3993-4b53-9292-1dd6d02710ab",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/ice-skeleton": {
+    "job_id": "c098f285-5c60-4e14-bb06-4476f8155a74",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/ice-pillar": {
+    "job_id": "ad07e597-d985-4782-9518-2287b2528a69",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/ice-crates": {
+    "job_id": "087614bb-c6aa-4c74-9009-46c4f5ea8133",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/ice-brazier": {
+    "job_id": "c2bd9cbc-99d3-4444-8493-0e755e954de9",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/forest-stump": {
+    "job_id": "b9ca7e2f-5f9f-448d-8afb-63bc113c3334",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/forest-mushrooms": {
+    "job_id": "8bf96121-4c82-4849-b81b-2749ef257b63",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/forest-deadtree": {
+    "job_id": "0d618390-b9bf-4a0a-bc8a-83cfd94d855c",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/swamp-cauldron": {
+    "job_id": "dbd8d7a8-c4a0-4415-9903-af0e323d43c3",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/swamp-reeds": {
+    "job_id": "52d5d9ae-fc35-4b13-a766-a57ffdbee7ba",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/swamp-log": {
+    "job_id": "117e8d6c-dea6-4a13-ad4b-84bb745cc9f9",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/swamp-totem": {
+    "job_id": "fa1f8e51-c0e7-41dd-bcf5-8f9c4999ae47",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/volcano-lavapool": {
+    "job_id": "faef7d8f-1d7f-4f38-97b0-81669259dfe9",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/volcano-rocks": {
+    "job_id": "88a6a571-7312-460f-a971-18c776ea8ddc",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/volcano-crystal": {
+    "job_id": "1168d90a-f500-4c1f-80d9-673000e10d4c",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/volcano-skull": {
+    "job_id": "9c8af5ce-4d4c-448e-99fd-41e2d320728e",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/volcano-pillar": {
+    "job_id": "30b7bd5c-6996-4c9e-b579-5604944f4954",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/academy-brazier": {
+    "job_id": "867a5b8f-b0ed-48d3-84b6-02bd5ac529fe",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/academy-bookshelf": {
+    "job_id": "fd1fca2e-b77b-424c-b79c-da904e04da49",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/academy-books": {
+    "job_id": "2e49d60b-4230-43cc-b109-9303f337ffd2",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/academy-orb": {
+    "job_id": "59dac3aa-fdb6-4285-a469-72a03f3f07dc",
+    "tool": "create_image_pro_flash"
+  },
+  "decor/academy-pillar": {
+    "job_id": "a6fbd0ca-2bfa-4b32-b329-73ac659a2327",
+    "tool": "create_image_pro_flash"
+  }
+}
