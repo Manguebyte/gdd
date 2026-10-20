@@ -13,5 +13,56 @@
     "job_id": "cee9c2bf-5546-44e4-93ee-c4985f62f897",
     "tool": "edit_image_pro_flash",
     "ref": "_refs/asteroid-2.png"
+  },
+  "enemies/drone": {
+    "job_id": "966cc14e-c6f7-41b5-97ca-c22c32d61570",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/drone.png"
+  },
+  "enemies/boarder": {
+    "job_id": "e96b4429-5989-4d7e-b892-25b5eda4ce34",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/boarder.png"
+  },
+  "enemies/pirate": {
+    "job_id": "72662923-294a-4b84-9685-20d0d99582dd",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/pirate.png"
+  },
+  "enemies/cruiser-bow": {
+    "job_id": "186b20f9-d8fe-4d59-8caa-32f89f8caf30",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/cruiser-bow.png"
+  },
+  "enemies/cruiser-hull": {
+    "job_id": "4d17beaa-2777-4566-a526-35d299b299fb",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/cruiser-hull.png"
+  },
+  "asteroids/asteroid-1": {
+    "job_id": "fef27bd4-cf9f-4631-98d9-95c5f78b176d",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/asteroid-1.png"
+  },
+  "asteroids/asteroid-3": {
+    "job_id": "9b595061-c740-43d4-8a1d-7bd1d2d170d3",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/asteroid-3.png"
+  },
+  "turrets/plasma": {
+    "object_id": "7e1f712c-1238-4eb2-a519-c8d6d4b03ba6",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/field": {
+    "object_id": "5bfe567c-91f0-411d-a9c6-2c65ba1135f0",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/cannon": {
+    "object_id": "fff94d8e-0fee-47df-9369-a81efcbe4ec2",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/harpoon": {
+    "object_id": "c291c132-b623-494c-a2ee-4bb4eb894143",
+    "tool": "create_object_pro_flash (8 direções)"
   }
 }

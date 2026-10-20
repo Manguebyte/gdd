@@ -20,7 +20,7 @@ Começou como cópia de [`../fury-hauler/`](../fury-hauler/) (mesma estrutura: `
 - **Desbloqueios permanentes** placeholder: plasma ao concluir 1 trecho numa run, arpão ao concluir 3. Save no `localStorage`.
 - **Espaço isométrico** com a projeção do guia Unity: não há chão; a profundidade vem das estrelas em parallax, das boias da rota a cada 100 m e dos portais de salto no começo e no fim de cada trecho.
 
-A arte ainda é **vetorial**, desenhada por código. Os sprites PixelLab entram em `Sprites/SpaceHauler/` depois do teste de estilo (o `anchors.js` de lá começa vazio). Cada objeto tem um nome de sprite pronto (`ship`, `fighter`, `drone`, `boarder`, `pirate`, `cruiser-bow`, `cruiser-hull`, `turret-<id>-<direção>`, `asteroid-1..3`), e `#refs` exporta as referências vetoriais, como no Fury Hauler.
+- **Arte PixelLab** em `Sprites/SpaceHauler/` (ver o `README.md` de lá): nave, inimigos, Cruzador, pirata a bordo, as 4 torres em 8 direções e 3 asteroides, no estilo do Fury Hauler. Cada sprite é um redesenho da forma vetorial do protótipo, então se um não carregar (ou com `#vector`) o objeto volta ao desenho por código. O fundo de estrelas, os planetas, as boias e os efeitos continuam desenhados por código.
 
 ## Controles
 - **Mouse:** clique numa defesa da barra e depois num hardpoint vazio; clique numa defesa montada para melhorar ou vender. Botão direito cancela.
