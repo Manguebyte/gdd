@@ -1,6 +1,6 @@
 # Iso RPG — protótipo web (JavaScript)
 
-Versão do [Guerreiro da Masmorra](../guerreiro-da-masmorra/) com a **câmera isométrica do [Fury Hauler](../fury-hauler/)**. As regras são as mesmas do protótipo do Guerreiro (Parte 1 do [`GuerreiroDaMasmorra.md`](../../GuerreiroDaMasmorra.md)); o que muda é o palco e a arte. Não tem GDD próprio. Abra `index.html` no navegador, sem build. Tela deitada (16:9 a ~21:9), com mouse, teclado ou toque.
+Versão do [Guerreiro da Masmorra](../guerreiro-da-masmorra/) com a **câmera isométrica do [Fury Hauler](../fury-hauler/)**. As regras são as mesmas do protótipo do Guerreiro (Parte 1 do [`GuerreiroDaMasmorra.md`](../../GuerreiroDaMasmorra.md)); o que muda é o palco e a arte. Não tem GDD próprio. Abra `index.html` no navegador, sem build. Tela deitada (16:9 a ~21:9), com mouse, teclado ou toque. A versão em pé, para celular, é a [`iso-rpg-vertical/`](../iso-rpg-vertical/), que usa este mesmo `game.js` (com `window.IR_PORTRAIT`): mudanças aqui valem para as duas.
 
 ## O que muda em relação ao Guerreiro da Masmorra
 - **Câmera isométrica 2:1**, com a mesma projeção do Fury Hauler: a lógica fica no chão (tiles `gx`, `gy`) e só o desenho converte para a tela. O mundo é desenhado num canvas de baixa resolução e ampliado 3× sem suavização; textos e barras ficam por cima, nítidos.

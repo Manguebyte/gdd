@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Iso RPG Vertical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../iso-rpg/style.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="view"></canvas>
+
+  <div id="camp" class="hidden"></div>
+
+  <div id="battle" class="hidden">
+    <div id="chip"></div>
+    <div id="queue"></div>
+    <div id="move" class="hidden"></div>
+    <div id="hero-panel">
+      <div class="name">Guerreiro <span id="hp-text"></span></div>
+      <div class="hp"><i id="hp-fill"></i></div>
+      <div class="bars" id="bars"></div>
+    </div>
+    <div id="log"></div>
+    <div id="cmds"></div>
+    <div id="qte" class="hidden"><svg viewBox="0 0 200 200"><circle class="target" cx="100" cy="100" r="46"/><circle class="ring" cx="100" cy="100" r="90"/></svg><b></b><small></small></div>
+    <div id="mini" class="hidden"></div>
+  </div>
+
+  <div id="modal" class="hidden"></div>
+</div>
+<div id="rotate">Gire o celular para jogar em pé</div>
+<script src="../../Sprites/IsoRpg/sprites.js"></script>
+<script>window.IR_PORTRAIT = true;</script>
+<script src="../iso-rpg/game.js"></script>
+</body>
+</html>

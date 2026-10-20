@@ -18,6 +18,10 @@ if (DEV.has('reset')) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} 
 // #auto: piloto automático (para testar e gerar a miniatura do hub): ataca na sua vez e reage certo.
 const AUTO = DEV.has('auto');
 const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+// Versão em pé (prototipos/iso-rpg-vertical/): a mesma lógica, com tela lógica de 720 px de largura e
+// altura entre 1280 e 1600. Só mudam o enquadramento da câmera, o círculo de reação e o tamanho da tela;
+// o resto da diferença é o style.css daquela pasta.
+const PORTRAIT = !!window.IR_PORTRAIT;
 
 // ============================================================ dados (§3, §8, §9, §10)
 
@@ -220,8 +224,8 @@ function loadImg(k) { return new Promise(r => { const im = new Image(); im.onloa
 // frente fica aberto para o escuro, para nada tampar os personagens.
 const S_ART = 3;              // 1 px de arte = 3 px da tela lógica
 const HW = 32, HH = 16;       // meia largura / meia altura do losango de 1 tile (64×32 px de arte)
-const H = 720, AH = H / S_ART;
-let W = 1280, AW = Math.ceil(W / S_ART);
+let H = PORTRAIT ? 1280 : 720, AH = Math.ceil(H / S_ART);
+let W = PORTRAIT ? 720 : 1280, AW = Math.ceil(W / S_ART);
 const GX0 = 0, GX1 = 4, GY_MIN = -25, GY_MAX = 12;
 const roomGy = r => -r * 10;
 const CAMP = { gx: 2, gy: 9 };
@@ -232,7 +236,8 @@ const cam = { gx: CAMP.gx + 1.6, gy: CAMP.gy - 1.6 };
 let camX = 0, camY = 0, shake = 0;
 // Chão (tiles, altura em px de arte) → canvas de arte. Mesma conta do Fury Hauler (IsoProjection).
 function P(gx, gy, h = 0) {
-  return [Math.round((gx - gy) * HW - camX + AW / 2), Math.round((gx + gy) * HH - h - camY + AH * 0.62)];
+  // Em pé, o ponto da câmera fica mais alto: a metade de baixo da tela é dos comandos.
+  return [Math.round((gx - gy) * HW - camX + AW / 2), Math.round((gx + gy) * HH - h - camY + AH * (PORTRAIT ? 0.36 : 0.62))];
 }
 
 // Paredes: coluna gx = -1 (fundo à esquerda) e a linha gy = GY_MIN - 1 (fim do corredor), 2 blocos de altura.
@@ -355,7 +360,9 @@ async function enterDungeon() {
 // Posições da sala da onda atual: herói embaixo à esquerda, monstros em leque no alto à direita.
 function layoutMonsters() {
   const a = alive(), base = roomGy(B.wave);
-  const spots = a.length === 1 ? [[2, -1.8]] : a.length === 2 ? [[1.3, -1.5], [2.9, -2.0]] : [[0.9, -1.3], [2.2, -2.0], [3.5, -1.4]];
+  // Em pé o leque é mais fechado na horizontal (a tela tem só 240 px de arte de largura).
+  const spots = a.length === 1 ? [[2, -1.8]] : a.length === 2 ? (PORTRAIT ? [[1.3, -1.5], [2.6, -1.9]] : [[1.3, -1.5], [2.9, -2.0]])
+    : PORTRAIT ? [[0.8, -1.2], [2.3, -2.3], [3.3, -1.0]] : [[0.9, -1.3], [2.2, -2.0], [3.5, -1.4]];
   a.forEach((m, i) => { m.hx = spots[i][0]; m.hy = base + spots[i][1] - (m.def.ranged ? 0.7 : 0) - (m.def.boss ? 0.2 : 0); });
 }
 const alive = () => B.monsters.filter(m => m.hp > 0);
@@ -732,7 +739,8 @@ function qte({ type, ms, curve, label }) {
   const perfectAt = gem('reflex') ? 0.52 : 0.68;   // parry perfeito nos últimos 32% do círculo (48% com a Gema do Reflexo)
   // O círculo fica à esquerda e acima do herói, sobre a parede, para não tampar quem ataca.
   const [hx, hy] = P(hero.hx, hero.hy, 40);
-  box.style.left = `${Math.max(130, hx * S_ART - 220)}px`; box.style.top = `${Math.max(130, hy * S_ART - 70)}px`;
+  if (PORTRAIT) { box.style.left = '50%'; box.style.top = `${Math.round(H * 0.56)}px`; }   // em pé: no meio, entre a sala e os comandos
+  else { box.style.left = `${Math.max(130, hx * S_ART - 220)}px`; box.style.top = `${Math.max(130, hy * S_ART - 70)}px`; }
   box.classList.remove('hidden');
   const t0 = now();
   return new Promise(res => {
@@ -1044,7 +1052,11 @@ function frame(t) {
     o.flash = Math.max(0, o.flash - dt); o.shove = Math.max(0, o.shove - dt * 1.6);
     if (o.hp <= 0 && o.diedAt && now() - o.diedAt > 1100) o.alpha = Math.max(0, o.alpha - dt * 2);
   }
-  const tgt = !B ? [hero.gx + 1.6, hero.gy - 1.6] : B.camMode === 'hero' ? [hero.gx, hero.gy - 1.8] : B.wave === 2 ? [1.3, roomGy(2) - 0.3] : [1.6, roomGy(B.wave)];
+  // Em pé a tela é estreita: a câmera centraliza o herói e a sala (que vai do herói, embaixo à
+  // esquerda, até os monstros no alto à direita) em vez de deixar espaço para o painel lateral.
+  const tgt = PORTRAIT
+    ? (!B ? [hero.gx + 0.6, hero.gy + 0.6] : B.camMode === 'hero' ? [hero.gx + 0.3, hero.gy - 1.2] : B.wave === 2 ? [1.8, roomGy(2) - 0.6] : [2.2, roomGy(B.wave) - 0.4])
+    : !B ? [hero.gx + 1.6, hero.gy - 1.6] : B.camMode === 'hero' ? [hero.gx, hero.gy - 1.8] : B.wave === 2 ? [1.3, roomGy(2) - 0.3] : [1.6, roomGy(B.wave)];
   cam.gx += (tgt[0] - cam.gx) * Math.min(1, dt * 3.5); cam.gy += (tgt[1] - cam.gy) * Math.min(1, dt * 3.5);
   shake = Math.max(0, shake - dt);
   const sh = shake > 0 ? Math.sin(clock * 90) * 3 : 0;
@@ -1105,8 +1117,9 @@ function frame(t) {
     }
     for (let i = FX.floats.length - 1; i >= 0; i--) {
       const f = FX.floats[i]; f.t += dt; if (f.t > 1.1) { FX.floats.splice(i, 1); continue; }
-      const [x, y] = P(f.gx, f.gy, f.h); const sx = x * S_ART, sy = y * S_ART - f.t * 50;
+      const [x, y] = P(f.gx, f.gy, f.h), sy = y * S_ART - f.t * 50;
       ctx.globalAlpha = Math.min(1, 2.2 - f.t * 2); ctx.font = `700 ${f.size}px "Pixelify Sans"`; ctx.textAlign = 'center';
+      const half = ctx.measureText(f.text).width / 2 + 8, sx = Math.max(half, Math.min(W - half, x * S_ART));   // não sai pela borda (em pé o herói fica perto dela)
       ctx.fillStyle = '#000'; ctx.fillText(f.text, sx + 3, sy + 3); ctx.fillStyle = f.color; ctx.fillText(f.text, sx, sy);
       ctx.globalAlpha = 1;
     }
@@ -1116,9 +1129,9 @@ function frame(t) {
 }
 
 function fit() {
-  W = Math.round(Math.min(1700, Math.max(1280, H * innerWidth / innerHeight)));
-  AW = Math.ceil(W / S_ART);
-  const app = $('app'); app.style.width = `${W}px`;
+  if (PORTRAIT) { H = Math.round(Math.min(1600, Math.max(1280, W * innerHeight / innerWidth))); AH = Math.ceil(H / S_ART); }
+  else { W = Math.round(Math.min(1700, Math.max(1280, H * innerWidth / innerHeight))); AW = Math.ceil(W / S_ART); }
+  const app = $('app'); app.style.width = `${W}px`; app.style.height = `${H}px`;
   scale = Math.min(innerWidth / W, innerHeight / H);
   offX = (innerWidth - W * scale) / 2; offY = (innerHeight - H * scale) / 2;
   app.style.transform = `translate(${offX}px, ${offY}px) scale(${scale})`;

@@ -1,0 +1,44 @@
+/* Iso RPG Vertical — só o que muda em relação a ../iso-rpg/style.css (carregado antes deste).
+   Tela lógica de 720 px de largura e 1280–1600 de altura (game.js → fit() com IR_PORTRAIT):
+   a sala ocupa a metade de cima, os comandos ficam embaixo, ao alcance do polegar. */
+#app { width: 720px; height: 1280px; }
+
+#rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: none; } }
+@media (orientation: landscape) and (pointer: coarse) { #rotate { display: flex; } }
+
+/* ------------------------------------------------------------ acampamento: painel embaixo, fogueira em cima */
+#camp { left: 16px; right: 16px; top: auto; bottom: 16px; width: auto; height: 60%; }
+#camp h1 { font-size: 36px; }
+.res { font-size: 24px; }
+.tabs button { font-size: 22px; padding: 12px 0; }
+.attrs .btn { font-size: 21px; }
+.item b { font-size: 20px; }
+.item small { font-size: 16px; }
+.item .btn { font-size: 19px; padding: 10px 12px; }
+.enter { font-size: 30px; padding: 16px 12px; }
+.note { font-size: 16px; }
+
+/* ------------------------------------------------------------ batalha */
+#chip { left: 16px; right: 16px; top: 16px; font-size: 19px; text-align: center; }
+#queue { left: 16px; right: 16px; top: 62px; justify-content: center; flex-wrap: wrap; }
+#move { bottom: auto; top: 47%; font-size: 44px; }
+
+#hero-panel { left: 16px; right: 16px; width: auto; bottom: 330px; }
+#log { left: 16px; right: 16px; bottom: 470px; font-size: 21px; }
+#cmds { left: 16px; right: 16px; width: auto; bottom: 20px; gap: 10px; }
+#cmds .btn { min-height: 92px; font-size: 26px; }
+#cmds .btn small { font-size: 17px; }
+#cmds .wide { min-height: 62px; font-size: 20px; }
+#cmds .air { min-height: 140px; font-size: 38px; }
+body.touch #cmds { width: auto; }
+body.touch #cmds .btn { min-height: 96px; }
+
+/* O círculo de reação fica no meio da tela (game.js põe o top), entre a sala e o painel. */
+#qte { left: 50%; width: 240px; height: 240px; }
+#qte svg { width: 240px; height: 240px; }
+
+#mini { width: 640px; }
+#modal .box { width: 640px; }
+#modal .row2 { flex-direction: column; }
+#modal .row2 .btn { font-size: 22px; padding: 14px; }
