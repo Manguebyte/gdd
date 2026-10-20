@@ -1,0 +1,17 @@
+{
+  "ship": {
+    "job_id": "b32d6a22-9575-4ba5-99db-a84d48b4038b",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/ship.png"
+  },
+  "enemies/fighter": {
+    "job_id": "eb1bce70-50f6-44bd-9a99-cae7364bfbb4",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/fighter.png"
+  },
+  "asteroids/asteroid-2": {
+    "job_id": "cee9c2bf-5546-44e4-93ee-c4985f62f897",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/asteroid-2.png"
+  }
+}

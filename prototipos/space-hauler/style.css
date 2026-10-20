@@ -1,0 +1,198 @@
+/* Space Hauler — protótipo web. Tela de referência 1280×720 (a mesma do Canvas
+   Scaler do guia Unity, Fase 5.7), escalada para caber na janela (game.js → fit()).
+   Mesma estrutura do Fury Hauler, com a paleta do espaço: azul-noite, ciano e o
+   laranja da carga. */
+:root {
+  --sand: #0e1430;
+  --rust: #d8782a;
+  --rust-dark: #3a1a08;
+  --ink: #070a1c;
+  --cream: #dfe6ff;
+  --steel: #3a4260;
+  --yellow: #f2b632;
+  --green: #6ef0be;
+  --red: #ff5a6a;
+  --cyan: #5af0ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #05070f; }
+body { font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif; color: var(--cream); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+.hidden { display: none !important; }
+
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 10;
+  align-items: center; justify-content: center; padding: 24px; text-align: center;
+  background: #05070f; font-size: 28px; font-weight: 700;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+#app { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: var(--sand); }
+#view { position: absolute; inset: 0; width: 1280px; height: 720px; display: block; }
+.buy.plating { border-color: #3a6a8a; }
+.buy.plating .name { color: #9fe8ff; }
+
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud button, #hud #shop, #hud #abilities, #hud #panel { pointer-events: auto; }
+
+.plate {
+  background: linear-gradient(180deg, #1e2648, #10152c);
+  border: 2px solid #05070f; border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 0 rgba(0,0,0,.35);
+}
+
+#top-left { position: absolute; left: 16px; top: 14px; display: flex; flex-direction: column; gap: 8px; }
+#scrap-box { display: flex; align-items: baseline; gap: 8px; padding: 4px 14px 4px 10px; }
+#scrap-box b { font-size: 34px; color: var(--yellow); line-height: 1; text-shadow: 0 2px 0 #000; }
+#scrap-box small { font-size: 16px; letter-spacing: 2px; opacity: .8; }
+.cog { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle, #10152c 32%, var(--yellow) 34%); border: 3px dashed #b08020; align-self: center; }
+#hp-box { width: 280px; position: relative; }
+.bar { height: 22px; background: #0a0e20; border: 2px solid #05070f; border-radius: 4px; overflow: hidden; position: relative; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transition: width .15s; }
+#hp-fill { background: linear-gradient(180deg, #7ae8ff, #2a7ab8); }
+#hp-fill.low { animation: pulse .5s infinite alternate; }
+#hp-text { position: absolute; left: 10px; top: 1px; font-size: 18px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+@keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.7); } }
+
+#top-center { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); width: 520px; text-align: center; }
+#trip-label { font-size: 22px; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 2px #000; margin-bottom: 4px; }
+#progress { position: relative; height: 14px; margin: 0 26px; background: rgba(8,12,30,.7); border: 2px solid #05070f; border-radius: 8px; }
+#progress-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--yellow); border-radius: 6px; }
+#progress .end { position: absolute; top: -6px; font-weight: 700; font-size: 18px; text-shadow: 0 1px 2px #000; }
+#progress .start { left: -22px; }
+#progress .finish { right: -26px; transform: translateX(50%); white-space: nowrap; }
+#progress-ship { position: absolute; top: -5px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50% 4px 4px 50%; background: var(--rust); border: 2px solid #1a0c05; }
+#boss-bar { margin-top: 10px; }
+#boss-bar span { font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-size: 18px; color: #ff8a9a; letter-spacing: 2px; text-shadow: 0 2px 2px #000; }
+#boss-bar .bar { height: 14px; margin-top: 2px; }
+#boss-fill { background: linear-gradient(180deg, #ff5a7a, #8c1e3a); }
+
+#pause-btn { position: absolute; right: 16px; top: 14px; width: 44px; height: 44px; font-size: 20px; font-weight: 700; }
+
+/* Habilidades: canto inferior esquerdo. */
+#abilities { position: absolute; left: 16px; bottom: 16px; display: flex; gap: 10px; }
+.ability { position: relative; width: 92px; height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; overflow: hidden; }
+.ability canvas { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); }
+.ability .name { font-size: 17px; font-weight: 700; position: relative; }
+.ability .key { position: absolute; left: 6px; top: 3px; font-size: 15px; color: var(--yellow); font-weight: 700; }
+.ability .cd { position: absolute; inset: 0; background: conic-gradient(rgba(0,0,0,.7) calc(var(--cd) * 360deg), transparent 0); pointer-events: none; }
+.ability .secs { position: absolute; top: 26px; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 700; text-shadow: 0 2px 2px #000; }
+.ability.ready { animation: ready 1.2s infinite; }
+@keyframes ready { 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 12px rgba(90,240,255,.7); } }
+
+/* Barra de compra: embaixo, no centro. */
+#shop { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; }
+.buy { width: 128px; height: 96px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5px; }
+.buy canvas { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
+.buy img.icon { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); height: 48px; image-rendering: pixelated; }
+.buy.poor img.icon { opacity: .5; }
+.touch .buy img.icon { height: 58px; }
+.buy .name { font-size: 18px; font-weight: 700; line-height: 1; }
+.buy .cost { font-size: 17px; color: var(--yellow); font-weight: 700; }
+.buy .key { position: absolute; left: 6px; top: 3px; font-size: 14px; opacity: .6; }
+.buy.selected { border-color: var(--green); box-shadow: 0 0 0 3px var(--green), 0 3px 0 rgba(0,0,0,.35); transform: translateY(-4px); }
+.buy.poor .cost { color: var(--red); }
+.buy.poor canvas { opacity: .5; }
+.buy.locked { filter: grayscale(1) brightness(.6); cursor: default; }
+.buy.locked .cost { color: var(--cream); font-size: 14px; }
+.buy:not(.locked):hover { filter: brightness(1.15); }
+
+/* Painel da defesa selecionada: canto inferior direito. */
+#panel { position: absolute; right: 16px; bottom: 16px; width: 270px; padding: 10px 12px; }
+#panel-title { font-size: 22px; font-weight: 700; color: var(--yellow); }
+#panel-info { font-size: 16px; opacity: .9; margin: 2px 0 8px; line-height: 1.25; }
+#panel .buttons { display: flex; gap: 8px; }
+#panel .buttons button { flex: 1; padding: 6px 4px; font-size: 18px; font-weight: 700; border-radius: 4px; border: 2px solid #05070f; }
+#upgrade-btn { background: #1f6a5a; }
+#sell-btn { background: #7a2c3a; }
+#panel .buttons button:disabled { background: #2a3048; opacity: .7; }
+#panel .buttons button:not(:disabled):hover { filter: brightness(1.2); }
+
+#toast { position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); font-size: 24px; font-weight: 700; color: #ffd27a; text-shadow: 0 2px 3px #000; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+#toast.show { opacity: 1; }
+#banner { position: absolute; left: 0; right: 0; top: 200px; text-align: center; font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 54px; color: #dff8ff; text-shadow: 0 4px 0 #0a2a4a, 0 0 24px rgba(90,240,255,.5); opacity: 0; transform: scale(.9); transition: opacity .25s, transform .25s; }
+#banner.show { opacity: 1; transform: scale(1); }
+#banner small { display: block; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: 2px; }
+
+/* ---------- Telas por cima (menu, mapa, resultado, pausa) ---------- */
+#overlay { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(14,20,48,.78), rgba(4,6,14,.94)); display: flex; align-items: center; justify-content: center; animation: fadein .35s; }
+@keyframes fadein { from { opacity: 0; } }
+#modal { text-align: center; }
+.title { font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 96px; line-height: .95; color: var(--yellow); text-shadow: 0 6px 0 #6a3a0a, 0 0 40px rgba(242,182,50,.35); letter-spacing: 4px; }
+.subtitle { font-size: 26px; margin: 10px 0 22px; opacity: .95; }
+.howto { display: inline-block; text-align: left; font-size: 20px; line-height: 1.45; padding: 12px 20px; margin-bottom: 20px; }
+.howto b { color: var(--yellow); }
+.stats { font-size: 18px; opacity: .75; margin-top: 16px; }
+.big-btn { display: inline-block; margin: 6px; padding: 10px 34px; font-size: 30px; font-weight: 700; letter-spacing: 2px; background: linear-gradient(180deg, #d8782a, #8a3a10); border: 3px solid #1a0a03; border-radius: 6px; box-shadow: 0 4px 0 #1a0a03; }
+.big-btn small { font-size: 18px; opacity: .85; letter-spacing: 0; }
+.big-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: default; }
+.big-btn.secondary { background: linear-gradient(180deg, #2e3a60, #1a2038); }
+.big-btn:hover { filter: brightness(1.15); }
+.big-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #1a0a03; }
+
+.route-head { font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 42px; color: var(--yellow); text-shadow: 0 4px 0 #6a3a0a; }
+.route-status { font-size: 22px; margin: 4px 0 8px; }
+.route-status b { color: var(--yellow); }
+#route-map { position: relative; width: 1160px; height: 430px; margin: 0 auto; }
+#route-map svg { position: absolute; inset: 0; }
+.node { position: absolute; width: 132px; height: 84px; margin: -42px 0 0 -66px; padding: 6px 4px; border-radius: 8px; line-height: 1.15; font-size: 17px; }
+.node .n { font-size: 22px; font-weight: 700; }
+.node .risk { color: #ff8a9a; letter-spacing: 2px; }
+.node.t-station { background: linear-gradient(180deg, #1a4a48, #0e2a2a); }
+.node.t-asteroids .n { color: #c8b8a8; }
+.node.t-pirate .n { color: #ff8a9a; }
+.node.t-open .n { color: var(--cyan); }
+.node .bonus { font-size: 15px; color: var(--yellow); }
+.node.reachable { border-color: var(--green); box-shadow: 0 0 0 3px var(--green), 0 3px 0 rgba(0,0,0,.35); animation: bob 1.1s infinite ease-in-out; }
+.node.reachable:hover { filter: brightness(1.25); }
+.node.visited { background: linear-gradient(180deg, #4a3a14, #2a200a); }
+.node.current { box-shadow: 0 0 0 3px var(--yellow); }
+.node.blocked { opacity: .45; cursor: default; }
+.node.boss { background: linear-gradient(180deg, #5a1a2a, #2a0a12); }
+.node.boss .n { font-family: 'Orbitron', sans-serif; font-size: 28px; color: #ffb88a; }
+.node.origin { width: 84px; margin-left: -42px; cursor: default; }
+.node.origin .n { font-family: 'Orbitron', sans-serif; font-size: 28px; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+
+.result-title { font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 60px; line-height: 1; }
+.result-title.win { color: var(--yellow); text-shadow: 0 5px 0 #6a3a0a; }
+.result-title.lose { color: #ff7a8a; text-shadow: 0 5px 0 #2a0a12; }
+.result-text { font-size: 26px; margin: 16px 0 6px; line-height: 1.35; }
+.result-text b { color: var(--yellow); }
+.unlock { font-size: 24px; color: var(--green); font-weight: 700; margin: 8px 0; }
+
+/* ---------- Celular / tablet (body.touch, definido em game.js) ----------
+   A tela lógica é a mesma, mas num celular deitado ela aparece com ~55% do
+   tamanho; por isso botões e textos crescem aqui, para o dedo e para a leitura. */
+html, body, #app { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.touch .buy .key, .touch .ability .key { display: none; }
+.touch .buy { width: 158px; height: 118px; }
+.touch .buy .name { font-size: 23px; }
+.touch .buy .cost { font-size: 21px; }
+.touch .buy canvas { transform: translateX(-50%) scale(1.2); transform-origin: top center; }
+.touch #shop { gap: 10px; bottom: 12px; }
+.touch .ability { width: 118px; height: 118px; }
+.touch .ability .name { font-size: 22px; }
+.touch .ability .secs { font-size: 34px; top: 32px; }
+.touch .ability canvas { transform: translateX(-50%) scale(1.3); transform-origin: top center; }
+.touch #pause-btn { width: 72px; height: 72px; font-size: 30px; }
+.touch #scrap-box b { font-size: 44px; }
+.touch #scrap-box small { font-size: 20px; }
+.touch #hp-box { width: 340px; }
+.touch #hp-box .bar { height: 30px; }
+.touch #hp-text { font-size: 23px; top: 2px; }
+.touch #trip-label { font-size: 28px; }
+.touch #panel { width: 360px; bottom: 150px; padding: 14px 16px; }
+.touch #panel-title { font-size: 28px; }
+.touch #panel-info { font-size: 21px; }
+.touch #panel .buttons button { font-size: 25px; padding: 12px 6px; }
+.touch #toast { font-size: 30px; bottom: 150px; }
+.touch .howto { font-size: 24px; }
+.touch .subtitle { font-size: 30px; }
+.touch .big-btn { font-size: 36px; padding: 14px 44px; }
+.touch .route-status { font-size: 25px; }
+.touch .node { width: 150px; height: 100px; margin: -50px 0 0 -75px; font-size: 20px; }
+.touch .node .n { font-size: 26px; }
+.touch .node .bonus { font-size: 18px; }

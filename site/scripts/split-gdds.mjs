@@ -140,6 +140,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'SpaceHauler.md',
+    slug: 'space-hauler',
+    label: 'Space Hauler',
+    description: 'Tower defense em movimento no espaço: arme uma nave de carga que voa sozinha de um planeta a outro, com piratas de todos os lados.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'CacaAsBruxas.md',
     slug: 'caca-as-bruxas',
