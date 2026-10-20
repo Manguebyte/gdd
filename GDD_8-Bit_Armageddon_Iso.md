@@ -1,0 +1,6834 @@
+# GDD — 8-Bit Armageddon Iso
+**Gênero:** Roguelike de defesa automática / tower-defense invertido
+**Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
+**Plataformas:** Web (site próprio + itch.io), navegador de desktop, com mouse
+**Modelo de negócio:** Gratuito, **sem anúncios** e sem compras no app
+**Idiomas no lançamento:** Inglês e Português (Brasil)
+**Público-alvo:** 13+. Fãs de roguelike incremental (ex: The Tower, Vampire Survivors, Kingdom Rush) com foco em runs curtas e replayability
+**Glossário:** os termos canônicos (em inglês) estão em [`contexts/8-bit-armageddon-iso/CONTEXT.md`](contexts/8-bit-armageddon-iso/CONTEXT.md). Este documento e o código usam só esses termos.
+
+> **De onde vem este jogo.** **Definido:** o 8-Bit Armageddon Iso é um **jogo separado** do [8-Bit Armageddon](GDD_8-Bit_Armageddon.md), com GDD, glossário, protótipo e save próprios. Ele nasceu de uma cópia das regras do 8-Bit Armageddon, com duas diferenças: a **câmera isométrica** (o planeta flutua no centro de um grid isométrico) e o jogo **sem anúncios nem Revive**. A simulação continua num plano 2D, então as regras de combate, Waves e economia são as mesmas. Daqui em diante os dois documentos evoluem sozinhos: uma mudança num jogo não vale para o outro.
+
+---
+
+## 1. Conceito Central (Pitch)
+
+O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. O planeta flutua no centro de um **grid isométrico**, e os aliens chegam de qualquer direção desse chão. Os **Satellites** orbitam o planeta e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Toda run começa do zero: não há moeda permanente nem upgrades que passam de uma run para a outra. O que fica são as conquistas, que liberam novos Planet Cores e Skins, e o recorde de Wave a bater.
+
+**Fantasia central:** "Eu sou o último ponto de defesa de um mundo. Quanto mais eu resistir, mais forte eu fico, mas os aliens também."
+
+---
+
+## 2. Pilares de Design
+
+1. **Automação com decisão constante:** o combate é automático (os Satellites orbitam, escolhem alvo e atiram sozinhos), mas a estratégia de Upgrade é ativa e contínua, sem tempo morto. Comprar um Upgrade custa um toque e nunca pausa o jogo.
+2. **Run curta, morte com propósito:** cada run dura de 5 a 20 minutos e começa do zero; morrer não é frustração, é a chance de tentar outra estratégia de Upgrades ou outro Planet Core para bater o recorde.
+3. **Escalada dupla:** inimigos ficam mais fortes a cada Wave; o planeta também, através das escolhas do jogador. A tensão vem de saber se sua curva vence a deles.
+4. **Cerco legível:** o planeta é o centro fixo da tela; tudo ao redor (inimigos, projéteis, Satellites, efeitos) converge para ele. O chão é dividido em 4 **Quadrants** centrados no planeta e marcados pelos eixos do grid; toda ameaça está sempre visível num deles (a sombra dela no grid mostra em qual), e o jogo sempre avisa de onde a próxima ameaça vem.
+
+---
+
+## 3. Loop de Gameplay
+
+### Loop de curto prazo (dentro da run)
+1. Um indicador na borda da tela avisa, 2 s antes, de quais **Spawn Sectors** a próxima Wave vai sair.
+2. A Wave começa com um timer (30 s; 60 s na Boss Wave). Os inimigos nascem nos setores sorteados e avançam até o planeta.
+3. Os **Satellites** orbitam o planeta, e cada um dispara nos inimigos do **Quadrant** por onde está passando, escolhendo o alvo pela sua **Target Priority**.
+4. Inimigo destruído → o jogador ganha **Shards**.
+5. O jogador gasta Shards em **Upgrades** e em novos **Satellites** (válidos só nesta run) pela gaveta na parte de baixo da tela, sem pausar o jogo.
+6. A próxima Wave começa quando o timer acaba **ou** quando a tela fica sem inimigos, o que vier primeiro. Esvaziar a tela (**Wave Clear**) paga um bônus de Shards.
+7. Repete até o planeta ser destruído. Não existe Revive: quando o planeta cai, a run acaba (Seção 4.6).
+
+### Loop de médio prazo (fim de run)
+1. Planeta destruído → tela de **Results**: Wave alcançada, inimigos destruídos, tempo de sobrevivência, Shards coletados e o recorde de Wave.
+2. As conquistas cumpridas na run são liberadas; algumas dão um Planet Core ou uma Skin.
+3. Nova run começa do zero, com os mesmos valores base (Seção 5.1). O que muda de uma run para outra é o Planet Core escolhido e a estratégia de Upgrades.
+
+### Loop de longo prazo (meta)
+- **Conquistas** desbloqueiam novos **Planet Cores** (variantes de planeta que mudam a build) e **Skins**.
+- O **recorde de Wave** fica salvo e aparece no Main Menu e no Results: é a meta de cada run.
+
+---
+
+## 4. Sistemas de Combate
+
+> **Unidades:** todas as distâncias abaixo estão em **unidades de mundo (u)** no **plano do chão**, onde a regra acontece (ver Seção 6.1). A câmera isométrica só muda onde as coisas aparecem: 1 u ao longo de um eixo do chão vira 12 px na horizontal e 6 px na vertical da tela, e um círculo de raio r no chão vira uma elipse de ~17·r px de meia-largura e ~8,5·r px de meia-altura. O planeta tem 2 u de diâmetro (raio de 1 u).
+
+### 4.1 Satellites e Quadrants
+
+**Definido:**
+- Toda run começa com **1 Satellite** e pode chegar a **4**. Os Satellites extras são **comprados durante a run, com Shards**, na aba "Satellites" da gaveta de upgrades (preços na Seção 4.2), e somem no fim da run, como os Upgrades. Não são Perks.
+- **Órbita:** todos os Satellites giram na **mesma órbita circular**, com raio de **1,75 u** a partir do centro do planeta (o planeta tem raio de 1 u), no sentido **anti-horário**, na velocidade do Stat **Orbit Speed** (graus por segundo). Ficam **espaçados igualmente** e giram juntos: 1 Satellite; 2 opostos; 3 a cada 120°; 4 a cada 90°. Com 4, cada um está sempre num Quadrant diferente e a cobertura é total. Com menos, cada Satellite "visita" um Quadrant de cada vez.
+- **Quadrants:** o chão é dividido em 4 setores de 90°, como um plano cartesiano centrado no planeta e **alinhado aos eixos do grid isométrico**. Na tela, cada Quadrant é uma das 4 pontas do losango do grid: **Top** (x e y do chão positivos), **Left**, **Bottom** e **Right**, nessa ordem anti-horária. As linhas que separam os Quadrants são as duas linhas centrais do grid, que na tela correm na diagonal. Um inimigo exatamente sobre a linha entre dois Quadrants pertence a um só deles (regra técnica, sem efeito visível).
+- **Alvos:** um Satellite só pode atirar em inimigos que estejam **no Quadrant onde ele está agora** **e** dentro do Stat **Attack Range**, medido **a partir do centro do planeta** (assim todos os Satellites têm o mesmo alcance efetivo). Um inimigo está dentro do alcance quando a **borda** dele está: `distância do centro do inimigo − raio do inimigo ≤ Attack Range`. O raio é metade do tamanho do sprite (Grunt e Scout 0,5 u, Swarmer 0,25 u, Brute 0,75 u, Mothership 1,5 u). Se não houver ninguém válido, ele segura o tiro.
+- Todos os Satellites usam os **mesmos Stats** (Damage, Attack Speed etc.). Só a Target Priority é individual.
+- **Target Priority** escolhe qual inimigo válido (no Quadrant e no alcance) recebe o tiro. É configurada **por Satellite**, na aba "Satellites" da gaveta de upgrades. As 4 estão disponíveis desde o início de toda run, sem custo:
+
+| Target Priority | Escolhe |
+|---|---|
+| **Closest** | O inimigo mais perto do planeta (padrão de todo Satellite novo) |
+| **Weakest** | O inimigo com menos HP atual |
+| **Strongest** | O inimigo com mais HP atual |
+| **Farthest** | O inimigo mais longe do planeta (sinergia com Impetus) |
+
+- **Projéteis:** cada disparo cria um projétil teleguiado que persegue o alvo, mesmo que o Satellite já tenha passado para outro Quadrant. Se o alvo morrer antes, o projétil some.
+  - **Em aberto:** a velocidade do projétil. O valor inicial no código é **10 u/s** (cruza o Attack Range base de 4 u em 0,4 s).
+
+**Fórmula de dano do disparo:**
+```
+dano = Damage × (1 + Impetus × distânciaAoCentro) × (crítico ? CriticalFactor : 1)
+```
+O crítico é sorteado a cada disparo com probabilidade Critical Chance.
+
+### 4.2 Stats do planeta (Upgrades)
+
+Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
+
+**Definido:** toda run começa com **5 Shards** (valor inicial), o suficiente para o primeiro Upgrade de Damage ou de Hitpoints logo no início.
+
+**Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelo Planet Core.
+
+**Definido (valor inicial, ajustar com playtests):** os valores das tabelas abaixo.
+
+#### ⚔️ Offense
+| Stat | Efeito | Base | Por nível | Teto | baseCost |
+|---|---|---|---|---|---|
+| **Damage** | Dano por disparo | 10 | +3 | — | 5 |
+| **Attack Speed** | Disparos por segundo, por Satellite | 1,0/s | +0,08/s | 6,0/s | 6 |
+| **Critical Chance** | Probabilidade de crítico | 0% | +1,5 p.p. | 80% | 8 |
+| **Critical Factor** | Multiplicador de dano no crítico | 1,5× | +0,1× | 6× | 8 |
+| **Attack Range** | Raio de detecção e disparo, medido do centro do planeta | 4,0 u | +0,15 u | 8,0 u | 6 |
+| **Impetus** | Dano extra por unidade de distância do alvo | 0%/u | +0,4%/u | 12%/u | 10 |
+| **Orbit Speed** | Velocidade da órbita dos Satellites | 45°/s | +5°/s | 180°/s | 6 |
+
+Observações de design:
+- Critical Chance e Critical Factor são separados para permitir builds de "chance alta + fator baixo" e o oposto.
+- Impetus incentiva Attack Range alto e a Target Priority Farthest.
+- Orbit Speed decide quanto tempo um Quadrant fica sem cobertura quando o jogador tem menos de 4 Satellites. Com o valor base, 1 Satellite dá a volta em 8 s e fica 2 s em cada Quadrant. Um Grunt leva uns 3,7 s para cruzar o Attack Range base, então alguns chegam ao planeta nas primeiras Waves. Isso é proposital: cria o incentivo para comprar Orbit Speed ou o Satellite 2.
+
+#### 🛡️ Defense
+| Stat | Efeito | Base | Por nível | Teto | baseCost |
+|---|---|---|---|---|---|
+| **Hitpoints** | HP máximo do planeta | 100 | +25 | — | 5 |
+| **Regeneration** | HP recuperado por segundo | 0 | +0,4/s | — | 8 |
+| **Defense (absolute)** | Dano fixo removido de cada hit | 0 | +0,5 | — | 8 |
+| **Defense (relative)** | % de dano removido de cada hit | 0% | +1,5 p.p. | 75% | 10 |
+
+**Definido:** dano recebido = `max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative))`. A defesa absoluta é aplicada primeiro, e nenhum hit causa menos que 1 de dano. A absoluta é forte contra muitos hits fracos (Swarmer); a relativa, contra hits grandes (Brute, laser da Mothership).
+
+Ao comprar um nível de Hitpoints, o HP atual sobe na mesma quantidade (o jogador não "perde" a compra por estar ferido).
+
+#### 💰 Utility
+| Stat | Efeito | Base | Por nível | Teto | baseCost |
+|---|---|---|---|---|---|
+| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 6 |
+| **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 6 |
+
+Utility é a Track "de investimento": não ataca nem defende, mas acelera o acesso às outras duas.
+
+#### 🛰️ Satellites
+Comprados na aba "Satellites" da gaveta. Não são um Stat: não têm nível nem fórmula de valor, cada compra põe mais um Satellite na órbita (Seção 4.1). O Planet Core não muda esses preços.
+
+**Definido (valor inicial, ajustar com playtests):**
+| Compra | Custo (Shards) |
+|---|---|
+| **Satellite 2** | 10 |
+| **Satellite 3** | 50 |
+| **Satellite 4** | 100 |
+
+Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problema (Quadrants sem cobertura) e custa menos que 2 níveis de Orbit Speed (6 + 7), para ser uma das primeiras compras da run. Comprar cedo deixa Damage e Hitpoints para trás; adiar deixa Quadrants descobertos por mais tempo.
+
+### 4.3 Waves
+
+**Definido:**
+- **Timer:** 30 s por Wave; 60 s na Boss Wave.
+- **Início da próxima Wave:** quando o timer acaba **ou** quando a tela fica sem inimigos (depois de todos os inimigos da Wave atual terem nascido), o que vier primeiro. Antes de cada Wave há um **aviso de 2 s** com os indicadores de Spawn Sector.
+- **Wave Clear:** o momento em que a tela fica sem inimigos. Paga o bônus de **todas** as Waves que ainda tinham inimigos vivos, inclusive as que já tinham passado do timer. Exemplo: o timer da Wave 12 acaba com 5 inimigos vivos, a Wave 13 começa, e o jogador limpa tudo → recebe o bônus da 12 e da 13.
+  - Consequência: enquanto uma Mothership estiver viva, a tela nunca esvazia, então os bônus se acumulam e são pagos todos juntos quando ela morre.
+- **Spawn Sectors:** o círculo ao redor do planeta, no chão, é dividido em 6 arcos de 60°. Cada Wave sorteia 1 setor (Waves 1–4), 2 setores (Waves 5–14) ou 3 setores (Wave 15 em diante). Os inimigos nascem num ponto aleatório dentro dos setores sorteados, a 12 u do centro (fora da tela: na vista isométrica, 12 u são ~204 px para o lado e ~102 px para cima ou para baixo, além da metade da tela de 320×180).
+- **Ritmo de spawn:** os inimigos de uma Wave nascem espalhados igualmente nos primeiros 20 s do timer.
+- **Limite de tela:** no máximo **150 inimigos** vivos ao mesmo tempo. Se o limite for atingido, o spawn espera. Os slots que não couberem **não são descartados**: continuam na fila e nascem assim que houver espaço, mesmo que a próxima Wave já tenha começado. O Wave Clear só acontece com essa fila vazia.
+
+**Definido (valor inicial, ajustar com playtests):**
+| Item | Fórmula |
+|---|---|
+| Slots de spawn por Wave (w = número da Wave) | `min(6 + 2·w, 60)` |
+| HP do inimigo | `baseHP × 1.09^(w−1)` |
+| Dano do inimigo | `baseDamage × 1.06^(w−1)` |
+| Bônus de Wave Clear (por Wave paga) | `(5 + w) × (1 + Resource per Wave)` Shards |
+
+**Composição:** cada slot de spawn sorteia um tipo de inimigo entre os já liberados, com os pesos Grunt 50, Scout 25, Swarmer 15, Brute 10 (os pesos são renormalizados entre os tipos liberados). Um slot de Swarmer gera um cacho de 8.
+
+### 4.4 Inimigos
+
+**Definido:** todos os inimigos comuns são **kamikaze**: avançam até o planeta, causam dano ao tocar (distância < raio do planeta) e somem sem dar Shards.
+
+**Definido (valor inicial, ajustar com playtests):** valores na Wave 1, antes da escalada da Seção 4.3.
+
+| Inimigo | HP | Dano | Velocidade | Shards | Liberado na Wave | Comportamento |
+|---|---|---|---|---|---|---|
+| **Grunt** | 10 | 5 | 0,8 u/s | 1 | 1 | Linha reta até o planeta |
+| **Scout** | 6 | 3 | 2,0 u/s | 1 | 3 | Zigue-zague leve (amplitude 0,5 u, 1,5 Hz) |
+| **Swarmer** | 3 | 2 | 1,2 u/s | 1 a cada 2 | 6 | Nasce em cachos de 8, espalhados |
+| **Brute** | 80 | 20 | 0,5 u/s | 4 | 8 | Linha reta, lento |
+
+Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarmer) são acumuladas e pagas quando somam 1.
+
+### 4.5 Boss Wave — Mothership
+
+**Definido:**
+- Toda Wave múltipla de 10 (10, 20, 30…) é uma **Boss Wave**: nasce uma única **Mothership**, sem inimigos comuns. HP e dano escalam com a mesma fórmula da Seção 4.3.
+- A Mothership **não é kamikaze**. Ela nasce na borda (12 u), no Spawn Sector indicado pelo aviso da Boss Wave, e desce em linha reta a **1,5 u/s** até **7 u** do centro. Durante a entrada ela já pode ser atingida (se estiver no alcance), mas só começa a atacar quando chega aos 7 u.
+- **Espiral:** dali em diante ela gira devagar (10°/s, uma volta a cada 36 s) e **se aproxima em espiral**, perdendo **1,5 u de raio por volta**, de forma contínua, até uma **órbita mínima de 3,5 u**, onde continua girando e atacando. Com a regra de alcance pela borda (Seção 4.1), o Attack Range base (4 u) a alcança depois de cerca de 1 volta; quem comprou Range a alcança antes.
+- **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta.
+- **Swarmers:** a cada 15 s, solta um cacho de 8 Swarmers.
+- **Barra de HP** no topo da tela enquanto ela estiver viva.
+- Se o timer de 60 s acabar com a Mothership viva, ela **continua em campo** junto com as Waves seguintes até ser destruída.
+
+**Definido (valor inicial):** HP base 1.200, dano do laser base 25, Shards 50.
+
+### 4.6 Fim de run
+
+**Definido:**
+- Quando o HP do planeta chega a 0, o jogo congela e vai para o **Results**. A run acaba ali.
+- **Não existe Revive** neste jogo, nem nenhum outro jeito de continuar a run (o 8-Bit Armageddon tem um Revive por anúncio; este jogo não tem anúncios, Seção 7).
+- **Pausa:** o botão de pausa congela o jogo. O jogo também **pausa sozinho** quando o app vai para segundo plano ou a aba do navegador perde o foco.
+
+---
+
+## 5. Progressão entre runs
+
+### 5.1 Sem moeda permanente
+
+**Definido:**
+- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 5 Shards e as 4 Target Priorities disponíveis.
+- Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 13 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
+- O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e o **recorde de Wave** (Best Wave: a maior Wave alcançada, mostrada no Main Menu e no Results).
+- Consequência de design: a variedade entre runs vem do Planet Core escolhido e da estratégia de Upgrades, não de um ponto de partida que cresce. Sem Perks, nenhuma run começa mais forte que a primeira. **Em aberto:** se o começo da run (Seções 4.2 e 4.3) precisa de ajuste por causa disso (ajustar com playtests).
+
+### 5.2 Planet Cores
+
+**Definido:** o jogador escolhe o Planet Core na tela Core Select, antes de cada run. Planet Cores são desbloqueados **só por conquista** (Seção 5.4).
+
+| Planet Core | Modificadores | Desbloqueio |
+|---|---|---|
+| **Terra Core** | Nenhum (equilibrado) | Desde o início |
+| **Ice Core** | +30% em todos os Stats de Defense; −20% Attack Speed; +0,5 u de Attack Range base | Conquista *Frozen Resolve* |
+| **Magma Core** | +30% Damage; −25% Hitpoints; −0,5 u de Attack Range base; +15°/s Orbit Speed base | Conquista *Triple Threat* |
+
+### 5.3 Skins
+
+**Definido:** cada Planet Core tem uma Skin padrão ("Classic") e duas Skins desbloqueáveis por conquista. Skins não afetam o gameplay.
+
+| Planet Core | Skins desbloqueáveis |
+|---|---|
+| Terra Core | Ocean, Desert |
+| Ice Core | Aurora, Crystal |
+| Magma Core | Obsidian, Solar |
+
+### 5.4 Conquistas
+
+**Definido:** as conquistas ficam dentro do jogo (sem Google Play Games Services na 1.0). O progresso das conquistas "totais" soma todas as runs. 15 conquistas: as que liberam um Planet Core ou uma Skin dão essa recompensa; as outras valem só o troféu.
+
+| Conquista | Condição | Recompensa |
+|---|---|---|
+| First Contact | Completar a primeira run | Troféu |
+| Holding the Line | Chegar à Wave 10 | Troféu |
+| Frozen Resolve | Chegar à Wave 20 | **Ice Core** |
+| Giant Slayer | Destruir a primeira Mothership | Skin Terra "Ocean" |
+| Triple Threat | Destruir 3 Motherships (total) | **Magma Core** |
+| Deep Space | Chegar à Wave 40 | Skin Terra "Desert" |
+| Glacier | Chegar à Wave 30 com Ice Core | Skin Ice "Aurora" |
+| Absolute Zero | Chegar à Wave 30 com Ice Core sem comprar nenhum Upgrade de Offense | Skin Ice "Crystal" |
+| Eruption | Destruir 1.000 inimigos numa run com Magma Core | Skin Magma "Obsidian" |
+| Glass Cannon | Chegar à Wave 25 com Magma Core sem comprar Hitpoints | Skin Magma "Solar" |
+| Sniper | Causar um único hit de mais de 10.000 de dano com Impetus acima de 0 | Troféu |
+| Critical Mass | Dar 500 críticos numa run | Troféu |
+| Untouchable | Destruir uma Mothership sem o planeta tomar dano durante a Boss Wave | Troféu |
+| Clean Sweep | Fazer Wave Clear em 10 Waves seguidas antes do timer | Troféu |
+| Full Arsenal | Ter 4 Satellites numa run | Troféu |
+
+### 5.5 Progresso offline
+
+**Definido:** não existe na 1.0. Toda a progressão vem das runs (pilar 2). Não há recompensa diária: o motivo para voltar é o recorde de Wave e as conquistas.
+
+---
+
+## 6. Arte e Apresentação
+
+### 6.1 Câmera isométrica
+
+**Definido:**
+- **A regra acontece num plano 2D, o chão.** Órbitas, alcances, Quadrants e Spawn Sectors são círculos e retas de verdade nesse plano (Seção 4). A câmera não muda nenhuma regra: ela só decide onde cada coisa aparece na tela. Os inimigos vêm de qualquer direção desse chão (360°), e não de cima ou de baixo dele.
+- **Projeção isométrica 2:1.** O chão é visto na diagonal: 1 u no eixo x do chão aparece 12 px para a direita e 6 px para cima; 1 u no eixo y aparece 12 px para a **esquerda** e 6 px para cima. Assim, um quadrado do chão vira um losango duas vezes mais largo que alto, e um círculo vira uma elipse 2:1. A órbita dos Satellites, o Attack Range e o caminho em espiral da Mothership aparecem como elipses.
+- **Dois níveis de altura, só visuais.** O planeta, os Satellites, os inimigos e os projéteis ficam no **plano de voo**, na altura do centro do planeta. O **grid** fica **16 px (1 u) abaixo** dele, como um chão. Não existe altura na regra: todo mundo voa na mesma altura, e o desnível só serve para as **sombras** (Seção 6.2) mostrarem no grid onde cada coisa está.
+- **Grid isométrico.** O planeta fica no centro de um grid de tiles em losango que flutua no espaço. O grid é **só visual**: não tem casas de jogo, ninguém anda "de casa em casa" e nada é posicionado nele. As duas linhas centrais do grid são os eixos dos Quadrants. As bordas do grid vão ficando transparentes até sumir no espaço.
+- **Ordem de desenho por profundidade.** O planeta, os inimigos, os Satellites e os projéteis são ordenados pela altura na tela: o que está mais acima está mais longe da câmera e é desenhado antes. Por isso um Satellite **passa por trás do planeta** na metade de cima da órbita, e um inimigo pode ficar por um instante escondido atrás dele. É de propósito: é o que dá a sensação de volume da câmera isométrica. As camadas de desenho, de trás para frente: fundo de espaço, grid, coisas deitadas no chão (sombras, preenchimento dos Quadrants, eixos), o mundo ordenado por profundidade, e os efeitos.
+- A tela é em **paisagem**, com resolução de referência **320×180** e **Pixel Perfect Camera** (escala inteira: 6× em 1080p). Em proporções diferentes de 16:9, o jogo mostra um pouco mais de espaço em vez de distorcer. A elipse 2:1 aproveita bem a tela em paisagem: o Attack Range máximo (8 u) ocupa ~272 × 136 px.
+- **Câmera fixa.** A câmera não gira nem dá zoom. Ela só desliza na vertical quando a gaveta de upgrades abre (Seção 6.3). O centro da tela fica entre o planeta e o centro do grid, para os dois caberem juntos.
+
+### 6.2 Direção de arte
+
+- **Definido: estilo.** Pixel art colorida "clássica", baseada nas referências em `Sprites/8-Bit-Armageddon/_referencia/` (`ref1.png` e `ref2.png`): pixels grandes, sombreamento suave com 3 a 5 tons por objeto, brilho no canto de cima à esquerda (luz vinda de cima à esquerda) e **contorno preto**. O fundo é espaço azul-marinho escuro com estrelas. As referências são arte de banco de imagens com marca d'água: servem de guia para o PixelLab e nunca entram no build.
+- **Definido: a arte do 8-Bit Armageddon serve no iso.** Os inimigos são discos voadores vistos em 3/4, o planeta é uma esfera e o Satellite é visto de lado: nenhum deles depende de "estar visto de cima", então todos funcionam na câmera isométrica sem redesenho. Este jogo usa a arte de `Sprites/8-Bit-Armageddon/` como está e só acrescenta o que a câmera nova pede: o **grid** (em `Sprites/8-Bit-Armageddon-Iso/`). As sombras são geradas por código.
+- **Definido: paleta "meu × deles".**
+  - **Planeta (estilo `ref2`):** cores vivas. Cada Planet Core tem a sua própria paleta: Terra = verde e azul, Ice = azul-gelo e branco, Magma = laranja e amarelo.
+  - **Satellites:** tons de **cinza** (metal), com uma **luz laranja** piscando como detalhe quente. A silhueta quadrada e o cinza neutro os separam dos inimigos, que são arredondados e lavanda.
+  - **Inimigos e projéteis inimigos (estilo `ref1`):** tons frios, puxados para **lavanda e roxo**. Não usam azul, para não se confundir com o Ice Core.
+- **Definido: cada Skin é um sprite próprio.** São 9 planetas (3 Planet Cores × 3 Skins), cada um desenhado com as suas cores. O jogo não recolore sprites.
+- **Definido: o sprite do planeta não mostra dano.** O planeta tem a mesma cara com qualquer HP; o HP aparece só na barra do HUD, e cada acerto dá um flash no sprite. O planeta **gira**: loop de **32 frames a 4 fps** (8 s por volta), numa faixa de células de 32×32.
+- **Em aberto (pós-lançamento):** estados visuais de dano do planeta (ex.: rachaduras com 2/3 e 1/3 do HP). Custariam 3 versões de cada um dos 9 planetas.
+- **Definido: grade de 32×32.** Todo PNG de arte (sprites do mundo, ícones, painéis de UI) é montado numa grade de células de **32×32 px**, e no Unity é sempre fatiado com *Sprite Editor → Slice → Grid By Cell Size 32×32*. O desenho fica centralizado na célula, com o pivô no centro e o resto transparente. **Única exceção: a Mothership**, que usa células de **64×64** (fatiada com *Grid By Cell Size 64×64*) para ser claramente maior que qualquer inimigo comum.
+- **Definido: tamanhos** (16 pixels por unidade; tamanho do desenho dentro da célula de 32×32):
+
+  | Sprite | Desenho |
+  |---|---|
+  | Planeta | 32 px (a célula toda, 2 u de diâmetro) |
+  | Mothership | ~50×34 px (célula de 64×64) |
+  | Brute | 24 px |
+  | Grunt / Scout | 16 px |
+  | Swarmer | 8 px |
+  | Satellite | 14×8 px |
+  | Ícones pequenos (Stats, Shards, abas da gaveta) | 16 px |
+  | Ícones grandes (retratos dos Planet Cores, conquistas) | 32 px (a célula toda) |
+- **Definido: Quadrants no grid.** Os eixos são desenhados **deitados no grid**, sobre as duas linhas centrais dele: 1 px pontilhado, discreto. O Quadrant onde há um Satellite ganha um preenchimento translúcido quente, também deitado no grid: um quarto de elipse do tamanho do Attack Range, que na tela vira uma das 4 pontas do losango. Ele pisca mais forte a cada disparo. Assim o jogador vê ao mesmo tempo o que está coberto e até onde vai o alcance. O "Mostrar Quadrants" das Settings esconde o preenchimento; as linhas continuam.
+- **Definido: sombras.** O planeta, cada inimigo e cada Satellite têm uma **sombra** no grid: uma elipse escura 2:1, embaixo do ponto do chão onde a coisa está, com largura proporcional ao tamanho dela. A sombra é a resposta a "em qual Quadrant este inimigo está?": se a sombra está dentro do preenchimento laranja, o inimigo está no Quadrant coberto e no alcance. Projéteis não têm sombra (são pequenos e rápidos demais para ajudar).
+- **Legibilidade dos efeitos:** disparos e críticos precisam ser legíveis mesmo com 150 inimigos na tela. Pixel art pede exagero visual (flash no sprite, números de dano, screen shake leve) para compensar a resolução baixa.
+- **Definido: produção da arte.** Toda a arte da 1.0 é gerada no **PixelLab**. A arte herdada fica em `Sprites/8-Bit-Armageddon/{Planet,Satellites,Enemies,Projectiles,VFX,UI,Backgrounds,Fonts}/`, e a arte própria deste jogo em `Sprites/8-Bit-Armageddon-Iso/Grid/`. As duas espelham `Assets/_Project/Art/`, já com o nome final `SPR_<Tipo>_<Nome>.png`. Candidatos rejeitados vão para `_candidatos_descartados/` dentro da pasta.
+- **Definido: o grid.** Tile isométrico de **32 px de largura** (face de cima em losango de ~32×18 px, com ~6 px de espessura embaixo), em azul-marinho escuro com bordas lavanda claras, como um painel holográfico flutuando no espaço. A paleta é a do fundo de espaço (`#141241`, `#5a60a0`, `#96a0d7`, `#e6ecff`, mais dois tons escuros), para o grid parecer parte do mesmo céu. São **4 variações**: 3 lisas, sorteadas por igual, e 1 com um ponto brilhante no centro, rara (6%), só para quebrar a repetição. No jogo, o grid é desenhado com **45% de opacidade**: é referência, e não pode competir com os inimigos. Gerado com o **Tiles Pro** do PixelLab (tipo `isometric`, 32 px, vista `high top-down`, seed 7) com a paleta acima.
+- **Definido: direções dos sprites.**
+  - **Satellite:** corpo cúbico cinza com dois painéis solares altos, em tons de cinza, com **orientação fixa** (painéis sempre na horizontal): um sprite só, sem direções, e uma luz laranja piscando (2 frames).
+  - **Inimigos comuns** (Grunt, Scout, Swarmer, Brute): design **radialmente simétrico** (discos, orbes, cristais), com um sprite só para qualquer direção de chegada. O movimento aparece numa animação de pulsar ou girar.
+  - **Scout:** drone lavanda em forma de estrela de 4 pontas, girando (4 frames). A silhueta é diferente da do Grunt, para ler como "o rápido".
+  - **Swarmer:** orbe lavanda de 8 px com núcleo magenta pulsando (2 frames). Em cacho, lê como um enxame de luzinhas.
+  - **Brute:** disco blindado (um Grunt grande com placas de armadura escuras), de 24 px. Mesma família do Grunt, para o jogador entender "maior e blindado = aguenta mais". Tem **4 variações visuais**, sorteadas no spawn, com os mesmos valores.
+  - **Mothership:** disco gigante visto em 3/4 (o mesmo ângulo do Grunt), com uma cúpula magenta e 5 luzes na borda que acendem em sequência (5 frames). Um sprite só, sem direções; o laser sai do centro dela em direção ao planeta.
+  - **Grunt:** disco voador lavanda/roxo, com luzes magenta que giram pela borda (4 frames). Tem **2 variações visuais**, sorteadas no spawn, só para dar variedade à tela; as duas são o mesmo inimigo, com os mesmos valores.
+  - **Projétil do Satellite:** bolinha brilhante de 4 px em laranja/amarelo, com 2 frames de piscar. É redonda, então não precisa de direções (o projétil é teleguiado e muda de ângulo o tempo todo). O jogo desenha atrás dela um **rastro curto de 2–3 px** na direção do movimento, para não se confundir com as estrelas do fundo.
+- **Definido: VFX com sprite** (desenhados por script, células de 32×32 salvo indicação):
+  - **Explosão dos inimigos:** um "pop" de pixels magenta e branco que se espalham e somem, em 5 frames. Versão **pequena** (Grunt, Scout, Swarmer), **grande** (Brute) e uma da **Mothership** em células de 64×64.
+  - **Laser da Mothership:** o **aviso** é uma linha vermelha tracejada de 1 px que pisca (2 frames); o **disparo** é um feixe de 3 px, com núcleo branco e bordas vermelhas, que tremula (4 frames), mais uma **ponta de impacto** no planeta. O aviso e o feixe são **tiles de 32×32 repetidos** ao longo da linha. Como a Mothership orbita, a linha pode ter qualquer ângulo, então o jogo **gira** esses tiles: é a única exceção à regra de nunca girar sprites. O vermelho é exclusivo do laser e significa "perigo iminente".
+  - **Indicador de Spawn Sector:** seta magenta de 16 px na borda da tela, apontando para dentro, piscando (2 frames). A spritesheet tem uma seta para cada uma de **6 direções da tela** (30°, 90°, 150°, 210°, 270°, 330°). Com a câmera isométrica, a direção de um Spawn Sector no chão muda de ângulo na tela (o setor de 30° do chão aparece a ~62° na tela), então o jogo projeta a direção do setor e usa a seta pré-desenhada **mais próxima**. Nada é girado. As 6 direções projetadas caem em 6 setas diferentes.
+- **Definido: efeitos sem sprite** (feitos por código ou shader na Unity): flash de dano (o sprite fica branco por 1–2 frames), sombras no grid, preenchimento dos Quadrants e linhas dos eixos, rastro dos projéteis e números de dano (com a fonte da UI).
+- **Definido: fundo de espaço.** É montado com **tiles de 32×32** que se repetem sem emenda: azul-marinho com estrelinhas, em 3 ou 4 variações sorteadas. Por cima, estrelas maiores piscando, como sprites separados. Assim o fundo segue a grade de 32×32 e cobre qualquer proporção de tela (Seção 6.1). O fundo é da tela, não do chão: ele **não** é projetado em isométrico, e aparece atrás do grid e nos cantos da tela onde o grid já sumiu.
+- **Em aberto:** quem produz o áudio (artista contratado, packs ou produção própria). O guia Unity especifica a lista de sons, mas não o produtor.
+
+### 6.3 Interface
+
+**Definido: gaveta de upgrades.**
+- **Fechada:** uma faixa fina na parte de baixo da tela com o saldo de Shards e 4 abas, cada uma com cor e ícone próprios: **Offense** (laranja), **Defense** (azul), **Utility** (verde) e **Satellites** (cinza). O vermelho fica de fora, porque é exclusivo do laser da Mothership, e a lavanda/magenta também, porque é dos inimigos.
+- **Aberta:** tocar numa aba abre a gaveta com cerca de 40% da altura da tela. Os Stats daquela Track aparecem como **cards** numa fileira com rolagem horizontal. Cada card mostra nome, nível, valor atual → próximo valor e custo.
+- **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
+- **Quantidade por compra:** seletor ×1 / ×10 / Max.
+- **Câmera:** com a gaveta aberta, a visão desliza para o planeta ficar inteiro no centro da área livre (o mundo sobe; a câmera desce). O jogo nunca pausa.
+- **Aba Satellites:** uma linha por Satellite em órbita, com um seletor da Target Priority (as 4 prioridades), e um botão para comprar o próximo Satellite com o preço em Shards (Seção 4.2). O botão some quando a órbita já tem 4.
+
+**Definido: arte da interface.**
+- **Painéis e botões:** metal cinza-escuro, com bordas mais claras e detalhes laranja, na mesma linguagem do Satellite ("equipamento do jogador"). São **9-slice** em células de 32×32, com bordas de 8 px: painel, botão (normal, pressionado e desabilitado) e a faixa da gaveta fechada.
+- **Ícones:** 16 px dentro de células de 32×32, todos numa spritesheet só (13 Stats, 4 abas, Shards e troféu). A spritesheet ainda tem as células de Stardust e de "recompensa coletada", desenhadas antes da remoção da Stardust; elas ficam sem uso.
+- **Fonte:** **m5x7** (Daniel Linssen, CC0), com 7 px de altura, no tamanho 16 do TextMeshPro. Tem todos os acentos do português, mas em maiúsculas eles ficam espremidos, então a UI usa **maiúsculas e minúsculas**, nunca tudo em caixa alta. A fonte não tem "→": o card de Stat usa ">" entre o valor atual e o próximo. O arquivo e a licença estão em `Sprites/8-Bit-Armageddon/Fonts/`.
+- **Retratos e conquistas:** a Core Select usa o **sprite do próprio planeta** girando como retrato de cada Planet Core e Skin. As conquistas usam **um ícone de troféu em 2 estados** (bloqueada, desbloqueada), e as que dão um Core ou uma Skin mostram o planeta como recompensa.
+
+**Definido: fluxo de telas.**
+1. **Boot:** logo e carregamento.
+2. **Main Menu:** Play, Planet Cores & Skins, Achievements, Settings, e o recorde de Wave.
+3. **Core Select:** escolher o Planet Core e a Skin antes da run.
+4. **Gameplay:** HUD (HP do planeta, Wave atual e timer, botão de pausa, barra de HP da Mothership quando houver) e a gaveta de upgrades.
+5. **Pause:** continuar, Settings, desistir da run (vai para Results).
+6. **Results:** estatísticas da run, o recorde de Wave (com destaque quando foi batido), botões "jogar de novo" e "menu".
+
+**Definido: Settings e acessibilidade.**
+- Volume de música e de efeitos, separados.
+- Idioma (English / Português).
+- Frame rate: 60 fps ou 30 fps (economia em notebooks).
+- Screen shake on/off.
+- Números de dano on/off.
+- Mostrar Quadrants on/off.
+- Modo daltônico: dá aos inimigos uma marca extra, além da cor, para diferenciá-los do planeta e dos Satellites. **Em aberto:** qual marca (contorno de outra cor, ícone, padrão).
+- Reduzir flashes: suaviza os flashes de crítico e de dano (fotossensibilidade).
+- Resetar progresso, com confirmação dupla.
+
+**Definido: onboarding.** Sem tutorial forçado. Na primeira run, **dicas contextuais** aparecem na hora certa (ex.: "Clique em Offense para comprar Damage" quando o jogador tem Shards pela primeira vez) e somem depois que a ação é feita. Cada dica aparece uma vez por perfil.
+
+### 6.4 Catálogo de assets
+
+Referência técnica para importar e usar a arte no Unity. Os arquivos estão em `Sprites/8-Bit-Armageddon/` (a arte herdada) e em `Sprites/8-Bit-Armageddon-Iso/` (o grid); no projeto, tudo fica junto em `Assets/_Project/Art/`. A arte e as regras visuais são descritas nas Seções 6.1 a 6.3; esta seção só diz **como cada arquivo é usado**.
+
+**Definido: regras gerais.**
+- Todo arquivo tem **PPU 16**, **Filter Mode Point** e **Compression None** (preset da Fase 0). O **pivô é sempre o centro** da célula.
+- Uma **spritesheet** (arquivo com mais de uma célula) é importada com **Sprite Mode = Multiple** e fatiada com **Grid By Cell Size** do tamanho da célula na tabela. Nos arquivos com mais de uma linha, cada **linha** é uma variação ou direção, e cada **coluna** é um frame.
+- **Animação:** frames da esquerda para a direita. "Loop" repete; "uma vez" toca e o objeto volta para o pool.
+- **Sorting Layers** (de trás para frente, seguindo a ordem de desenho da Seção 6.1): `Background` (fundo de espaço), `Grid` (tiles do grid), `Floor` (sombras, preenchimento dos Quadrants, eixos), `World` (planeta, inimigos, Satellites, projéteis, **ordenados pela altura na tela**) e `VFX` (explosões, laser, setas). A UI (Canvas) fica por cima de tudo. Dentro de `Grid` e de `World`, a ordem vem do eixo Y (configuração do Renderer 2D, Fase 2): quem está mais acima na tela é desenhado antes.
+
+#### Mundo
+
+| Arquivo | Célula | Layout | Frames | fps | Animação | Sorting Layer | Uso |
+|---|---|---|---|---|---|---|---|
+| `Planet/SPR_Planet_<Core>_<Skin>_Rotate` | 32×32 | 1 linha | 32 | 4 | loop | `World` | O planeta girando (9 arquivos: 3 Cores × 3 Skins). Uma volta = 8 s. |
+| `Planet/SPR_Planet_<Core>_<Skin>` | 32×32 | 1 célula | 1 | — | — | UI | Imagem estática do planeta (= frame 1 da rotação): ícone de recompensa de conquista. |
+| `Satellites/SPR_Satellite` | 32×32 | 1 linha | 2 | 2 | loop | `World` | Luz laranja acesa / apagada. Nunca gira. |
+| `Projectiles/SPR_Projectile_Satellite` | 32×32 | 1 linha | 2 | 8 | loop | `World` | Bolinha que pisca. O rastro é desenhado por código (Seção 6.2). |
+| `Enemies/SPR_Enemy_Grunt` | 32×32 | 2 linhas × 4 | 4 | 6 | loop | `World` | Linha = variação visual, sorteada no spawn. |
+| `Enemies/SPR_Enemy_Scout` | 32×32 | 1 linha | 4 | 12 | loop | `World` | Giro da estrela (os 4 frames fecham uma volta de 90°). |
+| `Enemies/SPR_Enemy_Swarmer` | 32×32 | 1 linha | 2 | 4 | loop | `World` | Núcleo pulsando. |
+| `Enemies/SPR_Enemy_Brute` | 32×32 | 1 linha | 1 | — | — | `World` | Cada **coluna** é uma variação visual (4), sorteada no spawn. Sem animação. |
+| `Enemies/SPR_Enemy_Mothership` | **64×64** | 1 linha | 5 | 5 | loop | `World` | Luzes da borda acendendo em sequência. Única célula de 64×64. |
+| `Backgrounds/SPR_Background_Space` | 32×32 | 1 linha | — | — | — | `Background` | 4 tiles de fundo, **sorteados** por célula de 32×32 para cobrir a tela (não é animação). |
+| `Backgrounds/SPR_Background_StarTwinkle` | 32×32 | 1 linha | 4 | 4 | loop | `Background` | Estrela grande piscando, espalhada por cima dos tiles. |
+| `Grid/SPR_Grid_Floor` | 32×32 | 1 linha | — | — | — | `Grid` | 4 tiles do grid isométrico: 0–2 lisos (sorteados por igual), 3 com ponto brilhante (raro). **Não é animação.** A face de cima do losango fica com o centro **3 px acima** do centro da célula (o tile tem espessura embaixo); o código compensa isso (Fase 2). Vem de `Sprites/8-Bit-Armageddon-Iso/`. |
+
+#### VFX
+
+| Arquivo | Célula | Frames | fps | Animação | Sorting Layer | Uso |
+|---|---|---|---|---|---|---|
+| `VFX/SPR_VFX_Explosion_Small` | 32×32 | 5 | 15 | uma vez | `VFX` | Morte de Grunt, Scout e Swarmer. |
+| `VFX/SPR_VFX_Explosion_Big` | 32×32 | 5 | 15 | uma vez | `VFX` | Morte do Brute. |
+| `VFX/SPR_VFX_Explosion_Mothership` | **64×64** | 6 | 12 | uma vez | `VFX` | Morte da Mothership. |
+| `VFX/SPR_VFX_Laser_Warning` | 32×32 | 2 | 6 | loop por 1,5 s | `VFX` | Aviso do laser. Tile repetido e girado ao longo da linha Mothership → planeta, na tela (Seção 6.2). |
+| `VFX/SPR_VFX_Laser_Beam` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Feixe do laser. Mesmo uso do aviso. |
+| `VFX/SPR_VFX_Laser_Impact` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Ponta do feixe, na borda do planeta. |
+
+#### Interface
+
+| Arquivo | Célula | Layout | Uso |
+|---|---|---|---|
+| `UI/SPR_UI_Panel` | 32×32 | 1 célula | Painel. **9-slice** com bordas de 8 px (*Sprite Editor → Border* = 8 nos 4 lados; na Image, *Image Type = Sliced*). |
+| `UI/SPR_UI_Button` | 32×32 | 3 colunas | Botão normal, pressionado e desabilitado (as 3 *sprites* do *Sprite Swap* do Button). 9-slice com bordas de 8 px. |
+| `UI/SPR_UI_DrawerStrip` | 32×32 | 1 célula | Faixa da gaveta fechada. *Image Type = Tiled*, repetida na horizontal por toda a largura. |
+| `UI/SPR_UI_SpawnSectorArrow` | 32×32 | 6 linhas × 2 | Linha = direção **na tela** (30°, 90°, 150°, 210°, 270°, 330°); coluna = aceso / apagado, piscando a 4 fps durante o aviso de 2 s. Cada Spawn Sector usa a linha mais próxima da sua direção projetada (Seção 6.2). |
+| `UI/SPR_UI_Icons` | 32×32 | 8 colunas × 3 linhas | Ícones de 16 px centralizados na célula. Ordem das células abaixo. |
+| `Fonts/m5x7.ttf` | — | — | Fonte do jogo. Vira um *Font Asset* do TextMeshPro, usado no tamanho 16 (Seção 6.3). |
+
+**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust (sem uso) · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada (sem uso).
+
+---
+
+## 7. Plataforma, Serviços e Lançamento
+
+### 7.1 Sem anúncios
+
+**Definido:**
+- **Nenhum anúncio** (nem recompensado, nem intersticial) e **nenhuma compra no app**. O jogo é gratuito.
+- Consequência: não existe Revive (Seção 4.6), e o jogo não precisa de SDK de anúncio nem de tela de consentimento para anúncios.
+
+### 7.2 Privacidade
+
+**Definido:**
+- O jogo não coleta dados pessoais nem usa cookies de terceiros: o único dado é o save local (Seção 7.3).
+- **Em aberto:** se um dia entrar analytics (Seção 7.4), entra junto uma tela de consentimento GDPR/LGPD e uma política de privacidade.
+
+### 7.3 Save
+
+**Definido:**
+- **Save só local:** um JSON versionado no armazenamento do navegador (no Editor da Unity, um arquivo).
+- Sem save na nuvem, sem contas. Trocar de navegador ou limpar os dados do site apaga o progresso.
+- O save é **separado** do save do 8-Bit Armageddon: jogar um não mexe no recorde nem nas conquistas do outro.
+
+### 7.4 Analytics
+
+**Em aberto.** Sem anúncios, não há tela de consentimento, e analytics sem consentimento não é uma opção na Europa. Enquanto isso não for decidido, os valores marcados como "valor inicial" neste documento são ajustados **com playtests**, e não por dados.
+
+### 7.5 Lançamento
+
+**Definido:**
+- **Web:** um build WebGL publicado no site próprio e no itch.io. Alvo: **navegadores de desktop**, com mouse.
+- **Em aberto:** versão para celular. A câmera isométrica em paisagem funciona numa tela de celular deitado, mas a 1.0 não foi pensada para toque.
+- **Localização:** Unity Localization desde o início, com Inglês e Português (Brasil) no lançamento.
+
+---
+
+## 8. Escopo da versão 1.0
+
+**Definido:** a 1.0 contém:
+1. 4 inimigos comuns (Grunt, Scout, Swarmer, Brute) + a Mothership a cada 10 Waves.
+2. Waves híbridas com Spawn Sectors e aviso na borda da tela.
+3. 13 Stats em 3 Tracks, com Upgrades pela gaveta.
+4. 1 a 4 Satellites em órbita, comprados durante a run, cada um atacando o Quadrant onde está, com Target Priority por Satellite (4 prioridades).
+5. 3 Planet Cores, 6 Skins desbloqueáveis, 15 conquistas, recorde de Wave.
+6. Câmera isométrica com grid, sombras e ordem de desenho por profundidade (Seção 6.1).
+7. Pausa (inclusive automática) e Results. Sem Revive.
+8. Settings e acessibilidade completos (Seção 6.3), dicas contextuais de onboarding.
+9. Inglês e Português (Brasil).
+10. Web (site próprio + itch.io), com save local. Sem anúncios, consentimento nem analytics.
+
+**Metas de performance (Definido):**
+- Navegador-alvo: Chrome, Edge e Firefox atuais, num notebook de entrada com gráfico integrado.
+- 60 fps estáveis com 150 inimigos na tela (cada inimigo agora desenha também uma sombra); opção de 30 fps nas Settings.
+
+---
+
+## 9. Roteiro pós-lançamento
+
+Candidatos para updates, em ordem aproximada de prioridade (a decidir com base nos playtests):
+- Novos bosses (variações da Mothership com padrões de ataque diferentes).
+- Novos Planet Cores e Skins.
+- Novos inimigos (ex.: inimigo com escudo frontal, inimigo que ataca à distância).
+- Save na nuvem.
+- Versão para celular (Android), com controles de toque.
+- **Em aberto:** dar papel de jogo ao grid (por exemplo, posicionar coisas em casas do grid). Hoje o grid é só visual (Seção 6.1); isso mudaria o pilar 1 (combate automático com decisão só de Upgrade), por isso fica como ideia, não como plano.
+- Eventos semanais e modos alternativos (ex.: desafio diário com seed fixa).
+
+---
+
+## 10. Guia de Implementação Unity (versão 1.0)
+
+Este guia leva o jogo do projeto vazio até a publicação. Ele continua **didático**: cada fase explica os conceitos novos antes de usar, e termina com algo que dá para ver funcionando. Mas o código é de **produto final**: dados em ScriptableObjects, object pooling, save versionado, sistemas desacoplados e tudo pronto para a Web.
+
+> **De onde vem este guia.** Ele é uma cópia adaptada do guia do [8-Bit Armageddon](GDD_8-Bit_Armageddon.md), porque as regras são as mesmas. As diferenças estão onde a câmera isométrica e a falta de anúncios pedem: a Fase 2 ganha a projeção (`IsoProjection`, `IsoView`, `IsoFloor`, `IsoGrid`), as Fases 3, 4, 5 e 7 desenham na vista projetada, e a Fase 8 não tem Revive. O projeto Unity é outro, separado do 8-Bit Armageddon.
+
+Cada fase segue o mesmo formato:
+- **Conceitos novos:** o que você vai aprender e por quê.
+- **Passos:** o que fazer no Editor e o código completo de cada script.
+- **✅ Checkpoint:** como confirmar que funcionou.
+- **Problemas comuns:** os erros mais prováveis e como resolver.
+
+### 10.1 Convenções do projeto
+
+**Idioma:** todo nome no projeto (scripts, classes, variáveis, funções, GameObjects, Prefabs, assets, pastas) é em **inglês** e usa os termos do [glossário](contexts/8-bit-armageddon-iso/CONTEXT.md). Se o glossário diz **Satellite**, nada no projeto se chama `Turret`, `Drone` ou `Orbital`. Comentários no código podem ser em português.
+
+**Código C#:**
+
+| Elemento | Padrão | Exemplo |
+|---|---|---|
+| Namespace | `Armageddon.<Área>` | `Armageddon.Combat` |
+| Classe, struct, enum, interface | PascalCase; interfaces com `I` | `WaveDirector`, `ITarget` |
+| Método e propriedade | PascalCase | `TryPurchase()`, `CurrentWave` |
+| Campo privado | `_camelCase` | `_orbitSpeed` |
+| Campo exposto no Inspector | `[SerializeField] private` + `_camelCase` | `[SerializeField] private float _orbitRadius;` |
+| Evento C# | PascalCase, verbo no passado, sem `On` | `event Action<Enemy> EnemyKilled;` |
+| Método que responde a evento | `Handle` + nome do evento | `HandleEnemyKilled(Enemy enemy)` |
+| Constante | PascalCase | `const float OrbitRadius = 1.75f;` |
+
+> Por que `_camelCase` + `[SerializeField] private` em vez de `public`? Um campo `public` pode ser alterado por qualquer outro script, e bugs de "quem mudou esse valor?" são dos mais difíceis de achar. Com `[SerializeField] private`, o valor aparece no Inspector para você ajustar, mas só a própria classe pode alterá-lo em código.
+
+**Assets:**
+
+| Tipo | Padrão | Exemplo |
+|---|---|---|
+| Prefab | PascalCase, nome do conceito | `Grunt.prefab`, `Satellite.prefab`, `StatCard.prefab` |
+| ScriptableObject de dados | `<Tipo>_<Nome>` | `Enemy_Grunt`, `Stat_Damage`, `Core_Terra`, `Achievement_FirstContact` |
+| Sprite / spritesheet | `<Tipo>_<Nome>` | `SPR_Planet_Terra_Classic`, `SPR_Enemy_Scout` |
+| Áudio | `SFX_<Nome>` / `MUS_<Nome>` | `SFX_SatelliteFire`, `MUS_Gameplay` |
+| Cena | PascalCase | `Boot`, `MainMenu`, `Gameplay` |
+
+**Hierarquia das cenas:** cada cena tem GameObjects vazios de agrupamento, na raiz, com nomes entre colchetes: `[Systems]` (gerenciadores sem visual), `[World]` (tudo que aparece no mundo do jogo), `[UI]` (Canvas e telas). Nada solto na raiz além deles, da câmera e do `EventSystem`.
+
+**Chão e vista:** todo objeto do mundo tem a **raiz** nas coordenadas do **chão** (onde a regra acontece, Seção 4) e o **desenho** num filho `View`, que o `IsoView` coloca na posição projetada (Fase 2). Os scripts de regra só mexem na raiz. Coisas deitadas no chão (sombras, Quadrants) ficam dentro de `[World]/IsoFloor/Plane`.
+
+### 10.2 Mapa de sistemas
+
+Todos os scripts principais do jogo, com a fase em que cada um é criado. Use esta tabela como índice: se você se perguntar "onde fica a lógica de X?", a resposta está aqui.
+
+| Área (namespace) | Script | Responsabilidade | Fase |
+|---|---|---|---|
+| `Armageddon.Core` | `GameBootstrap` | Primeiro código a rodar, antes de qualquer cena: cria o `[Services]` e registra os serviços | 1 |
+| `Armageddon.Core` | `BootSequence` | Na cena Boot: mostra o logo e carrega o Main Menu | 1 |
+| `Armageddon.Core` | `Services` | Acesso central aos serviços (save, cenas, pausa…) | 1 |
+| `Armageddon.Core` | `SceneLoader` | Troca de cenas com tela de transição | 1 |
+| `Armageddon.Core` | `SaveService`, `PlayerProfile`, `SaveStorage` | Save JSON versionado, os dados salvos do jogador e onde eles moram (arquivo ou navegador) | 1 |
+| `Armageddon.Core` | `GameClock` | Pausa (manual e automática) e escala de tempo | 1 |
+| `Armageddon.Core` | `AppLifecycle` | Perda de foco da aba, fechar o jogo e a tecla Esc | 1 |
+| `Armageddon.Core` | `DevShortcuts` | Atalhos de teste (só no Editor e em builds de desenvolvimento) | 1 |
+| `Armageddon.World` | `WorldLayout` | Medidas do mundo (raio do planeta, órbita, spawn) e a grade de pixels | 2 |
+| `Armageddon.World` | `Quadrant`, `Quadrants` | Os 4 Quadrants e em qual deles uma posição ou ângulo está | 2 |
+| `Armageddon.World` | `IsoProjection` | A conta chão → vista (e de volta), num lugar só | 2 |
+| `Armageddon.World` | `SpriteAnimator` | Loop de frames sem Animator (planeta, estrelas, inimigos, VFX) | 2 |
+| `Armageddon.World` | `IsoView`, `ShadowSprite` | Coloca o desenho de um objeto na posição projetada, com sombra no grid | 2 |
+| `Armageddon.World` | `SpaceBackground` | Fundo em tiles sorteados e estrelas piscando | 2 |
+| `Armageddon.World` | `IsoGrid` | O grid isométrico (só visual) | 2 |
+| `Armageddon.World` | `IsoFloor` | O plano deitado onde ficam os Quadrants e os eixos | 2 |
+| `Armageddon.World` | `CameraRig` | Pixel Perfect Camera e deslocamento com a gaveta (o shake entra na Fase 12) | 2 |
+| `Armageddon.Planets` | `Planet`, `PlanetHealth` | O planeta, HP, dano recebido, regeneração | 2 |
+| `Armageddon.Combat` | `Satellite`, `SatelliteOrbit` | Disparo; a órbita compartilhada e o espaçamento dos Satellites | 3 |
+| `Armageddon.Combat` | `TargetSelector`, `TargetPriority` | Escolha de alvo dentro do Quadrant e do Attack Range | 3 |
+| `Armageddon.Combat` | `ITarget`, `TargetRegistry` | O contrato de "alvo" e a lista dos alvos vivos | 3 |
+| `Armageddon.Combat` | `SatelliteStats` | Os Stats de Offense dos Satellites e a fórmula de dano | 3 |
+| `Armageddon.Combat` | `Projectile`, `ProjectilePool` | Projétil teleguiado reaproveitado por pooling | 3 |
+| `Armageddon.World` | `PixelSprite` | Sprite branco de 1 pixel, criado por código | 3 |
+| `Armageddon.Combat` | `QuadrantView` | Mostra no grid o Quadrant coberto por cada Satellite | 3 |
+| `Armageddon.Combat` | `CombatDevTools`, `TargetDummy` | Teclas e alvos de teste do combate (só no Editor e em builds de desenvolvimento) | 3 |
+| `Armageddon.Enemies` | `EnemyDefinition` | ScriptableObject com os dados de cada inimigo | 4 |
+| `Armageddon.Enemies` | `Enemy`, `EnemyPool` | Inimigo em cena (implementa `ITarget` e entra no `TargetRegistry`), pooling e os eventos de morte | 4 |
+| `Armageddon.World` | `ExplosionPool` | Explosões (animação "uma vez") reaproveitadas por pooling | 4 |
+| `Armageddon.Enemies` | `EnemyDevTools` | Teclas de teste de inimigos (só no Editor e em builds de desenvolvimento) | 4 |
+| `Armageddon.Enemies` | `IEnemyMovement`, `StraightMovement`, `ZigZagMovement` | Comportamentos de movimento | 4 |
+| `Armageddon.Waves` | `WaveDirector`, `WaveBalance` | Waves híbridas, composição, escalada, fila de spawn, Wave Clear | 5 |
+| `Armageddon.Waves` | `SpawnSectorIndicator` | Aviso na borda da tela | 5 |
+| `Armageddon.Waves` | `WaveDevTools` | Teclas de teste das Waves (só no Editor e em builds de desenvolvimento) | 5 |
+| `Armageddon.Economy` | `StatDefinition`, `StatCatalog` | Definição dos 13 Stats e a ordem deles na gaveta | 6 |
+| `Armageddon.Economy` | `RunStats`, `StatModifier` | Nível e valor de cada Stat na run; modificadores do Planet Core | 6 |
+| `Armageddon.Economy` | `ShardWallet`, `UpgradeService` | Saldo de Shards e compra de Upgrades | 6 |
+| `Armageddon.Economy` | `SatelliteShop` | Compra dos Satellites 2, 3 e 4 com Shards | 6 |
+| `Armageddon.Economy` | `RunEconomy` | Cria a economia da run, transforma kills e Wave Clears em Shards e aplica os Stats | 6 |
+| `Armageddon.Economy` | `EconomyDevTools` | Teclas de teste da economia (só no Editor e em builds de desenvolvimento) | 6 |
+| `Armageddon.UI` | `IntegerCanvasScale` | Escala inteira da UI, igual à da Pixel Perfect Camera | 6 |
+| `Armageddon.UI` | `UpgradeDrawer`, `StatCard`, `SatellitePanel` | A gaveta de upgrades | 6 |
+| `Armageddon.Enemies` | `Mothership`, `LaserAttack` | O boss (entrada e espiral) e o laser telegrafado | 7 |
+| `Armageddon.Enemies` | `MothershipSpawner` | Cria a Mothership nas Boss Waves e a conta como inimiga viva | 7 |
+| `Armageddon.UI` | `BossHealthBar` | Barra de HP da Mothership no topo da tela | 7 |
+| `Armageddon.Enemies` | `MothershipDevTools` | Tecla de teste da Mothership (só no Editor e em builds de desenvolvimento) | 7 |
+| `Armageddon.Run` | `RunController`, `RunSummary` | Ciclo de vida da run e fim de run | 8 |
+| `Armageddon.Run` | `RunDevTools` | Teclas de teste da run (só no Editor e em builds de desenvolvimento) | 8 |
+| `Armageddon.UI` | `HudView`, `PauseView`, `ResultsView` | Telas da run | 8 |
+| `Armageddon.Meta` | `PlanetCoreDefinition`, `SkinDefinition` | Planet Cores e Skins | 9 |
+| `Armageddon.Meta` | `AchievementDefinition`, `AchievementService` | Conquistas | 9 |
+| `Armageddon.UI` | `MainMenuView`, `CoreSelectView`, `AchievementsView` | Telas do menu | 9 |
+| `Armageddon.Core` | `SettingsService` | Configurações e acessibilidade | 11 |
+| `Armageddon.UI` | `SettingsView` | Tela de Settings | 11 |
+| `Armageddon.Juice` | `AudioService`, `CameraShaker`, `DamageNumberSpawner`, `HitFlash` | Som, shake, números de dano, flashes | 12 |
+| `Armageddon.Onboarding` | `HintService`, `HintDefinition` | Dicas contextuais | 13 |
+
+### 10.3 Fases
+
+| Fase | Conteúdo | Status |
+|---|---|---|
+| 0 | Setup do projeto | ✅ Escrita |
+| 1 | Arquitetura: bootstrap, serviços, cenas, save, pausa | ✅ Escrita |
+| 2 | Planeta, Quadrants e câmera | ✅ Escrita |
+| 3 | Satellites, órbita, Target Priority e projéteis | ✅ Escrita |
+| 4 | Inimigos | ✅ Escrita |
+| 5 | Waves | ✅ Escrita |
+| 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
+| 7 | Mothership | ✅ Escrita |
+| 8 | Run: pausa, HUD, Results | ✅ Escrita |
+| 9 | Progressão entre runs: Planet Cores, Skins, conquistas, recorde de Wave e Main Menu | A escrever |
+| 10 | *(não existe neste jogo: sem anúncios, consentimento nem analytics, Seção 7. O número fica vago para as referências "Fase 11", "Fase 12"… baterem com o guia do 8-Bit Armageddon)* | — |
+| 11 | Localização, Settings e acessibilidade | A escrever |
+| 12 | Juice e áudio | A escrever |
+| 13 | Onboarding | A escrever |
+| 14 | Performance e build Web | A escrever |
+| 15 | Lançamento | A escrever |
+
+---
+
+### Fase 0 — Setup do Projeto
+
+**Conceitos novos:**
+- **Unity Hub e módulos:** o Unity Hub instala versões da Unity e os "módulos" de cada plataforma. Sem o módulo Web, a Unity não gera o build de navegador, que é a única plataforma deste jogo.
+- **URP (Universal Render Pipeline):** o sistema de renderização moderna da Unity. O template "Universal 2D" já vem com o renderizador 2D configurado, que é o que usamos para luzes e efeitos em pixel art.
+- **Pacote (package):** uma biblioteca oficial da Unity (Input System, Localization…) instalada pelo **Package Manager**. Bibliotecas de terceiros (DOTween) vêm da **Asset Store**.
+- **Assembly Definition (asmdef):** um arquivo que agrupa scripts numa "assembly" separada. Com ele, a Unity recompila só o que mudou, e o projeto fica mais rápido de iterar à medida que cresce. Também deixa explícito de quais bibliotecas o seu código depende.
+- **Preset:** uma configuração salva (ex.: "como importar um sprite de pixel art") que a Unity aplica automaticamente em todo arquivo novo de uma pasta. Evita o erro clássico de pixel art borrada.
+- **Git LFS:** extensão do Git para arquivos binários grandes (imagens, sons). Sem ela, o repositório incha a cada versão de um sprite.
+
+#### Passo 1 — Instalar a Unity
+
+1. Instale o **Unity Hub** (unity.com/download).
+2. No Hub, aba **Installs** → **Install Editor** → escolha a versão **Unity 6 LTS** mais recente (versão `6000.x`, marcada como LTS).
+3. Na tela de módulos, marque:
+   - **Web Build Support**;
+   - **Microsoft Visual Studio Community** (ou use o JetBrains Rider / VS Code, se preferir).
+
+> **Por que LTS?** "Long Term Support" recebe só correções de bugs por dois anos, sem mudanças que quebrem o projeto. Para um jogo que vai ser publicado e atualizado, estabilidade vale mais que recurso novo.
+
+#### Passo 2 — Criar o projeto e o repositório
+
+1. No Hub, **Projects** → **New project** → template **Universal 2D**.
+   - **Project name:** `EightBitArmageddonIso` (nomes de projeto que começam com número causam problemas em algumas ferramentas).
+   - **Location:** uma pasta **fora** deste repositório de GDD. O projeto Unity é outro repositório, e também não é o do 8-Bit Armageddon: os dois jogos são separados.
+2. Instale o **Git** e o **Git LFS** (git-lfs.com). Uma vez só na máquina: `git lfs install`.
+3. Na pasta raiz do projeto (a que contém `Assets/`, `Packages/`, `ProjectSettings/`), rode `git init`.
+4. Crie o arquivo `.gitignore` com o conteúdo do modelo oficial para Unity (github.com/github/gitignore → `Unity.gitignore`). Ele ignora as pastas geradas `Library/`, `Temp/`, `Logs/`, `Obj/`, `Build/` e `UserSettings/`.
+5. Crie o arquivo `.gitattributes` para mandar os binários para o LFS:
+   ```
+   # Imagens
+   *.png filter=lfs diff=lfs merge=lfs -text
+   *.psd filter=lfs diff=lfs merge=lfs -text
+   *.aseprite filter=lfs diff=lfs merge=lfs -text
+   # Áudio
+   *.wav filter=lfs diff=lfs merge=lfs -text
+   *.ogg filter=lfs diff=lfs merge=lfs -text
+   *.mp3 filter=lfs diff=lfs merge=lfs -text
+   # Fontes
+   *.ttf filter=lfs diff=lfs merge=lfs -text
+   *.otf filter=lfs diff=lfs merge=lfs -text
+   # Arquivos da Unity que são texto (YAML): nunca LFS
+   *.unity text
+   *.prefab text
+   *.asset text
+   *.meta text
+   ```
+6. Na Unity: **Edit > Project Settings > Editor** e confirme:
+   - **Version Control > Mode:** `Visible Meta Files`;
+   - **Asset Serialization > Mode:** `Force Text`.
+
+   Os dois já são o padrão no Unity 6, mas confira: com arquivos `.meta` escondidos ou cenas em binário, o Git não consegue versionar o projeto direito.
+7. Primeiro commit: `git add .` e `git commit -m "Initial Unity project"`.
+
+#### Passo 3 — Instalar os pacotes
+
+Abra **Window > Package Manager**, selecione **Unity Registry** na lateral e instale:
+
+| Pacote | Para quê | Fase em que é usado |
+|---|---|---|
+| **Input System** | Mouse e teclado. Normalmente já vem instalado no Unity 6. | 1 |
+| **Localization** | Textos em Inglês e Português | 11 (mas a configuração base entra na Fase 1) |
+
+O **TextMeshPro** já vem dentro do pacote **Unity UI** no Unity 6. Na primeira vez que você criar um texto TMP, a Unity pede para importar os "TMP Essentials": aceite.
+
+Instale o **DOTween** (animações de UI e juice):
+1. Abra a **Asset Store** no navegador e adicione **"DOTween (HOTween v2)"**, da Demigiant (gratuito), à sua conta.
+2. Na Unity: **Window > Package Manager** → **My Assets** → DOTween → **Download** → **Import**.
+3. Quando o painel do DOTween abrir (ou pelo menu **Tools > Demigiant > DOTween Utility Panel**), clique em **Setup DOTween…**, marque **Create ASMDEF** e clique em **Apply**. Isso cria a assembly `DOTween.Modules`, que o nosso código vai referenciar.
+
+> Este jogo não usa SDK de anúncio, de consentimento nem de analytics (Seção 7).
+
+#### Passo 4 — Estrutura de pastas
+
+Todo o conteúdo do jogo fica dentro de `Assets/_Project/`. O `_` coloca a pasta no topo da lista, e fica claro o que é nosso e o que veio de pacotes e plugins (DOTween, por exemplo, se instala em `Assets/Plugins/`).
+
+Crie esta estrutura (**botão direito → Create → Folder**):
+
+```
+Assets/
+  _Project/
+    Art/
+      Planet/
+      Satellites/
+      Enemies/
+      Projectiles/
+      VFX/
+      UI/
+      Backgrounds/
+      Grid/
+      Fonts/
+    Audio/
+      Music/
+      SFX/
+      Mixers/
+    Data/
+      Balance/
+      Enemies/
+      Stats/
+      PlanetCores/
+      Skins/
+      Achievements/
+      Hints/
+    Localization/
+    Prefabs/
+      Gameplay/
+      UI/
+      VFX/
+    Scenes/
+    Scripts/
+      Core/
+      World/
+      Planet/
+      Combat/
+      Enemies/
+      Waves/
+      Economy/
+      Run/
+      Meta/
+      Platform/
+      UI/
+      Juice/
+      Onboarding/
+    Settings/
+      Input/
+      Presets/
+      Rendering/
+```
+
+Mova para `Assets/_Project/Settings/Rendering/` os assets de URP que o template criou na pasta `Assets/Settings/` (arraste pela janela Project da Unity, **nunca** pelo Explorer do Windows, senão as referências se perdem). Depois apague a pasta `Assets/Settings/` vazia.
+
+#### Passo 5 — Assembly Definition
+
+1. Em `Assets/_Project/Scripts/`, **botão direito → Create → Scripting → Assembly Definition**. Nome: `Armageddon`.
+2. Selecione o arquivo e, no Inspector, em **Assembly Definition References**, adicione:
+   - `Unity.InputSystem`
+   - `Unity.TextMeshPro`
+   - `Unity.Localization`
+   - `Unity.RenderPipelines.Universal.Runtime`
+   - `DOTween.Modules`
+3. Clique em **Apply**.
+
+Todos os scripts dentro de `Scripts/` (e das subpastas) passam a fazer parte da assembly `Armageddon`.
+
+> Nas próximas fases, se aparecer o erro `The type or namespace name 'X' could not be found` para uma biblioteca instalada, quase sempre falta adicionar a assembly dela aqui. A fase que introduz a biblioteca vai dizer qual referência adicionar.
+
+#### Passo 6 — Preset de importação de pixel art
+
+1. Arraste qualquer PNG de teste para dentro de `Assets/_Project/Art/`.
+2. Selecione o PNG e configure no Inspector:
+   - **Texture Type:** `Sprite (2D and UI)`
+   - **Pixels Per Unit:** `16`
+   - **Filter Mode:** `Point (no filter)`
+   - **Compression:** `None`
+   - **Generate Mip Maps** (em Advanced): desmarcado
+3. Clique em **Apply**.
+4. No topo do Inspector, clique no ícone de **Preset** (o controle deslizante ao lado do ícone de ajuda) → **Save current to…** → salve como `Assets/_Project/Settings/Presets/SpriteImporter_PixelArt.preset`.
+5. Abra **Edit > Project Settings > Preset Manager** → **Add Default Preset** → **Importer > TextureImporter** → escolha `SpriteImporter_PixelArt`. No campo **Filter**, escreva:
+   ```
+   glob:"Assets/_Project/Art/**"
+   ```
+6. Apague o PNG de teste.
+
+A partir de agora, toda imagem colocada em `Art/` já entra com as configurações certas de pixel art.
+
+> **Por que PPU 16?** Com 16 pixels por unidade, a tela de referência 320×180 mostra exatamente 20 × 11,25 unidades **da vista**. Uma célula de sprite de 32×32 (Seção 6.2) ocupa 2 × 2 u, o tamanho do planeta. As distâncias do GDD (Seção 4) são medidas no **chão**; a Fase 2 explica como o chão vira vista.
+
+#### Passo 7 — Importar a arte
+
+A arte do jogo já está pronta no repositório do GDD, em `Sprites/8-Bit-Armageddon/` (a herdada) e `Sprites/8-Bit-Armageddon-Iso/` (o grid), e cada arquivo está descrito na Seção 6.4. Neste passo ela entra no projeto já configurada. Nenhum sprite será usado em cena ainda: isso começa na Fase 2.
+
+**Conceitos novos:**
+- **Sprite Mode Multiple:** um PNG com vários desenhos (uma **spritesheet**) vira vários sprites, um por célula. Sem isso, a Unity trata o arquivo inteiro como uma imagem só.
+- **Slice (fatiar):** o Sprite Editor corta a spritesheet em células do mesmo tamanho. No nosso caso, 32×32 (ou 64×64 na Mothership), como definido na Seção 6.2.
+- **9-slice:** um sprite com as bordas marcadas. Ao esticar, a Unity estica só o meio e mantém os cantos intactos: é assim que um painel de 32×32 vira uma janela de qualquer tamanho.
+- **Sorting Layer:** a "camada" de desenho de um sprite. Quem está numa camada mais de baixo na lista é desenhado por cima.
+
+1. **Copie a arte.** Copie para `Assets/_Project/Art/` as pastas `Planet`, `Satellites`, `Enemies`, `Projectiles`, `VFX`, `UI`, `Backgrounds` e `Fonts` de `Sprites/8-Bit-Armageddon/`. **Não copie** `_candidatos_descartados/`, `_tools/`, `_previews/`, `_referencia/`, os `_preview_*.gif` nem o `PROMPTS.md`: são material de produção, não do jogo. No PowerShell, um comando faz tudo (troque os dois caminhos pelos seus):
+   ```powershell
+   robocopy "C:\caminho\GDD\Sprites\8-Bit-Armageddon" "C:\caminho\ArmageddonIso\Assets\_Project\Art" /E /XD _candidatos_descartados _tools _previews _referencia /XF PROMPTS.md _preview_*
+   robocopy "C:\caminho\GDD\Sprites\8-Bit-Armageddon-Iso" "C:\caminho\ArmageddonIso\Assets\_Project\Art" /E /XD _candidatos_descartados
+   ```
+   O segundo comando traz a pasta `Grid/`, com o `SPR_Grid_Floor.png`.
+   Copiar arquivos **novos** pelo Explorer é seguro; o que quebra referências é **mover** arquivos que a Unity já conhece. Volte para a Unity e espere a importação terminar. O preset do Passo 6 já aplica PPU 16 e Filter Point em tudo.
+2. **Marque as spritesheets como Multiple.** Na janela Project, selecione **todos** os PNGs **exceto** os que têm uma célula só (`SPR_Planet_<Core>_<Skin>.png`, os 9 estáticos, mais `SPR_UI_Panel.png` e `SPR_UI_DrawerStrip.png`). Segure Ctrl para selecionar vários. No Inspector, troque **Sprite Mode** para `Multiple` e clique **Apply**.
+3. **Fatie cada spritesheet.** Para cada arquivo marcado no item 2: selecione → **Open Sprite Editor** → menu **Slice** → **Type:** `Grid By Cell Size` → **Pixel Size:** `32 × 32` (use **`64 × 64`** em `SPR_Enemy_Mothership` e `SPR_VFX_Explosion_Mothership`) → **Pivot:** `Center` → **Method:** `Delete Existing` → **Slice** → **Apply** (canto de cima à direita). Deixe **Keep Empty Rects** desmarcado: as 2 últimas células de `SPR_UI_Icons` estão vazias e não viram sprite.
+4. **Marque as bordas de 9-slice.** Abra o Sprite Editor de `SPR_UI_Panel` e de `SPR_UI_Button`. Clique em cada sprite (o painel, e os 3 estados do botão) e, no quadro **Sprite** do canto de baixo, preencha **Border** `L 8, T 8, R 8, B 8`. **Apply**.
+5. **Crie o Font Asset da fonte.** **Window > TextMeshPro > Font Asset Creator** e configure:
+   - **Source Font File:** `Art/Fonts/m5x7.ttf`
+   - **Sampling Point Size:** `Custom Size` = `16`
+   - **Padding:** `0`
+   - **Render Mode:** `RASTER_HINTED` (fonte pixel não usa SDF; com SDF ela fica borrada)
+   - **Character Set:** `Extended ASCII` (inclui todos os acentos do português)
+   - **Atlas Resolution:** `256 × 256`
+
+   Clique **Generate Font Atlas** → **Save** e salve em `Art/Fonts/` como `m5x7 Raster.asset`.
+6. **Crie as Sorting Layers.** **Edit > Project Settings > Tags and Layers** → **Sorting Layers** → **+** e crie, **nesta ordem**, abaixo de `Default`: `Background`, `Grid`, `Floor`, `World`, `VFX`. A ordem da lista é a ordem de desenho (Seção 6.4): a última fica por cima. Repare que não há uma camada para inimigos e outra para o planeta, como num jogo top-down: na isométrica, quem fica na frente depende da **posição** (Seção 6.1), então planeta, inimigos, Satellites e projéteis dividem a camada `World` e são ordenados pelo Y (Fase 2).
+
+#### Passo 8 — Cenas
+
+Em `Assets/_Project/Scenes/`, crie três cenas (**botão direito → Create → Scene**, ou **File > New Scene** e salve):
+
+| Cena | Para quê |
+|---|---|
+| `Boot` | Primeira cena. Inicializa os serviços e passa para o Main Menu. Nunca é recarregada. |
+| `MainMenu` | Menu, Planet Cores, conquistas, recorde de Wave, Settings |
+| `Gameplay` | A run |
+
+Apague a cena de exemplo que veio com o template (`SampleScene`).
+
+Abra **File > Build Profiles** (no Unity 6, substitui o antigo "Build Settings"), clique em **Scene List** e adicione as cenas **nesta ordem**: `Boot` (índice 0), `MainMenu`, `Gameplay`. A cena de índice 0 é a que abre quando o jogo inicia.
+
+#### Passo 9 — Player Settings (todas as plataformas)
+
+**Edit > Project Settings > Player**, na parte comum a todas as plataformas:
+
+| Campo | Valor |
+|---|---|
+| Company Name | `MangueByteGames` |
+| Product Name | `8-Bit Armageddon Iso` (este é o nome que o jogador vê, então pode ter hífen e espaço) |
+| Version | `0.1.0` |
+
+Em **Other Settings > Configuration**:
+- **Active Input Handling:** `Input System Package (New)`. Se a Unity pedir para reiniciar, reinicie.
+
+#### Passo 10 — Plataforma Web
+
+1. **File > Build Profiles** → selecione **Web** → **Switch Platform**. É a única plataforma do jogo (Seção 7.5). A troca demora um pouco na primeira vez, porque a Unity reimporta os assets.
+2. **Edit > Project Settings > Player**, aba **Web**:
+   - **Resolution and Presentation → Default Canvas Width / Height:** `1280` × `720` (16:9, múltiplo inteiro de 320×180).
+   - **Publishing Settings → Compression Format:** `Brotli`
+   - **Publishing Settings → Decompression Fallback:** marcado. Sem isso, o jogo não abre em servidores que não enviam os cabeçalhos HTTP de compressão (como o itch.io). A Fase 14 detalha a configuração do site próprio.
+
+#### Passo 11 — Commit
+
+Feche a Unity (ela só grava algumas configurações em disco ao fechar), abra de novo, e faça o commit: `git add .` e `git commit -m "Project setup: packages, folders, presets, art import, scenes, web settings"`.
+
+**✅ Checkpoint:**
+- O projeto abre sem nenhuma mensagem vermelha no Console (**Window > General > Console**).
+- `Assets/_Project/` tem toda a estrutura de pastas, e `Scripts/` tem o `Armageddon.asmdef`.
+- Um PNG novo colocado em `Art/` entra automaticamente com PPU 16 e Filter Point.
+- A cena `Boot` está no índice 0 da Scene List.
+- Em `Art/Enemies/`, clicar na setinha de `SPR_Enemy_Grunt` mostra 8 sprites (`SPR_Enemy_Grunt_0` a `_7`), e a de `SPR_Enemy_Mothership` mostra 5. Arrastar qualquer um deles para a cena mostra o desenho **nítido**, do tamanho certo (a Mothership bem maior que o Grunt).
+- `SPR_UI_Panel` colocado numa **Image** de UI com **Image Type = Sliced** estica sem deformar os cantos.
+- Um texto TextMeshPro com a fonte `m5x7 Raster` no tamanho 16 escreve "Ação, não, você" com os acentos e sem borrão.
+- As 5 Sorting Layers aparecem na ordem da Seção 6.4.
+- Em `Art/Grid/`, `SPR_Grid_Floor` mostra 4 sprites depois de fatiado.
+- *(Recomendado, e economiza muita dor depois)* **File > Build Profiles > Web > Build And Run** gera o build e abre o navegador com o projeto vazio (uma tela azul/cinza). Isso prova que o módulo Web está funcionando antes de existir qualquer código.
+- `git lfs ls-files` lista os PNGs que você já tiver no projeto (se ainda não tiver nenhum, a lista fica vazia, o que é normal).
+
+**Problemas comuns:**
+- **"Web Build Support" faltando no Build Profiles:** o módulo Web não foi instalado. No Hub: **Installs** → engrenagem da versão → **Add modules**.
+- **Erros vermelhos do DOTween depois de criar o asmdef:** rode de novo **Tools > Demigiant > DOTween Utility Panel > Setup DOTween…** com **Create ASMDEF** marcado, e confira que `DOTween.Modules` está nas referências do `Armageddon.asmdef`.
+- **Uma spritesheet aparece como uma imagem só na cena:** ela ficou como `Single`. Troque o **Sprite Mode** para `Multiple` e fatie (Passo 7, itens 2 e 3).
+- **A fatia saiu deslocada ou cortando o desenho:** o **Pixel Size** do slice está errado. Todas as células são 32×32, menos as duas da Mothership (64×64).
+- **Texto borrado ou com contorno "fantasma":** o Font Asset foi gerado em modo SDF. Refaça com **Render Mode = `RASTER_HINTED`**.
+- **Letras acentuadas aparecem como quadradinhos:** o Font Asset foi gerado com um Character Set sem acentos. Refaça com `Extended ASCII`. O caractere "→" não existe na fonte mesmo (Seção 6.3).
+- **Sprites borrados ou "piscando":** o sprite foi importado antes do Preset existir, ou está fora de `Assets/_Project/Art/`. Selecione-o e clique no ícone de Preset → `SpriteImporter_PixelArt`.
+- **Os PNGs foram para o Git como arquivo normal:** o `git lfs install` não foi rodado, ou o `.gitattributes` foi criado depois do commit. Rode `git lfs migrate import --include="*.png,*.wav,*.ogg"` antes de enviar o repositório para qualquer lugar.
+
+---
+
+### Fase 1 — Arquitetura: bootstrap, serviços, cenas, save e pausa
+
+> Objetivo desta fase: o jogo abre na cena `Boot`, inicializa os serviços, mostra o logo e passa para o `MainMenu` com uma transição suave. O progresso do jogador é salvo em disco com versão, e o jogo pausa sozinho quando perde o foco. Nada de gameplay ainda: esta é a "fundação" que todas as outras fases usam.
+
+**Conceitos novos:**
+- **Serviço:** um sistema que vive o jogo inteiro e não pertence a nenhuma cena (save, troca de cenas, pausa e, depois, áudio). Todos ficam num objeto chamado `[Services]`, que nunca é destruído.
+- **Service Locator (`Services`):** uma classe estática com uma propriedade para cada serviço. Qualquer script escreve `Services.Save.Profile` em vez de procurar o objeto na cena. É simples e explícito: você sabe exatamente quais serviços existem olhando um arquivo só.
+- **`[RuntimeInitializeOnLoadMethod]`:** um atributo que faz a Unity chamar um método estático **antes da primeira cena carregar**, em qualquer cena. É isso que permite apertar Play direto na cena `Gameplay` e ter os serviços funcionando, sem precisar passar pela `Boot`.
+- **`DontDestroyOnLoad`:** marca um objeto para sobreviver à troca de cena.
+- **Save versionado:** o arquivo de save guarda o número da versão do formato. Quando o formato mudar numa atualização do jogo, o código sabe converter um save antigo em vez de apagá-lo.
+- **Escrita atômica:** o save é escrito num arquivo temporário e só depois substitui o original. Se o computador desligar no meio da escrita, o save antigo continua inteiro.
+- **`Time.timeScale`:** o multiplicador de tempo da Unity. Com `0`, tudo o que usa `Time.deltaTime` (movimento, animações, timers) congela; é assim que o jogo pausa. A UI de pausa usa `Time.unscaledDeltaTime`, que ignora o `timeScale`.
+
+#### Passo 1 — Referência do Unity UI no asmdef
+
+A transição de cena usa componentes de UI (`Canvas`, `Image`). Selecione `Assets/_Project/Scripts/Armageddon.asmdef` e, em **Assembly Definition References**, adicione `UnityEngine.UI`. **Apply**.
+
+#### Passo 2 — Os dados salvos: `PlayerProfile`
+
+O `PlayerProfile` é tudo o que o jogo guarda entre sessões. Nesta fase ele só tem o básico; cada fase que precisar salvar algo acrescenta campos aqui.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/PlayerProfile.cs
+using System;
+using System.Collections.Generic;
+
+namespace Armageddon.Core
+{
+    // POR QUE: o jogo precisa lembrar coisas entre uma sessão e outra (recorde de Wave, Planet Cores e
+    // Skins liberados, qual Core está selecionado). Não há moeda permanente nem Perks (Seção 5.1).
+    // Esta classe é "a ficha do jogador": tudo o que é salvo em disco mora aqui, e nada mais.
+    // ESTRATÉGIA: é um objeto de dados puro (não é MonoBehaviour, não fica em cena, não tem lógica).
+    // Quem lê e grava é o SaveService, convertendo para JSON com o JsonUtility da Unity.
+    // O JsonUtility só grava campos públicos de tipos simples, List e classes/structs [Serializable]:
+    // Dictionary NÃO é suportado: listas de ids (como unlockedCoreIds) cumprem esse papel.
+    // Exceção à convenção de nomes: por ser um objeto de dados, os campos são públicos em camelCase,
+    // e esses nomes viram as chaves do JSON. Renomear um campo é uma mudança de versão do save.
+    // [Serializable] = "este tipo pode ser convertido em texto/bytes"; sem ele o JsonUtility ignora a classe.
+    [Serializable]
+    public sealed class PlayerProfile
+    {
+        public int version;          // versão do FORMATO do save (não do jogo); usada pelo SaveService.Migrate
+        public int launchCount;      // quantas vezes o jogo foi aberto (incrementado pelo GameBootstrap)
+        public int bestWave;         // recorde de Wave: a maior Wave alcançada em qualquer run (Seção 5.1)
+        public List<string> unlockedCoreIds = new List<string>();   // ids dos Planet Cores liberados
+        public List<string> unlockedSkinIds = new List<string>();   // ids no formato "<Core>_<Skin>"
+        public string selectedCoreId;
+        public string selectedSkinId;
+
+        // Cria a ficha de um jogador que acabou de instalar o jogo.
+        // POR QUE um método "fábrica" em vez de valores no construtor: deixa explícito, num lugar só,
+        // qual é o estado inicial, e o SaveService usa o mesmo método no "Resetar progresso".
+        public static PlayerProfile CreateNew()
+        {
+            return new PlayerProfile
+            {
+                version = SaveService.CurrentVersion,
+                unlockedCoreIds = new List<string> { "Terra" },
+                // A Skin "Classic" de cada Core vem liberada; ela só pode ser usada quando o Core for desbloqueado.
+                unlockedSkinIds = new List<string> { "Terra_Classic", "Ice_Classic", "Magma_Classic" },
+                selectedCoreId = "Terra",
+                selectedSkinId = "Terra_Classic",
+            };
+        }
+    }
+}
+```
+
+> **Campo novo não precisa de migração.** Ao ler um save antigo, o `JsonUtility` deixa com o valor padrão (0, `null` ou a lista vazia do inicializador) qualquer campo que não existia no arquivo. Só é preciso subir a versão e escrever uma migração quando um campo **muda de nome ou de significado**.
+
+#### Passo 3 — Onde o save é guardado: `SaveStorage`
+
+No Editor, o save é um arquivo em `Application.persistentDataPath`. No build Web (a plataforma deste jogo, Seção 7.3), o jogo usa o armazenamento do navegador via `PlayerPrefs`, que a Unity grava no IndexedDB. Os dois caminhos ficam atrás da mesma interface, então o resto do jogo não sabe onde o save mora.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SaveStorage.cs
+using System.IO;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // POR QUE: o JSON do save mora em lugares diferentes conforme a plataforma (arquivo no Editor,
+    // armazenamento do navegador na Web). O SaveService não deveria ter "if Web / if Editor" espalhado.
+    // ESTRATÉGIA: uma interface (um "contrato": lista de métodos sem implementação). O SaveService só
+    // conhece ISaveStorage; cada plataforma entrega uma classe que cumpre o contrato do seu jeito.
+    // Bônus: num teste dá para passar um armazenamento falso, em memória.
+    public interface ISaveStorage
+    {
+        string Read();          // null se ainda não existe save
+        string ReadBackup();    // null se não existe backup
+        void Write(string json);
+        void Delete();
+    }
+
+    // POR QUE: alguém precisa decidir QUAL implementação de ISaveStorage usar nesta plataforma.
+    // ESTRATÉGIA: classe estática com um método "fábrica". A escolha é feita em tempo de compilação
+    // com #if (diretivas de pré-processador): o código do outro ramo nem entra no build.
+    // UNITY_WEBGL = build Web; !UNITY_EDITOR = "não estou rodando dentro do Editor".
+    public static class SaveStorage
+    {
+        // Devolve o armazenamento certo para a plataforma atual. Chamado uma vez, pelo GameBootstrap.
+        public static ISaveStorage CreateForPlatform()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return new PlayerPrefsSaveStorage();
+#else
+            // Application.persistentDataPath = pasta que a Unity garante que sobrevive entre sessões
+            // (no Editor, uma pasta do usuário no computador).
+            return new FileSaveStorage(Application.persistentDataPath);
+#endif
+        }
+    }
+
+    // POR QUE: o Editor (e um futuro build de desktop ou de celular) grava o save num arquivo. Se o
+    // computador desligar no meio da gravação, um arquivo pela metade apagaria o progresso do jogador.
+    // ESTRATÉGIA: escrita atômica (grava num .tmp e troca de uma vez) + uma cópia .bak do save anterior.
+    // Classe C# pura: não precisa de cena, só de System.IO.
+    public sealed class FileSaveStorage : ISaveStorage
+    {
+        private readonly string _path;        // profile.json — o save "de verdade"
+        private readonly string _tempPath;    // profile.json.tmp — rascunho durante a escrita
+        private readonly string _backupPath;  // profile.json.bak — o save anterior, se o principal corromper
+
+        // Monta os três caminhos uma vez só. Path.Combine usa a barra certa para cada sistema operacional.
+        public FileSaveStorage(string folder)
+        {
+            _path = Path.Combine(folder, "profile.json");
+            _tempPath = _path + ".tmp";
+            _backupPath = _path + ".bak";
+        }
+
+        // Lê o save principal (ou null se o jogador é novo).
+        public string Read() => File.Exists(_path) ? File.ReadAllText(_path) : null;
+
+        // Lê o backup; o SaveService só chama se o principal estiver corrompido.
+        public string ReadBackup() => File.Exists(_backupPath) ? File.ReadAllText(_backupPath) : null;
+
+        // Grava o JSON de forma atômica.
+        public void Write(string json)
+        {
+            // 1) escreve tudo num arquivo temporário; 2) troca de uma vez só, guardando o anterior como .bak.
+            // File.Replace é uma operação única do sistema de arquivos: ou acontece inteira, ou não acontece.
+            File.WriteAllText(_tempPath, json);
+            if (File.Exists(_path))
+                File.Replace(_tempPath, _path, _backupPath);
+            else
+                File.Move(_tempPath, _path);   // primeiro save: não há o que substituir
+        }
+
+        // Apaga tudo (usado em testes e ferramentas de desenvolvimento).
+        public void Delete()
+        {
+            foreach (var path in new[] { _path, _tempPath, _backupPath })
+            {
+                if (File.Exists(path)) File.Delete(path);
+            }
+        }
+    }
+
+    // POR QUE: no navegador não existe sistema de arquivos persistente acessível pelo jogo.
+    // ESTRATÉGIA: usar PlayerPrefs (o "dicionário de chave → valor" da Unity), que na Web a Unity grava
+    // no IndexedDB do navegador. Guardamos a versão anterior numa segunda chave, imitando o .bak.
+    public sealed class PlayerPrefsSaveStorage : ISaveStorage
+    {
+        private const string Key = "profile";
+        private const string BackupKey = "profile.bak";
+
+        // Mesmo contrato do FileSaveStorage, mas lendo/gravando chaves do PlayerPrefs.
+        public string Read() => PlayerPrefs.HasKey(Key) ? PlayerPrefs.GetString(Key) : null;
+
+        public string ReadBackup() => PlayerPrefs.HasKey(BackupKey) ? PlayerPrefs.GetString(BackupKey) : null;
+
+        // Copia o save atual para o backup e grava o novo.
+        public void Write(string json)
+        {
+            if (PlayerPrefs.HasKey(Key)) PlayerPrefs.SetString(BackupKey, PlayerPrefs.GetString(Key));
+            PlayerPrefs.SetString(Key, json);
+            // PlayerPrefs.Save força a gravação agora; sem isso a Unity só grava ao fechar,
+            // e na Web o jogador pode fechar a aba sem que isso aconteça.
+            PlayerPrefs.Save();
+        }
+
+        public void Delete()
+        {
+            PlayerPrefs.DeleteKey(Key);
+            PlayerPrefs.DeleteKey(BackupKey);
+            PlayerPrefs.Save();
+        }
+    }
+}
+```
+
+#### Passo 4 — O serviço de save: `SaveService`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SaveService.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // POR QUE: alguém precisa carregar o PlayerProfile ao abrir o jogo, recuperar de um save corrompido,
+    // converter saves antigos (migração) e gravar quando algo muda. Sem um dono único, cada tela
+    // gravaria o save do seu jeito.
+    // ESTRATÉGIA: um serviço (ver "Conceitos novos"): vive o jogo inteiro, acessado por Services.Save.
+    // Não é MonoBehaviour: não precisa de cena nem de Update, então é uma classe C# comum criada com `new`.
+    // Recebe o ISaveStorage pronto no construtor (não sabe se é arquivo ou navegador).
+    public sealed class SaveService
+    {
+        // Suba este número quando o formato do save mudar de um jeito que exija migração (ver Migrate).
+        public const int CurrentVersion = 1;
+
+        private readonly ISaveStorage _storage;
+
+        // O perfil carregado. "private set" = qualquer um lê, só o SaveService troca o objeto inteiro.
+        public PlayerProfile Profile { get; private set; }
+
+        // Disparado depois de "Resetar progresso" (Settings, Fase 11): quem guarda dados do perfil em cache deve recarregar.
+        // "event Action" é um evento C#: outros scripts se inscrevem com += e são avisados quando ele é
+        // disparado (Invoke). Quem dispara não precisa saber quem está ouvindo — isso desacopla os sistemas.
+        public event Action ProfileReset;
+
+        public SaveService(ISaveStorage storage)
+        {
+            _storage = storage;
+        }
+
+        // Carrega o perfil ao abrir o jogo (chamado pelo GameBootstrap).
+        // Ordem de tentativa: save principal → backup → perfil novo. O operador ?? significa
+        // "se o da esquerda for null, usa o da direita".
+        public void Load()
+        {
+            Profile = TryParse(_storage.Read(), "principal")
+                      ?? TryParse(_storage.ReadBackup(), "backup")
+                      ?? PlayerProfile.CreateNew();
+            Migrate(Profile);
+        }
+
+        // Grava o perfil atual. Quem muda o perfil (conquista liberada, fim de run...) chama este método.
+        public void Save()
+        {
+            try
+            {
+                _storage.Write(JsonUtility.ToJson(Profile));
+            }
+            catch (Exception e)
+            {
+                // Falha de disco não pode derrubar o jogo: registra e segue. O próximo Save tenta de novo.
+                Debug.LogError($"[SaveService] Falha ao salvar: {e.Message}");
+            }
+        }
+
+        // "Resetar progresso" das Settings: troca por um perfil novo, grava e avisa os interessados.
+        public void ResetProgress()
+        {
+            Profile = PlayerProfile.CreateNew();
+            Save();
+            // ?. = só chama Invoke se houver alguém inscrito (senão o evento é null).
+            ProfileReset?.Invoke();
+        }
+
+        // Converte o texto JSON em PlayerProfile, devolvendo null se o texto não existe ou está corrompido.
+        // POR QUE separado: Load chama duas vezes (principal e backup) com a mesma lógica.
+        private static PlayerProfile TryParse(string json, string source)
+        {
+            if (string.IsNullOrEmpty(json)) return null;
+            try
+            {
+                var profile = JsonUtility.FromJson<PlayerProfile>(json);
+                // version > 0 confirma que era um save de verdade (um JSON vazio "{}" viria com version 0).
+                if (profile != null && profile.version > 0) return profile;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[SaveService] Save {source} corrompido: {e.Message}");
+            }
+            return null;
+        }
+
+        // Traz um save antigo para o formato atual, um passo de versão por vez (1→2, 2→3...).
+        // POR QUE um passo por vez: cada migração só precisa saber converter da versão anterior.
+        private static void Migrate(PlayerProfile profile)
+        {
+            if (profile.version > CurrentVersion)
+            {
+                // Save de uma versão mais nova do jogo (ex.: o jogador voltou para um APK antigo). Não mexe em nada.
+                Debug.LogWarning($"[SaveService] Save da versão {profile.version}, mais nova que a do jogo ({CurrentVersion}).");
+                return;
+            }
+
+            while (profile.version < CurrentVersion)
+            {
+                // Quando existir a versão 2, a conversão da 1 para a 2 entra aqui, por exemplo:
+                // if (profile.version == 1) profile.campoNovo = ConverterDe(profile.campoAntigo);
+                profile.version++;
+            }
+        }
+    }
+}
+```
+
+#### Passo 5 — Pausa e tempo: `GameClock`
+
+A pausa pode ter mais de um motivo ao mesmo tempo: o jogador apertou pausa **e** a run acabou, com o Results na tela (Fase 8). O `GameClock` guarda um conjunto de motivos, e o jogo só volta a andar quando **todos** saem.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/GameClock.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // POR QUE: a pausa pode ter mais de um motivo ao mesmo tempo, e cada um precisa sair separadamente.
+    // ESTRATÉGIA: um enum (lista fechada de nomes) em vez de strings: o compilador pega erros de digitação.
+    public enum PauseReason
+    {
+        Manual,   // botão de pausa, botão "voltar" ou o app perdeu o foco
+        Modal,    // uma janela que congela o jogo sem ser a pausa (ex.: o Results no fim da run, Fase 8)
+    }
+
+    // POR QUE: se vários scripts mexessem em Time.timeScale, um "despausaria" o que o outro pausou.
+    // ESTRATÉGIA: um único dono do Time.timeScale. Nenhum outro script deve alterar Time.timeScale diretamente.
+    // Guarda um conjunto (HashSet) de motivos de pausa: o jogo só volta a andar quando o conjunto esvazia.
+    // É MonoBehaviour (um componente preso a um GameObject) e o GameBootstrap o adiciona ao objeto
+    // [Services]. Hoje não usa Update, mas fica junto dos serviços de cena e aparece na Hierarchy durante o Play.
+    // "sealed" = ninguém pode herdar desta classe (deixa a intenção clara e o código um pouco mais rápido).
+    public sealed class GameClock : MonoBehaviour
+    {
+        // HashSet: coleção sem repetição. Pausar duas vezes pelo mesmo motivo conta como uma.
+        private readonly HashSet<PauseReason> _reasons = new HashSet<PauseReason>();
+        private float _timeScale = 1f;   // escala "quando não está pausado" (câmera lenta futura)
+        private bool _wasPaused;         // último estado avisado, para disparar PauseChanged só quando muda
+
+        public bool IsPaused => _reasons.Count > 0;
+
+        // Só existe pausa durante a run. Nos menus, perder o foco não pausa nada.
+        public bool IsGameplayActive { get; private set; }
+
+        // true = acabou de pausar; false = acabou de voltar. A PauseView (Fase 8) escuta este evento.
+        public event Action<bool> PauseChanged;
+
+        // Chamado a cada cena carregada. Uma cena nova sempre começa sem pausa, inclusive quando
+        // "jogar de novo" recarrega a própria Gameplay (Fase 8).
+        public void SetGameplayActive(bool active)
+        {
+            IsGameplayActive = active;
+            _reasons.Clear();
+            Apply();
+        }
+
+        // Pergunta se um motivo específico está ativo (ex.: a PauseView só aparece na pausa Manual).
+        public bool IsPausedBy(PauseReason reason) => _reasons.Contains(reason);
+
+        // Adiciona um motivo de pausa. HashSet.Add devolve false se já existia: aí não há o que reaplicar.
+        public void Pause(PauseReason reason)
+        {
+            if (_reasons.Add(reason)) Apply();
+        }
+
+        // Remove um motivo. O jogo só volta se não sobrar nenhum outro.
+        public void Resume(PauseReason reason)
+        {
+            if (_reasons.Remove(reason)) Apply();
+        }
+
+        // Botão de pausa / tecla "voltar": alterna a pausa Manual.
+        public void TogglePause()
+        {
+            if (_reasons.Contains(PauseReason.Manual)) Resume(PauseReason.Manual);
+            else Pause(PauseReason.Manual);
+        }
+
+        // Escala de tempo da run quando não está pausada (1 = normal). Reservado para efeitos como câmera lenta.
+        public void SetTimeScale(float scale)
+        {
+            _timeScale = Mathf.Max(0f, scale);
+            Apply();
+        }
+
+        // Chamado pelo AppLifecycle quando o app vai para segundo plano ou perde o foco.
+        // Vira uma pausa MANUAL de propósito: ao voltar, o jogo continua pausado até o jogador tocar em "continuar".
+        public void HandleApplicationSuspended()
+        {
+            if (IsGameplayActive) Pause(PauseReason.Manual);
+        }
+
+        // Único lugar que escreve Time.timeScale. Também avisa (evento) quando o estado pausado muda.
+        private void Apply()
+        {
+            Time.timeScale = IsPaused ? 0f : _timeScale;
+            if (IsPaused == _wasPaused) return;
+            _wasPaused = IsPaused;
+            Debug.Log(IsPaused ? "[GameClock] Pausado" : "[GameClock] Retomado");
+            PauseChanged?.Invoke(IsPaused);
+        }
+    }
+}
+```
+
+#### Passo 6 — Troca de cenas: `SceneLoader`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/SceneLoader.cs
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+namespace Armageddon.Core
+{
+    // POR QUE: trocar de cena por texto ("Gameplay") espalha strings pelo código, e um erro de digitação
+    // só aparece rodando. O enum dá autocompletar e erro de compilação.
+    // Os nomes precisam ser IGUAIS aos nomes dos arquivos de cena (Fase 0, Passo 8).
+    public enum GameScene { Boot, MainMenu, Gameplay }
+
+    // POR QUE: toda troca de cena precisa do mesmo ritual: escurecer a tela, carregar sem travar,
+    // clarear, e avisar o resto do jogo qual cena entrou (o GameClock precisa saber se é a Gameplay).
+    // ESTRATÉGIA: um serviço MonoBehaviour no [Services] (sobrevive às trocas de cena).
+    // É MonoBehaviour porque precisa de coroutines (StartCoroutine só existe em MonoBehaviour).
+    // Cria o próprio Canvas de transição por código: não precisa de prefab.
+    public sealed class SceneLoader : MonoBehaviour
+    {
+        private const float FadeDuration = 0.25f;   // segundos de cada metade do fade
+
+        private CanvasGroup _fade;   // CanvasGroup controla a transparência (alpha) de toda a tela preta de uma vez
+
+        public bool IsLoading { get; private set; }
+
+        // Avisado depois que uma cena termina de carregar (quem precisar reagir se inscreve).
+        public event Action<GameScene> SceneLoaded;
+
+        // Awake: método que a Unity chama UMA vez, assim que o componente é criado (antes de Start).
+        // Regra deste projeto: no Awake, só configure a si mesmo (ver a nota depois do GameBootstrap).
+        // Aqui: cria a tela preta e se inscreve no evento da Unity que avisa "uma cena carregou".
+        private void Awake()
+        {
+            _fade = CreateFadeOverlay();
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        // OnDestroy: chamado quando o objeto é destruído. Toda inscrição (+=) precisa de uma
+        // desinscrição (-=), senão o evento continua apontando para um objeto morto.
+        private void OnDestroy()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
+        // O único método que o resto do jogo chama: Services.Scenes.Load(GameScene.MainMenu).
+        public void Load(GameScene scene)
+        {
+            if (IsLoading) return;   // ignora cliques repetidos durante a transição
+            StartCoroutine(LoadRoutine(scene));
+        }
+
+        // Coroutine: um método que retorna IEnumerator e pode "pausar" no meio com yield return,
+        // continuando no próximo frame (ou depois de outra coroutine). É como escrever uma sequência
+        // no tempo ("escurece, depois carrega, depois clareia") sem travar o jogo e sem Update.
+        private IEnumerator LoadRoutine(GameScene scene)
+        {
+            IsLoading = true;
+            _fade.blocksRaycasts = true;   // bloqueia toques enquanto a tela escurece
+            yield return Fade(0f, 1f);
+
+            // LoadSceneAsync carrega em segundo plano; yield return null espera um frame por vez até terminar.
+            var operation = SceneManager.LoadSceneAsync(scene.ToString());
+            while (!operation.isDone) yield return null;
+
+            yield return Fade(1f, 0f);
+            _fade.blocksRaycasts = false;
+            IsLoading = false;
+        }
+
+        // Roda em TODA cena carregada, inclusive a primeira quando você aperta Play direto numa cena.
+        // Converte o nome da cena no enum; cenas que não estão no enum são ignoradas.
+        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (!Enum.TryParse(scene.name, out GameScene gameScene)) return;
+            Services.Clock.SetGameplayActive(gameScene == GameScene.Gameplay);
+            SceneLoaded?.Invoke(gameScene);
+        }
+
+        // Anima o alpha da tela preta de "from" até "to" ao longo de FadeDuration.
+        private IEnumerator Fade(float from, float to)
+        {
+            // Tempo "unscaled": o fade funciona mesmo com o jogo pausado (timeScale = 0).
+            for (float t = 0f; t < FadeDuration; t += Time.unscaledDeltaTime)
+            {
+                // Mathf.Lerp(a, b, x) = valor entre a e b na proporção x (0 → a, 1 → b).
+                _fade.alpha = Mathf.Lerp(from, to, t / FadeDuration);
+                yield return null;
+            }
+            _fade.alpha = to;   // garante o valor final exato
+        }
+
+        // Monta por código: Canvas → Image preta esticada na tela toda → CanvasGroup para o alpha.
+        // POR QUE por código: o SceneLoader nasce antes de qualquer cena, então não há prefab na cena para arrastar.
+        private CanvasGroup CreateFadeOverlay()
+        {
+            // new GameObject(nome, componentes...) cria o objeto já com esses componentes.
+            var root = new GameObject("SceneFade", typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasGroup));
+            // SetParent(..., false): vira filho do [Services] (e portanto também sobrevive às trocas de cena).
+            root.transform.SetParent(transform, false);
+
+            var canvas = root.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 1000;   // acima de qualquer UI do jogo
+
+            var image = new GameObject("Black", typeof(Image)).GetComponent<Image>();
+            image.transform.SetParent(root.transform, false);
+            image.color = Color.black;
+            // Âncoras de 0 a 1 com offsets zero = o retângulo ocupa o pai inteiro (a tela toda).
+            var rect = image.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+
+            var group = root.GetComponent<CanvasGroup>();
+            group.alpha = 0f;
+            group.blocksRaycasts = false;   // só bloqueia toques durante a transição
+            group.interactable = false;
+            return group;
+        }
+    }
+}
+```
+
+#### Passo 7 — Ciclo de vida do app: `AppLifecycle`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/AppLifecycle.cs
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // POR QUE: no navegador o jogador troca de aba, minimiza a janela ou fecha o jogo a qualquer momento.
+    // Se isso acontecer no meio da run, o jogo precisa salvar e pausar; e a tecla Esc precisa fazer algo sensato.
+    // ESTRATÉGIA: um MonoBehaviour no [Services] que só escuta as mensagens de sistema que a Unity manda
+    // para todo MonoBehaviour (OnApplicationPause/Focus/Quit) e repassa para o SaveService e o GameClock.
+    // Ele não decide nada sobre a pausa: quem decide é o GameClock.
+    public sealed class AppLifecycle : MonoBehaviour
+    {
+        // Mensagem da Unity. Celular e desktop: o app foi para segundo plano. No navegador quase não chega
+        // (quem avisa é o OnApplicationFocus), mas tratar não custa nada e deixa pronto para outra plataforma.
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused) Suspend();
+        }
+
+        // Mensagem da Unity. Web e desktop: a aba ou a janela perdeu o foco.
+        private void OnApplicationFocus(bool focused)
+        {
+            // No Editor, clicar no Inspector tira o foco do Game view: pausar aí atrapalharia o desenvolvimento.
+            if (Application.isEditor) return;
+            if (!focused) Suspend();
+        }
+
+        // Mensagem da Unity ao fechar o app. No navegador ela quase nunca chega (fechar a aba encerra o jogo),
+        // por isso o save principal acontece em Suspend. O ?. evita erro se os serviços já não existirem.
+        private void OnApplicationQuit()
+        {
+            Services.Save?.Save();
+        }
+
+        // Update: chamado pela Unity uma vez a cada frame. É o lugar de ler input.
+        private void Update()
+        {
+            // Esc alterna a pausa. (Num futuro build Android, o botão "voltar" também chega como Escape.)
+            // Keyboard.current é null quando não há teclado, por isso a checagem.
+            var keyboard = Keyboard.current;
+            if (keyboard == null || !keyboard.escapeKey.wasPressedThisFrame) return;
+
+            // Na run, "voltar" alterna a pausa. Nos menus, cada tela trata o "voltar" (Fase 9).
+            if (Services.Clock.IsGameplayActive) Services.Clock.TogglePause();
+        }
+
+        // O que fazer ao sair de cena por qualquer motivo: salvar e pedir pausa.
+        // "static" porque não usa nenhum campo deste objeto, só os Services.
+        private static void Suspend()
+        {
+            if (!Services.IsReady) return;
+            Services.Save.Save();
+            Services.Clock.HandleApplicationSuspended();
+        }
+    }
+}
+```
+
+#### Passo 8 — O ponto de acesso: `Services`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/Services.cs
+namespace Armageddon.Core
+{
+    // POR QUE: qualquer script precisa chegar ao save, à troca de cena ou à pausa sem ter que procurar
+    // objetos na cena (FindObjectOfType é lento e frágil) nem arrastar referências no Inspector em toda cena.
+    // ESTRATÉGIA: Service Locator — uma classe estática com uma propriedade por serviço.
+    // "static" = existe uma só, sem precisar de instância: qualquer script escreve Services.Save.Profile.
+    // Preenchida pelo GameBootstrap antes da primeira cena carregar.
+    // É "partial": uma fase futura que precise de um serviço novo o acrescenta num arquivo próprio
+    // (Services.<Nome>.cs), sem mexer neste.
+    public static partial class Services
+    {
+        // "private set": só esta classe troca os serviços; o resto do jogo apenas lê.
+        public static SaveService Save { get; private set; }
+        public static SceneLoader Scenes { get; private set; }
+        public static GameClock Clock { get; private set; }
+
+        // true depois que o GameBootstrap registrou tudo. Quem pode rodar antes disso confere aqui.
+        public static bool IsReady { get; private set; }
+
+        // Chamado uma vez pelo GameBootstrap. "internal" = só código da mesma assembly (Armageddon) enxerga.
+        internal static void Register(SaveService save, SceneLoader scenes, GameClock clock)
+        {
+            Save = save;
+            Scenes = scenes;
+            Clock = clock;
+            IsReady = true;
+        }
+
+        // Zera tudo no começo de cada Play no Editor (ver GameBootstrap.ResetStatics).
+        internal static void Clear()
+        {
+            Save = null;
+            Scenes = null;
+            Clock = null;
+            IsReady = false;
+        }
+    }
+}
+```
+
+#### Passo 9 — Atalhos de desenvolvimento: `DevShortcuts`
+
+Enquanto os menus não existem, precisamos de um jeito de trocar de cena e testar o save. Este script só existe no Editor e em builds de desenvolvimento: ele some sozinho do build final.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/DevShortcuts.cs
+// Todo o arquivo fica dentro deste #if: no build final (sem "Development Build") ele simplesmente não existe.
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // POR QUE: enquanto os menus não existem, precisamos trocar de cena e mexer no save para testar.
+    // ESTRATÉGIA: um MonoBehaviour no [Services] (o GameBootstrap só o adiciona em Editor/dev build)
+    // que lê teclas no Update e chama os serviços. Nada de gameplay depende dele.
+    // F1 = MainMenu · F2 = Gameplay · F5 = libera todos os Planet Cores e Skins e salva · F9 = apaga o progresso.
+    public sealed class DevShortcuts : MonoBehaviour
+    {
+        // Lê as teclas de teste a cada frame. wasPressedThisFrame = true só no frame em que a tecla desceu
+        // (segurar a tecla não repete a ação).
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.f1Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.MainMenu);
+            if (keyboard.f2Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.Gameplay);
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                // Testar a Core Select sem cumprir as conquistas. Clear + AddRange troca o conteúdo da lista.
+                var profile = Services.Save.Profile;
+                profile.unlockedCoreIds.Clear();
+                profile.unlockedCoreIds.AddRange(new[] { "Terra", "Ice", "Magma" });
+                profile.unlockedSkinIds.Clear();
+                profile.unlockedSkinIds.AddRange(new[]
+                {
+                    "Terra_Classic", "Terra_Ocean", "Terra_Desert",
+                    "Ice_Classic", "Ice_Aurora", "Ice_Crystal",
+                    "Magma_Classic", "Magma_Obsidian", "Magma_Solar",
+                });
+                Services.Save.Save();
+                Debug.Log("[Dev] Todos os Planet Cores e Skins liberados");
+            }
+
+            if (keyboard.f9Key.wasPressedThisFrame)
+            {
+                Services.Save.ResetProgress();
+                Debug.Log("[Dev] Progresso apagado.");
+            }
+        }
+    }
+}
+#endif
+```
+
+#### Passo 10 — Quem liga tudo: `GameBootstrap`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/GameBootstrap.cs
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // POR QUE: os serviços precisam existir ANTES de qualquer cena, inclusive quando você aperta Play
+    // direto na cena Gameplay (sem passar pela Boot). Se dependessem de um objeto na cena Boot,
+    // testar a Gameplay sozinha quebraria.
+    // ESTRATÉGIA: classe estática com [RuntimeInitializeOnLoadMethod], que a Unity chama sozinha antes
+    // da primeira cena. Ela cria o objeto [Services], marca para não ser destruído, cria cada serviço
+    // na ordem certa e registra tudo no Services. É o único lugar que "monta" o jogo.
+    public static class GameBootstrap
+    {
+        // Com "Enter Play Mode Options" ligado (sem recarregar o domínio), variáveis estáticas sobrevivem
+        // entre um Play e outro. Este método zera tudo no começo de cada Play.
+        // SubsystemRegistration é o momento mais cedo possível, antes do Initialize abaixo.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Services.Clear();
+        }
+
+        // BeforeSceneLoad: roda depois do ResetStatics e antes de a primeira cena carregar.
+        // Cria e registra todos os serviços.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void Initialize()
+        {
+            if (Services.IsReady) return;   // proteção: nunca montar duas vezes
+
+            var root = new GameObject("[Services]");
+            // DontDestroyOnLoad: o objeto sobrevive às trocas de cena (fica numa "cena" especial na Hierarchy).
+            Object.DontDestroyOnLoad(root);
+
+            // O save vem primeiro: os outros serviços podem querer ler o perfil.
+            var save = new SaveService(SaveStorage.CreateForPlatform());
+            save.Load();
+            save.Profile.launchCount++;
+            save.Save();
+
+            // AddComponent cria o componente no objeto e já chama o Awake dele nesta mesma linha.
+            var clock = root.AddComponent<GameClock>();
+            var scenes = root.AddComponent<SceneLoader>();
+            root.AddComponent<AppLifecycle>();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            root.AddComponent<DevShortcuts>();
+#endif
+
+            Services.Register(save, scenes, clock);
+            Debug.Log($"[GameBootstrap] Serviços prontos. Abertura nº {save.Profile.launchCount}. Save em: {Application.persistentDataPath}");
+        }
+    }
+}
+```
+
+> **Por que o `SceneLoader` usa `Services.Clock` se ele é registrado depois?** O `AddComponent` roda o `Awake` na hora, mas o `SceneLoader` só usa `Services.Clock` quando uma cena carrega, e isso acontece depois do `Initialize` terminar. Regra geral para serviços: **no `Awake`, só configure a si mesmo**; use outros serviços a partir do `Start` ou de eventos.
+
+#### Passo 11 — A cena `Boot`: `BootSequence`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/BootSequence.cs
+using System.Collections;
+using UnityEngine;
+
+namespace Armageddon.Core
+{
+    // POR QUE: a cena Boot precisa mostrar o logo por um tempo mínimo (senão ele pisca e some) e depois
+    // seguir para o Main Menu. Os serviços já existem (GameBootstrap), então só falta a sequência visual.
+    // ESTRATÉGIA: um MonoBehaviour pequeno, colocado na cena Boot, que usa Start como coroutine.
+    // Este jogo não tem tela de consentimento (sem anúncios nem analytics, Seção 7): do logo vai direto ao menu.
+    public sealed class BootSequence : MonoBehaviour
+    {
+        // [SerializeField]: mostra um campo privado no Inspector para você ajustar sem mexer no código
+        // (ver a convenção da Seção 10.1). O valor digitado no Inspector vence o valor do código.
+        [SerializeField] private float _minimumLogoTime = 1f;
+
+        // Start: chamado pela Unity uma vez, no primeiro frame em que o objeto está ativo, DEPOIS de todos
+        // os Awake da cena. Se Start retorna IEnumerator, a Unity o roda como coroutine automaticamente.
+        private IEnumerator Start()
+        {
+            // Realtime: espera segundos de verdade, mesmo que o timeScale esteja em 0.
+            yield return new WaitForSecondsRealtime(_minimumLogoTime);
+            Services.Scenes.Load(GameScene.MainMenu);
+        }
+    }
+}
+```
+
+Monte as cenas:
+1. **Boot:** crie os objetos vazios de agrupamento `[Systems]` e `[UI]` (convenção da Seção 10.1). Em `[Systems]`, adicione um objeto `BootSequence` com o componente `BootSequence`. Em `[UI]`, crie **UI > Canvas** e, dentro dele, **UI > Text - TextMeshPro** escrito "8-Bit Armageddon", com a fonte `m5x7 Raster` no tamanho 16 (Fase 0, Passo 7). Esse é o "logo" provisório.
+2. **MainMenu:** crie `[Systems]`, `[UI]` e, no Canvas, um texto "Main Menu".
+3. **Gameplay:** crie `[Systems]`, `[World]` e `[UI]`. Para ver a pausa funcionando, coloque um planeta girando em `[World]`: abra a setinha de `Art/Planet/SPR_Planet_Terra_Classic_Rotate`, selecione os 32 sprites (clique no primeiro, Shift+clique no último) e **arraste todos juntos para a cena**. A Unity cria um objeto com `Animator` e um clipe de animação; salve o clipe em `Assets/_Project/Art/Planet/` como `ANIM_Planet_Rotate`. Abra **Window > Animation > Animation**, selecione o objeto, ative **Show Sample Rate** no menu ⋮ da janela e troque **Samples** para `4` (os 4 fps do planeta, Seção 6.4). No `SpriteRenderer`, escolha a **Sorting Layer** `World`. (Este planeta de teste ainda não passa pela projeção isométrica: ela entra na Fase 2, que apaga este objeto.)
+
+#### Passo 12 — Configuração base da Localization
+
+Os textos só serão traduzidos na Fase 11, mas os idiomas precisam existir desde já, para que todo texto novo nasça localizável.
+1. **Edit > Project Settings > Localization** → **Create**. Salve o asset em `Assets/_Project/Localization/` como `LocalizationSettings`.
+2. Na mesma tela, clique em **Locale Generator**, marque **English (en)** e **Portuguese (Brazil) (pt-BR)** e clique em **Generate Locales**, salvando em `Assets/_Project/Localization/Locales/`.
+3. **Window > Asset Management > Localization Tables** → **New Table Collection** → tipo **String Table Collection**, nome `UI`, marcando os dois idiomas → **Create**, em `Assets/_Project/Localization/`.
+4. Crie a primeira chave, `menu.play`, com os valores "Play" (en) e "Jogar" (pt-BR). Ela será usada no botão do Main Menu na Fase 9.
+
+#### Passo 13 — Commit
+
+`git add .` e `git commit -m "Phase 1: bootstrap, services, scene loader, versioned save, pause"`.
+
+**✅ Checkpoint:**
+- Com a cena **Boot** aberta, aperte Play: o texto "8-Bit Armageddon" aparece por ~1 s, a tela escurece e clareia, e aparece o "Main Menu". O Console mostra `[GameBootstrap] Serviços prontos. Abertura nº 1`.
+- Durante o Play, a janela **Hierarchy** mostra `DontDestroyOnLoad → [Services]` com os componentes `GameClock`, `SceneLoader`, `AppLifecycle` e `DevShortcuts`.
+- **F2** leva para o Gameplay com o planeta girando; **F1** volta para o menu. As duas trocas têm o fade.
+- No Gameplay, **Esc** congela o planeta (Console: `[GameClock] Pausado`) e **Esc** de novo o faz voltar a girar. No Main Menu, Esc não faz nada.
+- Parar e apertar Play de novo mostra `Abertura nº 2`: o save sobreviveu.
+- **F5**, pare o Play e abra no Explorer a pasta mostrada no log do `GameBootstrap` ("Save em: …"): o `profile.json` tem `"version":1` e os três Cores (`"Terra","Ice","Magma"`) em `unlockedCoreIds`. Depois de dois saves, existe também o `profile.json.bak`.
+- Apertar Play **direto na cena Gameplay** também funciona (serviços prontos, Esc pausa), sem passar pela Boot.
+- **F9** apaga o progresso: no Play seguinte, a abertura volta a ser a nº 1.
+
+**Problemas comuns:**
+- **`NullReferenceException` em `Services.Clock` ou `Services.Save`:** algum script usou um serviço no `Awake` de um objeto que foi criado **dentro** do `GameBootstrap.Initialize`, antes do `Services.Register`. Mova esse uso para o `Start` (regra do Passo 10).
+- **`The type or namespace name 'UI' does not exist in the namespace 'UnityEngine'`:** faltou adicionar `UnityEngine.UI` ao asmdef (Passo 1).
+- **`The type or namespace name 'InputSystem' could not be found`:** falta `Unity.InputSystem` no asmdef (Fase 0, Passo 5), ou o **Active Input Handling** não está em `Input System Package (New)` (Fase 0, Passo 9).
+- **O Console mostra `Scene 'Gameplay' couldn't be loaded because it has not been added to the build settings`:** a cena não está na **Scene List** do **File > Build Profiles** (Fase 0, Passo 8), ou o nome do arquivo não é idêntico ao do enum `GameScene`.
+- **A abertura é sempre a nº 1:** o save não está sendo gravado. Procure no Console por `[SaveService] Falha ao salvar`; em geral é antivírus ou a pasta sincronizada por nuvem bloqueando o arquivo.
+- **O planeta não congela na pausa:** o `Animator` está com **Update Mode = Unscaled Time**. Deixe em `Normal`: tudo o que é gameplay usa o tempo normal, e só a UI de pausa usa o "unscaled".
+- **Clicar fora do Game view não pausa o jogo no Editor:** é de propósito (Passo 7). Para testar a pausa automática, rode o build Web e troque de aba.
+
+Próxima fase: **Fase 2 — Planeta, Quadrants e câmera**. Ela coloca o planeta de verdade na cena, com HP, a Pixel Perfect Camera em 320×180 e os 4 Quadrants.
+
+---
+
+### Fase 2 — Planeta, Quadrants e câmera
+
+> Objetivo desta fase: a cena `Gameplay` mostra o fundo de espaço, o **grid isométrico** e o planeta girando no centro, flutuando acima do grid com a sua sombra, nítido em qualquer resolução, com HP, dano (já com a fórmula de defesa) e regeneração. O código já sabe converter um ponto do **chão** (onde a regra acontece) para a **vista** (onde ele aparece) e de volta, e sabe em qual **Quadrant** cada ponto do chão está. A câmera desliza quando a gaveta de upgrades abrir. Ainda não há Satellites nem inimigos.
+
+**Conceitos novos:**
+- **Pixel Perfect Camera:** componente do URP que faz a câmera mostrar exatamente 320×180 pixels do jogo e ampliar por um número **inteiro** (6× em 1080p). Sem ele, a pixel art fica com pixels de tamanhos diferentes e "tremendo" ao se mover.
+- **Upscale Render Texture:** o jogo é desenhado primeiro numa imagem de 320×180 e só depois ampliado para a tela. Assim, até o que gira (o laser da Mothership) ou se move meio pixel continua preso à grade de pixels.
+- **Unidade de mundo (u):** com PPU 16, 1 u = 16 px. O planeta tem 2 u de diâmetro e a tela mostra 20 × 11,25 u (Seção 4).
+- **Sprite animado sem Animator:** para loops simples de frames (planeta, estrelas e, depois, inimigos e Satellites), um componente pequeno que troca o sprite a cada 1/fps segundos é mais leve e mais fácil de reiniciar do que um `Animator` com um controller por objeto. Com 150 inimigos na tela, isso faz diferença.
+- **Gizmos:** desenhos que só aparecem na janela Scene (e no Game, se ligados), úteis para ver raios e eixos invisíveis durante o desenvolvimento.
+- **Chão e vista (projeção isométrica):** a regra do jogo usa coordenadas do **chão**, um plano 2D comum, onde a órbita é um círculo. A câmera mostra esse chão na diagonal. Para cada objeto, o jogo guarda a posição no chão e calcula a posição na **vista** com uma conta fixa (`IsoProjection`). Como a conta é linear, ela não muda nada da regra: só o desenho.
+- **Objeto com duas partes:** a raiz do objeto (inimigo, Satellite, planeta) fica no chão e não tem sprite; o desenho fica num filho `View`, que o componente `IsoView` move para a posição projetada a cada frame. Os scripts de regra das próximas fases são quase os mesmos do 8-Bit Armageddon, porque continuam mexendo só na raiz.
+- **Ordenação pelo eixo Y:** na isométrica, o que está mais acima na tela está mais longe. O **Renderer 2D** do URP pode ordenar os sprites de uma mesma Sorting Layer por um eixo (**Transparency Sort Axis**): com o eixo Y, quem está mais acima é desenhado antes, e um Satellite passa por trás do planeta sem nenhum código.
+- **Projeção pela hierarquia:** um objeto filho de um pai **girado 45°** e achatado pela metade na vertical aparece exatamente como o chão isométrico. É assim que o preenchimento dos Quadrants e os eixos ficam deitados no grid (`IsoFloor`) sem nenhuma conta por pixel.
+
+#### Passo 1 — Medidas do mundo: `WorldLayout`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/WorldLayout.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: raio do planeta, raio da órbita e distância de spawn são usados por vários scripts
+    // (Satellites, inimigos, Waves, gizmos). Se cada um tivesse o seu "1.75f", mudar a órbita exigiria
+    // caçar números mágicos pelo projeto.
+    // ESTRATÉGIA: classe estática só com constantes e um utilitário. Não guarda estado nem fica em cena.
+    // Medidas do mundo em unidades (u). 1 u = 16 px (Seções 4 e 6.1). O planeta fica sempre na origem.
+    public static class WorldLayout
+    {
+        public const float PixelsPerUnit = 16f;
+        public const float PlanetRadius = 1f;     // planeta de 32 px = 2 u de diâmetro
+        public const float OrbitRadius = 1.75f;   // órbita dos Satellites (Seção 4.1)
+        public const float SpawnRadius = 12f;     // onde os inimigos nascem (Seção 4.3)
+
+        // static readonly em vez de const: const só aceita tipos simples (números, strings), e Vector2 não é um deles.
+        public static readonly Vector2 PlanetCenter = Vector2.zero;
+
+        // Arredonda uma posição para a grade de pixels (1/16 u).
+        // POR QUE: em pixel art, um objeto parado em "meio pixel" fica tremido/borrado; prender à grade evita isso.
+        public static float SnapToPixel(float value) => Mathf.Round(value * PixelsPerUnit) / PixelsPerUnit;
+    }
+}
+```
+
+#### Passo 2 — Os 4 Quadrants: `Quadrant`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/Quadrant.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: a regra central do combate é "um Satellite só atira no Quadrant onde está".
+    // Precisamos de um nome para cada Quadrant em vez de números soltos.
+    // ESTRATÉGIA: enum com valores 0–3 na ordem anti-horária; assim o número do enum × 90° é o ângulo
+    // onde o Quadrant começa (usado em StartAngle).
+    // Os 4 Quadrants do CHÃO, centrados no planeta (Seção 4.1), na ordem anti-horária da órbita.
+    // Os nomes dizem onde cada um aparece na tela isométrica: as 4 pontas do losango do grid.
+    public enum Quadrant
+    {
+        Top = 0,      //   0° a  90° (x e y do chão positivos)
+        Left = 1,     //  90° a 180°
+        Bottom = 2,   // 180° a 270°
+        Right = 3,    // 270° a 360°
+    }
+
+    // POR QUE: a pergunta "em qual Quadrant está esta posição/ângulo?" é feita pelo Satellite, pelo
+    // TargetSelector e pelas ferramentas de teste. A resposta precisa ser idêntica em todos.
+    // ESTRATÉGIA: classe estática de funções puras (entrada → saída, sem estado). Fácil de testar.
+    public static class Quadrants
+    {
+        // Ângulo em graus, no chão: 0° = eixo x positivo, crescendo no sentido anti-horário (o mesmo da órbita).
+        // Um ponto exatamente sobre um eixo fica no Quadrant que COMEÇA naquele ângulo (ex.: 90° = Left),
+        // assim ele pertence a um só Quadrant, como pede a Seção 4.1.
+        public static Quadrant FromAngle(float degrees)
+        {
+            // Mathf.Repeat traz qualquer ângulo (ex.: -30° ou 400°) para o intervalo [0, 360).
+            float angle = Mathf.Repeat(degrees, 360f);
+            // Dividir por 90 e arredondar para baixo dá 0, 1, 2 ou 3. O Min(3, ...) é uma proteção
+            // contra erro de arredondamento muito perto de 360°.
+            return (Quadrant)Mathf.Min(3, Mathf.FloorToInt(angle / 90f));
+        }
+
+        // Converte uma posição do CHÃO em Quadrant, calculando o ângulo dela em volta do planeta.
+        // Atenção: uma posição da vista (ex.: o mouse) precisa passar antes por IsoProjection.ViewToGround.
+        public static Quadrant FromPosition(Vector2 position)
+        {
+            Vector2 offset = position - WorldLayout.PlanetCenter;
+            // Atan2(y, x) devolve o ângulo do vetor em radianos (-π a π); Rad2Deg converte para graus.
+            return FromAngle(Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg);
+        }
+
+        // Ângulo (em graus) onde o Quadrant começa (Top = 0°, Left = 90°...). Utilitário para quem
+        // precisar posicionar ou desenhar algo alinhado a um Quadrant.
+        public static float StartAngle(Quadrant quadrant) => (int)quadrant * 90f;
+    }
+}
+```
+
+#### Passo 3 — Do chão para a tela: `IsoProjection`
+
+Esta é a peça nova que separa este jogo do 8-Bit Armageddon. A regra continua num plano 2D, o **chão** (Seção 6.1); a câmera mostra esse chão na diagonal. Toda conversão entre os dois passa por esta classe.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/IsoProjection.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: a regra do jogo acontece num plano 2D (o "chão"): órbita, alcance, Quadrants e Spawn Sectors
+    // são círculos e retas de verdade (Seção 4). A câmera isométrica só muda ONDE cada coisa aparece na tela.
+    // Se cada script fizesse a sua conta de projeção, um erro num deles desalinharia o desenho da regra.
+    // ESTRATÉGIA: classe estática com a conta num lugar só. "Chão" = coordenadas do jogo (u);
+    // "vista" = onde o sprite é desenhado. Projeção 2:1 (Seção 6.1): 1 u no eixo x do chão vira
+    // (+0,75; +0,375) u na vista, e 1 u no eixo y vira (−0,75; +0,375). Com 16 px por unidade, isso dá
+    // 12 px para o lado e 6 px para cima: o losango 2:1 clássico do isométrico.
+    public static class IsoProjection
+    {
+        public const float AxisX = 0.75f;     // 12 px: quanto 1 u do chão anda na horizontal da tela
+        public const float AxisY = 0.375f;    //  6 px: quanto anda na vertical (a metade: isso é o "2:1")
+        public const float FloorDrop = 1f;    // 16 px: o grid fica 1 u abaixo do plano de voo (Seção 6.1)
+
+        // Chão → vista, no plano de voo (planeta, Satellites, inimigos, projéteis).
+        // Estratégia: x − y decide o lado (direita/esquerda); x + y decide a altura (cima/baixo).
+        public static Vector2 GroundToView(Vector2 ground)
+        {
+            return new Vector2((ground.x - ground.y) * AxisX, (ground.x + ground.y) * AxisY);
+        }
+
+        // Chão → vista, no chão do grid (sombras, preenchimento dos Quadrants): o mesmo ponto, 1 u mais baixo.
+        public static Vector2 GroundToFloor(Vector2 ground)
+        {
+            return GroundToView(ground) + Vector2.down * FloorDrop;
+        }
+
+        // Vista → chão, no plano de voo: o caminho de volta. Usado pelas ferramentas de teste, para criar
+        // coisas embaixo do mouse.
+        // Estratégia: da vista saem direto a = x − y e b = x + y; x é a média de a e b, e y é a meia-diferença.
+        public static Vector2 ViewToGround(Vector2 view)
+        {
+            float a = view.x / AxisX;   // x − y
+            float b = view.y / AxisY;   // x + y
+            return new Vector2((a + b) * 0.5f, (b - a) * 0.5f);
+        }
+
+        // Atalho: uma posição da vista já presa à grade de pixels (ver WorldLayout.SnapToPixel), pronta para
+        // ir num transform.position.
+        public static Vector3 Snap(Vector2 view)
+        {
+            return new Vector3(WorldLayout.SnapToPixel(view.x), WorldLayout.SnapToPixel(view.y), 0f);
+        }
+    }
+}
+```
+
+> **Por que a regra não muda?** A projeção é **linear**: ela leva retas em retas e o centro do planeta (0, 0) em (0, 0). Um inimigo que anda em linha reta até o planeta no chão também anda em linha reta até ele na tela, e a ordem "quem está mais perto" não importa para a projeção, porque o `TargetSelector` mede distâncias **no chão**. Por isso Satellites, Waves e economia são os mesmos do 8-Bit Armageddon.
+
+#### Passo 4 — Sprites animados: `SpriteAnimator`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/SpriteAnimator.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: planeta, estrelas, inimigos e explosões são loops simples de frames. O Animator da Unity
+    // resolve isso, mas exige um controller por objeto e custa caro com 150 inimigos na tela.
+    // ESTRATÉGIA: um componente minúsculo que avança um relógio próprio e escolhe o frame = tempo × fps.
+    // Troca o sprite do SpriteRenderer a uma taxa fixa (os fps da Seção 6.4).
+    // Usa o tempo normal (Time.deltaTime): pausa junto com o jogo.
+    // [RequireComponent]: ao adicionar este script num objeto, a Unity adiciona um SpriteRenderer junto
+    // (e não deixa removê-lo). Garante que o GetComponent do Awake nunca volte null.
+    [RequireComponent(typeof(SpriteRenderer))]
+    public sealed class SpriteAnimator : MonoBehaviour
+    {
+        [SerializeField] private Sprite[] _frames;
+        [SerializeField] private float _fps = 8f;
+        [SerializeField] private bool _loop = true;             // false = toca uma vez e para (explosões)
+        [SerializeField] private bool _randomStartFrame;        // cada inimigo começa num frame diferente
+
+        private SpriteRenderer _renderer;
+        private float _time;   // há quanto tempo a animação está tocando (em segundos de jogo)
+
+        public bool IsPlaying { get; private set; }
+
+        // Só para animações "uma vez" (explosões): avisa quando o último frame terminou.
+        public event Action Finished;
+
+        // Cache do componente: GetComponent procura entre os componentes do objeto e tem custo.
+        // Fazer uma vez no Awake e guardar num campo é muito mais barato que chamar todo frame.
+        private void Awake()
+        {
+            _renderer = GetComponent<SpriteRenderer>();
+        }
+
+        // OnEnable: chamado sempre que o objeto é ativado (inclusive ao ser reaproveitado de um pool
+        // com SetActive(true)). Por isso a animação recomeça aqui, e não só no Start.
+        private void OnEnable()
+        {
+            Play();
+        }
+
+        // Troca a animação por código (ex.: o SpaceBackground cria estrelas sem Inspector; o inimigo
+        // recebe os frames da sua definição). Já começa a tocar.
+        public void SetFrames(Sprite[] frames, float fps, bool loop)
+        {
+            _frames = frames;
+            _fps = fps;
+            _loop = loop;
+            Play();
+        }
+
+        // (Re)começa do início, ou de um frame sorteado. Se não houver frames, fica parado sem erro.
+        public void Play()
+        {
+            IsPlaying = _frames != null && _frames.Length > 0 && _fps > 0f;
+            if (!IsPlaying) return;
+            // UnityEngine.Random por extenso: "Random" sozinho seria ambíguo com System.Random (using System).
+            _time = _randomStartFrame ? UnityEngine.Random.Range(0, _frames.Length) / _fps : 0f;
+            Show(Mathf.FloorToInt(_time * _fps));
+        }
+
+        // Avança o relógio e mostra o frame correspondente.
+        private void Update()
+        {
+            if (!IsPlaying) return;
+
+            // Time.deltaTime = segundos desde o último frame (0 quando o jogo está pausado).
+            _time += Time.deltaTime;
+            int frame = Mathf.FloorToInt(_time * _fps);
+
+            if (!_loop && frame >= _frames.Length)
+            {
+                Show(_frames.Length - 1);   // para no último frame
+                IsPlaying = false;
+                Finished?.Invoke();
+                return;
+            }
+
+            // % (resto da divisão) faz o índice dar a volta: 0,1,2,3,0,1,...
+            Show(frame % _frames.Length);
+        }
+
+        // Troca o sprite exibido. Único lugar que mexe no SpriteRenderer.
+        private void Show(int frame)
+        {
+            _renderer.sprite = _frames[frame];
+        }
+    }
+}
+```
+
+#### Passo 5 — O desenho separado da regra: `IsoView` e `ShadowSprite`
+
+Todo objeto do mundo passa a ter duas partes: a **raiz**, nas coordenadas do chão, com os scripts de regra e **sem sprite**; e um filho `View`, com o `SpriteRenderer`, o `SpriteAnimator` e o `IsoView`. Os scripts de regra das próximas fases continuam movendo só a raiz.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/ShadowSprite.cs
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: na vista isométrica é difícil saber "onde no chão" está uma coisa que voa: dois inimigos em
+    // direções diferentes podem aparecer na mesma altura da tela. A sombra no grid mostra o ponto exato do
+    // chão, e portanto o Quadrant (Seção 6.2).
+    // ESTRATÉGIA: como o PixelSprite (Fase 3), cria o sprite por código na primeira vez que alguém pede:
+    // uma elipse 2:1 preta, pixel a pixel (a transparência vem do SpriteRenderer.color). Guarda uma por
+    // largura num dicionário, porque o planeta, o Brute e o Swarmer têm tamanhos diferentes e cada tamanho
+    // só precisa ser criado uma vez.
+    public static class ShadowSprite
+    {
+        private static readonly Dictionary<int, Sprite> _byWidth = new Dictionary<int, Sprite>();
+
+        // Sombra para um objeto de "radius" u no chão. Um círculo de raio r no chão vira uma elipse de
+        // meia-largura r × AxisX × √2 na vista (Seção 4): é essa a largura da sombra.
+        public static Sprite ForRadius(float radius)
+        {
+            int width = Mathf.Max(4, Mathf.RoundToInt(radius * 2f * IsoProjection.AxisX * Mathf.Sqrt(2f) * WorldLayout.PixelsPerUnit));
+            // TryGetValue: procura no dicionário e, se achar, devolve true e o valor no "out".
+            if (_byWidth.TryGetValue(width, out var cached)) return cached;
+
+            int height = Mathf.Max(2, width / 2);   // 2:1, como tudo que está deitado no chão
+            var texture = new Texture2D(width, height) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[width * height];
+            float rx = width * 0.5f, ry = height * 0.5f;
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // Equação da elipse: dentro se (dx/rx)² + (dy/ry)² ≤ 1. +0,5 = centro do pixel.
+                    float dx = (x + 0.5f - rx) / rx, dy = (y + 0.5f - ry) / ry;
+                    pixels[y * width + x] = dx * dx + dy * dy <= 1f ? new Color32(0, 0, 0, 255) : new Color32(0, 0, 0, 0);
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+            _byWidth[width] = sprite;
+            return sprite;
+        }
+
+        // Mesma limpeza de estáticos do GameBootstrap.ResetStatics: sem recarregar o domínio entre Plays,
+        // o dicionário guardaria sprites de texturas que a Unity já destruiu.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _byWidth.Clear();
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/IsoView.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: todo objeto do jogo tem duas posições: onde ele ESTÁ (no chão, que é o que a regra usa) e
+    // onde ele APARECE (na vista isométrica). Misturar as duas no mesmo transform obrigaria cada script de
+    // regra (Enemy, Satellite, Projectile...) a fazer a conta de projeção, e um esquecimento quebraria o combate.
+    // ESTRATÉGIA: o objeto raiz (o pai) fica nas coordenadas do chão e não tem sprite. O desenho fica num
+    // filho "View" com este componente, que a cada frame se coloca na posição projetada do pai. Os scripts
+    // de regra continuam movendo só o pai.
+    // Opcional: cria uma sombra no grid, embaixo do objeto (Seção 6.2).
+    // A ordem de desenho vem da Sorting Layer "World", ordenada pelo eixo Y (Fase 2, Passo 13): quem está
+    // mais acima na tela está mais longe e é desenhado antes.
+    public sealed class IsoView : MonoBehaviour
+    {
+        [SerializeField] private float _shadowRadius;   // u no chão; 0 = sem sombra
+        [SerializeField] private Color _shadowColor = new Color(0.02f, 0.01f, 0.06f, 0.45f);
+        [SerializeField] private string _shadowSortingLayer = "Floor";
+
+        private SpriteRenderer _shadow;
+
+        // Cria a sombra, se o prefab pediu uma.
+        private void Awake()
+        {
+            if (_shadowRadius > 0f) SetShadowRadius(_shadowRadius);
+        }
+
+        // Liga a sombra com o tamanho pedido (ou só troca o tamanho). O Enemy chama ao nascer, porque um
+        // mesmo prefab vira Grunt, Swarmer ou Brute.
+        // A sombra é IRMÃ do View (filha do mesmo pai): liga e desliga junto com o objeto no pooling.
+        public void SetShadowRadius(float radius)
+        {
+            _shadowRadius = radius;
+            if (_shadow == null)
+            {
+                var go = new GameObject("Shadow");
+                go.transform.SetParent(transform.parent, false);
+                _shadow = go.AddComponent<SpriteRenderer>();
+                _shadow.color = _shadowColor;
+                _shadow.sortingLayerName = _shadowSortingLayer;
+            }
+            _shadow.sprite = ShadowSprite.ForRadius(radius);
+            Place();
+        }
+
+        // LateUpdate: depois de todos os Update, quando o pai já se moveu neste frame.
+        private void LateUpdate()
+        {
+            Place();
+        }
+
+        // Projeta a posição do pai (chão) e coloca o desenho e a sombra.
+        // "position" é a posição no MUNDO: o filho ignora onde o pai está e vai direto para a vista.
+        private void Place()
+        {
+            Vector2 ground = transform.parent.position;
+            transform.position = IsoProjection.Snap(IsoProjection.GroundToView(ground));
+            if (_shadow != null) _shadow.transform.position = IsoProjection.Snap(IsoProjection.GroundToFloor(ground));
+        }
+    }
+}
+```
+
+> **E a raiz, que está no chão, não aparece em algum lugar estranho da tela?** Ela não tem sprite, então não aparece. Ela só existe para guardar a posição da regra. Na janela **Scene**, selecionar um inimigo mostra o gizmo de transform dele num ponto que não coincide com o desenho: é o ponto do chão. Para mexer num objeto à mão na Scene, mova a raiz e veja o `View` ir junto no Play.
+
+#### Passo 6 — Vida do planeta: `PlanetHealth`
+
+Os valores de HP, regeneração e defesa vêm dos Stats, que só existem na Fase 6. Por enquanto, eles ficam no Inspector com os valores base da Seção 4.2, e os métodos `Set…` já existem para a Fase 6 chamar.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planet/PlanetHealth.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // POR QUE: o planeta é o "jogador" deste jogo: quando o HP zera, a run acaba. Dano, defesa e
+    // regeneração precisam de uma regra única, que a HUD, os inimigos e a run consultam.
+    // ESTRATÉGIA: um componente só de "vida", separado do Planet (visual/posição). Guarda os números,
+    // aplica a fórmula da Seção 4.2 e AVISA por eventos (Damaged, HealthChanged, Died) em vez de
+    // chamar a HUD ou o RunController diretamente: quem se interessa se inscreve.
+    // Os valores vêm do Inspector por enquanto; a Fase 6 passa a chamar os métodos Set….
+    public sealed class PlanetHealth : MonoBehaviour
+    {
+        public const float MaxDefenseRelative = 0.75f;   // teto do Stat (Seção 4.2)
+
+        [SerializeField] private float _maxHitpoints = 100f;
+        [SerializeField] private float _regeneration;            // HP por segundo
+        [SerializeField] private float _defenseAbsolute;         // subtraído de cada golpe
+        // [Range] mostra um slider no Inspector e impede valores fora do intervalo ali.
+        [SerializeField, Range(0f, MaxDefenseRelative)] private float _defenseRelative;   // % do golpe ignorada
+
+        public float Current { get; private set; }
+        public float Max => _maxHitpoints;
+        public bool IsDead { get; private set; }
+
+        public event Action<float> Damaged;   // recebe o dano FINAL, depois da defesa
+        public event Action HealthChanged;    // qualquer mudança de HP (dano, regeneração, upgrade)
+        public event Action Died;
+
+        // Começa a run com HP cheio.
+        private void Awake()
+        {
+            Current = _maxHitpoints;
+        }
+
+        // Regeneração contínua: soma "HP por segundo × segundos deste frame".
+        private void Update()
+        {
+            if (IsDead || _regeneration <= 0f || Current >= _maxHitpoints) return;
+            Current = Mathf.Min(_maxHitpoints, Current + _regeneration * Time.deltaTime);
+            HealthChanged?.Invoke();
+        }
+
+        // Fórmula da Seção 4.2: max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative)).
+        // "public static": não depende de um planeta específico, então a gaveta de upgrades pode usar
+        // a mesma fórmula para mostrar previsões, e fica fácil de testar.
+        public static float ComputeDamage(float raw, float defenseAbsolute, float defenseRelative)
+        {
+            return Mathf.Max(1f, (raw - defenseAbsolute) * (1f - defenseRelative));
+        }
+
+        // Chamado por quem acerta o planeta (inimigos, laser da Mothership) com o dano BRUTO.
+        public void TakeDamage(float raw)
+        {
+            if (IsDead || raw <= 0f) return;
+
+            float damage = ComputeDamage(raw, _defenseAbsolute, _defenseRelative);
+            Current = Mathf.Max(0f, Current - damage);
+            Damaged?.Invoke(damage);
+            HealthChanged?.Invoke();
+
+            if (Current <= 0f)
+            {
+                IsDead = true;
+                Died?.Invoke();   // o RunController (Fase 8) encerra a run: não existe Revive (Seção 4.6)
+            }
+        }
+
+        // Upgrade de Hitpoints: o HP atual sobe na mesma quantidade que o máximo (Seção 4.2).
+        public void SetMaxHitpoints(float value)
+        {
+            float gained = value - _maxHitpoints;
+            _maxHitpoints = Mathf.Max(1f, value);
+            if (gained > 0f && !IsDead) Current += gained;
+            Current = Mathf.Min(Current, _maxHitpoints);
+            HealthChanged?.Invoke();
+        }
+
+        // Chamado quando o Stat de regeneração muda (Fase 6).
+        public void SetRegeneration(float hpPerSecond)
+        {
+            _regeneration = Mathf.Max(0f, hpPerSecond);
+        }
+
+        // Chamado quando os Stats de defesa mudam (Fase 6). O Clamp respeita o teto de 75%.
+        public void SetDefense(float absolute, float relative)
+        {
+            _defenseAbsolute = Mathf.Max(0f, absolute);
+            _defenseRelative = Mathf.Clamp(relative, 0f, MaxDefenseRelative);
+        }
+    }
+}
+```
+
+#### Passo 7 — O planeta: `Planet`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planet/Planet.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // POR QUE: outros sistemas precisam de "o planeta" como um ponto de referência (onde está, qual o
+    // raio, qual a vida). Este é o componente que eles procuram.
+    // ESTRATÉGIA: uma "fachada" fina: expõe o PlanetHealth e as medidas do WorldLayout, e garante que o
+    // objeto fica na origem do chão. A lógica de vida continua no PlanetHealth; o desenho fica no filho
+    // View (IsoView); a skin é trocada pela Core Select na Fase 9.
+    [RequireComponent(typeof(PlanetHealth))]
+    public sealed class Planet : MonoBehaviour
+    {
+        public PlanetHealth Health { get; private set; }
+        public Vector2 Center => WorldLayout.PlanetCenter;   // "=>" aqui é uma propriedade só de leitura calculada
+        public float Radius => WorldLayout.PlanetRadius;
+
+        // Guarda o PlanetHealth (cache) e prende o planeta na origem, mesmo que alguém o arraste na cena.
+        private void Awake()
+        {
+            Health = GetComponent<PlanetHealth>();
+            transform.position = WorldLayout.PlanetCenter;
+        }
+
+        // OnDrawGizmos: a Unity chama no Editor para desenhar ajudas visuais na janela Scene (não entra no jogo).
+        // Na janela Scene: o raio do planeta, a órbita dos Satellites, o alcance base (4 u) e os eixos dos
+        // Quadrants, já PROJETADOS no grid (elipses e diagonais), no lugar onde o jogador os vê.
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = Color.green;
+            DrawGroundCircle(WorldLayout.PlanetRadius);
+            Gizmos.color = Color.gray;
+            DrawGroundCircle(WorldLayout.OrbitRadius);
+            Gizmos.color = new Color(1f, 0.6f, 0.2f);
+            DrawGroundCircle(4f);
+            Gizmos.color = Color.white;
+            float axis = WorldLayout.SpawnRadius;
+            DrawGroundLine(Vector2.left * axis, Vector2.right * axis);
+            DrawGroundLine(Vector2.down * axis, Vector2.up * axis);
+        }
+
+        // Um círculo do chão vira elipse na vista: 48 segmentos de reta entre pontos projetados.
+        private static void DrawGroundCircle(float radius)
+        {
+            const int segments = 48;
+            Vector2 previous = IsoProjection.GroundToFloor(new Vector2(radius, 0f));
+            for (int i = 1; i <= segments; i++)
+            {
+                float angle = i * 2f * Mathf.PI / segments;
+                Vector2 next = IsoProjection.GroundToFloor(new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius);
+                Gizmos.DrawLine(previous, next);   // Vector2 vira Vector3 sozinho (z = 0)
+                previous = next;
+            }
+        }
+
+        // Uma reta do chão continua reta na vista: basta projetar as duas pontas.
+        private static void DrawGroundLine(Vector2 from, Vector2 to)
+        {
+            Gizmos.DrawLine(IsoProjection.GroundToFloor(from), IsoProjection.GroundToFloor(to));
+        }
+    }
+}
+```
+
+#### Passo 8 — O fundo de espaço: `SpaceBackground`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/SpaceBackground.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: o fundo de espaço precisa cobrir qualquer tela (16:9, 21:9, 4:3) sem que alguém
+    // monte tiles à mão na cena, e sem parecer repetido. Ele é da TELA, não do chão: não passa pela
+    // projeção isométrica (Seção 6.2).
+    // ESTRATÉGIA: no Start, calcula quantos tiles cabem na visão da câmera (mais uma margem) e cria um
+    // SpriteRenderer por tile, sorteando qual dos 4 desenhos usar. O sorteio usa uma semente fixa
+    // (_seed): o fundo é sempre igual, o que ajuda a comparar screenshots e testar.
+    // Cobre também uma margem: a câmera desce com a gaveta aberta, e telas mais largas que 16:9 mostram mais espaço.
+    public sealed class SpaceBackground : MonoBehaviour
+    {
+        private const float TileSize = 2f;   // 32 px = 2 u
+
+        [SerializeField] private Sprite[] _tiles;           // as 4 células de SPR_Background_Space
+        [SerializeField] private Sprite[] _twinkleFrames;   // as 4 células de SPR_Background_StarTwinkle
+        [SerializeField] private float _twinkleFps = 4f;
+        [SerializeField] private int _twinkleCount = 8;
+        [SerializeField] private int _seed = 7;             // mesma semente = mesmo fundo toda vez
+        [SerializeField] private float _margin = 3f;        // unidades extras além da borda da câmera
+        [SerializeField] private string _sortingLayer = "Background";
+
+        // Start (e não Awake) porque depende da câmera principal já estar configurada na cena.
+        private void Start()
+        {
+            Build(Camera.main);
+        }
+
+        // Cria a grade de tiles e as estrelas piscando.
+        private void Build(Camera view)
+        {
+            // System.Random com semente: sequência de sorteios repetível (o UnityEngine.Random é global e
+            // seria afetado por outros sistemas).
+            var random = new System.Random(_seed);
+            // Numa câmera ortográfica, orthographicSize é METADE da altura visível em unidades.
+            float halfHeight = view.orthographicSize + _margin;
+            float halfWidth = view.orthographicSize * view.aspect + _margin;
+            int columns = Mathf.CeilToInt(halfWidth / TileSize);
+            int rows = Mathf.CeilToInt(halfHeight / TileSize);
+
+            for (int x = -columns; x < columns; x++)
+            {
+                for (int y = -rows; y < rows; y++)
+                {
+                    // O pivô é o centro da célula: o centro do tile fica no meio de cada quadrado de 2 u.
+                    var position = new Vector2(x * TileSize + TileSize * 0.5f, y * TileSize + TileSize * 0.5f);
+                    CreateSprite("Tile", _tiles[random.Next(_tiles.Length)], position, 0);
+                }
+            }
+
+            for (int i = 0; i < _twinkleCount; i++)
+            {
+                // NextDouble()*2-1 = número entre -1 e 1; vezes a metade da área = posição aleatória na tela.
+                var position = new Vector2(
+                    WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfWidth),
+                    WorldLayout.SnapToPixel((float)(random.NextDouble() * 2 - 1) * halfHeight));
+                var star = CreateSprite("Twinkle", _twinkleFrames[0], position, 1);
+                star.gameObject.AddComponent<SpriteAnimator>().SetFrames(_twinkleFrames, _twinkleFps, true);
+            }
+        }
+
+        // Fábrica de um sprite filho deste objeto. Centraliza as configurações repetidas (pai, layer, ordem).
+        // "order" dentro da mesma Sorting Layer: maior é desenhado por cima (estrelas = 1, tiles = 0).
+        private SpriteRenderer CreateSprite(string name, Sprite sprite, Vector2 position, int order)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = position;
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingLayerName = _sortingLayer;
+            renderer.sortingOrder = order;
+            return renderer;
+        }
+    }
+}
+```
+
+> As estrelas piscam em sincronia, de propósito: o fundo não deve chamar atenção. A opção **Random Start Frame** do `SpriteAnimator` existe para os inimigos (Fase 4), que ficam mais naturais cada um num frame diferente.
+
+#### Passo 9 — O grid isométrico: `IsoGrid`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/IsoGrid.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: o planeta fica no centro de um grid isométrico (Seção 6.1). O grid é só referência visual:
+    // dá profundidade ao chão e marca, pelas linhas centrais, onde um Quadrant termina e o outro começa.
+    // ESTRATÉGIA: como o SpaceBackground, monta tudo por código no Start: um SpriteRenderer por tile, numa
+    // grade quadrada no CHÃO, cada um projetado com GroundToFloor. O lado de um tile no chão é 4/3 u,
+    // porque o tile da arte tem 32 px de largura (2 × 12 px × 4/3 = 32 px). Os tiles das bordas ficam mais
+    // transparentes, para o grid sumir no espaço em vez de terminar num corte seco.
+    // A Sorting Layer "Grid" é ordenada pelo eixo Y (Passo 13): os tiles de trás ficam atrás sem nenhuma conta.
+    public sealed class IsoGrid : MonoBehaviour
+    {
+        public const float CellSize = 4f / 3f;          // lado de um tile, em u do chão (Seção 6.2)
+        private const float TileTopOffset = 3f / 16f;   // a face de cima do tile fica 3 px acima do centro da célula (Seção 6.4)
+
+        [SerializeField] private Sprite[] _tiles;        // as 4 células de SPR_Grid_Floor (a 3 é a rara)
+        [SerializeField, Range(0f, 1f)] private float _rareChance = 0.06f;
+        [SerializeField] private int _halfCells = 10;    // tiles do centro até a borda, em cada eixo
+        [SerializeField] private int _fadeCells = 3;     // quantos tiles da borda vão sumindo
+        [SerializeField, Range(0f, 1f)] private float _alpha = 0.45f;   // o grid é discreto: não compete com os inimigos
+        [SerializeField] private int _seed = 7;          // mesma semente = mesmo grid toda vez (ver SpaceBackground)
+        [SerializeField] private string _sortingLayer = "Grid";
+
+        // Cria os tiles uma vez só.
+        private void Start()
+        {
+            var random = new System.Random(_seed);
+            for (int i = -_halfCells; i < _halfCells; i++)
+            {
+                for (int j = -_halfCells; j < _halfCells; j++)
+                {
+                    // Centro do tile (i, j) no chão. As linhas x = 0 e y = 0 caem nas bordas dos tiles:
+                    // são os eixos dos Quadrants (Seção 6.1).
+                    var ground = new Vector2((i + 0.5f) * CellSize, (j + 0.5f) * CellSize);
+                    // O pivô do sprite é o centro da célula de 32×32, mas o centro do losango de cima fica 3 px
+                    // mais acima: descer o sprite 3 px põe o losango exatamente no ponto do chão.
+                    Vector2 view = IsoProjection.GroundToFloor(ground) - Vector2.up * TileTopOffset;
+
+                    int sprite = random.NextDouble() < _rareChance ? 3 : random.Next(3);   // Next(3) = 0, 1 ou 2
+                    var renderer = CreateTile(_tiles[Mathf.Min(sprite, _tiles.Length - 1)], view);
+
+                    // "Anel" do tile: a distância (em tiles) até o centro, na métrica do quadrado. Os 3 últimos anéis somem aos poucos.
+                    float ring = Mathf.Max(Mathf.Abs(i + 0.5f), Mathf.Abs(j + 0.5f));
+                    float fade = ring < _halfCells - _fadeCells ? 1f : Mathf.Max(0.15f, (_halfCells - ring) / (_fadeCells + 0.5f));
+                    renderer.color = new Color(1f, 1f, 1f, _alpha * fade);
+                }
+            }
+        }
+
+        // Fábrica de um tile filho deste objeto (ver SpaceBackground.CreateSprite).
+        private SpriteRenderer CreateTile(Sprite sprite, Vector2 position)
+        {
+            var go = new GameObject("Tile");
+            go.transform.SetParent(transform, false);
+            go.transform.position = IsoProjection.Snap(position);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingLayerName = _sortingLayer;
+            return renderer;
+        }
+    }
+}
+```
+
+#### Passo 10 — O chão deitado: `IsoFloor`
+
+O preenchimento dos Quadrants e os eixos (Fase 3) são desenhados como num jogo top-down: um quarto de círculo e duas retas, em coordenadas do chão. Em vez de reescrever esse desenho em isométrico, eles moram dentro de um objeto que **deita** tudo o que estiver dentro dele.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/IsoFloor.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: algumas coisas não "voam": ficam deitadas no chão do grid (o preenchimento dos Quadrants e os
+    // eixos, Fase 3). Elas precisam aparecer achatadas como o chão isométrico: um círculo vira elipse e um
+    // quarto de círculo vira uma ponta do losango.
+    // ESTRATÉGIA: a própria hierarquia da Unity faz a projeção. Este objeto fica no centro do chão (FloorDrop
+    // abaixo do planeta) com escala (1; 0,5), que achata tudo pela metade na vertical. O filho "Plane" é
+    // girado 45° e ampliado √2 × 0,75. Girar e depois achatar é exatamente a projeção 2:1 da IsoProjection:
+    // um ponto (x, y) colocado como filho do Plane aparece em GroundToFloor(x, y).
+    // Conta, para conferir: girar (x, y) em 45° dá ((x − y)/√2, (x + y)/√2); × √2 × 0,75 dá
+    // ((x − y) × 0,75, (x + y) × 0,75); achatar o y pela metade dá ((x − y) × 0,75, (x + y) × 0,375). ✓
+    public sealed class IsoFloor : MonoBehaviour
+    {
+        [SerializeField] private Transform _plane;   // o filho "Plane": pai de tudo que fica deitado no chão
+
+        public Transform Plane => _plane;
+
+        // Acerta posição, rotação e escala dos dois objetos no começo, mesmo que alguém tenha mexido no Inspector.
+        private void Awake()
+        {
+            transform.position = Vector2.down * IsoProjection.FloorDrop;
+            transform.rotation = Quaternion.identity;
+            transform.localScale = new Vector3(1f, 0.5f, 1f);
+            if (_plane == null) return;
+            _plane.localPosition = Vector3.zero;
+            _plane.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            float scale = IsoProjection.AxisX * Mathf.Sqrt(2f);   // ≈ 1,06
+            _plane.localScale = new Vector3(scale, scale, 1f);
+        }
+    }
+}
+```
+
+> **Isso não deforma os pixels?** Deforma, e é o que queremos: o preenchimento é um desenho do chão, e o chão é visto achatado. Com a **Upscale Render Texture** da Pixel Perfect Camera (Passo 13), o resultado ainda é desenhado na grade de 320×180, então a borda da elipse sai em "escadinha" de pixel, como o resto da arte. Sprites que ficam **de pé** (planeta, inimigos, Satellites) nunca entram aqui: eles usam o `IsoView`.
+
+
+#### Passo 11 — A câmera: `CameraRig`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/CameraRig.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: quando a gaveta de upgrades abre, ela cobre a parte de baixo da tela. Sem mexer na câmera,
+    // o planeta ficaria escondido atrás dela.
+    // ESTRATÉGIA: um componente na própria Main Camera que só controla a posição Y: calcula um alvo
+    // (aberta/fechada) e desliza suavemente até ele, sempre preso à grade de pixels.
+    // Fica no mesmo objeto da Camera e do componente Pixel Perfect Camera (URP). O shake entra na Fase 12.
+    [RequireComponent(typeof(Camera))]
+    public sealed class CameraRig : MonoBehaviour
+    {
+        // Com a gaveta fechada, a câmera fica meio FloorDrop abaixo do planeta: assim o planeta (no plano de
+        // voo) e o centro do grid (1 u abaixo dele) ficam centrados juntos na tela (Seção 6.1).
+        private const float RestY = -IsoProjection.FloorDrop * 0.5f;
+
+        [SerializeField, Range(0f, 0.8f)] private float _drawerScreenFraction = 0.4f;   // quanto da tela a gaveta ocupa
+        [SerializeField] private float _slideTime = 0.15f;                              // segundos aproximados do deslize
+
+        private Camera _camera;
+        private float _currentY;
+        private float _targetY;
+        private float _velocity;   // "memória" de velocidade que o SmoothDamp precisa entre um frame e outro
+
+        public bool IsDrawerOpen { get; private set; }
+
+        // Cache da Camera e posição inicial (gaveta fechada).
+        private void Awake()
+        {
+            _camera = GetComponent<Camera>();
+            _currentY = _targetY = RestY;
+            ApplyPosition(RestY);
+        }
+
+        // Chamado pela UpgradeDrawer (Fase 6) ao abrir/fechar. Só define o alvo; o movimento é no LateUpdate.
+        // A gaveta cobre a parte de baixo da tela. Para o planeta ficar no centro da área livre,
+        // a câmera DESCE metade da altura da gaveta (o mundo parece subir).
+        public void SetDrawerOpen(bool open)
+        {
+            IsDrawerOpen = open;
+            float viewHeight = _camera.orthographicSize * 2f;
+            _targetY = RestY + (open ? -viewHeight * _drawerScreenFraction * 0.5f : 0f);
+        }
+
+        // LateUpdate: chamado a cada frame DEPOIS de todos os Update. É o lugar padrão para câmeras,
+        // porque tudo o que se move no frame já se moveu.
+        private void LateUpdate()
+        {
+            // SmoothDamp: aproxima um valor do alvo com aceleração e desaceleração suaves (efeito "mola").
+            // Tempo "unscaled": a câmera termina de deslizar mesmo se o jogo pausar no meio.
+            _currentY = Mathf.SmoothDamp(_currentY, _targetY, ref _velocity, _slideTime, Mathf.Infinity, Time.unscaledDeltaTime);
+            ApplyPosition(_currentY);
+        }
+
+        // Move a câmera para a altura pedida.
+        private void ApplyPosition(float y)
+        {
+            // Posição presa à grade de pixels: evita o mundo "tremer" meio pixel durante o deslize.
+            // Z = -10: a câmera 2D fica "na frente" dos sprites (que estão em Z = 0) para enxergá-los.
+            transform.position = new Vector3(0f, WorldLayout.SnapToPixel(y), -10f);
+        }
+    }
+}
+```
+
+#### Passo 12 — Novos atalhos de desenvolvimento
+
+Substitua o `DevShortcuts` da Fase 1 por esta versão, que acrescenta os testes desta fase (F3, F4 e F6):
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Core/DevShortcuts.cs
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Core
+{
+    // POR QUE (versão da Fase 2): agora há planeta e câmera para testar; os atalhos da Fase 1 continuam.
+    // O QUE MUDOU: F3 (gaveta/câmera), F4 (Quadrant sob o mouse) e F6 (dano).
+    // ESTRATÉGIA: igual à Fase 1 (ver DevShortcuts da Fase 1). Como os objetos da cena Gameplay não estão
+    // nos Services, este script os procura com FindAnyObjectByType — lento, mas aceitável numa ferramenta
+    // de teste que nem vai para o build final. Nunca use isso no código do jogo a cada frame.
+    // F1 = MainMenu · F2 = Gameplay · F3 = abre/fecha a gaveta (câmera) · F4 = Quadrant sob o mouse
+    // F5 = libera todos os Planet Cores e Skins · F6 = 10 de dano no planeta · F9 = apaga o progresso.
+    public sealed class DevShortcuts : MonoBehaviour
+    {
+        // Lê as teclas de teste a cada frame (igual à Fase 1, com as teclas novas).
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.f1Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.MainMenu);
+            if (keyboard.f2Key.wasPressedThisFrame) Services.Scenes.Load(GameScene.Gameplay);
+
+            if (keyboard.f3Key.wasPressedThisFrame)
+            {
+                var rig = FindAnyObjectByType<CameraRig>();
+                if (rig != null) rig.SetDrawerOpen(!rig.IsDrawerOpen);
+            }
+
+            if (keyboard.f4Key.wasPressedThisFrame && Mouse.current != null && Camera.main != null)
+            {
+                // ScreenToWorldPoint: converte pixels da tela em coordenadas da VISTA. ViewToGround volta
+                // para o chão, onde os Quadrants são medidos (o mouse "aponta" para o plano de voo).
+                Vector2 view = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                Vector2 ground = IsoProjection.ViewToGround(view);
+                Debug.Log($"[Dev] Mouse no chão em {ground} → {Quadrants.FromPosition(ground)}");
+            }
+
+            if (keyboard.f5Key.wasPressedThisFrame)
+            {
+                // Testar a Core Select sem cumprir as conquistas. Clear + AddRange troca o conteúdo da lista.
+                var profile = Services.Save.Profile;
+                profile.unlockedCoreIds.Clear();
+                profile.unlockedCoreIds.AddRange(new[] { "Terra", "Ice", "Magma" });
+                profile.unlockedSkinIds.Clear();
+                profile.unlockedSkinIds.AddRange(new[]
+                {
+                    "Terra_Classic", "Terra_Ocean", "Terra_Desert",
+                    "Ice_Classic", "Ice_Aurora", "Ice_Crystal",
+                    "Magma_Classic", "Magma_Obsidian", "Magma_Solar",
+                });
+                Services.Save.Save();
+                Debug.Log("[Dev] Todos os Planet Cores e Skins liberados");
+            }
+
+            var planet = FindAnyObjectByType<Planet>();
+            if (planet != null && keyboard.f6Key.wasPressedThisFrame)
+            {
+                planet.Health.TakeDamage(10f);
+                Debug.Log($"[Dev] Planeta: {planet.Health.Current:0.#}/{planet.Health.Max} HP");
+            }
+
+            if (keyboard.f9Key.wasPressedThisFrame)
+            {
+                Services.Save.ResetProgress();
+                Debug.Log("[Dev] Progresso apagado.");
+            }
+        }
+    }
+}
+#endif
+```
+
+#### Passo 13 — Montar a câmera
+
+Abra a cena `Gameplay` e apague o planeta de teste da Fase 1 (o objeto com `Animator`). O clipe `ANIM_Planet_Rotate` e o controller que a Unity criou também podem ser apagados: a partir de agora, o planeta usa o `SpriteAnimator`.
+
+Selecione a **Main Camera** (ela fica na raiz, pela convenção da Seção 10.1):
+1. **Camera:** **Projection** = `Orthographic`; **Background Type** = `Solid Color`; cor `#141241` (o azul-marinho do fundo). Assim, se alguma borda aparecer além dos tiles, ela tem a mesma cor.
+2. **Add Component → Pixel Perfect Camera** (o do URP):
+   - **Assets Pixels Per Unit:** `16`
+   - **Reference Resolution:** `320` × `180`
+   - **Crop Frame:** `None` (em telas fora de 16:9, o jogo mostra mais espaço em vez de faixas pretas, Seção 6.1)
+   - **Grid Snapping:** `Upscale Render Texture`
+3. **Add Component → Camera Rig**.
+4. **Ordem pela profundidade.** Na janela Project, abra `Assets/_Project/Settings/Rendering/` e selecione o asset do **Renderer 2D** (o `Renderer2D` que o template criou). No Inspector, troque **Transparency Sort Mode** para `Custom Axis` e **Transparency Sort Axis** para `X 0, Y 1, Z 0`. A partir de agora, dentro de uma mesma Sorting Layer, o sprite com Y maior (mais acima na tela) é desenhado antes. É isso que põe um Satellite atrás do planeta na metade de cima da órbita (Seção 6.1) e empilha os tiles do grid na ordem certa.
+
+#### Passo 14 — Montar o planeta, o fundo, o grid e o chão
+
+1. **Fundo:** em `[World]`, crie um objeto vazio `SpaceBackground` na posição (0, 0, 0) com o componente `SpaceBackground`. Em **Tiles**, arraste as 4 células de `Art/Backgrounds/SPR_Background_Space`; em **Twinkle Frames**, as 4 células de `SPR_Background_StarTwinkle`.
+   > Para arrastar várias células para uma lista de uma vez: trave o Inspector (cadeado no canto de cima), abra a setinha da spritesheet na janela Project, selecione as células (clique no primeiro, Shift+clique no último) e solte **em cima do nome da lista**.
+2. **Planeta:** em `[World]`, crie um objeto vazio `Planet` na posição (0, 0, 0) com o componente **Planet** (o `PlanetHealth` entra junto, pelo `RequireComponent`). Deixe os valores base: **Max Hitpoints** `100`, o resto `0`. Dentro dele, crie um filho vazio `View` com:
+   - **Sprite Renderer:** **Sprite** = a célula 0 de `SPR_Planet_Terra_Classic_Rotate`; **Sorting Layer** = `World`.
+   - **Sprite Animator:** **Frames** = as 32 células de `SPR_Planet_Terra_Classic_Rotate`; **Fps** = `4`; **Loop** marcado.
+   - **Iso View:** **Shadow Radius** = `1` (o raio do planeta).
+3. Arraste o objeto `Planet` para `Assets/_Project/Prefabs/Gameplay/` para criar o prefab `Planet.prefab`.
+4. **Grid:** em `[World]`, crie um objeto vazio `IsoGrid` na posição (0, 0, 0) com o componente `IsoGrid`. Em **Tiles**, arraste as 4 células de `Art/Grid/SPR_Grid_Floor`, **na ordem** (a célula 3 é a rara).
+5. **Chão deitado:** em `[World]`, crie um objeto vazio `IsoFloor` com o componente `IsoFloor`, e dentro dele um filho vazio `Plane`. Arraste o `Plane` para o campo **Plane** do `IsoFloor`. Não precisa acertar posição, rotação nem escala: o `IsoFloor` faz isso no Play (Passo 10). Ele fica vazio por enquanto; o `QuadrantView` da Fase 3 mora dentro do `Plane`.
+
+#### Passo 15 — Commit
+
+`git add .` e `git commit -m "Phase 2: iso projection, grid, planet, health, quadrants, pixel perfect camera, background"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: o planeta gira perto do centro, flutuando 16 px acima do centro de um grid em losango, com uma sombra elíptica embaixo dele. O grid é discreto (semitransparente) e some aos poucos nas bordas; atrás dele, o fundo de estrelas cobre a tela inteira, com algumas estrelas grandes piscando.
+- Com o **Game view** em `1920x1080`, cada pixel da arte vira um quadrado de 6×6, sem bordas borradas. Trocando para `2560x1080` (21:9) ou `1024x768` (4:3), aparece **mais espaço** dos lados ou em cima e embaixo, sem faixas pretas e sem esticar.
+- Na janela **Scene**, os Gizmos mostram, deitados no grid, a elipse do planeta (verde), a da órbita (cinza), a do alcance base (laranja) e os dois eixos dos Quadrants, que correm na **diagonal** sobre as linhas centrais do grid.
+- **F4** com o mouse acima, à esquerda, abaixo e à direita do planeta mostra no Console `Top`, `Left`, `Bottom` e `Right`, nessa ordem. Com o mouse logo acima e à direita do planeta, o chão mostra x positivo e y perto de 0 (o eixo x do chão aponta para cima e para a direita).
+- **F3** faz o mundo deslizar para cima (o planeta sobe até o centro dos 60% de cima da tela); **F3** de novo o traz de volta. O movimento é suave e sem tremer.
+- **F6** tira 10 de HP (`90/100`, `80/100`…). Com **Defense Absolute** = `5` no Inspector, cada F6 tira só 5. Com **Defense Absolute** = `20`, tira 1 (o mínimo da fórmula).
+- Com **Regeneration** = `2`, o HP volta a subir 2 por segundo depois do F6. Com **Esc** (pausa), o planeta, as estrelas e a regeneração param juntos.
+- Ao chegar a 0 HP, o dano para de ser aplicado (a run acaba na Fase 8; não existe Revive).
+
+**Problemas comuns:**
+- **A arte aparece borrada ou com pixels de tamanhos diferentes:** a **Reference Resolution** ou o **Assets Pixels Per Unit** da Pixel Perfect Camera não bate com 320×180 / 16, ou o Game view está com **Scale** diferente de 1×. Confira também se os sprites vieram com PPU 16 (preset da Fase 0).
+- **Faixas pretas nas bordas:** **Crop Frame** não está em `None`.
+- **O fundo não cobre um canto da tela ao abrir a gaveta:** aumente **Margin** no `SpaceBackground`. O valor 3 cobre a gaveta de 40% em 16:9.
+- **O planeta não aparece, mas o objeto existe:** a **Sorting Layer** do `View` está abaixo da `Background`, ou a câmera está com Z maior que 0. O `CameraRig` põe a câmera em Z = −10: não mova a câmera à mão.
+- **O planeta aparece no lugar certo, mas a sombra não:** o `View` não é filho do `Planet`. O `IsoView` lê a posição do **pai**; sem pai, ele não tem chão para projetar.
+- **Os tiles do grid aparecem "por cima" uns dos outros, em degraus errados:** o **Transparency Sort Axis** do Renderer 2D não está em (0, 1, 0) (Passo 13), ou os tiles estão numa Sorting Layer diferente de `Grid`.
+- **O grid aparece com frestas entre os tiles:** confira se o **Pixel Size** do slice do `SPR_Grid_Floor` foi 32 × 32 e se o **Pivot** ficou `Center`. O `IsoGrid` já compensa a espessura do tile (`TileTopOffset`).
+- **`'Planet' is a namespace but is used like a type`:** algum script usa o namespace antigo `Armageddon.Planet`. O namespace é `Armageddon.Planets` (com "s"), justamente para não colidir com a classe `Planet`.
+- **O planeta gira rápido demais:** o **Fps** do `SpriteAnimator` ficou no padrão (8). O planeta usa 4 (Seção 6.4).
+
+Próxima fase: **Fase 3 — Satellites, órbita, Target Priority e projéteis**. Ela coloca o primeiro Satellite orbitando e atirando no Quadrant onde está.
+
+---
+
+### Fase 3 — Satellites, órbita, Target Priority e projéteis
+
+> Objetivo desta fase: o primeiro Satellite orbita o planeta e atira projéteis teleguiados nos alvos que estão **no Quadrant onde ele está** e dentro do Attack Range, escolhendo o alvo pela sua Target Priority (Seção 4.1). O Quadrant coberto aparece na tela e pisca a cada disparo. Os inimigos de verdade chegam na Fase 4; aqui usamos alvos de teste.
+
+**Conceitos novos:**
+- **Interface (`ITarget`):** um "contrato" que diz o que um alvo precisa ter (posição, HP, receber dano), sem dizer o que ele é. Os Satellites atiram em qualquer `ITarget`: hoje num alvo de teste, na Fase 4 num `Enemy`, sem mudar uma linha do código de combate.
+- **Registro de alvos (`TargetRegistry`):** uma lista dos alvos vivos. Cada alvo se inscreve ao aparecer e sai ao morrer. Procurar alvos numa lista pronta é muito mais barato do que perguntar à física da Unity, a cada disparo, "quem está perto?".
+- **Object pooling (`ObjectPool`):** em vez de criar e destruir um projétil a cada tiro (o que gera lixo de memória e engasgos do *garbage collector*), um conjunto de projéteis é criado uma vez e reaproveitado: "pegar" liga o objeto, "devolver" desliga.
+- **Um dono para o tempo da órbita:** o `SatelliteOrbit` move todos os Satellites e chama o `Tick` de cada um, na ordem. Um só `Update` controla tudo, o que evita que dois Satellites discordem sobre o ângulo da órbita.
+- **Textura gerada por código:** o preenchimento do Quadrant (um quarto de círculo do tamanho do Attack Range) é desenhado pixel a pixel na hora, em coordenadas do chão. Como ele mora dentro do `IsoFloor/Plane` (Fase 2), a hierarquia o deita no grid: na tela, ele vira uma ponta do losango.
+
+#### Passo 1 — O contrato de alvo e o registro: `ITarget`, `TargetRegistry`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/ITarget.cs
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: os Satellites precisam atirar em "algo" — hoje num alvo de teste, na Fase 4 num Enemy,
+    // na Fase 7 na Mothership. Se o código de combate dependesse da classe Enemy, cada tipo novo de
+    // alvo exigiria mexer nele.
+    // ESTRATÉGIA: uma interface com só o que o combate precisa saber (posição, tamanho, vida, receber dano).
+    // Qualquer classe que "implementa" ITarget (class X : MonoBehaviour, ITarget) vira um alvo válido.
+    public interface ITarget
+    {
+        Vector2 Position { get; }
+        float Radius { get; }              // metade do tamanho do sprite, em u: o alcance mede até a BORDA (Seção 4.1)
+        float CurrentHitpoints { get; }    // usado pelas Target Priorities Weakest/Strongest
+        bool IsAlive { get; }
+        void TakeDamage(float amount, bool isCritical);   // isCritical serve para o feedback visual (número de dano)
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetRegistry.cs
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: a cada disparo, um Satellite precisa da lista de alvos possíveis. Perguntar à física
+    // ("quem está perto?") ou procurar objetos na cena a cada tiro é caro com 150 inimigos.
+    // ESTRATÉGIA: uma lista estática e global dos alvos vivos. Cada alvo se registra no OnEnable e sai
+    // no OnDisable (combina com pooling: ligar/desligar o objeto já entra/sai da lista).
+    // Os Satellites só leem a lista (IReadOnlyList), nunca a alteram.
+    public static class TargetRegistry
+    {
+        private static readonly List<ITarget> _alive = new List<ITarget>();
+
+        // IReadOnlyList: quem recebe pode percorrer e ler, mas não tem Add/Remove.
+        public static IReadOnlyList<ITarget> Alive => _alive;
+
+        // Chamado pelo alvo ao aparecer. O Contains evita registrar duas vezes.
+        public static void Register(ITarget target)
+        {
+            if (!_alive.Contains(target)) _alive.Add(target);
+        }
+
+        // Chamado pelo alvo ao sumir (morreu, saiu da tela, voltou ao pool).
+        public static void Unregister(ITarget target)
+        {
+            _alive.Remove(target);
+        }
+
+        // Com "Enter Play Mode Options" (sem recarregar o domínio), a lista estática sobreviveria entre Plays.
+        // Mesmo mecanismo do GameBootstrap.ResetStatics (ver GameBootstrap).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _alive.Clear();
+        }
+    }
+}
+```
+
+#### Passo 2 — Os Stats de combate: `SatelliteStats`
+
+Os valores de combate vêm dos Upgrades da Fase 6. Até lá, eles ficam no Inspector do `SatelliteOrbit`, com os valores base da Seção 4.2. A Fase 6 monta um `SatelliteStats` a partir dos Stats da run e chama `SetStats`.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/SatelliteStats.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: os Satellites precisam de vários números (dano, cadência, crítico, alcance...), que mudam
+    // com os Upgrades. Passar sete parâmetros soltos para cada método seria confuso.
+    // ESTRATÉGIA: um "pacote" de dados com os Stats de Offense (Seção 4.2) e a fórmula de dano junto.
+    // Objeto de dados: campos públicos em camelCase, como o PlayerProfile. [Serializable] faz o pacote
+    // aparecer inteiro (expansível) no Inspector do SatelliteOrbit, para testar antes da Fase 6.
+    [Serializable]
+    public sealed class SatelliteStats
+    {
+        public float damage = 10f;
+        public float attackSpeed = 1f;          // disparos por segundo, por Satellite
+        [Range(0f, 0.8f)] public float criticalChance;   // 0 a 0,8 (80%)
+        public float criticalFactor = 1.5f;     // multiplicador do dano crítico
+        public float attackRange = 4f;          // em u, medido do centro do planeta
+        public float impetus;                   // fração por u (0,004 = +0,4 % por u)
+        public float orbitSpeed = 45f;          // graus por segundo
+
+        // Sorteia o crítico e calcula o dano de UM disparo.
+        // Fórmula da Seção 4.1: Damage × (1 + Impetus × distânciaAoCentro) × (crítico ? CriticalFactor : 1).
+        // "out bool isCritical": um segundo valor de retorno — quem chama recebe o dano E se foi crítico.
+        public float RollDamage(float distanceToCenter, out bool isCritical)
+        {
+            // Random.value = número aleatório entre 0 e 1. Menor que a chance → crítico.
+            isCritical = UnityEngine.Random.value < criticalChance;
+            float value = damage * (1f + impetus * distanceToCenter);
+            return isCritical ? value * criticalFactor : value;
+        }
+    }
+}
+```
+
+#### Passo 3 — Escolher o alvo: `TargetPriority`, `TargetSelector`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetSelector.cs
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: cada Satellite pode ter uma regra diferente de escolha de alvo (Target Priority).
+    // ESTRATÉGIA: um enum com as 4 regras; o Satellite guarda qual está usando.
+    // As 4 Target Priorities (Seção 4.1). Closest é a padrão; todas ficam disponíveis desde o início da run.
+    public enum TargetPriority
+    {
+        Closest,     // o mais perto do planeta
+        Weakest,     // o com menos HP atual
+        Strongest,   // o com mais HP atual
+        Farthest,    // o mais longe do planeta (sinergia com Impetus)
+    }
+
+    // POR QUE: a regra "quem é um alvo válido e qual deles é o melhor" é o coração do combate e precisa
+    // ser a mesma para todos os Satellites.
+    // ESTRATÉGIA: classe estática com uma função pura: recebe a lista, o Quadrant, o alcance e a prioridade,
+    // e devolve o alvo. Não guarda nada entre chamadas, então é fácil testar e não tem efeitos colaterais.
+    public static class TargetSelector
+    {
+        // Só considera alvos vivos, no Quadrant pedido e com a BORDA dentro do alcance (medido do centro do planeta).
+        // Devolve null se não houver ninguém válido.
+        // Estratégia: uma passada só pela lista, guardando o "melhor até agora" (menor score).
+        public static ITarget Select(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority)
+        {
+            ITarget best = null;
+            float bestScore = float.MaxValue;   // qualquer score real é menor que isso
+
+            // for com índice (em vez de foreach) não aloca memória numa IReadOnlyList: importante num
+            // código que roda muitas vezes por segundo.
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var target = targets[i];
+                if (!target.IsAlive) continue;
+
+                // sqrMagnitude = distância ao quadrado (mais barata, sem raiz). Serve para comparar distâncias.
+                float distanceSquared = (target.Position - WorldLayout.PlanetCenter).sqrMagnitude;
+                // Para o alcance precisamos da distância real, menos o raio (mede até a borda do alvo).
+                if (Mathf.Sqrt(distanceSquared) - target.Radius > range) continue;
+                if (Quadrants.FromPosition(target.Position) != quadrant) continue;
+
+                // Menor "score" vence: por isso Farthest e Strongest usam o valor negativo.
+                // "switch expression" (C# 8): escolhe um valor conforme o caso; "_" é o caso padrão.
+                float score = priority switch
+                {
+                    TargetPriority.Closest => distanceSquared,
+                    TargetPriority.Farthest => -distanceSquared,
+                    TargetPriority.Weakest => target.CurrentHitpoints,
+                    TargetPriority.Strongest => -target.CurrentHitpoints,
+                    _ => distanceSquared,
+                };
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = target;
+                }
+            }
+
+            return best;
+        }
+    }
+}
+```
+
+#### Passo 4 — Um pixel de cor: `PixelSprite`
+
+O rastro dos projéteis e as linhas dos eixos são desenhados com sprites de 1 pixel. Em vez de importar um PNG de 1×1, o jogo cria esse sprite na primeira vez que precisa.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/PixelSprite.cs
+using UnityEngine;
+
+namespace Armageddon.World
+{
+    // POR QUE: rastros de projétil, linhas de eixo e outros detalhes são feitos de pixels soltos de cor.
+    // Importar um PNG de 1×1 só para isso é burocrático.
+    // ESTRATÉGIA: classe estática que cria, na primeira vez que alguém pede, um sprite branco de 1 pixel
+    // e o reaproveita para sempre ("inicialização preguiçosa"). A cor final vem do SpriteRenderer.color,
+    // que multiplica o branco por qualquer cor.
+    public static class PixelSprite
+    {
+        private static Sprite _white;   // guardado depois da primeira criação
+
+        // Propriedade com "get" que cria o sprite só se ainda não existe.
+        public static Sprite White
+        {
+            get
+            {
+                if (_white != null) return _white;
+                // Textura 1×1 com filtro Point (sem borrar, como toda a pixel art do jogo).
+                var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point };
+                texture.SetPixel(0, 0, Color.white);
+                texture.Apply();   // envia o pixel alterado para a placa de vídeo
+                // Sprite.Create(textura, área, pivô no centro, pixels por unidade = 16): 1 pixel = 1/16 u.
+                _white = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+                return _white;
+            }
+        }
+    }
+}
+```
+
+#### Passo 5 — O projétil: `Projectile`, `ProjectilePool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/Projectile.cs
+using System;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: o dano dos Satellites precisa "viajar" até o alvo para o jogador ver o tiro; o GDD pede
+    // projétil teleguiado que nunca erra (Seção 4.1).
+    // ESTRATÉGIA: um MonoBehaviour que, a cada frame, anda em linha reta NO CHÃO na direção da posição ATUAL
+    // do alvo; quando chega perto, aplica o dano e se devolve ao pool. Não usa física (Rigidbody/Collider):
+    // uma conta de distância é mais barata e suficiente.
+    // Como todo objeto do mundo (Fase 2), a raiz fica no chão e a bolinha fica no filho View (IsoView).
+    // Nunca é destruído: quem o criou (ProjectilePool) passa uma função "release" para devolvê-lo.
+    // Se o alvo morrer antes, some (Seção 4.1).
+    // Desenha atrás de si um rastro curto de 3 pixels na direção do movimento NA TELA (Seção 6.2).
+    public sealed class Projectile : MonoBehaviour
+    {
+        // Em aberto na Seção 4.1: velocidade do projétil. Valor inicial: 10 u/s (no chão).
+        [SerializeField] private float _speed = 10f;
+        [SerializeField] private float _hitDistance = 0.2f;   // distância que já conta como "acertou"
+        [SerializeField] private Color[] _trailColors =       // um pixel de rastro por cor, do mais forte ao mais fraco
+        {
+            new Color32(255, 170, 40, 200),
+            new Color32(214, 110, 24, 140),
+            new Color32(150, 70, 20, 90),
+        };
+
+        private ITarget _target;
+        private float _damage;
+        private bool _isCritical;
+        // Action<Projectile> = uma variável que guarda uma FUNÇÃO que recebe um Projectile.
+        // Aqui guarda o "devolver ao pool", sem o projétil precisar conhecer o pool.
+        private Action<Projectile> _release;
+        private SpriteRenderer[] _trail;
+
+        // Cria os pixels do rastro uma vez só, como filhos do projétil (eles também são reaproveitados).
+        // A Sorting Layer vem do SpriteRenderer da bolinha, no filho View.
+        private void Awake()
+        {
+            var layer = GetComponentInChildren<SpriteRenderer>().sortingLayerName;
+            _trail = new SpriteRenderer[_trailColors.Length];
+            for (int i = 0; i < _trail.Length; i++)
+            {
+                var pixel = new GameObject("Trail").AddComponent<SpriteRenderer>();
+                pixel.transform.SetParent(transform, false);
+                pixel.sprite = PixelSprite.White;
+                pixel.color = _trailColors[i];
+                pixel.sortingLayerName = layer;
+                _trail[i] = pixel;
+            }
+        }
+
+        // "Dispara" um projétil que acabou de sair do pool: define origem (no chão), alvo, dano e como se devolver.
+        // Faz o papel de um construtor, já que objetos reaproveitados não passam por "new".
+        public void Launch(Vector2 from, ITarget target, float damage, bool isCritical, Action<Projectile> release)
+        {
+            transform.position = from;
+            _target = target;
+            _damage = damage;
+            _isCritical = isCritical;
+            _release = release;
+            // Esconde o rastro até o primeiro movimento, senão ele apareceria onde o projétil estava no disparo anterior.
+            foreach (var pixel in _trail) pixel.enabled = false;
+        }
+
+        // Persegue o alvo a cada frame (tudo no chão).
+        private void Update()
+        {
+            if (_target == null || !_target.IsAlive)
+            {
+                Release();
+                return;
+            }
+
+            Vector2 position = transform.position;
+            Vector2 toTarget = _target.Position - position;
+            float step = _speed * Time.deltaTime;   // quanto anda neste frame
+
+            // Se o passo deste frame já alcança o alvo (ou está dentro da distância de acerto), acertou.
+            if (toTarget.magnitude <= Mathf.Max(step, _hitDistance))
+            {
+                _target.TakeDamage(_damage, _isCritical);
+                Release();
+                return;
+            }
+
+            // normalized = mesmo vetor com tamanho 1 (só a direção).
+            Vector2 direction = toTarget.normalized;
+            position += direction * step;
+            transform.position = position;
+            PlaceTrail(position, direction);
+        }
+
+        // Posiciona os pixels do rastro atrás da bolinha, NA TELA: projeta a cabeça e a direção do movimento
+        // (a projeção é linear, então projetar uma direção é projetar um vetor) e anda para trás em pixels.
+        // Não depende do IsoView: faz a mesma conta que ele, então o rastro sempre bate com a bolinha.
+        private void PlaceTrail(Vector2 groundHead, Vector2 groundDirection)
+        {
+            Vector2 head = IsoProjection.GroundToView(groundHead);
+            Vector2 direction = IsoProjection.GroundToView(groundDirection).normalized;
+            // Pixels atrás da bolinha (que tem 4 px), um por pixel de distância, presos à grade.
+            const float pixel = 1f / WorldLayout.PixelsPerUnit;
+            for (int i = 0; i < _trail.Length; i++)
+            {
+                _trail[i].transform.position = IsoProjection.Snap(head - direction * (2.5f + i) * pixel);
+                _trail[i].enabled = true;
+            }
+        }
+
+        // Devolve o projétil ao pool, garantindo que isso aconteça uma vez só.
+        private void Release()
+        {
+            _target = null;
+            var release = _release;
+            _release = null;          // evita devolver duas vezes para o pool
+            release?.Invoke(this);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/ProjectilePool.cs
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: com 4 Satellites atirando várias vezes por segundo, criar (Instantiate) e destruir (Destroy)
+    // um projétil a cada tiro gera lixo de memória e engasgos do garbage collector no navegador.
+    // ESTRATÉGIA: object pooling com o ObjectPool<T> pronto da Unity (UnityEngine.Pool). O pool guarda
+    // projéteis desligados; "Get" liga um, "Release" desliga e guarda de volta. Nada é criado nem
+    // destruído durante a run. Os Satellites só chamam Fire; não sabem que existe um pool.
+    public sealed class ProjectilePool : MonoBehaviour
+    {
+        [SerializeField] private Projectile _prefab;   // Prefab = "molde" de objeto salvo como asset, que pode ser copiado em cena
+        [SerializeField] private int _prewarm = 32;    // quantos projéteis criar já no carregamento
+
+        private ObjectPool<Projectile> _pool;
+
+        // Monta o pool e o "aquece" (prewarm).
+        private void Awake()
+        {
+            // Cada parâmetro é uma função curta (lambda, "x => ...") que diz ao pool como fazer cada coisa.
+            _pool = new ObjectPool<Projectile>(
+                createFunc: () => Instantiate(_prefab, transform),        // como criar um novo (filho deste objeto)
+                actionOnGet: p => p.gameObject.SetActive(true),          // ao pegar: liga
+                actionOnRelease: p => p.gameObject.SetActive(false),     // ao devolver: desliga
+                actionOnDestroy: p => Destroy(p.gameObject),             // se o pool passar do maxSize, destrói o excedente
+                collectionCheck: false,   // não confere devolução dupla (o Projectile já se protege); é mais rápido
+                defaultCapacity: _prewarm,
+                maxSize: 512);
+
+            // Cria os primeiros projéteis agora, no carregamento, e não no meio do primeiro combate.
+            var warm = new Projectile[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        // O único método público: pega um projétil e o lança. _pool.Release é passado como a função
+        // "release" que o projétil chama quando acerta ou perde o alvo.
+        public void Fire(Vector2 from, ITarget target, float damage, bool isCritical)
+        {
+            _pool.Get().Launch(from, target, damage, isCritical, _pool.Release);
+        }
+    }
+}
+```
+
+#### Passo 6 — O Satellite e a órbita: `Satellite`, `SatelliteOrbit`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/Satellite.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: cada Satellite é uma arma independente: tem sua posição na órbita, sua Target Priority e
+    // seu próprio tempo de recarga (cooldown).
+    // ESTRATÉGIA: o Satellite NÃO tem Update próprio. O SatelliteOrbit decide onde ele fica (SetAngle) e
+    // manda ele "pensar" a cada frame (Tick), passando os Stats, os alvos e o pool. Assim a ordem de
+    // execução é controlada num lugar só e todos compartilham os mesmos Stats.
+    // Um Satellite: fica onde o SatelliteOrbit manda e atira no Quadrant onde está (Seção 4.1).
+    // Este objeto é a raiz, no chão; o desenho fica no filho View (IsoView, Fase 2), com orientação fixa:
+    // o sprite nunca gira (Seção 6.2).
+    public sealed class Satellite : MonoBehaviour
+    {
+        [SerializeField] private TargetPriority _priority = TargetPriority.Closest;
+
+        private float _cooldown;   // segundos até poder atirar de novo (0 ou menos = pronto)
+
+        // Propriedade pública que lê/escreve o campo serializado: a UI (Fase 6) troca a prioridade por aqui.
+        public TargetPriority Priority
+        {
+            get => _priority;
+            set => _priority = value;
+        }
+
+        public float AngleDegrees { get; private set; }
+        public Quadrant CurrentQuadrant => Quadrants.FromAngle(AngleDegrees);
+
+        // Avisado a cada disparo (o QuadrantView usa para piscar o Quadrant).
+        public event Action<Satellite> Fired;
+
+        // Posiciona o Satellite na órbita a partir de um ângulo.
+        // Trigonometria básica: (cos θ, sin θ) é o ponto do círculo de raio 1 no ângulo θ; multiplicar
+        // pelo raio da órbita leva ao círculo certo.
+        public void SetAngle(float degrees)
+        {
+            AngleDegrees = Mathf.Repeat(degrees, 360f);
+            float radians = AngleDegrees * Mathf.Deg2Rad;   // Cos/Sin trabalham em radianos
+            Vector2 p = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * WorldLayout.OrbitRadius;
+            transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+        }
+
+        // Chamado pelo SatelliteOrbit a cada frame. Com o cooldown zerado e ninguém válido, segura o tiro.
+        public void Tick(float deltaTime, SatelliteStats stats, IReadOnlyList<ITarget> targets, ProjectilePool projectiles)
+        {
+            if (_cooldown > 0f)
+            {
+                _cooldown -= deltaTime;
+                if (_cooldown > 0f) return;
+            }
+
+            var target = TargetSelector.Select(targets, CurrentQuadrant, stats.attackRange, _priority);
+            if (target == null)
+            {
+                _cooldown = 0f;   // pronto para atirar assim que alguém entrar no Quadrant
+                return;
+            }
+
+            float distance = Vector2.Distance(target.Position, WorldLayout.PlanetCenter);
+            float damage = stats.RollDamage(distance, out bool isCritical);
+            projectiles.Fire(transform.position, target, damage, isCritical);
+
+            // "+=" em vez de "=": se o cooldown passou um pouco do zero, a sobra é descontada do próximo,
+            // e a cadência média fica exata mesmo com frames irregulares.
+            _cooldown += 1f / Mathf.Max(0.01f, stats.attackSpeed);
+            Fired?.Invoke(this);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/SatelliteOrbit.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: todos os Satellites compartilham o mesmo círculo e precisam ficar igualmente espaçados,
+    // mesmo quando um novo é adicionado. Se cada um girasse sozinho, eles poderiam se desalinhar.
+    // ESTRATÉGIA: um "dono da órbita": guarda UM ângulo global, cria/remove os Satellites, e no Update
+    // posiciona todos (ângulo + i × espaçamento) e chama o Tick de cada um na ordem. Também guarda os
+    // SatelliteStats compartilhados e repassa o evento de disparo para quem estiver ouvindo.
+    // A órbita compartilhada: todos os Satellites no mesmo círculo do chão (uma elipse na tela), igualmente
+    // espaçados, girando juntos no sentido anti-horário na velocidade do Stat Orbit Speed (Seção 4.1).
+    public sealed class SatelliteOrbit : MonoBehaviour
+    {
+        public const int MaxSatellites = 4;
+
+        [SerializeField] private Satellite _satellitePrefab;
+        [SerializeField] private ProjectilePool _projectiles;
+        [SerializeField, Range(1, MaxSatellites)] private int _startingCount = 1;
+        [SerializeField] private SatelliteStats _stats = new SatelliteStats();   // editável no Inspector até a Fase 6
+
+        private readonly List<Satellite> _satellites = new List<Satellite>();
+        private float _angle = 45f;   // o primeiro Satellite começa na ponta de cima do losango (Quadrant Top)
+
+        public IReadOnlyList<Satellite> Satellites => _satellites;
+        public SatelliteStats Stats => _stats;
+
+        // Repassa o Fired de qualquer Satellite: quem ouve não precisa se inscrever em cada um.
+        public event Action<Satellite> SatelliteFired;
+        public event Action CountChanged;   // a UI (SatellitePanel) redesenha quando muda o número de Satellites
+
+        // Cria os Satellites iniciais.
+        private void Start()
+        {
+            SetCount(_startingCount);
+        }
+
+        // Troca os Stats de todos os Satellites de uma vez (chamado pela economia da run na Fase 6).
+        public void SetStats(SatelliteStats stats)
+        {
+            _stats = stats;
+        }
+
+        // Compra de Satellites na run (SatelliteShop, Fase 6). Os novos entram já espaçados; ninguém "pula" de posição.
+        // Adiciona ou remove Satellites até chegar em "count".
+        public void SetCount(int count)
+        {
+            count = Mathf.Clamp(count, 1, MaxSatellites);
+
+            while (_satellites.Count < count)
+            {
+                // Instantiate(prefab, pai): cria uma cópia do prefab como filho deste objeto.
+                var satellite = Instantiate(_satellitePrefab, transform);
+                satellite.Fired += HandleSatelliteFired;
+                _satellites.Add(satellite);
+            }
+
+            while (_satellites.Count > count)
+            {
+                var last = _satellites[_satellites.Count - 1];
+                last.Fired -= HandleSatelliteFired;   // desinscreve antes de destruir
+                _satellites.RemoveAt(_satellites.Count - 1);
+                Destroy(last.gameObject);
+            }
+
+            PlaceSatellites();
+            CountChanged?.Invoke();
+        }
+
+        // Um único Update move a órbita e faz todos os Satellites pensarem, na ordem.
+        private void Update()
+        {
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado: nem gira nem atira
+
+            _angle = Mathf.Repeat(_angle + _stats.orbitSpeed * deltaTime, 360f);
+            PlaceSatellites();
+
+            var targets = TargetRegistry.Alive;
+            for (int i = 0; i < _satellites.Count; i++)
+            {
+                _satellites[i].Tick(deltaTime, _stats, targets, _projectiles);
+            }
+        }
+
+        // Distribui os Satellites igualmente: com 3, ficam a 120° um do outro.
+        private void PlaceSatellites()
+        {
+            if (_satellites.Count == 0) return;
+            float spacing = 360f / _satellites.Count;
+            for (int i = 0; i < _satellites.Count; i++)
+            {
+                _satellites[i].SetAngle(_angle + i * spacing);
+            }
+        }
+
+        // Recebe o Fired de um Satellite e o repassa como SatelliteFired.
+        private void HandleSatelliteFired(Satellite satellite)
+        {
+            SatelliteFired?.Invoke(satellite);
+        }
+    }
+}
+```
+
+#### Passo 7 — Mostrar os Quadrants: `QuadrantView`
+
+Como definido na Seção 6.2: as linhas dos eixos ficam sempre visíveis e discretas, e o Quadrant onde há um Satellite ganha um preenchimento translúcido quente do tamanho do Attack Range, que pisca mais forte a cada disparo. Tudo isso fica **deitado no grid**: o `QuadrantView` desenha em coordenadas do chão, como se o jogo fosse top-down, e mora dentro do `IsoFloor/Plane`, que faz a projeção (Fase 2, Passo 10).
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/QuadrantView.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: a regra "o Satellite só atira no seu Quadrant, até o Attack Range" é invisível. O jogador
+    // precisa VER a área coberta para entender o combate e decidir os Upgrades.
+    // ESTRATÉGIA: um componente só visual. Cria por código (1) as duas linhas dos eixos e (2) quatro
+    // preenchimentos de quarto de círculo, um por Quadrant. A cada frame, liga os preenchimentos onde há
+    // Satellite e faz piscar o Quadrant que acabou de atirar (ouvindo o evento SatelliteFired).
+    // Não mexe no combate: só lê o SatelliteOrbit.
+    // Precisa ser filho do IsoFloor/Plane: os desenhos usam posições LOCAIS do chão, e a hierarquia os deita no grid.
+    // Desenha os eixos dos Quadrants e o preenchimento dos Quadrants cobertos (Seção 6.2).
+    public sealed class QuadrantView : MonoBehaviour
+    {
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private Color _fillColor = new Color(1f, 0.67f, 0.24f, 0.13f);
+        [SerializeField] private float _flashAlpha = 0.3f;            // alpha no auge da piscada
+        [SerializeField] private float _flashDecayPerSecond = 4f;     // quão rápido a piscada apaga
+        [SerializeField] private Color _axisColor = new Color(0.9f, 0.86f, 1f, 0.16f);
+        [SerializeField] private string _sortingLayer = "Floor";
+
+        // Arrays de 4 posições, indexados pelo número do Quadrant (0–3).
+        private readonly SpriteRenderer[] _fills = new SpriteRenderer[4];
+        private readonly float[] _flash = new float[4];       // 1 = acabou de piscar, 0 = normal
+        private readonly bool[] _covered = new bool[4];       // tem Satellite neste Quadrant agora?
+        private Texture2D _fillTexture;
+        private float _builtRange = -1f;   // alcance para o qual a textura foi desenhada (-1 = nenhum ainda)
+        private bool _fillVisible = true;
+
+        // Start porque depende do _orbit (outro objeto) já ter feito seu Awake.
+        private void Start()
+        {
+            BuildAxes();
+            _orbit.SatelliteFired += HandleSatelliteFired;
+        }
+
+        // Desinscreve do evento e destrói a textura criada por código. Texturas criadas com "new" não são
+        // liberadas sozinhas quando o objeto some: sem o Destroy, ficariam ocupando memória.
+        private void OnDestroy()
+        {
+            if (_orbit != null) _orbit.SatelliteFired -= HandleSatelliteFired;
+            if (_fillTexture != null) Destroy(_fillTexture);
+        }
+
+        // "Mostrar Quadrants" das Settings (Fase 11): esconde o preenchimento; as linhas continuam.
+        public void SetFillVisible(bool visible)
+        {
+            _fillVisible = visible;
+        }
+
+        // LateUpdate (ver CameraRig): roda depois do Update do SatelliteOrbit, então já vê os Satellites
+        // nas posições deste frame.
+        private void LateUpdate()
+        {
+            // Só redesenha a textura quando o Attack Range muda (Upgrade), não todo frame.
+            // Mathf.Approximately compara floats com tolerância (floats raramente são exatamente iguais).
+            float range = _orbit.Stats.attackRange;
+            if (!Mathf.Approximately(range, _builtRange)) BuildFills(range);
+
+            for (int q = 0; q < 4; q++) _covered[q] = false;
+            foreach (var satellite in _orbit.Satellites) _covered[(int)satellite.CurrentQuadrant] = true;
+
+            for (int q = 0; q < 4; q++)
+            {
+                _flash[q] = Mathf.Max(0f, _flash[q] - _flashDecayPerSecond * Time.deltaTime);
+                var color = _fillColor;
+                color.a = Mathf.Lerp(_fillColor.a, _flashAlpha, _flash[q]);
+                _fills[q].color = color;
+                _fills[q].enabled = _fillVisible && _covered[q];
+            }
+        }
+
+        // Um disparo acende a piscada do Quadrant de quem atirou.
+        private void HandleSatelliteFired(Satellite satellite)
+        {
+            _flash[(int)satellite.CurrentQuadrant] = 1f;
+        }
+
+        // Um quarto de círculo de raio = Attack Range, pixel a pixel (no chão). Girado de 90 em 90 graus para
+        // os 4 Quadrants. O IsoFloor/Plane achata o resultado: na tela ele vira uma ponta do losango.
+        // Estratégia: uma textura quadrada de "size × size" pixels; cada pixel é branco se está dentro do
+        // círculo (x² + y² ≤ r²) e transparente se está fora. A cor final vem do SpriteRenderer.color.
+        private void BuildFills(float range)
+        {
+            _builtRange = range;
+            int size = Mathf.Max(1, Mathf.CeilToInt(range * WorldLayout.PixelsPerUnit));
+
+            if (_fillTexture != null) Destroy(_fillTexture);   // libera a textura do alcance antigo
+            _fillTexture = new Texture2D(size, size) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[size * size];   // preencher um array e enviar de uma vez é muito mais rápido que SetPixel um a um
+            float radiusSquared = size * size;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x + 0.5f, dy = y + 0.5f;   // +0,5 = centro do pixel
+                    pixels[y * size + x] = dx * dx + dy * dy <= radiusSquared ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+                }
+            }
+            _fillTexture.SetPixels32(pixels);
+            _fillTexture.Apply();
+            // Pivô Vector2.zero = canto de baixo à esquerda: esse canto fica no centro do planeta (no chão).
+            var sprite = Sprite.Create(_fillTexture, new Rect(0, 0, size, size), Vector2.zero, WorldLayout.PixelsPerUnit);
+
+            for (int q = 0; q < 4; q++)
+            {
+                // Cria os 4 SpriteRenderers só na primeira vez; depois só troca o sprite.
+                if (_fills[q] == null)
+                {
+                    _fills[q] = new GameObject($"Fill {(Quadrant)q}").AddComponent<SpriteRenderer>();
+                    _fills[q].transform.SetParent(transform, false);
+                    // Quaternion.Euler(0, 0, ângulo) = rotação em volta do eixo Z (o "giro" em 2D).
+                    _fills[q].transform.localRotation = Quaternion.Euler(0f, 0f, q * 90f);
+                    _fills[q].sortingLayerName = _sortingLayer;
+                }
+                _fills[q].transform.localPosition = WorldLayout.PlanetCenter;   // local: o pai (Plane) faz a projeção
+                _fills[q].sprite = sprite;
+            }
+        }
+
+        // Duas linhas pontilhadas (1 px aceso, 2 apagados) cruzando o chão; na tela, as diagonais centrais do grid.
+        // Uma textura de 1 pixel de altura, usada duas vezes: deitada (eixo X) e girada 90° (eixo Y).
+        private void BuildAxes()
+        {
+            int length = Mathf.CeilToInt(WorldLayout.SpawnRadius * 2f * WorldLayout.PixelsPerUnit);
+            var texture = new Texture2D(length, 1) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+            for (int x = 0; x < length; x++) texture.SetPixel(x, 0, x % 3 == 0 ? Color.white : Color.clear);
+            texture.Apply();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, length, 1), new Vector2(0.5f, 0.5f), WorldLayout.PixelsPerUnit);
+
+            for (int i = 0; i < 2; i++)
+            {
+                var axis = new GameObject(i == 0 ? "Axis X" : "Axis Y").AddComponent<SpriteRenderer>();
+                axis.transform.SetParent(transform, false);
+                axis.transform.localPosition = WorldLayout.PlanetCenter;
+                axis.transform.localRotation = Quaternion.Euler(0f, 0f, i * 90f);
+                axis.sprite = sprite;
+                axis.color = _axisColor;
+                axis.sortingLayerName = _sortingLayer;
+                axis.sortingOrder = 1;   // por cima dos preenchimentos
+            }
+        }
+    }
+}
+```
+
+#### Passo 8 — Ferramentas de teste de combate: `TargetDummy`, `CombatDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetDummy.cs
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: os inimigos só chegam na Fase 4, mas já queremos ver os Satellites atirando agora.
+    // ESTRATÉGIA: o alvo mais simples possível que cumpre o contrato ITarget: fica parado, tem HP e se
+    // destrói ao morrer. Prova que o combate funciona com QUALQUER ITarget (ver ITarget).
+    // Alvo parado, só para testes até os inimigos existirem (Fase 4). Some do build final.
+    // ", ITarget" depois de MonoBehaviour = "esta classe cumpre o contrato ITarget".
+    public sealed class TargetDummy : MonoBehaviour, ITarget
+    {
+        private float _hitpoints;
+
+        public Vector2 Position => transform.position;
+        public float Radius => 0.5f;
+        public float CurrentHitpoints => _hitpoints;
+        public bool IsAlive => _hitpoints > 0f;
+
+        // Fábrica estática: cria o objeto do zero por código (sem prefab) e devolve o dummy pronto.
+        // Mesma estrutura dos objetos do jogo (Fase 2): a raiz no chão, o desenho num filho View com IsoView.
+        public static TargetDummy Spawn(Vector2 groundPosition, Sprite sprite, float hitpoints)
+        {
+            var go = new GameObject("TargetDummy");
+            go.transform.position = groundPosition;
+            var view = new GameObject("View");
+            view.transform.SetParent(go.transform, false);
+            var renderer = view.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingLayerName = "World";
+            view.AddComponent<IsoView>().SetShadowRadius(0.5f);
+            var dummy = go.AddComponent<TargetDummy>();
+            dummy._hitpoints = hitpoints;
+            return dummy;
+        }
+
+        // Entra na lista de alvos ao ser ligado e sai ao ser desligado/destruído (ver TargetRegistry).
+        private void OnEnable() => TargetRegistry.Register(this);
+        private void OnDisable() => TargetRegistry.Unregister(this);
+
+        // Cumpre ITarget.TakeDamage: desconta o HP, mostra no Console e se destrói ao zerar.
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!IsAlive) return;
+            _hitpoints -= amount;
+            Debug.Log($"[Dummy] -{amount:0.#}{(isCritical ? " CRÍTICO" : "")} → {Mathf.Max(0f, _hitpoints):0.#} HP");
+            if (_hitpoints <= 0f) Destroy(gameObject);
+        }
+    }
+}
+#endif
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/CombatDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.World;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Combat
+{
+    // POR QUE: testar o combate exige criar alvos, mudar o número de Satellites e trocar a Target Priority
+    // sem ter UI ainda.
+    // ESTRATÉGIA: um componente colocado na cena Gameplay (diferente do DevShortcuts, que vive no [Services])
+    // porque precisa de referências da cena (_orbit) arrastadas no Inspector.
+    // Teclas de teste do combate: T = alvo de teste no mouse · 1–4 = número de Satellites · Q = troca a Target Priority.
+    // A CLASSE existe em todo build (ela fica numa cena); os campos e o Update somem do build final.
+    // Se a classe inteira sumisse, a cena teria um "Missing Script" no build final.
+    public sealed class CombatDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private Sprite _dummySprite;
+        [SerializeField] private float _dummyHitpoints = 30f;
+
+        // Lê as teclas de teste a cada frame.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.tKey.wasPressedThisFrame && Mouse.current != null && Camera.main != null)
+            {
+                // O mouse está na vista; o alvo nasce no ponto do chão embaixo dele (ver DevShortcuts, F4).
+                Vector2 view = Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue());
+                TargetDummy.Spawn(IsoProjection.ViewToGround(view), _dummySprite, _dummyHitpoints);
+            }
+
+            if (keyboard.digit1Key.wasPressedThisFrame) _orbit.SetCount(1);
+            if (keyboard.digit2Key.wasPressedThisFrame) _orbit.SetCount(2);
+            if (keyboard.digit3Key.wasPressedThisFrame) _orbit.SetCount(3);
+            if (keyboard.digit4Key.wasPressedThisFrame) _orbit.SetCount(4);
+
+            if (keyboard.qKey.wasPressedThisFrame)
+            {
+                // Avança para a próxima prioridade do enum; "% 4" volta para a primeira depois da última.
+                foreach (var satellite in _orbit.Satellites)
+                {
+                    satellite.Priority = (TargetPriority)(((int)satellite.Priority + 1) % 4);
+                }
+                Debug.Log($"[Dev] Target Priority: {_orbit.Satellites[0].Priority}");
+            }
+        }
+#endif
+    }
+}
+```
+
+#### Passo 9 — Prefabs e cena
+
+1. **Prefab do projétil:** crie um objeto vazio `Projectile` com o componente **Projectile** (valores padrão). Dentro dele, um filho vazio `View` com:
+   - **Sprite Renderer:** célula 0 de `Art/Projectiles/SPR_Projectile_Satellite`; **Sorting Layer** `World`.
+   - **Sprite Animator:** as 2 células; **Fps** `8`; **Loop** marcado (Seção 6.4).
+   - **Iso View:** **Shadow Radius** `0` (projéteis não têm sombra, Seção 6.2).
+
+   Arraste para `Assets/_Project/Prefabs/Gameplay/` e apague da cena.
+2. **Prefab do Satellite:** objeto vazio `Satellite` com o componente **Satellite** (Priority `Closest`). Dentro dele, um filho vazio `View` com:
+   - **Sprite Renderer:** célula 0 de `Art/Satellites/SPR_Satellite`; **Sorting Layer** `World`.
+   - **Sprite Animator:** as 2 células; **Fps** `2`; **Loop** marcado.
+   - **Iso View:** **Shadow Radius** `0.25`.
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+3. Na cena `Gameplay`:
+   - Em `[Systems]`, crie `ProjectilePool` com o componente `ProjectilePool`, e o prefab `Projectile` em **Prefab**.
+   - Em `[World]`, crie `SatelliteOrbit` na posição (0, 0, 0) com o componente `SatelliteOrbit`: **Satellite Prefab** = `Satellite`; **Projectiles** = o `ProjectilePool` da cena; **Starting Count** `1`. Os **Stats** já vêm com os valores base.
+   - **Dentro de `[World]/IsoFloor/Plane`** (Fase 2), crie `QuadrantView` com **Position** (0, 0, 0), **Rotation** (0, 0, 0) e **Scale** (1, 1, 1) locais, com o componente `QuadrantView` e o `SatelliteOrbit` em **Orbit**.
+   - Em `[Systems]`, crie `CombatDevTools` com o componente `CombatDevTools`: **Orbit** = o `SatelliteOrbit`; **Dummy Sprite** = a célula 0 de `Art/Enemies/SPR_Enemy_Grunt`.
+
+#### Passo 10 — Commit
+
+`git add .` e `git commit -m "Phase 3: satellites, orbit, quadrants, target priority, homing projectiles"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: um Satellite começa na ponta de cima do losango e dá uma volta em **8 s** no sentido anti-horário (Orbit Speed 45°/s), numa **elipse** em volta do planeta. Na metade de cima da elipse ele passa **por trás** do planeta; na de baixo, pela frente. A sombra dele corre pelo grid. O Quadrant onde ele está fica levemente iluminado no grid (uma ponta do losango), e o destaque passa de Quadrant em Quadrant junto com ele.
+- As duas linhas pontilhadas dos eixos correm na diagonal sobre o grid e ficam sempre visíveis.
+- **T** com o mouse dentro da elipse laranja dos Gizmos cria um alvo de teste, com sombra. O Satellite só atira nele **enquanto estiver no mesmo Quadrant**. Um alvo cuja borda fica fora da elipse (Attack Range 4 u; o alvo de teste tem raio 0,5 u) nunca é atingido.
+- Cada disparo é uma bolinha com um rastro curto que persegue o alvo e faz o Quadrant piscar. O Console mostra `-10 → 20 HP`, e na terceira bala o alvo some.
+- Com a cadência base (1 disparo/s) e 2 s em cada Quadrant, um alvo de 30 HP colocado sozinho num Quadrant morre depois de umas duas passagens do Satellite.
+- **2**, **3** e **4** trocam o número de Satellites, que se reorganizam igualmente espaçados. Com **4**, os quatro Quadrants ficam acesos o tempo todo.
+- Com dois alvos no mesmo Quadrant (um perto e um longe do planeta), **Q** alterna a Target Priority: em `Closest` o de perto é atingido primeiro; em `Farthest`, o de longe.
+- No Inspector do `SatelliteOrbit`, **Critical Chance** `0,5` faz metade dos disparos aparecer como `CRÍTICO`, com 15 de dano (10 × 1,5).
+- **Esc** pausa tudo: a órbita, os projéteis no ar e o piscar do Quadrant.
+
+**Problemas comuns:**
+- **O Satellite gira mas nunca atira:** o alvo está fora do Attack Range (confira a elipse laranja dos Gizmos), ou o `SatelliteOrbit` está sem o **Projectiles** preenchido (o Console mostra um `NullReferenceException`).
+- **O Satellite atira num alvo de outro Quadrant:** confira se o objeto `SatelliteOrbit` e o planeta estão na posição (0, 0, 0). Os Quadrants são medidos a partir de `WorldLayout.PlanetCenter`, que é a origem do chão. Confira também se o alvo nasceu do lado certo: o **T** converte o mouse para o chão (`ViewToGround`); sem isso, o alvo nasceria num ponto do chão que não é o que você vê.
+- **O preenchimento aparece de pé (um quarto de círculo redondo) em vez de deitado no grid:** o `QuadrantView` não está dentro do `IsoFloor/Plane`, ou o `IsoFloor` está sem o **Plane** preenchido.
+- **O preenchimento aparece por cima do planeta ou dos inimigos:** a Sorting Layer `Floor` precisa estar entre `Grid` e `World` (Fase 0, Passo 7).
+- **O Satellite fica sempre na frente do planeta, mesmo atrás dele:** o **Transparency Sort Axis** do Renderer 2D não está em (0, 1, 0) (Fase 2, Passo 13), ou o `View` do Satellite não está na mesma Sorting Layer (`World`) do planeta.
+- **O preenchimento aparece borrado:** a Pixel Perfect Camera precisa estar com **Grid Snapping** = `Upscale Render Texture` (Fase 2).
+- **O projétil some antes de chegar:** o alvo morreu no caminho (outro projétil chegou antes). É o comportamento definido na Seção 4.1.
+- **`Missing (Mono Script)` no `CombatDevTools` de um build:** alguém envolveu a classe inteira em `#if`. Só os campos e o `Update` ficam dentro do `#if`, como no código acima.
+
+Próxima fase: **Fase 4 — Inimigos**. Ela cria o `Enemy` (que implementa `ITarget`), os 4 inimigos comuns com os seus movimentos, o pooling e a explosão ao morrer.
+
+---
+
+### Fase 4 — Inimigos
+
+> Objetivo desta fase: os 4 inimigos comuns (Grunt, Scout, Swarmer e Brute) existem como dados, nascem, avançam até o planeta com o seu movimento, causam dano ao tocar e explodem ao morrer para os Satellites. Todos são reaproveitados por pooling. As Waves (quem nasce, quando e onde) entram na Fase 5; aqui os inimigos são criados por teclas de teste.
+
+**Conceitos novos:**
+- **ScriptableObject (`EnemyDefinition`):** um arquivo de dados na pasta do projeto, editado no Inspector, que não pertence a nenhuma cena. Cada inimigo é um asset (`Enemy_Grunt`, `Enemy_Scout`…) com os valores da Seção 4.4. Mudar o HP do Grunt é mudar um número num asset, sem tocar em código.
+- **Um prefab para todos os inimigos comuns:** o `Enemy` não sabe se é um Grunt ou um Brute: ele recebe uma `EnemyDefinition` ao nascer e passa a se comportar como ela. É isso que permite um pool só para os 4 tipos.
+- **Estratégia de movimento (`IEnemyMovement`):** o jeito de andar é um objeto separado que o inimigo usa. Linha reta e zigue-zague são duas implementações da mesma interface; um movimento novo (Seção 9) é só mais uma classe.
+- **Kamikaze:** o inimigo não atira. Ele anda até o planeta e, ao tocar (distância ao centro < raio do planeta, Seção 4.4), causa dano e some **sem dar Shards**.
+- **Eventos de morte:** o `EnemyPool` avisa quando um inimigo foi destruído por um Satellite (`EnemyKilled`) ou quando bateu no planeta (`EnemyReachedPlanet`). Quem se importa escuta: os Shards (Fase 6), as estatísticas da run (Fase 8) e as conquistas (Fase 9). O inimigo não precisa conhecer nenhum desses sistemas.
+
+#### Passo 1 — Movimentos: `IEnemyMovement`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyMovement.cs
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: tipos diferentes de inimigo andam de jeitos diferentes (reto, zigue-zague, e mais no
+    // futuro, Seção 9). Colocar um "if tipo == Scout" dentro do Enemy cresceria sem controle.
+    // ESTRATÉGIA: padrão "Strategy": o jeito de andar é um objeto separado que cumpre esta interface.
+    // Todo inimigo avança em linha reta para o centro do planeta. O movimento só decide o desvio LATERAL
+    // (perpendicular à direção do planeta) em função do tempo de vida do inimigo.
+    // Por ser uma função do tempo (e não "mova-se um pouco"), o movimento não precisa guardar estado.
+    public interface IEnemyMovement
+    {
+        float LateralOffset(float time);   // desvio lateral, em u, depois de "time" segundos de vida
+    }
+
+    // POR QUE: o Inspector não sabe mostrar uma interface; o designer escolhe o movimento por este enum,
+    // e a EnemyDefinition converte o enum na classe certa.
+    public enum MovementKind { Straight, ZigZag }
+
+    // POR QUE: Grunt, Swarmer e Brute andam em linha reta (Seção 4.4).
+    // ESTRATÉGIA: desvio sempre 0. Não guarda estado: uma instância serve para todos ("Instance" é um
+    // singleton simples: um único objeto compartilhado, criado uma vez).
+    public sealed class StraightMovement : IEnemyMovement
+    {
+        public static readonly StraightMovement Instance = new StraightMovement();
+
+        public float LateralOffset(float time) => 0f;
+    }
+
+    // POR QUE: o Scout faz um zigue-zague leve (amplitude 0,5 u, 1,5 Hz, Seção 4.4), mais difícil de acertar.
+    // ESTRATÉGIA: uma onda senoidal: amplitude × sen(2π × frequência × tempo). Os parâmetros são fixados
+    // no construtor e nunca mudam, então a instância também pode ser compartilhada.
+    public sealed class ZigZagMovement : IEnemyMovement
+    {
+        private readonly float _amplitude;   // quanto se afasta para cada lado, em u
+        private readonly float _frequency;   // quantas idas e voltas por segundo (Hz)
+
+        public ZigZagMovement(float amplitude, float frequency)
+        {
+            _amplitude = amplitude;
+            _frequency = frequency;
+        }
+
+        public float LateralOffset(float time) => _amplitude * Mathf.Sin(2f * Mathf.PI * _frequency * time);
+    }
+}
+```
+
+#### Passo 2 — Os dados de um inimigo: `EnemyDefinition`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyDefinition.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: Grunt, Scout, Swarmer e Brute diferem só em números e sprites. Criar uma classe (ou um
+    // prefab) por inimigo duplicaria código; deixar os números no código obrigaria a recompilar para
+    // balancear.
+    // ESTRATÉGIA: ScriptableObject = um asset de dados que vive na pasta do projeto (não numa cena).
+    // Cada inimigo é um arquivo (Enemy_Grunt.asset...) editado no Inspector. Um único prefab de Enemy
+    // recebe a definição ao nascer. Balancear vira editar asset, sem mexer em código.
+    // [CreateAssetMenu] adiciona a opção "Create > Armageddon > Enemy Definition" no botão direito da janela Project.
+    // Um inimigo comum (Seção 4.4). Os valores são os da Wave 1; a escalada por Wave (Seção 4.3) é
+    // aplicada no spawn, pelos multiplicadores que a Fase 5 calcula.
+    [CreateAssetMenu(menuName = "Armageddon/Enemy Definition", fileName = "Enemy_")]
+    public sealed class EnemyDefinition : ScriptableObject
+    {
+        // [Header] só desenha um título no Inspector para agrupar os campos.
+        [Header("Valores na Wave 1 (Seção 4.4)")]
+        [SerializeField] private float _hitpoints = 10f;
+        [SerializeField] private float _damage = 5f;
+        [SerializeField] private float _speed = 0.8f;             // u/s
+        [SerializeField] private float _shards = 1f;              // 0,5 = "1 a cada 2" (Swarmer)
+        [SerializeField] private float _radius = 0.5f;            // metade do sprite, em u: o alcance mede até a borda (Seção 4.1)
+
+        [Header("Movimento")]
+        [SerializeField] private MovementKind _movement = MovementKind.Straight;
+        [SerializeField] private float _zigZagAmplitude = 0.5f;
+        [SerializeField] private float _zigZagFrequency = 1.5f;
+
+        [Header("Spawn (usados pelas Waves, Fase 5)")]
+        [SerializeField] private int _unlockWave = 1;             // a partir de qual Wave pode aparecer
+        [SerializeField] private float _spawnWeight = 50f;        // peso no sorteio: maior = aparece mais
+        [SerializeField] private int _clusterSize = 1;            // Swarmer: 8
+        [SerializeField] private float _clusterSpread = 0.6f;     // raio do cacho, em u
+
+        [Header("Visual (Seção 6.4)")]
+        [SerializeField] private List<SpriteVariant> _variants = new List<SpriteVariant>();
+        [SerializeField] private float _fps = 6f;
+        [SerializeField] private ExplosionKind _explosion = ExplosionKind.Small;
+
+        // [NonSerialized]: cache só em memória, nunca salvo no asset. Criado na primeira vez que alguém pede.
+        // Atenção: por ficar em cache, mudar a amplitude/frequência no Inspector DURANTE o Play não tem efeito
+        // até o próximo Play.
+        [NonSerialized] private IEnemyMovement _movementInstance;
+
+        // Propriedades só de leitura: o resto do jogo lê os valores, mas só o Inspector os altera.
+        public float Hitpoints => _hitpoints;
+        public float Damage => _damage;
+        public float Speed => _speed;
+        public float Shards => _shards;
+        public float Radius => _radius;
+        public int UnlockWave => _unlockWave;
+        public float SpawnWeight => _spawnWeight;
+        public int ClusterSize => _clusterSize;
+        public float ClusterSpread => _clusterSpread;
+        public IReadOnlyList<SpriteVariant> Variants => _variants;
+        public float Fps => _fps;
+        public ExplosionKind Explosion => _explosion;
+
+        // Converte o enum do Inspector no objeto de movimento, uma vez só.
+        // Os movimentos não guardam estado, então todos os inimigos do mesmo tipo usam a mesma instância.
+        public IEnemyMovement Movement
+        {
+            get
+            {
+                if (_movementInstance == null)
+                {
+                    _movementInstance = _movement == MovementKind.ZigZag
+                        ? new ZigZagMovement(_zigZagAmplitude, _zigZagFrequency)
+                        : StraightMovement.Instance;
+                }
+                return _movementInstance;
+            }
+        }
+    }
+
+    // POR QUE: um inimigo pode ter várias versões visuais (cores/desenhos), sorteadas no spawn.
+    // Uma variação visual: os frames de uma linha da spritesheet (Grunt), ou uma célula só (Brute).
+    // ESTRATÉGIA: o Unity não serializa Sprite[][], por isso cada variação é um objeto com a sua lista.
+    [Serializable]
+    public sealed class SpriteVariant
+    {
+        public Sprite[] frames;
+    }
+}
+```
+
+#### Passo 3 — As explosões: `ExplosionPool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/World/ExplosionPool.cs
+using System;
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.World
+{
+    // POR QUE: cada inimigo tem um tamanho de explosão; o enum dá nome a cada um.
+    public enum ExplosionKind { Small, Big, Mothership }
+
+    // POR QUE: dezenas de inimigos morrem por segundo nas Waves altas; criar e destruir um objeto de
+    // explosão por morte seria o mesmo problema dos projéteis (ver ProjectilePool).
+    // ESTRATÉGIA: pool de objetos com SpriteAnimator em modo "uma vez". Cada explosão se devolve ao pool
+    // sozinha quando o animator avisa Finished. Quem chama só diz "tipo + posição".
+    // Toca uma explosão (animação "uma vez", Seção 6.4) e devolve o objeto ao pool quando ela termina.
+    // A explosão é só desenho e não se move: ela recebe a posição do CHÃO e já nasce na posição projetada,
+    // sem precisar de IsoView.
+    public sealed class ExplosionPool : MonoBehaviour
+    {
+        // Classe aninhada (dentro da outra) e privada: só existe para organizar o Inspector deste componente.
+        [Serializable]
+        private sealed class ExplosionFrames
+        {
+            public ExplosionKind kind;
+            public Sprite[] frames;
+            public float fps = 15f;
+        }
+
+        [SerializeField] private ExplosionFrames[] _explosions;
+        [SerializeField] private int _prewarm = 16;
+        [SerializeField] private string _sortingLayer = "VFX";
+
+        private ObjectPool<SpriteAnimator> _pool;
+
+        // Monta e aquece o pool (mesma estratégia do ProjectilePool).
+        private void Awake()
+        {
+            _pool = new ObjectPool<SpriteAnimator>(
+                createFunc: Create,
+                actionOnGet: a => a.gameObject.SetActive(true),
+                actionOnRelease: a => a.gameObject.SetActive(false),
+                actionOnDestroy: a => Destroy(a.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 256);
+
+            var warm = new SpriteAnimator[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        // Chamado pelo EnemyPool (e pela Mothership): toca a explosão do tipo pedido na posição do chão.
+        public void Play(ExplosionKind kind, Vector2 position)
+        {
+            var explosion = Find(kind);
+            if (explosion == null) return;   // tipo sem frames configurados no Inspector: ignora sem erro
+
+            var animator = _pool.Get();
+            animator.transform.position = IsoProjection.Snap(IsoProjection.GroundToView(position));
+            animator.SetFrames(explosion.frames, explosion.fps, false);   // false = toca uma vez
+        }
+
+        // Como o pool cria uma explosão nova: objeto vazio + SpriteRenderer + SpriteAnimator.
+        // A inscrição no Finished é feita UMA vez, na criação: toda vez que a animação terminar,
+        // o objeto volta ao pool sozinho.
+        private SpriteAnimator Create()
+        {
+            var go = new GameObject("Explosion");
+            go.transform.SetParent(transform, false);
+            go.AddComponent<SpriteRenderer>().sortingLayerName = _sortingLayer;
+            var animator = go.AddComponent<SpriteAnimator>();
+            animator.Finished += () => _pool.Release(animator);
+            return animator;
+        }
+
+        // Procura a configuração do tipo pedido. Lista pequena (3 itens): um laço simples basta.
+        private ExplosionFrames Find(ExplosionKind kind)
+        {
+            foreach (var explosion in _explosions)
+            {
+                if (explosion.kind == kind) return explosion;
+            }
+            return null;
+        }
+    }
+}
+```
+
+#### Passo 4 — O inimigo em cena: `Enemy`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/Enemy.cs
+using Armageddon.Combat;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: o jogo precisa distinguir COMO o inimigo saiu, porque cada saída tem consequência diferente
+    // (Shards, dano, nada).
+    // Como um inimigo saiu de cena.
+    public enum EnemyExit
+    {
+        Killed,          // destruído por um Satellite: vale Shards
+        ReachedPlanet,   // kamikaze: bateu no planeta e causou dano
+    }
+
+    // POR QUE: é o inimigo "vivo" na tela: anda até o planeta, recebe tiros e morre.
+    // ESTRATÉGIA: um único prefab serve para todos os tipos: os números vêm da EnemyDefinition
+    // (ScriptableObject) e o jeito de andar vem do IEnemyMovement. Implementa ITarget para os Satellites
+    // poderem mirar nele. Vive num pool (EnemyPool): Spawn faz o papel de "construtor" e Die devolve ao pool.
+    // O Enemy não conhece Shards, estatísticas nem conquistas: só avisa o pool, que dispara os eventos.
+    // Um inimigo comum vivo. Recebe a EnemyDefinition ao nascer (um prefab serve para todos os tipos).
+    // Este objeto é a raiz, no chão; o desenho (SpriteRenderer + SpriteAnimator + IsoView) fica no filho View.
+    public sealed class Enemy : MonoBehaviour, ITarget
+    {
+        private EnemyDefinition _definition;
+        private IEnemyMovement _movement;
+        private PlanetHealth _planet;      // a quem causar dano ao chegar
+        private EnemyPool _pool;           // a quem avisar ao sair de cena
+        private SpriteAnimator _animator;
+        private IsoView _view;
+        private Vector2 _radialPosition;   // a posição "na linha reta" até o planeta, sem o desvio lateral
+        private float _hitpoints;
+        private float _damage;
+        private float _age;                // segundos de vida (alimenta o zigue-zague)
+        private bool _alive;
+
+        public EnemyDefinition Definition => _definition;
+        public Vector2 Position { get; private set; }   // posição real (com o desvio lateral): é para onde os projéteis vão
+        public float Radius => _definition.Radius;
+        public float CurrentHitpoints => _hitpoints;
+        public bool IsAlive => _alive;
+
+        // Cache do desenho. GetComponentInChildren procura neste objeto e nos filhos: os dois ficam no View.
+        private void Awake()
+        {
+            _animator = GetComponentInChildren<SpriteAnimator>();
+            _view = GetComponentInChildren<IsoView>();
+        }
+
+        // Chamado pelo EnemyPool. Os multiplicadores são a escalada por Wave (Seção 4.3); 1 = valores da Wave 1.
+        // Zera TODO o estado: o objeto pode estar sendo reaproveitado de um inimigo que já morreu.
+        // "internal": só código da assembly Armageddon chama (na prática, o EnemyPool).
+        internal void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier, float damageMultiplier,
+                            PlanetHealth planet, EnemyPool pool)
+        {
+            _definition = definition;
+            _movement = definition.Movement;
+            _planet = planet;
+            _pool = pool;
+            _radialPosition = position;
+            _hitpoints = definition.Hitpoints * hitpointsMultiplier;
+            _damage = definition.Damage * damageMultiplier;
+            _age = 0f;
+            _alive = true;
+
+            // Variação visual sorteada no spawn (Seção 6.2). O prefab tem "Random Start Frame" marcado,
+            // para os inimigos não piscarem todos em sincronia.
+            var variant = definition.Variants[Random.Range(0, definition.Variants.Count)];
+            _animator.SetFrames(variant.frames, definition.Fps, true);
+            _view.SetShadowRadius(definition.Radius);   // a sombra no grid tem o tamanho deste tipo (Seção 6.2)
+
+            ApplyPosition();
+            TargetRegistry.Register(this);   // a partir de agora os Satellites enxergam este inimigo
+        }
+
+        // Anda em direção ao centro e confere se chegou ao planeta.
+        private void Update()
+        {
+            if (!_alive) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado
+
+            _age += deltaTime;
+            Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
+            float distance = toCenter.magnitude;
+
+            // Tocou o planeta (Seção 4.4): causa dano e some, sem Shards.
+            if (distance <= WorldLayout.PlanetRadius)
+            {
+                _planet.TakeDamage(_damage);
+                Die(EnemyExit.ReachedPlanet);
+                return;
+            }
+
+            // toCenter / distance = direção (vetor de tamanho 1). O Min impede de "passar do centro" num frame longo.
+            _radialPosition += toCenter / distance * Mathf.Min(_definition.Speed * deltaTime, distance);
+            ApplyPosition();
+        }
+
+        // Cumpre ITarget.TakeDamage: chamado pelo Projectile ao acertar.
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!_alive) return;
+            _hitpoints -= amount;
+            if (_hitpoints <= 0f) Die(EnemyExit.Killed);
+        }
+
+        // Calcula a posição real = posição na linha reta + desvio lateral, e move o transform no CHÃO.
+        // O IsoView do filho View projeta essa posição na tela (Fase 2).
+        // Estratégia: separar "avanço" (radial) de "desvio" (lateral) garante que o zigue-zague nunca atrase
+        // nem adiante a chegada ao planeta.
+        private void ApplyPosition()
+        {
+            Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
+            Vector2 forward = toCenter.sqrMagnitude > 0f ? toCenter.normalized : Vector2.zero;
+            // (-y, x) é o vetor "forward" girado 90°: a direção de lado.
+            Vector2 side = new Vector2(-forward.y, forward.x);
+            Position = _radialPosition + side * _movement.LateralOffset(_age);
+            transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
+        }
+
+        // Único caminho de saída: marca como morto, sai do registro de alvos e avisa o pool
+        // (que toca a explosão, dispara os eventos e desliga o objeto).
+        private void Die(EnemyExit exit)
+        {
+            _alive = false;
+            TargetRegistry.Unregister(this);
+            _pool.HandleEnemyGone(this, exit);
+        }
+
+        // OnDisable: chamado quando o objeto é desligado ou destruído.
+        // Segurança: se a cena for descarregada com o inimigo vivo, ele sai do registro.
+        private void OnDisable()
+        {
+            if (!_alive) return;
+            _alive = false;
+            TargetRegistry.Unregister(this);
+        }
+    }
+}
+```
+
+#### Passo 5 — Criar e reaproveitar inimigos: `EnemyPool`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyPool.cs
+using System;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: (1) até 150 inimigos na tela: criar/destruir cada um travaria o navegador (ver ProjectilePool);
+    // (2) vários sistemas precisam saber quando um inimigo morreu (Shards, estatísticas, conquistas).
+    // ESTRATÉGIA: o pool é a "porta de entrada e de saída" dos inimigos. Spawn cria (incluindo cachos do
+    // Swarmer); HandleEnemyGone recebe o aviso do Enemy, conta, toca a explosão e dispara os eventos
+    // públicos. Assim os outros sistemas escutam UM objeto em vez de cada inimigo.
+    // Cria os inimigos comuns (com cachos, no caso do Swarmer), reaproveita-os e avisa quando cada um some.
+    public sealed class EnemyPool : MonoBehaviour
+    {
+        [SerializeField] private Enemy _prefab;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private ExplosionPool _explosions;
+        [SerializeField] private int _prewarm = 64;
+
+        private ObjectPool<Enemy> _pool;
+
+        // Inimigos vivos agora. A Fase 5 usa para o limite de 150 na tela e para o Wave Clear.
+        public int AliveCount { get; private set; }
+
+        public event Action<Enemy> EnemyKilled;          // destruído por um Satellite: vale Shards (Fase 6)
+        public event Action<Enemy> EnemyReachedPlanet;   // kamikaze: já causou o dano; não vale Shards
+
+        // Monta e aquece o pool (mesma estratégia do ProjectilePool).
+        private void Awake()
+        {
+            _pool = new ObjectPool<Enemy>(
+                createFunc: () => Instantiate(_prefab, transform),
+                actionOnGet: e => e.gameObject.SetActive(true),
+                actionOnRelease: e => e.gameObject.SetActive(false),
+                actionOnDestroy: e => Destroy(e.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 256);
+
+            var warm = new Enemy[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        // Um "slot de spawn" (Seção 4.3): 1 inimigo, ou um cacho de ClusterSize (Swarmer = 8) espalhado em volta do ponto.
+        // Parâmetros com "= 1f" são opcionais: as ferramentas de teste chamam sem escalada.
+        public void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier = 1f, float damageMultiplier = 1f)
+        {
+            int count = Mathf.Max(1, definition.ClusterSize);
+            for (int i = 0; i < count; i++)
+            {
+                // insideUnitCircle = ponto aleatório dentro de um círculo de raio 1.
+                Vector2 p = count == 1 ? position : position + UnityEngine.Random.insideUnitCircle * definition.ClusterSpread;
+                AliveCount++;
+                _pool.Get().Spawn(definition, p, hitpointsMultiplier, damageMultiplier, _planet, this);
+            }
+        }
+
+        // Chamado pelo próprio Enemy ao sair de cena.
+        internal void HandleEnemyGone(Enemy enemy, EnemyExit exit)
+        {
+            AliveCount--;
+            // A explosão aparece sempre: destruído ou batendo no planeta.
+            _explosions.Play(enemy.Definition.Explosion, enemy.Position);
+
+            if (exit == EnemyExit.Killed) EnemyKilled?.Invoke(enemy);
+            else if (exit == EnemyExit.ReachedPlanet) EnemyReachedPlanet?.Invoke(enemy);
+
+            // Devolve por último: os ouvintes dos eventos acima ainda podem ler os dados do inimigo.
+            _pool.Release(enemy);
+        }
+    }
+}
+```
+
+#### Passo 6 — Teclas de teste: `EnemyDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.World;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: antes das Waves (Fase 5), precisamos criar inimigos à mão para testar movimento, combate e morte.
+    // ESTRATÉGIA: componente de cena com as 4 definições arrastadas no Inspector; lê teclas e chama o
+    // EnemyPool. Também escuta os eventos do pool para mostrar no Console que eles disparam certo.
+    // G = Grunt · C = Scout · V = cacho de Swarmers · B = Brute, todos no mouse · R = 10 inimigos sorteados na borda (12 u).
+    // Mesma regra do CombatDevTools: a classe existe em todo build; campos e Update, só em desenvolvimento.
+    public sealed class EnemyDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private EnemyPool _pool;
+        [SerializeField] private EnemyDefinition _grunt;
+        [SerializeField] private EnemyDefinition _scout;
+        [SerializeField] private EnemyDefinition _swarmer;
+        [SerializeField] private EnemyDefinition _brute;
+
+        // Par OnEnable/OnDisable para inscrever/desinscrever eventos: padrão seguro para componentes de cena
+        // (se o objeto for desligado, para de ouvir).
+        private void OnEnable()
+        {
+            _pool.EnemyKilled += HandleEnemyKilled;
+            _pool.EnemyReachedPlanet += HandleEnemyReachedPlanet;
+        }
+
+        private void OnDisable()
+        {
+            _pool.EnemyKilled -= HandleEnemyKilled;
+            _pool.EnemyReachedPlanet -= HandleEnemyReachedPlanet;
+        }
+
+        // Lê as teclas de teste.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (Mouse.current != null && Camera.main != null)
+            {
+                // O mouse está na vista; o inimigo nasce no ponto do chão embaixo dele (ver DevShortcuts, F4).
+                Vector2 mouse = IsoProjection.ViewToGround(Camera.main.ScreenToWorldPoint(Mouse.current.position.ReadValue()));
+                if (keyboard.gKey.wasPressedThisFrame) _pool.Spawn(_grunt, mouse);
+                if (keyboard.cKey.wasPressedThisFrame) _pool.Spawn(_scout, mouse);
+                if (keyboard.vKey.wasPressedThisFrame) _pool.Spawn(_swarmer, mouse);
+                if (keyboard.bKey.wasPressedThisFrame) _pool.Spawn(_brute, mouse);
+            }
+
+            if (keyboard.rKey.wasPressedThisFrame)
+            {
+                var all = new[] { _grunt, _scout, _swarmer, _brute };
+                for (int i = 0; i < 10; i++)
+                {
+                    // Ângulo aleatório (em radianos) → ponto no círculo de spawn.
+                    float angle = Random.Range(0f, 2f * Mathf.PI);
+                    var edge = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * WorldLayout.SpawnRadius;
+                    _pool.Spawn(all[Random.Range(0, all.Length)], edge);
+                }
+                Debug.Log($"[Dev] Inimigos vivos: {_pool.AliveCount}");
+            }
+        }
+
+        // Respostas aos eventos do pool: só registram no Console.
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            Debug.Log($"[Dev] {enemy.Definition.name} destruído (+{enemy.Definition.Shards} Shards na Fase 6). Vivos: {_pool.AliveCount}");
+        }
+
+        private void HandleEnemyReachedPlanet(Enemy enemy)
+        {
+            Debug.Log($"[Dev] {enemy.Definition.name} atingiu o planeta. Vivos: {_pool.AliveCount}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 7 — Os 4 assets de inimigo
+
+Em `Assets/_Project/Data/Enemies/`, **botão direito → Create → Armageddon → Enemy Definition**, uma vez para cada inimigo. Preencha com os valores das Seções 4.3, 4.4 e 6.4:
+
+| Asset | Hitpoints | Damage | Speed | Shards | Radius | Movement | Unlock Wave | Spawn Weight | Cluster Size | Variants | Fps | Explosion |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `Enemy_Grunt` | 10 | 5 | 0.8 | 1 | 0.5 | Straight | 1 | 50 | 1 | 2 variações: células 0–3 e 4–7 de `SPR_Enemy_Grunt` | 6 | Small |
+| `Enemy_Scout` | 6 | 3 | 2 | 1 | 0.5 | ZigZag (0.5 / 1.5) | 3 | 25 | 1 | 1 variação: células 0–3 de `SPR_Enemy_Scout` | 12 | Small |
+| `Enemy_Swarmer` | 3 | 2 | 1.2 | 0.5 | 0.25 | Straight | 6 | 15 | 8 | 1 variação: células 0–1 de `SPR_Enemy_Swarmer` | 4 | Small |
+| `Enemy_Brute` | 80 | 20 | 0.5 | 4 | 0.75 | Straight | 8 | 10 | 1 | 4 variações de 1 frame: células 0, 1, 2 e 3 de `SPR_Enemy_Brute` | 1 | Big |
+
+Na lista **Variants**, clique **+** uma vez por variação e arraste as células para o **Frames** de cada uma. No Brute, cada variação tem um frame só: o `SpriteAnimator` fica mostrando essa imagem parada.
+
+#### Passo 8 — Prefab e cena
+
+1. **Prefab do inimigo:** objeto vazio `Enemy` com o componente **Enemy**. Dentro dele, um filho vazio `View` com:
+   - **Sprite Renderer:** qualquer célula do Grunt (só para ver o prefab); **Sorting Layer** `World`.
+   - **Sprite Animator:** **Frames** vazio (o `Enemy` preenche ao nascer); **Random Start Frame** **marcado**.
+   - **Iso View:** **Shadow Radius** `0` (o `Enemy` acerta o tamanho da sombra ao nascer, pelo **Radius** da definição).
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+2. Na cena `Gameplay`, em `[Systems]`:
+   - `ExplosionPool`, com o componente `ExplosionPool`. Em **Explosions**, crie 2 itens: `Small` com as 5 células de `Art/VFX/SPR_VFX_Explosion_Small` e **Fps** `15`; e `Big` com as 5 de `SPR_VFX_Explosion_Big` e **Fps** `15`. A da Mothership entra na Fase 7.
+   - `EnemyPool`, com o componente `EnemyPool`: **Prefab** = `Enemy`; **Planet** = o objeto `Planet` da cena; **Explosions** = o `ExplosionPool`.
+   - `EnemyDevTools`, com o componente `EnemyDevTools`: **Pool** = o `EnemyPool`, e os 4 assets de inimigo.
+
+#### Passo 9 — Commit
+
+`git add .` e `git commit -m "Phase 4: enemy definitions, movement, pooling, kamikaze, explosions"`.
+
+**✅ Checkpoint:**
+- **R** faz nascer 10 inimigos fora da tela, e todos andam em direção ao planeta, vindos de qualquer direção do losango. Cada um tem a sua sombra no grid, e um inimigo que passa atrás do planeta some atrás dele por um instante. Nenhum pisca em sincronia com os outros.
+- Cada tipo anda do seu jeito: o Grunt em linha reta a 0,8 u/s, o Scout **rápido e em zigue-zague**, o Swarmer em **cacho de 8**, e o Brute **bem devagar**. Os Grunts aparecem com as 2 variações visuais, e os Brutes com as 4.
+- Um inimigo que chega ao planeta explode na borda dele e tira HP conforme a tabela: Grunt 5, Scout 3, Swarmer 2 cada, Brute 20. O Console mostra `atingiu o planeta`, e **F6** mostra o HP atual.
+- No Quadrant do Satellite e dentro do alcance, os inimigos são destruídos: o Grunt com **1** disparo, o Brute com **8** (e explosão maior). O Console mostra `destruído (+1 Shards…)`.
+- **G**, **C**, **V** e **B** criam cada tipo no mouse. Um Brute criado dentro do alcance mostra, pelos disparos, que precisa de 8 tiros.
+- **Esc** congela os inimigos, as explosões e a órbita.
+- Na janela **Hierarchy**, `EnemyPool` já tem 64 inimigos desativados desde o início. Depois de muitos **R**, o número de objetos para de crescer: eles são reaproveitados.
+
+**Problemas comuns:**
+- **`ArgumentOutOfRangeException` no `Enemy.Spawn`:** a `EnemyDefinition` está com a lista **Variants** vazia.
+- **O inimigo aparece sem imagem:** a variação tem o **Frames** vazio, ou o **Fps** está em 0.
+- **Os inimigos passam pelo planeta sem dar dano:** o campo **Planet** do `EnemyPool` está vazio (o Console mostra um `NullReferenceException`).
+- **Os Satellites não atiram nos inimigos, só nos alvos de teste:** o `Enemy` precisa se registrar no `TargetRegistry` no `Spawn`. Confira se o código está igual ao do Passo 4.
+- **Os inimigos piscam todos juntos:** falta marcar **Random Start Frame** no `SpriteAnimator` do prefab.
+- **`NullReferenceException` no `Enemy.Awake` ou no `Spawn`:** o prefab está sem o filho `View`, ou o `View` está sem o `SpriteAnimator` ou o `IsoView`.
+- **As explosões aparecem longe de onde o inimigo morreu:** o `ExplosionPool.Play` está colocando a posição do chão direto no transform. Ela precisa passar por `IsoProjection.GroundToView`, como no Passo 3.
+- **A explosão fica parada no último frame:** o `ExplosionPool` devolve a explosão ao pool no evento `Finished`, que só dispara com **Loop** desmarcado, e é por isso que o `Play` usa `loop: false`.
+
+Próxima fase: **Fase 5 — Waves**. Ela coloca o `WaveDirector` para decidir quantos inimigos nascem, de que tipo, de quais Spawn Sectors e com qual escalada, com o aviso de 2 s na borda e o Wave Clear.
+
+---
+
+### Fase 5 — Waves
+
+> Objetivo desta fase: a run acontece sozinha. Um aviso de 2 s na borda da tela mostra de quais Spawn Sectors a próxima Wave vem; os inimigos nascem espalhados nos primeiros 20 s, com a composição e a escalada da Seção 4.3; a próxima Wave começa quando o timer acaba ou quando a tela esvazia; e o Wave Clear paga todas as Waves pendentes. O pagamento em Shards entra na Fase 6, e a Mothership (Boss Wave) na Fase 7.
+
+**Conceitos novos:**
+- **Máquina de estados simples:** o `WaveDirector` está sempre numa de três fases: `Idle` (sem run), `Warning` (os 2 s de aviso) e `Running` (a Wave rodando). Cada fase tem a sua regra de saída. Assim, o código de "o que fazer agora" fica num lugar só e fácil de ler.
+- **Fila de spawn:** ao começar, a Wave coloca todos os seus slots numa fila, cada um com o seu horário de nascer. A cada frame, nasce quem já está na hora e cabe no limite de 150 inimigos. Um slot que não coube fica na fila e nasce depois, mesmo que outra Wave já tenha começado: é o "o spawn espera" da Seção 4.3.
+- **Sorteio com pesos:** cada tipo de inimigo tem um peso (Grunt 50, Scout 25…). O sorteio soma os pesos dos tipos já liberados, sorteia um número nessa soma e vê em qual faixa ele caiu. Os pesos ficam "renormalizados" sem nenhuma conta extra.
+- **Dados de balanceamento separados do código (`WaveBalance`):** todos os números da Seção 4.3 ficam num asset. O ajuste depois dos playtests é editar esse asset, não recompilar.
+
+#### Passo 1 — Os números das Waves: `WaveBalance`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveBalance.cs
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // POR QUE: o ritmo do jogo (duração das Waves, quantos inimigos, quanto eles crescem) vai ser
+    // ajustado muitas vezes depois dos playtests. Esses números não podem estar espalhados no código.
+    // ESTRATÉGIA: um ScriptableObject (ver EnemyDefinition) que guarda os números E as fórmulas pequenas
+    // que dependem deles (SlotsFor, HitpointsMultiplier...). O WaveDirector só pergunta; nunca faz conta
+    // de balanceamento sozinho.
+    // Todos os números da Seção 4.3 (valores iniciais, ajustar com playtests).
+    [CreateAssetMenu(menuName = "Armageddon/Wave Balance", fileName = "WaveBalance")]
+    public sealed class WaveBalance : ScriptableObject
+    {
+        [Header("Tempo (s)")]
+        [SerializeField] private float _waveDuration = 30f;
+        [SerializeField] private float _bossWaveDuration = 60f;
+        [SerializeField] private float _warningDuration = 2f;
+        [SerializeField] private float _spawnWindow = 20f;      // os slots nascem espalhados nestes primeiros segundos
+
+        [Header("Tamanho: slots = min(base + porWave·w, máximo)")]
+        [SerializeField] private int _baseSlots = 6;
+        [SerializeField] private int _slotsPerWave = 2;
+        [SerializeField] private int _maxSlots = 60;
+        [SerializeField] private int _maxAlive = 150;           // limite de inimigos na tela
+
+        [Header("Escalada: base × crescimento^(w−1)")]
+        [SerializeField] private float _hitpointsGrowth = 1.09f;
+        [SerializeField] private float _damageGrowth = 1.06f;
+
+        [Header("Spawn Sectors: 1 setor até a Wave anterior à primeira abaixo")]
+        [SerializeField] private int _twoSectorsFromWave = 5;
+        [SerializeField] private int _threeSectorsFromWave = 15;
+
+        [Header("Boss Wave e Wave Clear")]
+        [SerializeField] private int _bossEvery = 10;
+        [SerializeField] private int _clearBonusBase = 5;       // bônus = (base + w) × (1 + Resource per Wave)
+
+        [Header("Inimigos comuns sorteáveis")]
+        [SerializeField] private List<EnemyDefinition> _enemies = new List<EnemyDefinition>();
+
+        public float WaveDuration => _waveDuration;
+        public float BossWaveDuration => _bossWaveDuration;
+        public float WarningDuration => _warningDuration;
+        public float SpawnWindow => _spawnWindow;
+        public int MaxAlive => _maxAlive;
+        public IReadOnlyList<EnemyDefinition> Enemies => _enemies;
+
+        // Wave 10, 20, 30...: "%" é o resto da divisão; resto 0 = múltiplo de _bossEvery.
+        public bool IsBossWave(int wave) => wave > 0 && wave % _bossEvery == 0;
+        // Quantos slots de spawn a Wave tem (Seção 4.3): min(6 + 2·w, 60).
+        public int SlotsFor(int wave) => Mathf.Min(_baseSlots + _slotsPerWave * wave, _maxSlots);
+        // Crescimento exponencial: Mathf.Pow(1,09, w−1) = 1,09 multiplicado por ele mesmo (w−1) vezes. Wave 1 = ×1.
+        public float HitpointsMultiplier(int wave) => Mathf.Pow(_hitpointsGrowth, wave - 1);
+        public float DamageMultiplier(int wave) => Mathf.Pow(_damageGrowth, wave - 1);
+
+        // Quantos Spawn Sectors a Wave sorteia (mais setores = ataque de mais direções).
+        public int SectorCountFor(int wave)
+        {
+            if (wave >= _threeSectorsFromWave) return 3;
+            if (wave >= _twoSectorsFromWave) return 2;
+            return 1;
+        }
+
+        // Bônus de uma Wave paga no Wave Clear, antes do Stat Resource per Wave (aplicado na Fase 6).
+        public int ClearBonus(int wave) => _clearBonusBase + wave;
+    }
+}
+```
+
+#### Passo 2 — O diretor das Waves: `WaveDirector`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveDirector.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // POR QUE: a run precisa de um "maestro" que decida quando cada Wave começa, quais inimigos nascem,
+    // de onde, com que força, e quando a tela foi limpa (Wave Clear). Sem isso, o jogo é só um planeta parado.
+    // ESTRATÉGIA:
+    //  - Máquina de estados com 3 fases (Idle → Warning → Running → Warning...). O Update olha a fase atual
+    //    e decide só a regra de saída dela.
+    //  - Ao começar uma Wave, TODOS os slots são decididos de uma vez (tipo, posição, escalada, horário) e
+    //    postos numa fila; a cada frame nasce quem já está na hora e cabe no limite de 150.
+    //  - Guarda a lista de Waves "não pagas"; o Wave Clear paga todas de uma vez.
+    //  - Não cria inimigos diretamente: pede ao EnemyPool. Não paga Shards: só dispara WaveCleared
+    //    (a economia da Fase 6 escuta). Números vêm do WaveBalance.
+    // Conduz a run Wave a Wave (Seção 4.3): aviso de 2 s, spawn espalhado, escalada, fim da Wave e Wave Clear.
+    public sealed class WaveDirector : MonoBehaviour
+    {
+        public const int SectorCount = 6;          // 6 arcos de 60°
+        public const float SectorArc = 60f;
+
+        // Enum privado: as fases só importam dentro desta classe.
+        private enum Phase { Idle, Warning, Running }
+
+        // Um slot esperando para nascer: tipo, posição e escalada já decididos quando a Wave começou.
+        // struct (tipo de valor) porque é só um pacote de dados pequeno, guardado aos montes na fila.
+        private struct PendingSpawn
+        {
+            public EnemyDefinition Definition;
+            public Vector2 Position;
+            public float HitpointsMultiplier;
+            public float DamageMultiplier;
+            public float DueTime;   // em "tempo de run" (_runTime), não em tempo da Wave
+        }
+
+        [SerializeField] private WaveBalance _balance;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private bool _autoStart = true;   // a Fase 8 desliga: o RunController chama StartRun
+
+        // Queue = fila (o primeiro que entra é o primeiro que sai). Como os horários são crescentes,
+        // basta olhar a frente da fila.
+        private readonly Queue<PendingSpawn> _queue = new Queue<PendingSpawn>();
+        private readonly List<int> _sectors = new List<int>();          // Spawn Sectors sorteados para a Wave atual
+        private readonly List<int> _unpaidWaves = new List<int>();      // Waves começadas e ainda sem Wave Clear
+        private readonly List<EnemyDefinition> _unlocked = new List<EnemyDefinition>();   // reaproveitada para não alocar
+        private Phase _phase = Phase.Idle;
+        private float _phaseTime;   // segundos desde que a fase atual começou
+        private float _runTime;     // segundos desde o começo da run (relógio da fila de spawn)
+        private float _duration;    // duração da Wave atual (normal ou Boss)
+        private int _externalAlive; // inimigos vivos fora do EnemyPool (a Mothership)
+
+        public int CurrentWave { get; private set; }
+        public IReadOnlyList<int> CurrentSectors => _sectors;   // os Spawn Sectors da Wave atual (a Mothership entra por um deles)
+        public bool IsBossWave => _balance.IsBossWave(CurrentWave);
+        public bool IsWarning => _phase == Phase.Warning;
+        public float TimeRemaining => _phase == Phase.Running ? Mathf.Max(0f, _duration - _phaseTime) : 0f;
+        public int AliveCount => _enemies.AliveCount + _externalAlive;
+
+        public event Action<int, IReadOnlyList<int>> WaveWarning;          // Wave que vem e os seus Spawn Sectors
+        public event Action<int> WaveStarted;
+        public event Action<int> BossWaveStarted;                          // a Fase 7 cria a Mothership aqui
+        public event Action<IReadOnlyList<int>, bool> WaveCleared;         // Waves pagas; true = antes do timer
+
+        // Até a Fase 8, a run começa sozinha ao abrir a cena.
+        private void Start()
+        {
+            if (_autoStart) StartRun();
+        }
+
+        // Zera o estado e começa pelo aviso da Wave 1.
+        public void StartRun()
+        {
+            _queue.Clear();
+            _unpaidWaves.Clear();
+            _runTime = 0f;
+            BeginWarning(1);
+        }
+
+        // Para tudo (fim de run). Os inimigos já em cena continuam; quem encerra a run cuida deles.
+        public void StopRun()
+        {
+            _phase = Phase.Idle;
+            _queue.Clear();
+        }
+
+        // Inimigos vivos que não vêm do EnemyPool (a Mothership, Fase 7). Contam para o Wave Clear.
+        public void AddExternalAlive(int delta)
+        {
+            _externalAlive = Mathf.Max(0, _externalAlive + delta);
+        }
+
+        // O "coração" da máquina de estados: avança relógios, faz nascer quem está na hora,
+        // confere o Wave Clear e troca de fase quando a regra de saída é cumprida.
+        private void Update()
+        {
+            float deltaTime = Time.deltaTime;
+            if (_phase == Phase.Idle || deltaTime <= 0f) return;
+
+            _phaseTime += deltaTime;
+            _runTime += deltaTime;
+            SpawnDue();
+
+            if (TryWaveClear()) return;
+
+            if (_phase == Phase.Warning && _phaseTime >= _balance.WarningDuration)
+            {
+                BeginWave();
+            }
+            else if (_phase == Phase.Running && _phaseTime >= _duration)
+            {
+                // Timer acabou com inimigos vivos: esta Wave continua "não paga" até o próximo Wave Clear.
+                BeginWarning(CurrentWave + 1);
+            }
+        }
+
+        // Entra na fase de aviso da Wave "wave": sorteia os setores e avisa (o SpawnSectorIndicator mostra as setas).
+        private void BeginWarning(int wave)
+        {
+            CurrentWave = wave;
+            _phase = Phase.Warning;
+            _phaseTime = 0f;
+            ChooseSectors(_balance.SectorCountFor(wave));
+            WaveWarning?.Invoke(wave, _sectors);
+        }
+
+        // Entra na fase Running: define a duração, marca a Wave como "não paga" e enfileira os slots.
+        private void BeginWave()
+        {
+            _phase = Phase.Running;
+            _phaseTime = 0f;
+            int wave = CurrentWave;
+            bool boss = _balance.IsBossWave(wave);
+            _duration = boss ? _balance.BossWaveDuration : _balance.WaveDuration;
+            _unpaidWaves.Add(wave);
+
+            // Boss Wave: só a Mothership, sem inimigos comuns (Seção 4.5).
+            if (!boss) EnqueueSlots(wave);
+
+            WaveStarted?.Invoke(wave);
+            if (boss) BossWaveStarted?.Invoke(wave);
+        }
+
+        // Decide todos os slots da Wave e os coloca na fila, espalhados ao longo da janela de spawn (20 s).
+        private void EnqueueSlots(int wave)
+        {
+            // 1) Quais inimigos já foram liberados nesta Wave, e a soma dos pesos deles.
+            _unlocked.Clear();
+            float totalWeight = 0f;
+            foreach (var definition in _balance.Enemies)
+            {
+                if (definition.UnlockWave > wave) continue;
+                _unlocked.Add(definition);
+                totalWeight += definition.SpawnWeight;
+            }
+            if (_unlocked.Count == 0) return;
+
+            // 2) Quantos slots, de quanto em quanto tempo, e a escalada desta Wave.
+            int slots = _balance.SlotsFor(wave);
+            float interval = _balance.SpawnWindow / slots;
+            float hitpoints = _balance.HitpointsMultiplier(wave);
+            float damage = _balance.DamageMultiplier(wave);
+
+            // 3) Um PendingSpawn por slot. "new PendingSpawn { ... }" preenche os campos na criação.
+            for (int i = 0; i < slots; i++)
+            {
+                _queue.Enqueue(new PendingSpawn
+                {
+                    Definition = PickWeighted(totalWeight),
+                    Position = RandomPointInSectors(),
+                    HitpointsMultiplier = hitpoints,
+                    DamageMultiplier = damage,
+                    DueTime = _runTime + i * interval,
+                });
+            }
+        }
+
+        // Nasce quem já está na hora, respeitando o limite de inimigos na tela. Um cacho de Swarmers conta como 8.
+        // Peek olha o primeiro da fila sem tirar; Dequeue tira. Se o primeiro não pode nascer, ninguém atrás dele nasce.
+        private void SpawnDue()
+        {
+            while (_queue.Count > 0)
+            {
+                var next = _queue.Peek();
+                if (next.DueTime > _runTime) return;
+                if (AliveCount + Mathf.Max(1, next.Definition.ClusterSize) > _balance.MaxAlive) return;   // o spawn espera
+
+                _queue.Dequeue();
+                _enemies.Spawn(next.Definition, next.Position, next.HitpointsMultiplier, next.DamageMultiplier);
+            }
+        }
+
+        // Wave Clear (Seção 4.3): a tela ficou vazia e não há ninguém esperando para nascer.
+        // Paga TODAS as Waves pendentes, inclusive as que já tinham passado do timer.
+        // Devolve true se aconteceu (o Update então não confere mais nada neste frame).
+        private bool TryWaveClear()
+        {
+            if (_unpaidWaves.Count == 0 || _queue.Count > 0 || AliveCount > 0) return false;
+
+            bool beforeTimer = _phase == Phase.Running && _phaseTime < _duration;
+            // ToArray faz uma cópia: quem recebe o evento não é afetado pelo Clear logo abaixo.
+            var paid = _unpaidWaves.ToArray();
+            _unpaidWaves.Clear();
+            WaveCleared?.Invoke(paid, beforeTimer);
+
+            // Na fase Running, a tela vazia também começa a próxima Wave (Seção 4.3).
+            if (_phase == Phase.Running) BeginWarning(CurrentWave + 1);
+            return true;
+        }
+
+        // Sorteio com pesos: sorteia um número entre 0 e a soma dos pesos e "desconta" o peso de cada tipo
+        // até o número ficar negativo. Tipos com peso maior ocupam uma faixa maior, então saem mais.
+        private EnemyDefinition PickWeighted(float totalWeight)
+        {
+            float roll = UnityEngine.Random.value * totalWeight;
+            foreach (var definition in _unlocked)
+            {
+                roll -= definition.SpawnWeight;
+                if (roll < 0f) return definition;
+            }
+            return _unlocked[_unlocked.Count - 1];   // proteção contra arredondamento
+        }
+
+        // Sorteia 'count' setores diferentes entre os 6 (embaralhamento parcial).
+        // Estratégia (Fisher–Yates parcial): lista 0..5; para as primeiras "count" posições, troca cada uma
+        // com uma posição aleatória à frente; depois corta o resto. Garante setores sem repetição.
+        private void ChooseSectors(int count)
+        {
+            _sectors.Clear();
+            for (int i = 0; i < SectorCount; i++) _sectors.Add(i);
+            for (int i = 0; i < count; i++)
+            {
+                int j = UnityEngine.Random.Range(i, SectorCount);   // Range com int: o máximo NÃO é incluído
+                (_sectors[i], _sectors[j]) = (_sectors[j], _sectors[i]);   // troca os dois valores (sintaxe de tupla)
+            }
+            _sectors.RemoveRange(count, SectorCount - count);
+        }
+
+        // Um ponto aleatório num dos setores sorteados, a 12 u do centro (fora da tela).
+        private Vector2 RandomPointInSectors()
+        {
+            int sector = _sectors[UnityEngine.Random.Range(0, _sectors.Count)];
+            float angle = (sector * SectorArc + UnityEngine.Random.Range(0f, SectorArc)) * Mathf.Deg2Rad;
+            return WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * WorldLayout.SpawnRadius;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Só para teste: faz o timer da Wave atual acabar agora.
+        public void DevEndWaveTimer()
+        {
+            if (_phase == Phase.Running) _phaseTime = _duration;
+        }
+#endif
+    }
+}
+```
+
+> **Setores e setas:** o setor `k` cobre de `60·k°` a `60·k + 60°`; o centro dele fica em `30 + 60·k°`. São exatamente as 6 direções das setas de `SPR_UI_SpawnSectorArrow` (linha `k` da spritesheet, Seção 6.4).
+
+#### Passo 3 — O aviso na borda: `SpawnSectorIndicator`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/SpawnSectorIndicator.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Waves
+{
+    // POR QUE: os inimigos nascem fora da tela (12 u). Sem aviso, o jogador não teria como se preparar
+    // (ex.: trocar a Target Priority ou comprar Upgrades) para a direção do ataque.
+    // ESTRATÉGIA: componente só visual que escuta o WaveDirector. Cria de antemão uma seta por setor
+    // (6 no total) e só liga/desliga as necessárias. A posição é recalculada a cada frame porque a câmera
+    // pode deslizar (gaveta) e a tela pode ter qualquer proporção.
+    // Durante os 2 s de aviso, mostra uma seta piscando na borda da tela para cada Spawn Sector sorteado (Seção 6.2).
+    // A seta fica onde a linha "planeta → centro do setor", JÁ PROJETADA na tela, cruza a borda, e acompanha a câmera.
+    // Como a projeção muda o ângulo de cada setor, cada setor usa a seta pré-desenhada mais próxima (ArrowRowFor).
+    public sealed class SpawnSectorIndicator : MonoBehaviour
+    {
+        // Pacote do Inspector: os frames de uma seta (o Unity não serializa Sprite[][], ver SpriteVariant).
+        [Serializable]
+        private sealed class ArrowFrames
+        {
+            public Sprite[] frames;   // aceso e apagado
+        }
+
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private ArrowFrames[] _arrows = new ArrowFrames[WaveDirector.SectorCount];   // índice = linha da spritesheet (direção na TELA)
+        [SerializeField] private float _fps = 4f;
+        [SerializeField] private float _edgeMargin = 1f;   // distância da seta até a borda, em u
+        [SerializeField] private string _sortingLayer = "VFX";
+        [SerializeField] private int _sortingOrder = 100;
+
+        private readonly SpriteAnimator[] _views = new SpriteAnimator[WaveDirector.SectorCount];
+
+        // Cria as 6 setas desligadas, uma vez só: uma por SETOR, cada uma com os frames da linha mais próxima.
+        private void Awake()
+        {
+            for (int i = 0; i < _views.Length; i++)
+            {
+                var go = new GameObject($"Arrow {i}");
+                go.transform.SetParent(transform, false);
+                var renderer = go.AddComponent<SpriteRenderer>();
+                renderer.sortingLayerName = _sortingLayer;
+                renderer.sortingOrder = _sortingOrder;
+                _views[i] = go.AddComponent<SpriteAnimator>();
+                _views[i].SetFrames(_arrows[ArrowRowFor(i)].frames, _fps, true);
+                go.SetActive(false);
+            }
+        }
+
+        // Direção do centro do setor no CHÃO, projetada na tela e normalizada (tamanho 1).
+        private static Vector2 ViewDirection(int sector)
+        {
+            float angle = (sector * WaveDirector.SectorArc + WaveDirector.SectorArc * 0.5f) * Mathf.Deg2Rad;
+            var ground = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            // A projeção é linear: projetar uma direção é projetar o ponto "1 u naquela direção".
+            return IsoProjection.GroundToView(ground).normalized;
+        }
+
+        // Qual das 6 setas desenhadas (30°, 90°, 150°... na TELA) aponta mais perto da direção projetada.
+        // Ex.: o setor 0 (30° no chão) aparece a ~62° na tela, e usa a seta de 90° (linha 1).
+        // Mathf.Round(...) dá quantos "passos de 60°" a partir de 30°; Repeat traz para 0–5.
+        private static int ArrowRowFor(int sector)
+        {
+            Vector2 direction = ViewDirection(sector);
+            float degrees = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+            return (int)Mathf.Repeat(Mathf.Round((degrees - 30f) / 60f), WaveDirector.SectorCount);
+        }
+
+        // Inscreve nos eventos do WaveDirector (e desinscreve no OnDisable).
+        // Funciona mesmo com a Wave 1 porque todos os OnEnable rodam antes do Start do WaveDirector,
+        // que é quem dispara o primeiro aviso.
+        private void OnEnable()
+        {
+            _waves.WaveWarning += HandleWaveWarning;
+            _waves.WaveStarted += HandleWaveStarted;
+        }
+
+        private void OnDisable()
+        {
+            _waves.WaveWarning -= HandleWaveWarning;
+            _waves.WaveStarted -= HandleWaveStarted;
+        }
+
+        // Aviso de Wave: acende só as setas dos setores sorteados.
+        private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
+        {
+            HideAll();
+            foreach (int sector in sectors) _views[sector].gameObject.SetActive(true);
+        }
+
+        // A Wave começou: o aviso acabou.
+        private void HandleWaveStarted(int wave)
+        {
+            HideAll();
+        }
+
+        // Desliga todas as setas.
+        private void HideAll()
+        {
+            foreach (var view in _views) view.gameObject.SetActive(false);
+        }
+
+        // Reposiciona as setas acesas na borda da tela (LateUpdate: depois de a câmera se mover, ver CameraRig).
+        private void LateUpdate()
+        {
+            var view = Camera.main;
+            if (view == null) return;
+
+            // Retângulo visível da câmera, encolhido pela margem.
+            Vector2 cameraCenter = view.transform.position;
+            float halfHeight = view.orthographicSize - _edgeMargin;
+            float halfWidth = view.orthographicSize * view.aspect - _edgeMargin;
+            Vector2 origin = IsoProjection.GroundToView(WorldLayout.PlanetCenter);   // o planeta, na vista
+
+            for (int i = 0; i < _views.Length; i++)
+            {
+                if (!_views[i].gameObject.activeSelf) continue;
+
+                // Direção do centro do setor i, já projetada na tela (os inimigos chegam por ela).
+                Vector2 direction = ViewDirection(i);
+
+                // Distância, ao longo da direção, até a primeira borda (esquerda/direita ou cima/baixo) da tela.
+                // Estratégia: calcula quanto andar até bater na borda vertical (tx) e na horizontal (ty);
+                // a menor das duas é a borda que a linha cruza primeiro.
+                float tx = direction.x > 0f ? (cameraCenter.x + halfWidth - origin.x) / direction.x
+                         : direction.x < 0f ? (cameraCenter.x - halfWidth - origin.x) / direction.x
+                         : float.MaxValue;
+                float ty = direction.y > 0f ? (cameraCenter.y + halfHeight - origin.y) / direction.y
+                         : direction.y < 0f ? (cameraCenter.y - halfHeight - origin.y) / direction.y
+                         : float.MaxValue;
+                Vector2 p = origin + direction * Mathf.Min(tx, ty);
+
+                _views[i].transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+            }
+        }
+    }
+}
+```
+
+#### Passo 4 — Teclas de teste: `WaveDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Waves/WaveDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using System.Collections.Generic;
+using System.Linq;
+using Armageddon.Combat;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Waves
+{
+    // POR QUE: esperar 30 s por Wave para testar a Wave 15 é inviável; e o Wave Clear precisa ser testado à vontade.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools). Escuta os eventos do WaveDirector e
+    // os escreve no Console, para conferir a ordem aviso → início → clear.
+    // N = acaba o timer da Wave atual · K = destrói todos os inimigos (testa o Wave Clear). Registra os eventos no Console.
+    public sealed class WaveDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private WaveDirector _waves;
+
+        // Inscreve nos eventos do WaveDirector (e desinscreve no OnDisable).
+        private void OnEnable()
+        {
+            _waves.WaveWarning += HandleWaveWarning;
+            _waves.WaveStarted += HandleWaveStarted;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            _waves.WaveWarning -= HandleWaveWarning;
+            _waves.WaveStarted -= HandleWaveStarted;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        // Lê as teclas de teste.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.nKey.wasPressedThisFrame) _waves.DevEndWaveTimer();
+
+            if (keyboard.kKey.wasPressedThisFrame)
+            {
+                // Cópia da lista: cada alvo que morre sai do TargetRegistry durante o laço.
+                // (Alterar uma lista enquanto se percorre com foreach dá erro; ToList, do System.Linq, faz a cópia.)
+                foreach (var target in TargetRegistry.Alive.ToList()) target.TakeDamage(float.MaxValue, false);
+            }
+        }
+
+        // Respostas aos eventos: só escrevem no Console. string.Join junta a lista com ", ".
+        private void HandleWaveWarning(int wave, IReadOnlyList<int> sectors)
+        {
+            Debug.Log($"[Waves] Aviso: Wave {wave} vem dos setores {string.Join(", ", sectors)}");
+        }
+
+        private void HandleWaveStarted(int wave)
+        {
+            Debug.Log($"[Waves] Wave {wave} começou{(_waves.IsBossWave ? " (BOSS: a Mothership entra na Fase 7)" : "")}. Vivos: {_waves.AliveCount}");
+        }
+
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            Debug.Log($"[Waves] Wave Clear{(beforeTimer ? " antes do timer" : "")}: paga(s) {string.Join(", ", paidWaves)}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 5 — O asset de balanceamento e a cena
+
+1. Em `Assets/_Project/Data/Balance/`, **Create → Armageddon → Wave Balance**, com o nome `WaveBalance`. Os valores padrão já são os da Seção 4.3. Em **Enemies**, arraste os 4 assets da Fase 4 (`Enemy_Grunt`, `Enemy_Scout`, `Enemy_Swarmer`, `Enemy_Brute`).
+2. Na cena `Gameplay`:
+   - Em `[Systems]`, crie `WaveDirector` com o componente `WaveDirector`: **Balance** = `WaveBalance`; **Enemies** = o `EnemyPool`; **Auto Start** marcado.
+   - Em `[World]`, crie `SpawnSectorIndicator` com o componente `SpawnSectorIndicator`: **Waves** = o `WaveDirector`. Em **Arrows** (6 itens), coloque no item `k` as células `2k` e `2k+1` de `Art/UI/SPR_UI_SpawnSectorArrow`: item 0 = células 0 e 1 (seta de 30° na tela), item 1 = células 2 e 3 (90°), e assim por diante até o item 5 = células 10 e 11 (330°). O código escolhe sozinho qual seta cada setor usa.
+   - Em `[Systems]`, crie `WaveDevTools` com o componente `WaveDevTools` e o `WaveDirector` em **Waves**.
+3. O `EnemyDevTools` da Fase 4 continua útil, mas a tecla **R** agora compete com as Waves: use-a só para testar o limite de tela.
+
+#### Passo 6 — Commit
+
+`git add .` e `git commit -m "Phase 5: waves, spawn sectors, scaling, screen cap, wave clear"`.
+
+**✅ Checkpoint:**
+- Play na `Gameplay`: uma seta magenta pisca na borda da tela por 2 s (Console: `Aviso: Wave 1 vem dos setores 3`, por exemplo), some, e **8 Grunts** (6 + 2 × 1) nascem **daquele lado**, espalhados ao longo de 20 s.
+- Sem nenhum Satellite por perto dos inimigos, a Wave 2 começa quando o timer de 30 s acaba. Com os Satellites destruindo todos, ela começa antes (Console: `Wave Clear antes do timer: paga(s) 1`).
+- Deixe o timer da Wave 1 acabar com inimigos vivos e aperte **K** durante a Wave 2, depois que todos os dela nascerem: o Console mostra `Wave Clear…: paga(s) 1, 2`. As duas são pagas juntas (Seção 4.3).
+- Scouts aparecem a partir da Wave 3, Swarmers da 6 e Brutes da 8 (use **N** para avançar rápido). A partir da Wave 5 aparecem **2 setas** e, da 15, **3**.
+- Com a gaveta aberta (**F3**), as setas continuam na borda visível da tela.
+- A seta aparece do lado de onde os inimigos **entram na tela**, apontando para o planeta. Com a projeção, os setores e as setas ficam assim: setor 0 (30° no chão) → seta de 90° (em cima, um pouco à direita); setor 1 → 150°; setor 2 → 210°; setor 3 → 270°; setor 4 → 330°; setor 5 → 30°.
+- Na Wave 10, o Console mostra `(BOSS: a Mothership entra na Fase 7)`, e a Wave termina sozinha por não ter inimigos. É esperado até a Fase 7.
+- Várias vezes **R** (10 inimigos cada) até passar de 150 vivos: a Wave para de soltar inimigos e volta a soltar assim que alguns morrem.
+- **Esc** pausa o timer, o spawn e o piscar das setas.
+
+**Problemas comuns:**
+- **Nenhum inimigo nasce:** a lista **Enemies** do `WaveBalance` está vazia, ou nenhum inimigo tem **Unlock Wave** ≤ 1.
+- **Os inimigos nascem do lado oposto da seta, ou a seta aponta torto:** a ordem das células no **Arrows** do `SpawnSectorIndicator` está trocada. O item `k` precisa ser a linha `k` da spritesheet (células `2k` e `2k+1`): é a direção **na tela**, e o `ArrowRowFor` faz a ponte com o setor.
+- **A Wave nunca termina antes do timer, mesmo com a tela vazia:** ainda há slots na fila, esperando a hora de nascer (os 20 s de spawn). O Wave Clear só acontece com a fila vazia **e** a tela vazia.
+- **As setas aparecem no centro da tela:** a **Main Camera** não está com a tag `MainCamera` (o `Camera.main` não a encontra).
+
+Próxima fase: **Fase 6 — Stats, Shards, Upgrades e gaveta**. Ela transforma os inimigos destruídos e os Wave Clears em Shards e cria a gaveta de upgrades com os 13 Stats.
+
+---
+
+### Fase 6 — Stats, Shards, Upgrades e gaveta
+
+> Objetivo desta fase: destruir inimigos e fazer Wave Clear dá **Shards**; a gaveta na parte de baixo da tela mostra o saldo e as 4 abas; tocar numa aba abre os cards dos Stats daquela Track, e tocar num card compra um Upgrade sem pausar o jogo. Cada compra muda o jogo na hora: mais dano, mais alcance (o preenchimento do Quadrant cresce), mais HP. A aba Satellites troca a Target Priority de cada Satellite e compra novos Satellites (até 4).
+
+**Conceitos novos:**
+- **Definição × estado:** o `StatDefinition` (asset) diz o que um Stat **é** (base, incremento, teto, custo). O `RunStats` guarda o **nível** de cada Stat nesta run. Os assets nunca mudam durante o jogo; só o estado muda, e ele é descartado no fim da run.
+- **Modificadores:** o Planet Core (Fase 9) não mexe nos níveis: ele entra como **modificadores** (`StatModifier`) que somam e multiplicam o valor. O cálculo fica num lugar só, seguindo a Seção 4.2: `base + incremento × nível`, limitado pelo teto, e depois modificado.
+- **Composição (`RunEconomy`):** um componente cria a economia da run (Stats, carteira e loja), escuta os eventos dos outros sistemas (inimigo destruído, Wave Clear) e empurra os valores novos para quem usa (Satellites e planeta). Os sistemas continuam sem se conhecer.
+- **Canvas pixel-perfect:** a UI é desenhada numa tela de referência de 320×180 e ampliada pelo mesmo fator **inteiro** da Pixel Perfect Camera (6× em 1080p). Assim, a UI tem o mesmo tamanho de pixel que o mundo.
+- **UI por eventos:** os cards não verificam o saldo a cada frame. Eles se atualizam quando a carteira ou o Stat avisam que mudaram (`BalanceChanged`, `StatChanged`).
+
+#### Passo 1 — A definição de um Stat: `StatDefinition`, `StatCatalog`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatDefinition.cs
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: cada Stat precisa de um identificador que o código use sem depender de nomes de asset.
+    // ESTRATÉGIA: enum; os assets StatDefinition dizem "eu sou o Stat X" por este id.
+    // Os 13 Stats da Seção 4.2.
+    public enum StatId
+    {
+        Damage, AttackSpeed, CriticalChance, CriticalFactor, AttackRange, Impetus, OrbitSpeed,
+        Hitpoints, Regeneration, DefenseAbsolute, DefenseRelative,
+        ResourceBonus, ResourcePerWave,
+    }
+
+    // Em qual Track (aba da gaveta) o Stat aparece.
+    public enum StatTrack { Offense, Defense, Utility }
+
+    // Como o valor aparece no card.
+    public enum StatFormat { Number, Percent, PerSecond, Multiplier, Units, DegreesPerSecond, PercentPerUnit }
+
+    // POR QUE: os 13 Stats seguem a mesma regra (base + incremento × nível, teto, custo crescente); só os
+    // números mudam. É a "definição" (o que o Stat É), separada do "estado" (em que nível ele está na run).
+    // ESTRATÉGIA: ScriptableObject (ver EnemyDefinition), um asset por Stat (Stat_Damage...). Nunca muda
+    // durante o jogo: quem guarda o nível é o RunStats. Também sabe se formatar para o card (Format).
+    // Um Stat (Seção 4.2). Percentuais são guardados como fração: 1,5 p.p. = 0,015; 0,4 %/u = 0,004.
+    [CreateAssetMenu(menuName = "Armageddon/Stat Definition", fileName = "Stat_")]
+    public sealed class StatDefinition : ScriptableObject
+    {
+        public const float CostGrowth = 1.15f;   // custo = baseCost × 1,15^nível
+
+        [SerializeField] private StatId _id;
+        [SerializeField] private StatTrack _track;
+        [SerializeField] private string _displayName;   // a Fase 11 troca por uma chave de Localization
+        [SerializeField] private Sprite _icon;
+        [SerializeField] private float _base;           // valor no nível 0
+        [SerializeField] private float _perLevel;       // quanto cada Upgrade soma
+        [SerializeField] private float _cap;            // 0 = sem teto
+        [SerializeField] private int _baseCost = 5;     // custo do primeiro Upgrade
+        [SerializeField] private StatFormat _format;
+
+        public StatId Id => _id;
+        public StatTrack Track => _track;
+        public string DisplayName => _displayName;
+        public Sprite Icon => _icon;
+        public float Base => _base;
+        public float PerLevel => _perLevel;
+        public bool HasCap => _cap > 0f;
+        public float Cap => _cap;
+        public int BaseCost => _baseCost;
+
+        // Transforma o número em texto para o card, conforme o formato do Stat (ex.: 0,015 → "1.5%").
+        // "{value:0.#}" = formatação do C#: até 1 casa decimal, sem zeros inúteis.
+        public string Format(float value)
+        {
+            return _format switch
+            {
+                StatFormat.Percent => $"{value * 100f:0.#}%",
+                StatFormat.PerSecond => $"{value:0.##}/s",
+                StatFormat.Multiplier => $"{value:0.#}x",
+                StatFormat.Units => $"{value:0.##}u",
+                StatFormat.DegreesPerSecond => $"{value:0}°/s",
+                StatFormat.PercentPerUnit => $"{value * 100f:0.#}%/u",
+                _ => $"{value:0.#}",
+            };
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatCatalog.cs
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: o jogo precisa de "todos os Stats" num lugar só, numa ordem definida (a ordem dos cards
+    // na gaveta), sem procurar assets pelo projeto.
+    // ESTRATÉGIA: um ScriptableObject que é só uma lista de StatDefinition arrastada no Inspector.
+    // A ordem da lista é a ordem de exibição.
+    // A lista dos 13 Stats, na ordem em que aparecem na gaveta.
+    [CreateAssetMenu(menuName = "Armageddon/Stat Catalog", fileName = "StatCatalog")]
+    public sealed class StatCatalog : ScriptableObject
+    {
+        [SerializeField] private List<StatDefinition> _stats = new List<StatDefinition>();
+
+        public IReadOnlyList<StatDefinition> Stats => _stats;
+
+        // Os Stats de uma Track (uma aba da gaveta), mantendo a ordem do catálogo.
+        // FindAll com lambda: "s => s.Track == track" = "fique com os s cuja Track é a pedida".
+        public List<StatDefinition> ForTrack(StatTrack track)
+        {
+            return _stats.FindAll(s => s.Track == track);
+        }
+    }
+}
+```
+
+#### Passo 2 — Os Stats da run: `StatModifier`, `RunStats`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunStats.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: o Planet Core (Fase 9) altera Stats sem ser Upgrade (ex.: "+30% de dano" o tempo todo).
+    // Se ele mexesse nos níveis, o custo dos Upgrades ficaria errado.
+    // ESTRATÉGIA: um ajuste separado, aplicado DEPOIS do cálculo por nível.
+    // Um ajuste vindo de fora dos Upgrades: o Planet Core (Fase 9).
+    // valor final = (valor dos Upgrades + add) × multiply
+    [Serializable]
+    public struct StatModifier
+    {
+        public StatId stat;
+        public float add;
+        public float multiply;
+
+        // Atalhos de criação: StatModifier.Add(StatId.Damage, 5) é mais legível que preencher os 3 campos.
+        public static StatModifier Add(StatId stat, float value) => new StatModifier { stat = stat, add = value, multiply = 1f };
+        public static StatModifier Multiply(StatId stat, float value) => new StatModifier { stat = stat, add = 0f, multiply = value };
+    }
+
+    // POR QUE: durante a run, cada Stat tem um nível que sobe com as compras; no fim, tudo zera.
+    // ESTRATÉGIA: classe C# pura (não é MonoBehaviour: não precisa de cena nem de Update), criada pelo
+    // RunEconomy a cada run. Guarda os níveis num Dictionary (StatId → nível) e calcula valores sob
+    // demanda. Avisa por evento (StatChanged) quando algo muda, para a UI e os Satellites se atualizarem.
+    // Nível e valor de cada Stat durante uma run. Zera a cada run (Seção 4.2: Upgrades valem só até o fim da run).
+    public sealed class RunStats
+    {
+        // Dictionary = tabela de consulta rápida "chave → valor".
+        private readonly Dictionary<StatId, StatDefinition> _definitions = new Dictionary<StatId, StatDefinition>();
+        private readonly Dictionary<StatId, int> _levels = new Dictionary<StatId, int>();
+        private readonly List<StatModifier> _modifiers = new List<StatModifier>();
+
+        public event Action<StatId> StatChanged;
+
+        // Monta as tabelas a partir das definições do catálogo, todos os níveis em 0.
+        public RunStats(IEnumerable<StatDefinition> definitions)
+        {
+            foreach (var definition in definitions)
+            {
+                _definitions[definition.Id] = definition;
+                _levels[definition.Id] = 0;
+            }
+        }
+
+        // Consultas rápidas: definição, nível atual e valor atual de um Stat.
+        public StatDefinition Definition(StatId id) => _definitions[id];
+        public int Level(StatId id) => _levels[id];
+        public float Value(StatId id) => ValueAtLevel(id, _levels[id]);
+
+        // Seção 4.2: base + incremento × nível, limitado pelo teto, e DEPOIS modificado pelo Planet Core.
+        // Recebe o nível como parâmetro para o card poder mostrar "valor atual → valor do próximo nível".
+        public float ValueAtLevel(StatId id, int level)
+        {
+            var definition = _definitions[id];
+            float value = definition.Base + definition.PerLevel * level;
+            if (definition.HasCap) value = Mathf.Min(value, definition.Cap);
+
+            // Soma todos os "add" e multiplica todos os "multiply" que se aplicam a este Stat.
+            float add = 0f, multiply = 1f;
+            foreach (var modifier in _modifiers)
+            {
+                if (modifier.stat != id) continue;
+                add += modifier.add;
+                multiply *= modifier.multiply;
+            }
+            return (value + add) * multiply;
+        }
+
+        // Chegou no teto? (o teto vale para o valor dos Upgrades, antes dos modificadores)
+        public bool IsMaxed(StatId id)
+        {
+            var definition = _definitions[id];
+            return definition.HasCap && definition.Base + definition.PerLevel * _levels[id] >= definition.Cap;
+        }
+
+        // Custo do próximo nível: baseCost × 1,15^nível, arredondado para o inteiro mais próximo.
+        public int NextCost(StatId id)
+        {
+            return Mathf.RoundToInt(_definitions[id].BaseCost * Mathf.Pow(StatDefinition.CostGrowth, _levels[id]));
+        }
+
+        // Sobe um nível. "internal": só o UpgradeService deve chamar (depois de cobrar os Shards).
+        internal void IncreaseLevel(StatId id)
+        {
+            _levels[id]++;
+            StatChanged?.Invoke(id);
+        }
+
+        // Registra um modificador do Planet Core e avisa que o Stat mudou.
+        public void AddModifier(StatModifier modifier)
+        {
+            _modifiers.Add(modifier);
+            StatChanged?.Invoke(modifier.stat);
+        }
+    }
+}
+```
+
+#### Passo 3 — Os Shards e a compra: `ShardWallet`, `UpgradeService`, `SatelliteShop`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/ShardWallet.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: os Shards chegam em frações (Swarmer vale 0,5; Resource Bonus multiplica), mas o jogador
+    // vê e gasta Shards inteiros. Alguém precisa acumular as frações sem perder nada.
+    // ESTRATÉGIA: classe C# pura com o saldo inteiro (Balance) e um "resto" fracionário guardado à parte.
+    // Avisa por evento (BalanceChanged) para a UI não precisar conferir o saldo a cada frame.
+    // Saldo de Shards da run. Frações (Swarmer vale 0,5; Resource Bonus multiplica) são acumuladas
+    // e viram Shards inteiros quando somam 1 (Seção 4.4).
+    public sealed class ShardWallet
+    {
+        private float _fraction;   // a parte "quebrada" ainda não convertida em Shard inteiro
+
+        public int Balance { get; private set; }
+
+        // Todos os Shards ganhos na run, inclusive os já gastos. Mostrado no Results (Fase 8).
+        public float TotalEarned { get; private set; }
+
+        public event Action BalanceChanged;
+
+        // Soma Shards (inteiros ou fracionários). Só avisa quando o saldo inteiro muda de fato.
+        public void Add(float amount)
+        {
+            if (amount <= 0f) return;
+            TotalEarned += amount;
+            _fraction += amount;
+            int whole = Mathf.FloorToInt(_fraction + 0.0001f);   // a folga evita perder 1 Shard por erro de ponto flutuante
+            if (whole <= 0) return;
+            _fraction -= whole;
+            Balance += whole;
+            BalanceChanged?.Invoke();
+        }
+
+        // Gasta se houver saldo. Padrão "Try": devolve true/false em vez de dar erro quando não pode.
+        public bool TrySpend(int amount)
+        {
+            if (amount > Balance) return false;
+            Balance -= amount;
+            BalanceChanged?.Invoke();
+            return true;
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/UpgradeService.cs
+using System;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: "comprar um Upgrade" envolve duas coisas que precisam andar juntas: cobrar os Shards e
+    // subir o nível. Se a UI fizesse isso direto, poderia cobrar e não subir (ou o contrário).
+    // ESTRATÉGIA: classe C# pura que junta RunStats e ShardWallet e oferece só duas perguntas/ações:
+    // CanPurchase (para a UI acender ou apagar o card) e TryPurchase (a compra em si).
+    // Compra um nível de Stat com Shards. Nunca pausa o jogo (Pilar 1).
+    public sealed class UpgradeService
+    {
+        private readonly RunStats _stats;
+        private readonly ShardWallet _wallet;
+
+        public event Action<StatId, int> Purchased;   // Stat e o nível novo (dicas na Fase 13)
+
+        // As dependências chegam pelo construtor (quem cria é o RunEconomy): nada de procurar objetos.
+        public UpgradeService(RunStats stats, ShardWallet wallet)
+        {
+            _stats = stats;
+            _wallet = wallet;
+        }
+
+        // Pode comprar se não está no teto e há Shards suficientes.
+        public bool CanPurchase(StatId id) => !_stats.IsMaxed(id) && _wallet.Balance >= _stats.NextCost(id);
+
+        // Faz a compra completa ou nada. Devolve se deu certo.
+        public bool TryPurchase(StatId id)
+        {
+            if (!CanPurchase(id)) return false;
+            _wallet.TrySpend(_stats.NextCost(id));   // o custo é o do nível ATUAL, antes de subir
+            _stats.IncreaseLevel(id);
+            Purchased?.Invoke(id, _stats.Level(id));
+            return true;
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/SatelliteShop.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Combat;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: os Satellites 2, 3 e 4 são comprados durante a run, com Shards (Seção 4.2). Parecem um
+    // Upgrade, mas não são um Stat: não têm nível nem fórmula de valor, só "mais um na órbita" a um preço fixo.
+    // ESTRATÉGIA: classe C# pura, irmã do UpgradeService: junta a carteira e a órbita e oferece as mesmas
+    // perguntas e ações (NextCost, CanPurchase, TryPurchase). Quem cria é o RunEconomy, que também guarda
+    // a lista de preços (editável no Inspector). A órbita já sabe adicionar Satellites espaçados (SetCount).
+    // Compra o próximo Satellite da run. Nunca pausa o jogo (Pilar 1).
+    public sealed class SatelliteShop
+    {
+        private readonly SatelliteOrbit _orbit;
+        private readonly ShardWallet _wallet;
+        private readonly IReadOnlyList<int> _costs;   // índice 0 = preço do 2º Satellite, 1 = do 3º, 2 = do 4º
+
+        public event Action<int> Purchased;   // o novo número de Satellites (conquista Full Arsenal na Fase 9)
+
+        // As dependências chegam pelo construtor, como no UpgradeService.
+        public SatelliteShop(SatelliteOrbit orbit, ShardWallet wallet, IReadOnlyList<int> costs)
+        {
+            _orbit = orbit;
+            _wallet = wallet;
+            _costs = costs;
+        }
+
+        public int Count => _orbit.Satellites.Count;
+
+        // Sem mais compras quando a órbita está cheia (ou a lista de preços acabou).
+        public bool IsMaxed => Count >= SatelliteOrbit.MaxSatellites || Count - 1 >= _costs.Count;
+
+        // Com 1 Satellite em órbita, o próximo é o 2º: preço _costs[0].
+        public int NextCost => IsMaxed ? 0 : _costs[Count - 1];
+
+        public bool CanPurchase => !IsMaxed && _wallet.Balance >= NextCost;
+
+        // Faz a compra completa ou nada. O preço é lido ANTES de o Satellite entrar (depois, NextCost já é o do seguinte).
+        public bool TryPurchase()
+        {
+            if (!CanPurchase) return false;
+            _wallet.TrySpend(NextCost);
+            _orbit.SetCount(Count + 1);   // dispara o CountChanged: a aba Satellites ganha a linha nova
+            Purchased?.Invoke(Count);
+            return true;
+        }
+    }
+}
+```
+
+#### Passo 4 — A economia da run: `RunEconomy`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: RunStats, ShardWallet, UpgradeService e SatelliteShop são classes puras: alguém precisa
+    // criá-las a cada run e ligá-las ao resto do jogo (inimigos dão Shards, Wave Clear dá Shards, Stats
+    // mudam Satellites e planeta). Sem um "ligador", esses sistemas teriam que se conhecer.
+    // ESTRATÉGIA: composição — um MonoBehaviour na cena Gameplay que (1) cria as quatro classes no Awake,
+    // (2) escuta os eventos do EnemyPool, do WaveDirector e do RunStats, e (3) empurra os valores novos
+    // para o SatelliteOrbit e o PlanetHealth. A UI lê Stats/Wallet/Upgrades/Satellites pelas propriedades públicas.
+    // Cria os Stats, a carteira e as lojas da run; transforma kills e Wave Clears em Shards;
+    // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
+    public sealed class RunEconomy : MonoBehaviour
+    {
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private WaveBalance _waveBalance;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
+
+        public StatCatalog Catalog => _catalog;
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+        public UpgradeService Upgrades { get; private set; }
+        public SatelliteShop Satellites { get; private set; }
+
+        // Cria a economia da run. No Awake porque outros scripts (a gaveta) leem Stats/Wallet no Start deles.
+        private void Awake()
+        {
+            Stats = new RunStats(_catalog.Stats);
+            Wallet = new ShardWallet();
+            Upgrades = new UpgradeService(Stats, Wallet);
+            Satellites = new SatelliteShop(_orbit, Wallet, _satelliteCosts);
+        }
+
+        // Liga os eventos (OnEnable roda depois do Awake, então Stats já existe).
+        private void OnEnable()
+        {
+            Stats.StatChanged += HandleStatChanged;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            Stats.StatChanged -= HandleStatChanged;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        // Saldo inicial e primeira aplicação dos Stats (substitui os valores provisórios do Inspector das Fases 2 e 3).
+        private void Start()
+        {
+            Wallet.Add(_startingShards);
+            ApplyAll();
+        }
+
+        // O Planet Core (Fase 9) chama isto no começo da run.
+        public void AddModifier(StatModifier modifier)
+        {
+            Stats.AddModifier(modifier);
+        }
+
+        // Qualquer Stat mudou (compra ou modificador): reaplica todos.
+        private void HandleStatChanged(StatId id)
+        {
+            ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
+        }
+
+        // Copia os valores atuais dos Stats para quem os usa: Satellites (via um SatelliteStats novo) e planeta.
+        private void ApplyAll()
+        {
+            _orbit.SetStats(new SatelliteStats
+            {
+                damage = Stats.Value(StatId.Damage),
+                attackSpeed = Stats.Value(StatId.AttackSpeed),
+                criticalChance = Stats.Value(StatId.CriticalChance),
+                criticalFactor = Stats.Value(StatId.CriticalFactor),
+                attackRange = Stats.Value(StatId.AttackRange),
+                impetus = Stats.Value(StatId.Impetus),
+                orbitSpeed = Stats.Value(StatId.OrbitSpeed),
+            });
+
+            _planet.SetMaxHitpoints(Stats.Value(StatId.Hitpoints));
+            _planet.SetRegeneration(Stats.Value(StatId.Regeneration));
+            _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
+        }
+
+        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            Wallet.Add(enemy.Definition.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            float multiplier = 1f + Stats.Value(StatId.ResourcePerWave);
+            foreach (int wave in paidWaves) Wallet.Add(_waveBalance.ClearBonus(wave) * multiplier);
+        }
+    }
+}
+```
+
+> **Por que o `SetStats` recebe um objeto novo?** O `SatelliteOrbit` e o `QuadrantView` leem o `SatelliteStats` a cada frame. Trocar o objeto inteiro de uma vez garante que nenhum dos dois veja um valor pela metade. E, como é só numa compra, não há custo.
+
+#### Passo 5 — A escala da UI: `IntegerCanvasScale`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/IntegerCanvasScale.cs
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o mundo é ampliado por um fator inteiro (Pixel Perfect Camera). Se a UI fosse ampliada por
+    // um fator quebrado (o "Scale With Screen Size" padrão do CanvasScaler), os pixels dos botões e textos
+    // ficariam de tamanhos diferentes dos pixels do mundo.
+    // ESTRATÉGIA: um componente no Canvas que coloca o CanvasScaler em "Constant Pixel Size" e define o
+    // scaleFactor como o maior inteiro que cabe (largura ÷ 320 e altura ÷ 180, o menor dos dois).
+    // Recalcula quando a janela muda de tamanho.
+    // Amplia a UI pelo mesmo fator INTEIRO da Pixel Perfect Camera (6× em 1080p): 1 unidade de UI = 1 pixel do jogo.
+    // Os tamanhos da UI neste guia são em pixels da tela de referência de 320×180.
+    [RequireComponent(typeof(CanvasScaler))]
+    public sealed class IntegerCanvasScale : MonoBehaviour
+    {
+        [SerializeField] private int _referenceWidth = 320;
+        [SerializeField] private int _referenceHeight = 180;
+
+        private CanvasScaler _scaler;
+        private int _lastWidth;    // tamanho da tela na última aplicação, para detectar mudança
+        private int _lastHeight;
+
+        // Força o modo de escala certo (por código, para não depender do Inspector) e aplica já.
+        private void Awake()
+        {
+            _scaler = GetComponent<CanvasScaler>();
+            _scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            Apply();
+        }
+
+        // Conferir dois inteiros por frame é barato; evita depender de um evento de "tela mudou".
+        private void Update()
+        {
+            if (Screen.width != _lastWidth || Screen.height != _lastHeight) Apply();   // janela redimensionada (Web)
+        }
+
+        // Divisão entre inteiros no C# já descarta a parte decimal (1920 / 320 = 6). Mínimo de 1×.
+        private void Apply()
+        {
+            _lastWidth = Screen.width;
+            _lastHeight = Screen.height;
+            _scaler.scaleFactor = Mathf.Max(1, Mathf.Min(_lastWidth / _referenceWidth, _lastHeight / _referenceHeight));
+        }
+    }
+}
+```
+
+#### Passo 6 — Os cards e a gaveta: `StatCard`, `SatellitePanel`, `UpgradeDrawer`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/StatCard.cs
+using Armageddon.Economy;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: cada Stat aparece na gaveta como um card clicável que mostra o nível, o ganho do próximo
+    // Upgrade e o custo, e que se apaga quando não dá para comprar.
+    // ESTRATÉGIA: um prefab de card reaproveitado para qualquer Stat: Bind(stat, economia) diz "agora você
+    // mostra este Stat". O card se inscreve nos eventos StatChanged e BalanceChanged e só se redesenha
+    // quando eles disparam (UI por eventos, sem conferir nada a cada frame).
+    // Um card da gaveta (Seção 6.3): ícone, nome, nível, valor atual > próximo valor, e custo. Tocar compra.
+    public sealed class StatCard : MonoBehaviour
+    {
+        // Referências aos filhos do prefab, arrastadas no Inspector. TMP_Text = texto do TextMeshPro.
+        [SerializeField] private Image _icon;
+        [SerializeField] private TMP_Text _name;
+        [SerializeField] private TMP_Text _level;
+        [SerializeField] private TMP_Text _value;
+        [SerializeField] private TMP_Text _cost;
+        [SerializeField] private Button _button;
+
+        private RunEconomy _economy;
+        private StatDefinition _stat;
+
+        // Liga o clique do botão ao método de compra. onClick.AddListener = "quando clicar, chame isto" (por código,
+        // em vez de configurar o OnClick no Inspector).
+        private void Awake()
+        {
+            _button.onClick.AddListener(HandleClick);
+        }
+
+        // Ao destruir o card, desfaz as inscrições nos eventos.
+        private void OnDestroy()
+        {
+            Unbind();
+        }
+
+        // Associa o card a um Stat. Chama Unbind antes, porque o mesmo card é reaproveitado ao trocar de aba.
+        public void Bind(StatDefinition stat, RunEconomy economy)
+        {
+            Unbind();
+            _stat = stat;
+            _economy = economy;
+            _icon.sprite = stat.Icon;
+            _name.text = stat.DisplayName;
+            _economy.Stats.StatChanged += HandleStatChanged;
+            _economy.Wallet.BalanceChanged += Refresh;
+            Refresh();
+        }
+
+        // Desfaz as inscrições do Bind anterior (sem isso, um card reaproveitado ouviria dois Stats).
+        private void Unbind()
+        {
+            if (_economy == null) return;
+            _economy.Stats.StatChanged -= HandleStatChanged;
+            _economy.Wallet.BalanceChanged -= Refresh;
+            _economy = null;
+        }
+
+        // Toque no card: tenta comprar. Se der certo, os eventos disparam e o Refresh atualiza o card sozinho.
+        private void HandleClick()
+        {
+            _economy.Upgrades.TryPurchase(_stat.Id);
+        }
+
+        // StatChanged avisa qualquer Stat; o card só se redesenha se for o seu.
+        private void HandleStatChanged(StatId id)
+        {
+            if (id == _stat.Id) Refresh();
+        }
+
+        // Redesenha textos e liga/desliga o botão conforme o estado atual.
+        private void Refresh()
+        {
+            var stats = _economy.Stats;
+            int level = stats.Level(_stat.Id);
+            float now = stats.Value(_stat.Id);
+            _level.text = $"Lv {level}";
+
+            if (stats.IsMaxed(_stat.Id))
+            {
+                _value.text = _stat.Format(now);
+                _cost.text = "MAX";
+                _button.interactable = false;
+                return;
+            }
+
+            // A fonte não tem "→" (Seção 6.3): o card usa ">".
+            _value.text = $"{_stat.Format(now)} > {_stat.Format(stats.ValueAtLevel(_stat.Id, level + 1))}";
+            _cost.text = stats.NextCost(_stat.Id).ToString();
+            // interactable = false deixa o botão cinza e ignora toques.
+            _button.interactable = _economy.Upgrades.CanPurchase(_stat.Id);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/SatellitePanel.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Economy;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o jogador escolhe a Target Priority de cada Satellite (as 4 estão sempre disponíveis) e
+    // compra novos Satellites durante a run (Seção 4.2).
+    // ESTRATÉGIA: uma linha (botão) por Satellite, criada sob demanda a partir de um prefab e reaproveitada
+    // (linhas sobrando ficam escondidas). Tocar na linha avança para a próxima prioridade.
+    // Depois das linhas, um botão fixo compra o próximo Satellite pela SatelliteShop do RunEconomy.
+    // Redesenha quando o número de Satellites muda (CountChanged) e o botão quando o saldo muda (BalanceChanged).
+    // Aba Satellites (Seção 6.3): uma linha por Satellite; tocar troca a Target Priority.
+    public sealed class SatellitePanel : MonoBehaviour
+    {
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private Button _rowPrefab;
+        [SerializeField] private Transform _rows;   // o container (com Layout Group) onde as linhas são criadas
+        [SerializeField] private Button _buyButton;   // "comprar Satellite", filho do mesmo container
+        [SerializeField] private TMP_Text _buyText;
+
+        // As 4 Target Priorities, na ordem em que o toque alterna (Seção 4.1). "static readonly": uma lista
+        // fixa, compartilhada por todas as instâncias e criada uma vez só.
+        private static readonly TargetPriority[] Priorities =
+        {
+            TargetPriority.Closest, TargetPriority.Weakest, TargetPriority.Strongest, TargetPriority.Farthest,
+        };
+
+        private readonly List<Button> _buttons = new List<Button>();
+
+        // O clique do botão de compra é ligado uma vez só.
+        private void Awake()
+        {
+            _buyButton.onClick.AddListener(() => _economy.Satellites.TryPurchase());
+        }
+
+        // A aba só fica ativa quando está aberta: ouvir e redesenhar só enquanto visível.
+        // A carteira nasce no Awake do RunEconomy, que pode rodar depois deste OnEnable no carregamento
+        // da cena; por isso o "if". Na primeira vez que a aba é aberta de fato, ela já existe.
+        private void OnEnable()
+        {
+            _orbit.CountChanged += Refresh;
+            if (_economy.Wallet != null) _economy.Wallet.BalanceChanged += RefreshBuyButton;
+            Refresh();
+        }
+
+        // Desinscrever um método que não estava inscrito é inofensivo em C#.
+        private void OnDisable()
+        {
+            _orbit.CountChanged -= Refresh;
+            if (_economy != null && _economy.Wallet != null) _economy.Wallet.BalanceChanged -= RefreshBuyButton;
+        }
+
+        // Garante uma linha por Satellite e atualiza os textos.
+        public void Refresh()
+        {
+            var satellites = _orbit.Satellites;
+            while (_buttons.Count < satellites.Count)
+            {
+                // "index" é copiado numa variável local de propósito: a lambda abaixo "captura" esse valor.
+                // Se usássemos _buttons.Count direto dentro da lambda, todas as linhas leriam o valor final.
+                int index = _buttons.Count;
+                var button = Instantiate(_rowPrefab, _rows);
+                button.onClick.AddListener(() => Cycle(index));
+                _buttons.Add(button);
+            }
+
+            for (int i = 0; i < _buttons.Count; i++)
+            {
+                bool visible = i < satellites.Count;
+                _buttons[i].gameObject.SetActive(visible);
+                if (visible) _buttons[i].GetComponentInChildren<TMP_Text>().text = $"Satellite {i + 1}: {satellites[i].Priority}";
+            }
+
+            _buyButton.transform.SetAsLastSibling();   // linhas novas entram no fim do container; o botão volta para depois delas
+            RefreshBuyButton();
+        }
+
+        // Mostra o preço do próximo Satellite; some com a órbita cheia; fica desabilitado sem Shards.
+        private void RefreshBuyButton()
+        {
+            var shop = _economy.Satellites;
+            if (shop == null) return;   // a economia ainda não foi criada (ver OnEnable)
+            _buyButton.gameObject.SetActive(!shop.IsMaxed);
+            if (shop.IsMaxed) return;
+            _buyButton.interactable = shop.CanPurchase;
+            _buyText.text = $"+ Satellite {shop.Count + 1}: {shop.NextCost} Shards";
+        }
+
+        // Avança o Satellite "index" para a próxima prioridade, voltando à primeira depois da última.
+        // O operador % ("resto da divisão") faz a volta: depois do índice 3 vem o 0.
+        private void Cycle(int index)
+        {
+            var satellite = _orbit.Satellites[index];
+            int current = System.Array.IndexOf(Priorities, satellite.Priority);
+            satellite.Priority = Priorities[(current + 1) % Priorities.Length];
+            Refresh();
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/UpgradeDrawer.cs
+using System.Collections.Generic;
+using Armageddon.Economy;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: a gaveta é a interface principal do jogo: mostra o saldo e deixa comprar Upgrades sem pausar.
+    // Ela coordena várias peças (abas, cards, painel de Satellites, câmera).
+    // ESTRATÉGIA: um controlador de tela com um único estado (OpenTab). SetOpen(aba) é o único método que
+    // liga/desliga as peças; os botões só chamam SetOpen. Os cards são criados sob demanda e reaproveitados
+    // entre as abas (Bind troca o Stat de cada card). O saldo é atualizado pelo evento BalanceChanged.
+    // A gaveta de upgrades (Seção 6.3). Fechada: faixa com o saldo e as 4 abas.
+    // Aberta: os cards da Track tocada (ou a aba Satellites), e a câmera desliza. Nunca pausa o jogo.
+    public sealed class UpgradeDrawer : MonoBehaviour
+    {
+        // Os números 0–2 batem com StatTrack (Offense, Defense, Utility), o que permite converter um no outro.
+        public enum Tab { None = -1, Offense = 0, Defense = 1, Utility = 2, Satellites = 3 }
+
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private CameraRig _camera;
+        [SerializeField] private Button[] _tabButtons = new Button[4];   // na ordem Offense, Defense, Utility, Satellites
+        [SerializeField] private TMP_Text _shardsText;
+        [SerializeField] private GameObject _panel;                      // a parte que abre
+        [SerializeField] private GameObject _cardsView;                  // a rolagem com os cards
+        [SerializeField] private Transform _cardContainer;
+        [SerializeField] private StatCard _cardPrefab;
+        [SerializeField] private SatellitePanel _satellitePanel;
+
+        private readonly List<StatCard> _cards = new List<StatCard>();
+
+        public Tab OpenTab { get; private set; } = Tab.None;
+
+        // Liga cada botão de aba à sua aba. A variável "tab" local é capturada pela lambda (ver SatellitePanel.Refresh).
+        private void Awake()
+        {
+            for (int i = 0; i < _tabButtons.Length; i++)
+            {
+                var tab = (Tab)i;
+                _tabButtons[i].onClick.AddListener(() => HandleTabClicked(tab));
+            }
+        }
+
+        // Start, e não Awake/OnEnable: a carteira é criada no Awake do RunEconomy, e a câmera no Awake do CameraRig.
+        // (A Unity não garante a ordem dos Awake entre objetos diferentes; no Start, todos os Awake já rodaram.)
+        private void Start()
+        {
+            _economy.Wallet.BalanceChanged += RefreshShards;
+            RefreshShards();
+            SetOpen(Tab.None);
+        }
+
+        // Desinscreve do saldo. Confere null porque, ao fechar a cena, o RunEconomy pode já ter sido destruído.
+        private void OnDestroy()
+        {
+            if (_economy != null && _economy.Wallet != null) _economy.Wallet.BalanceChanged -= RefreshShards;
+        }
+
+        // Clique numa aba: abre essa aba, ou fecha se ela já estava aberta.
+        private void HandleTabClicked(Tab tab)
+        {
+            SetOpen(OpenTab == tab ? Tab.None : tab);   // tocar na aba aberta fecha a gaveta
+        }
+
+        // Único lugar que muda o que a gaveta mostra. Tab.None = fechada.
+        public void SetOpen(Tab tab)
+        {
+            OpenTab = tab;
+            bool open = tab != Tab.None;
+            bool satellites = tab == Tab.Satellites;
+
+            _panel.SetActive(open);
+            _camera.SetDrawerOpen(open);
+            _cardsView.SetActive(open && !satellites);
+            _satellitePanel.gameObject.SetActive(satellites);
+
+            if (open && !satellites) ShowTrack((StatTrack)(int)tab);
+        }
+
+        // Mostra os cards dos Stats de uma Track, criando cards novos só se faltarem.
+        private void ShowTrack(StatTrack track)
+        {
+            var stats = _economy.Catalog.ForTrack(track);
+            while (_cards.Count < stats.Count) _cards.Add(Instantiate(_cardPrefab, _cardContainer));
+
+            for (int i = 0; i < _cards.Count; i++)
+            {
+                bool visible = i < stats.Count;
+                _cards[i].gameObject.SetActive(visible);
+                if (visible) _cards[i].Bind(stats[i], _economy);
+            }
+        }
+
+        // Atualiza o texto do saldo (chamado pelo evento BalanceChanged).
+        private void RefreshShards()
+        {
+            _shardsText.text = _economy.Wallet.Balance.ToString();
+        }
+    }
+}
+```
+
+#### Passo 7 — Teclas de teste: `EconomyDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/EconomyDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Economy
+{
+    // POR QUE: testar todos os Upgrades e os Satellites exige muitos Shards.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que dá Shards e escreve cada compra
+    // no Console (ouvindo o evento Purchased).
+    // M = +100 Shards. Registra as compras no Console.
+    public sealed class EconomyDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private RunEconomy _economy;
+
+        // Start: o UpgradeService só existe depois do Awake do RunEconomy.
+        private void Start()
+        {
+            _economy.Upgrades.Purchased += HandlePurchased;
+        }
+
+        // Desinscreve (conferindo null, como no UpgradeDrawer.OnDestroy).
+        private void OnDestroy()
+        {
+            if (_economy != null && _economy.Upgrades != null) _economy.Upgrades.Purchased -= HandlePurchased;
+        }
+
+        // Lê as teclas de teste.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.mKey.wasPressedThisFrame) _economy.Wallet.Add(100f);
+        }
+
+        // Escreve cada compra no Console.
+        private void HandlePurchased(StatId id, int level)
+        {
+            var definition = _economy.Stats.Definition(id);
+            Debug.Log($"[Economy] {id} nível {level}: {definition.Format(_economy.Stats.Value(id))}. Saldo: {_economy.Wallet.Balance}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 8 — Os 13 assets de Stat e o catálogo
+
+Em `Assets/_Project/Data/Stats/`, **Create → Armageddon → Stat Definition**, uma vez para cada linha (valores da Seção 4.2; percentuais como fração). O **Icon** é a célula de `Art/UI/SPR_UI_Icons` indicada (Seção 6.4).
+
+| Asset | Id | Track | Display Name | Base | Per Level | Cap | Base Cost | Format | Icon (célula) |
+|---|---|---|---|---|---|---|---|---|---|
+| `Stat_Damage` | Damage | Offense | Damage | 10 | 3 | 0 | 5 | Number | 0 |
+| `Stat_AttackSpeed` | AttackSpeed | Offense | Attack Speed | 1 | 0.08 | 6 | 6 | PerSecond | 1 |
+| `Stat_CriticalChance` | CriticalChance | Offense | Crit Chance | 0 | 0.015 | 0.8 | 8 | Percent | 2 |
+| `Stat_CriticalFactor` | CriticalFactor | Offense | Crit Factor | 1.5 | 0.1 | 6 | 8 | Multiplier | 3 |
+| `Stat_AttackRange` | AttackRange | Offense | Range | 4 | 0.15 | 8 | 6 | Units | 4 |
+| `Stat_Impetus` | Impetus | Offense | Impetus | 0 | 0.004 | 0.12 | 10 | PercentPerUnit | 5 |
+| `Stat_OrbitSpeed` | OrbitSpeed | Offense | Orbit Speed | 45 | 5 | 180 | 6 | DegreesPerSecond | 6 |
+| `Stat_Hitpoints` | Hitpoints | Defense | Hitpoints | 100 | 25 | 0 | 5 | Number | 7 |
+| `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 8 | PerSecond | 8 |
+| `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 8 | Number | 9 |
+| `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 10 | Percent | 10 |
+| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 6 | Percent | 11 |
+| `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 6 | Percent | 12 |
+
+Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome `StatCatalog`, e arraste os 13 assets **nesta ordem** para a lista **Stats**: é a ordem dos cards na gaveta.
+
+#### Passo 9 — Montar a economia na cena
+
+Em `[Systems]` da cena `Gameplay`, crie `RunEconomy` com o componente `RunEconomy`: **Catalog** = `StatCatalog`; **Wave Balance** = `WaveBalance`; **Orbit** = o `SatelliteOrbit`; **Planet** = o `PlanetHealth` do objeto `Planet`; **Enemies** = o `EnemyPool`; **Waves** = o `WaveDirector`; **Starting Shards** = `5`; **Satellite Costs** = `10`, `50`, `100` (já vem preenchido; Seção 4.2).
+
+> A partir de agora, os Stats do `SatelliteOrbit` e do `PlanetHealth` no Inspector são **sobrescritos** pelo `RunEconomy` quando o Play começa. Para testar valores, compre Upgrades (ou use **M** para ganhar Shards).
+
+#### Passo 10 — Montar a gaveta
+
+Todos os tamanhos e posições abaixo estão em **pixels da tela de referência de 320×180**.
+
+1. **Canvas:** em `[UI]` da cena `Gameplay`, **UI → Canvas**. Nome `HUDCanvas`. **Render Mode** = `Screen Space - Overlay`; **Pixel Perfect** marcado. No **Canvas Scaler**, adicione o componente **Integer Canvas Scale** (ele troca o modo para `Constant Pixel Size` e calcula o fator sozinho). Se não houver um `EventSystem` na cena, crie com **UI → Event System** e, no Inspector dele, clique em **Replace with InputSystemUIInputModule**.
+2. **Gaveta:** dentro do `HUDCanvas`, crie um objeto de UI vazio `UpgradeDrawer`, ancorado embaixo e esticado na horizontal (preset **bottom stretch**), com **Height** `72` (40% de 180) e **Pos Y** `0`. Adicione o componente `UpgradeDrawer`.
+3. **Faixa (Strip):** dentro de `UpgradeDrawer`, uma **UI → Image** `Strip`, ancorada embaixo (bottom stretch), **Height** `20`. **Source Image** = `SPR_UI_DrawerStrip`; **Image Type** = `Tiled`.
+   - Dentro de `Strip`, 4 **UI → Button** (`TabOffense`, `TabDefense`, `TabUtility`, `TabSatellites`) de **24 × 18**, lado a lado a partir da esquerda (X = 2, 28, 54, 80; Y centralizado). Cada botão: **Image** com `SPR_UI_Button` (a célula normal), **Image Type** `Sliced`, **Transition** `Sprite Swap` com a célula "pressionado" em **Pressed Sprite** e "desabilitado" em **Disabled Sprite**. Apague o texto do botão e crie dentro uma **UI → Image** de 16 × 16 com o ícone da aba: células 13, 14, 15 e 16 de `SPR_UI_Icons`.
+   - À direita da faixa: uma **UI → Image** 16 × 16 com o ícone de Shards (célula 17) e, ao lado, um **UI → Text - TextMeshPro** `ShardsText` com a fonte `m5x7 Raster`, tamanho 16, alinhado à esquerda.
+4. **Painel (a parte que abre):** dentro de `UpgradeDrawer`, uma **UI → Image** `Panel`, ancorada em cima (top stretch), **Height** `52`. **Source Image** = `SPR_UI_Panel`; **Image Type** = `Sliced`.
+   - Dentro de `Panel`, uma **UI → Scroll View** `CardsView` que preenche o painel (stretch-stretch, margens de 4). Na `Scroll Rect`: **Horizontal** marcado, **Vertical** desmarcado; apague as barras de rolagem. No objeto `Content`, adicione **Horizontal Layout Group** (**Spacing** `4`, **Child Force Expand** desmarcado) e **Content Size Fitter** (**Horizontal Fit** = `Preferred Size`).
+   - Também dentro de `Panel`, um objeto de UI vazio `SatellitePanel` (stretch-stretch, margens de 4) com **Grid Layout Group** (**Cell Size** `140 × 12`, **Spacing** `2 × 2`, **Constraint** = `Fixed Column Count`, **Constraint Count** `2`) e o componente `SatellitePanel`: **Orbit** = o `SatelliteOrbit`; **Economy** = o `RunEconomy`; **Rows** = o próprio `SatellitePanel`. Em 2 colunas, as 4 linhas e o botão de compra ocupam no máximo 3 fileiras de 12 px, que cabem nos 44 px do painel.
+   - Dentro de `SatellitePanel`, uma **UI → Button** `BuySatellite` com **Image** `SPR_UI_Button` (Sliced, Sprite Swap como as abas) e um TMP (m5x7, 16) dentro. O Grid define o tamanho. No `SatellitePanel`, **Buy Button** = `BuySatellite` e **Buy Text** = o TMP dele.
+5. **Prefab do card (`StatCard`):** uma **UI → Button** de **60 × 44** com **Image** `SPR_UI_Button` (Sliced, Sprite Swap como as abas) e **Layout Element** (**Preferred Width** `60`, **Preferred Height** `44`). Apague o texto padrão e crie dentro:
+   - `Icon`: **UI → Image** 16 × 16 no canto de cima à esquerda (X 4, Y −4).
+   - `Name`: TMP (m5x7, 16) à direita do ícone, em cima.
+   - `Level`: TMP logo abaixo do nome.
+   - `Value`: TMP numa linha inteira no meio.
+   - `Cost`: TMP embaixo, com um ícone de Shards (célula 17) ao lado.
+
+   Adicione o componente `StatCard` e ligue os campos. Arraste para `Prefabs/UI/` e apague da cena.
+6. **Prefab da linha de Satellite:** uma **UI → Button** de **140 × 12** com **Image** `SPR_UI_Button` (Sliced) e um TMP (m5x7, 16) dentro, e **Layout Element** (**Preferred Height** `12`). Arraste para `Prefabs/UI/` como `SatelliteRow` e apague da cena. No `SatellitePanel`, **Row Prefab** = `SatelliteRow`.
+7. **Ligue o `UpgradeDrawer`:** **Economy** = `RunEconomy`; **Camera** = o `CameraRig` da Main Camera; **Tab Buttons** = os 4 botões, na ordem Offense, Defense, Utility, Satellites; **Shards Text** = `ShardsText`; **Panel** = `Panel`; **Cards View** = `CardsView`; **Card Container** = o `Content` da Scroll View; **Card Prefab** = `StatCard`; **Satellite Panel** = `SatellitePanel`.
+8. Em `[Systems]`, crie `EconomyDevTools` com o componente `EconomyDevTools`: **Economy** = `RunEconomy`.
+
+> A tecla **F3** do `DevShortcuts` (Fase 2) continua movendo a câmera sozinha, sem abrir a gaveta. Agora prefira as abas.
+
+#### Passo 11 — Commit
+
+`git add .` e `git commit -m "Phase 6: stats, shards, upgrades, upgrade drawer"`.
+
+**✅ Checkpoint:**
+- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `5`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
+- Dois Swarmers destruídos somam **1** Shard (0,5 cada, acumulado).
+- Tocar em **Offense** abre a gaveta com 7 cards (Damage, Attack Speed…), e o mundo desliza para o planeta ficar no centro da área livre. Tocar de novo em Offense fecha a gaveta.
+- O card de Damage mostra `Lv 0`, `10 > 13` e custo `5`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
+- Comprar Damage: o saldo cai 5, o card vira `Lv 1`, `13 > 16`, custo `6` (5 × 1,15 = 5,75, arredondado), e o Grunt passa a morrer igual, mas o Brute precisa de menos tiros.
+- Comprar **Range** faz o preenchimento do Quadrant **crescer** na hora. **Orbit Speed** faz o Satellite girar mais rápido.
+- Comprar **Hitpoints** com o planeta ferido (**F6** algumas vezes): o máximo **e** o HP atual sobem 25.
+- **Crit Chance** chega a `MAX` quando atinge 80% e deixa de ser comprável.
+- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 10 Shards`, desabilitado até o saldo chegar a 10. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
+- Com **M**, compre o Satellite 2: o saldo cai 10, o segundo Satellite aparece do lado oposto da órbita, surge a linha `Satellite 2: Closest` e o botão passa a `+ Satellite 3: 50 Shards`. Depois do 4º, o botão some. As teclas **2**–**4** da Fase 3 também mudam o número de Satellites (sem cobrar), e o botão acompanha.
+- O jogo **nunca pausa** ao abrir a gaveta ou comprar.
+- Em `1920x1080`, a UI tem o mesmo tamanho de pixel que o mundo (6×). Em `1280x720`, os dois ficam em 4×.
+
+**Problemas comuns:**
+- **Tocar nas abas não faz nada:** falta o `EventSystem` na cena, ou ele usa o módulo antigo (`Standalone Input Module`). Troque por `InputSystemUIInputModule`.
+- **`KeyNotFoundException` no `RunStats`:** o `StatCatalog` não tem os 13 Stats, ou dois assets estão com o mesmo **Id**.
+- **Os cards aparecem uns em cima dos outros:** falta o **Horizontal Layout Group** no `Content`, ou o **Layout Element** no prefab do card.
+- **A UI fica gigante ou minúscula:** o `Canvas Scaler` ainda está em `Scale With Screen Size`. O `IntegerCanvasScale` troca o modo no `Awake`; confira se ele está no mesmo objeto que o `Canvas Scaler`.
+- **A UI fica borrada:** o Canvas está sem **Pixel Perfect**, ou algum texto não usa o Font Asset `m5x7 Raster`.
+- **Comprar não muda nada no jogo:** o `RunEconomy` está sem o **Orbit** ou o **Planet** preenchidos, e o Console mostra um `NullReferenceException`.
+- **O botão de comprar Satellite fica sempre desabilitado ou sem texto:** o **Economy** do `SatellitePanel` está vazio, ou o **Buy Text** aponta para outro texto.
+- **O valor aparece com vírgula ou com ponto dependendo do computador:** é a cultura do sistema operacional. A Fase 11 (Localization) fixa a formatação por idioma.
+
+Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, cachos de Swarmers e a barra de HP.
+
+---
+
+### Fase 7 — Mothership
+
+> Objetivo desta fase: toda Wave múltipla de 10 traz a **Mothership** (Seção 4.5). Ela entra pelo setor do aviso, desce em espiral em volta do planeta, telegrafa e dispara o laser a cada 8 s, solta cachos de Swarmers a cada 15 s, tem uma barra de HP no topo da tela e, ao morrer, explode e paga 50 Shards. Se o timer da Boss Wave acabar com ela viva, ela continua em campo junto com as Waves seguintes.
+
+**Conceitos novos:**
+- **Movimento em duas etapas:** primeiro a **entrada** (linha reta da borda até 7 u) e depois a **espiral** (o ângulo cresce 10°/s e o raio diminui 1,5 u a cada 360°). A espiral é só "órbita com raio encolhendo": `raio -= 1,5 × (10 / 360) × dt`, limitado a 3,5 u.
+- **Ataque telegrafado:** o laser tem duas fases visíveis: o **aviso** (a linha tracejada piscando por 1,5 s, que dá tempo de o jogador entender o perigo) e o **disparo** (o feixe, que causa o dano de uma vez). O dano passa pela fórmula de defesa do planeta (Seção 4.2); a Defense relativa é a melhor contra ele.
+- **SpriteRenderer em modo Tiled:** em vez de criar vários tiles para o laser, um único `SpriteRenderer` no modo **Tiled** repete o tile de 32 px ao longo do comprimento que você mandar (`size`). A linha acompanha a Mothership a cada frame só mudando o comprimento e o ângulo.
+- **Inimigo "externo" às Waves:** a Mothership não vem do `EnemyPool`, mas conta como inimiga viva: o `MothershipSpawner` avisa o `WaveDirector` (`AddExternalAlive`), e é por isso que a tela nunca "esvazia" com ela viva (Seção 4.3).
+
+#### Passo 1 — O laser: `LaserAttack`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/LaserAttack.cs
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: o laser é o ataque que o jogador precisa VER chegando (telegrafado). Ele tem sua própria
+    // sequência no tempo (aviso → dano → feixe → some), que não tem nada a ver com o movimento da Mothership.
+    // ESTRATÉGIA: um componente separado no mesmo objeto da Mothership, com uma pequena máquina de estados
+    // (Idle → Telegraph → Beam → Idle, ver WaveDirector). A Mothership só chama Begin(dano) e pergunta
+    // IsBusy; o LaserAttack cuida do visual (linha em modo Tiled + impacto) e aplica o dano no planeta.
+    // O laser da Mothership (Seção 4.5): aviso tracejado piscando por 1,5 s, depois o feixe, que causa o dano uma vez.
+    // Fica no mesmo objeto da Mothership e cria a linha e o impacto como objetos filhos.
+    public sealed class LaserAttack : MonoBehaviour
+    {
+        private enum State { Idle, Telegraph, Beam }
+
+        [SerializeField] private Sprite[] _warningFrames;   // SPR_VFX_Laser_Warning (2)
+        [SerializeField] private Sprite[] _beamFrames;      // SPR_VFX_Laser_Beam (4)
+        [SerializeField] private Sprite[] _impactFrames;    // SPR_VFX_Laser_Impact (4)
+        [SerializeField] private float _warningFps = 6f;
+        [SerializeField] private float _beamFps = 12f;
+        [SerializeField] private float _telegraphTime = 1.5f;
+        [SerializeField] private float _beamTime = 0.4f;    // quanto tempo o feixe fica visível depois do dano
+        [SerializeField] private string _sortingLayer = "VFX";
+
+        private SpriteRenderer _line;
+        private SpriteAnimator _lineAnimator;
+        private SpriteAnimator _impact;   // a "faísca" onde o laser toca o planeta
+        private PlanetHealth _planet;
+        private State _state;
+        private float _damage;
+        private float _time;              // segundos desde o começo do estado atual
+
+        // A Mothership não começa um laser novo enquanto este não terminou.
+        public bool IsBusy => _state != State.Idle;
+
+        // Cria a linha e o impacto (escondidos) uma vez só.
+        private void Awake()
+        {
+            // "out _lineAnimator": o método preenche essa variável além de devolver o SpriteRenderer.
+            _line = CreatePart("LaserLine", out _lineAnimator);
+            _line.drawMode = SpriteDrawMode.Tiled;   // repete o tile ao longo do comprimento (precisa de Mesh Type = Full Rect)
+            CreatePart("LaserImpact", out _impact);
+            Hide();
+        }
+
+        // Recebe o planeta alvo. Chamado pela Mothership no Spawn (o prefab não tem como arrastar o planeta da cena).
+        public void Init(PlanetHealth planet)
+        {
+            _planet = planet;
+        }
+
+        // Começa um disparo: entra no estado de aviso e mostra a linha tracejada.
+        public void Begin(float damage)
+        {
+            _damage = damage;
+            _state = State.Telegraph;
+            _time = 0f;
+            _line.gameObject.SetActive(true);
+            _lineAnimator.SetFrames(_warningFrames, _warningFps, true);
+            Place();
+        }
+
+        // Interrompe e esconde (fim natural do feixe, ou a Mothership morreu no meio do aviso).
+        public void Cancel()
+        {
+            _state = State.Idle;
+            Hide();
+        }
+
+        // Avança a máquina de estados. LateUpdate para posicionar a linha depois de a Mothership se mover neste frame.
+        private void LateUpdate()
+        {
+            if (_state == State.Idle) return;
+
+            _time += Time.deltaTime;
+            if (_state == State.Telegraph && _time >= _telegraphTime)
+            {
+                // Fim do aviso: aplica o dano UMA vez e troca o visual para o feixe.
+                _planet.TakeDamage(_damage);
+                _state = State.Beam;
+                _time = 0f;
+                _lineAnimator.SetFrames(_beamFrames, _beamFps, true);
+                _impact.gameObject.SetActive(true);
+                _impact.SetFrames(_impactFrames, _beamFps, true);
+            }
+            else if (_state == State.Beam && _time >= _beamTime)
+            {
+                Cancel();
+                return;
+            }
+
+            Place();
+        }
+
+        // Da Mothership até a borda do planeta, NA TELA. A linha é girada: é a exceção de rotação da Seção 6.2.
+        // Estratégia: as duas pontas são projetadas (a Mothership e o planeta estão no plano de voo); o centro da
+        // linha fica no meio do caminho; ela é girada para apontar ao planeta e esticada (size) até o comprimento
+        // certo — o modo Tiled repete o desenho em vez de esticá-lo.
+        // O dano não depende deste desenho: ele vai direto para o PlanetHealth no fim do aviso.
+        private void Place()
+        {
+            Vector2 from = IsoProjection.GroundToView(transform.position);
+            Vector2 center = IsoProjection.GroundToView(WorldLayout.PlanetCenter);
+            Vector2 direction = (center - from).normalized;
+            // O sprite do planeta é uma esfera de 32 px (1 u de raio na vista também): o feixe para na borda dele.
+            Vector2 end = center - direction * WorldLayout.PlanetRadius;
+            float length = Vector2.Distance(from, end);
+
+            _line.transform.position = (from + end) * 0.5f;
+            _line.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
+            _line.size = new Vector2(length, 2f);   // 2 u = a altura da célula de 32 px
+            _impact.transform.position = end;
+        }
+
+        // Cria um filho com SpriteRenderer + SpriteAnimator. Devolve os dois (um pelo return, outro pelo out).
+        private SpriteRenderer CreatePart(string name, out SpriteAnimator animator)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(transform, false);
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sortingLayerName = _sortingLayer;
+            animator = go.AddComponent<SpriteAnimator>();
+            return renderer;
+        }
+
+        // Esconde a linha e o impacto.
+        private void Hide()
+        {
+            _line.gameObject.SetActive(false);
+            _impact.gameObject.SetActive(false);
+        }
+    }
+}
+```
+
+#### Passo 2 — O boss: `Mothership`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/Mothership.cs
+using System;
+using Armageddon.Combat;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: o boss se comporta de um jeito bem diferente dos inimigos comuns: não é kamikaze, entra e
+    // fica orbitando em espiral, ataca à distância (laser) e invoca Swarmers. Forçar isso no Enemy o
+    // encheria de "if boss".
+    // ESTRATÉGIA: uma classe própria que também implementa ITarget (os Satellites atiram nela sem código
+    // novo). O movimento usa coordenadas polares (ângulo + distância ao centro), que deixam a espiral
+    // trivial. O laser fica num componente à parte (LaserAttack). Não é pooled: aparece uma vez a cada
+    // 10 Waves, então Instantiate/Destroy (feitos pelo MothershipSpawner) não pesam.
+    // O boss das Boss Waves (Seção 4.5). Entra em linha reta até 7 u, desce em espiral até 3,5 u,
+    // e ataca com o laser e com cachos de Swarmers. Implementa ITarget: os Satellites atiram nela sem código novo.
+    // Como o Enemy, este objeto é a raiz no chão; o desenho fica no filho View (IsoView). O LaserAttack fica aqui.
+    [RequireComponent(typeof(LaserAttack))]
+    public sealed class Mothership : MonoBehaviour, ITarget
+    {
+        [Header("Valores base, antes da escalada por Wave (Seção 4.5)")]
+        [SerializeField] private float _baseHitpoints = 1200f;
+        [SerializeField] private float _baseLaserDamage = 25f;
+        [SerializeField] private float _shards = 50f;
+
+        [Header("Movimento")]
+        [SerializeField] private float _entrySpeed = 1.5f;        // u/s, da borda até a primeira órbita
+        [SerializeField] private float _startOrbitRadius = 7f;
+        [SerializeField] private float _minOrbitRadius = 3.5f;
+        [SerializeField] private float _shrinkPerLap = 1.5f;      // u de raio perdidos a cada volta
+        [SerializeField] private float _angularSpeed = 10f;       // graus por segundo
+        [SerializeField] private float _radius = 1.5f;            // metade do sprite: o alcance mede até a borda
+
+        [Header("Ataques")]
+        [SerializeField] private float _laserInterval = 8f;
+        [SerializeField] private float _swarmerInterval = 15f;
+        [SerializeField] private EnemyDefinition _swarmer;
+
+        private LaserAttack _laser;
+        private EnemyPool _enemies;           // para soltar os Swarmers pelo mesmo caminho dos inimigos comuns
+        private float _hitpointsMultiplier;   // guardados para escalar os Swarmers que ela solta
+        private float _damageMultiplier;
+        private float _laserDamage;
+        private float _angle;          // graus, 0 = direita, anti-horário (como a órbita dos Satellites)
+        private float _distance;       // distância atual ao centro
+        private bool _inOrbit;         // false = ainda na entrada em linha reta
+        private bool _alive;
+        private float _laserTimer;
+        private float _swarmerTimer;
+
+        public Vector2 Position { get; private set; }
+        public float Radius => _radius;
+        public float CurrentHitpoints { get; private set; }
+        public float MaxHitpoints { get; private set; }   // usado pela BossHealthBar
+        public bool IsAlive => _alive;
+        public float Shards => _shards;
+        public int Wave { get; private set; }
+
+        public event Action<Mothership> Died;
+
+        // Cache do LaserAttack (garantido pelo RequireComponent).
+        private void Awake()
+        {
+            _laser = GetComponent<LaserAttack>();
+        }
+
+        // "Construtor" chamado pelo MothershipSpawner logo depois do Instantiate: posição inicial, vida
+        // e dano já escalados pela Wave, e as referências da cena que o prefab não tem.
+        public void Spawn(int wave, float angleDegrees, float hitpointsMultiplier, float damageMultiplier,
+                          PlanetHealth planet, EnemyPool enemies)
+        {
+            Wave = wave;
+            _angle = angleDegrees;
+            _distance = WorldLayout.SpawnRadius;
+            _hitpointsMultiplier = hitpointsMultiplier;
+            _damageMultiplier = damageMultiplier;
+            _enemies = enemies;
+            MaxHitpoints = _baseHitpoints * hitpointsMultiplier;
+            CurrentHitpoints = MaxHitpoints;
+            _laserDamage = _baseLaserDamage * damageMultiplier;
+            _inOrbit = false;
+            _alive = true;
+            _laser.Init(planet);
+            ApplyPosition();
+            TargetRegistry.Register(this);
+        }
+
+        // Duas etapas de movimento: entrada (só a distância diminui) e espiral (ângulo e distância mudam).
+        private void Update()
+        {
+            if (!_alive) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;
+
+            if (!_inOrbit)
+            {
+                // Entrada: linha reta até a primeira órbita. Ainda não ataca.
+                _distance = Mathf.Max(_startOrbitRadius, _distance - _entrySpeed * deltaTime);
+                if (_distance <= _startOrbitRadius)
+                {
+                    _inOrbit = true;
+                    _laserTimer = 0f;
+                    _swarmerTimer = 0f;
+                }
+            }
+            else
+            {
+                // Espiral: o ângulo avança e o raio encolhe 1,5 u por volta, até a órbita mínima.
+                // (_angularSpeed / 360) = voltas por segundo; × 1,5 u por volta = u por segundo de encolhimento.
+                _angle = Mathf.Repeat(_angle + _angularSpeed * deltaTime, 360f);
+                _distance = Mathf.Max(_minOrbitRadius, _distance - _shrinkPerLap * (_angularSpeed / 360f) * deltaTime);
+                UpdateAttacks(deltaTime);
+            }
+
+            ApplyPosition();
+        }
+
+        // Dois cronômetros independentes: laser a cada 8 s (se o anterior terminou) e Swarmers a cada 15 s.
+        private void UpdateAttacks(float deltaTime)
+        {
+            _laserTimer += deltaTime;
+            if (_laserTimer >= _laserInterval && !_laser.IsBusy)
+            {
+                _laserTimer = 0f;
+                _laser.Begin(_laserDamage);
+            }
+
+            _swarmerTimer += deltaTime;
+            if (_swarmerTimer >= _swarmerInterval)
+            {
+                _swarmerTimer = 0f;
+                // Os Swarmers da Mothership escalam com a Wave dela (Seção 4.3).
+                _enemies.Spawn(_swarmer, Position, _hitpointsMultiplier, _damageMultiplier);
+            }
+        }
+
+        // Cumpre ITarget.TakeDamage. Ao morrer: cancela o laser, sai do registro e avisa (o spawner explode e destrói).
+        public void TakeDamage(float amount, bool isCritical)
+        {
+            if (!_alive) return;
+            CurrentHitpoints -= amount;
+            if (CurrentHitpoints > 0f) return;
+
+            CurrentHitpoints = 0f;
+            _alive = false;
+            _laser.Cancel();
+            TargetRegistry.Unregister(this);
+            Died?.Invoke(this);
+        }
+
+        // Converte (ângulo, distância) em posição x,y no chão (ver Satellite.SetAngle). O IsoView projeta.
+        private void ApplyPosition()
+        {
+            float radians = _angle * Mathf.Deg2Rad;
+            Position = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * _distance;
+            transform.position = new Vector3(WorldLayout.SnapToPixel(Position.x), WorldLayout.SnapToPixel(Position.y), 0f);
+        }
+
+        // Segurança, como no Enemy: se for destruída viva (troca de cena), sai do registro de alvos.
+        private void OnDisable()
+        {
+            if (!_alive) return;
+            _alive = false;
+            TargetRegistry.Unregister(this);
+        }
+    }
+}
+```
+
+#### Passo 3 — Quem cria a Mothership: `MothershipSpawner`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/MothershipSpawner.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: alguém precisa ligar o evento "Boss Wave começou" à criação da Mothership, e manter o
+    // WaveDirector informado de que há um inimigo vivo fora do EnemyPool (senão ele daria Wave Clear
+    // com o boss ainda em campo).
+    // ESTRATÉGIA: faz para a Mothership o papel que o EnemyPool faz para os inimigos comuns: cria, guarda
+    // a lista das vivas, conta no WaveDirector (AddExternalAlive), toca a explosão ao morrer e dispara os
+    // eventos públicos (MothershipKilled). Sem pool: uma por Boss Wave.
+    // Cria a Mothership em cada Boss Wave, conta-a como inimiga viva no WaveDirector e toca a explosão ao morrer.
+    // Pode haver mais de uma: se uma sobreviver até a Boss Wave seguinte, a nova entra junto (Seção 4.5).
+    public sealed class MothershipSpawner : MonoBehaviour
+    {
+        [SerializeField] private Mothership _prefab;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private WaveBalance _balance;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private ExplosionPool _explosions;
+
+        private readonly List<Mothership> _alive = new List<Mothership>();
+
+        public IReadOnlyList<Mothership> Alive => _alive;   // a mais antiga é a [0] (a BossHealthBar mostra essa)
+
+        public event Action<Mothership> MothershipSpawned;
+        public event Action<Mothership> MothershipKilled;   // Shards (Fase 6) e conquistas (Fase 9)
+
+        // Escuta o início das Boss Waves (e para de escutar no OnDisable).
+        private void OnEnable()
+        {
+            _waves.BossWaveStarted += Spawn;
+        }
+
+        private void OnDisable()
+        {
+            _waves.BossWaveStarted -= Spawn;
+        }
+
+        // Cria uma Mothership para a Wave "wave". Público: a tecla de teste também chama.
+        public void Spawn(int wave)
+        {
+            // Entra pelo centro de um dos setores do aviso da Boss Wave.
+            var sectors = _waves.CurrentSectors;
+            int sector = sectors[UnityEngine.Random.Range(0, sectors.Count)];
+            float angle = sector * WaveDirector.SectorArc + WaveDirector.SectorArc * 0.5f;
+
+            var mothership = Instantiate(_prefab, transform);
+            mothership.Spawn(wave, angle, _balance.HitpointsMultiplier(wave), _balance.DamageMultiplier(wave), _planet, _enemies);
+            mothership.Died += HandleDied;
+            _alive.Add(mothership);
+            _waves.AddExternalAlive(1);   // agora o Wave Clear espera por ela
+            MothershipSpawned?.Invoke(mothership);
+        }
+
+        // Ao morrer: desfaz a inscrição, desconta do WaveDirector, explode, avisa e destrói o objeto.
+        private void HandleDied(Mothership mothership)
+        {
+            mothership.Died -= HandleDied;
+            _alive.Remove(mothership);
+            _waves.AddExternalAlive(-1);
+            _explosions.Play(ExplosionKind.Mothership, mothership.Position);
+            MothershipKilled?.Invoke(mothership);
+            Destroy(mothership.gameObject);   // uma por Boss Wave: não precisa de pool
+        }
+    }
+}
+```
+
+#### Passo 4 — A barra de HP: `BossHealthBar`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/BossHealthBar.cs
+using Armageddon.Enemies;
+using Armageddon.World;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o boss tem muita vida; o jogador precisa ver o progresso para saber se o dano está bastando.
+    // ESTRATÉGIA: uma Image de UI em modo "Filled" (a Unity recorta a imagem pela fração fillAmount, de 0 a 1).
+    // A cada frame, lê a vida da Mothership mais antiga no MothershipSpawner. Ler por frame aqui é simples e
+    // barato (uma divisão); a HP muda muitas vezes por segundo, então eventos não trariam ganho.
+    // Barra de HP da Mothership no topo da tela (Seção 4.5). Mostra a mais antiga viva e some quando não há nenhuma.
+    public sealed class BossHealthBar : MonoBehaviour
+    {
+        [SerializeField] private MothershipSpawner _spawner;
+        [SerializeField] private GameObject _root;   // o objeto que contém a barra inteira (fundo + preenchimento)
+        [SerializeField] private Image _fill;
+
+        // Configura a Image por código para não depender de ajustes manuais no Inspector.
+        private void Awake()
+        {
+            _fill.sprite = PixelSprite.White;   // a cor vem do Image (magenta, a cor dos inimigos)
+            _fill.type = Image.Type.Filled;
+            _fill.fillMethod = Image.FillMethod.Horizontal;
+            _root.SetActive(false);
+        }
+
+        // Mostra/esconde conforme haja Mothership viva e atualiza a fração de vida.
+        private void LateUpdate()
+        {
+            var alive = _spawner.Alive;
+            bool visible = alive.Count > 0;
+            if (_root.activeSelf != visible) _root.SetActive(visible);   // só chama SetActive quando muda
+            if (!visible) return;
+
+            var mothership = alive[0];
+            _fill.fillAmount = mothership.CurrentHitpoints / mothership.MaxHitpoints;
+        }
+    }
+}
+```
+
+#### Passo 5 — Shards da Mothership: atualize o `RunEconomy`
+
+A Mothership paga 50 Shards (Seção 4.5), também multiplicados por `(1 + Resource Bonus)` (Seção 4.4). Substitua o `RunEconomy` da Fase 6 por esta versão. Ela só acrescenta o campo **Motherships** e o `HandleMothershipKilled`:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE / ESTRATÉGIA: as mesmas da versão da Fase 6 (ver RunEconomy da Fase 6).
+    // O QUE MUDOU nesta versão (Fase 7):
+    //  - campo novo _motherships, e inscrição no evento MothershipKilled;
+    //  - HandleMothershipKilled paga os 50 Shards do boss;
+    //  - a regra "Shards × (1 + Resource Bonus)" foi movida para AwardKill, usada pelos dois tipos de kill.
+    //    POR QUE: com dois lugares pagando kills, a fórmula ficaria duplicada; num método só, uma mudança
+    //    futura na fórmula vale para ambos.
+    // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
+    // e aplica os valores dos Stats nos Satellites e no planeta sempre que algum muda.
+    public sealed class RunEconomy : MonoBehaviour
+    {
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private WaveBalance _waveBalance;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
+
+        public StatCatalog Catalog => _catalog;
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+        public UpgradeService Upgrades { get; private set; }
+        public SatelliteShop Satellites { get; private set; }
+
+        // Cria a economia da run (igual à Fase 6).
+        private void Awake()
+        {
+            Stats = new RunStats(_catalog.Stats);
+            Wallet = new ShardWallet();
+            Upgrades = new UpgradeService(Stats, Wallet);
+            Satellites = new SatelliteShop(_orbit, Wallet, _satelliteCosts);
+        }
+
+        // Liga os eventos (agora também o da Mothership).
+        private void OnEnable()
+        {
+            Stats.StatChanged += HandleStatChanged;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;   // NOVO
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            Stats.StatChanged -= HandleStatChanged;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;   // NOVO
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        // Saldo inicial e primeira aplicação dos Stats (igual à Fase 6).
+        private void Start()
+        {
+            Wallet.Add(_startingShards);
+            ApplyAll();
+        }
+
+        // O Planet Core (Fase 9) chama isto no começo da run.
+        public void AddModifier(StatModifier modifier)
+        {
+            Stats.AddModifier(modifier);
+        }
+
+        // Qualquer Stat mudou: reaplica todos (igual à Fase 6).
+        private void HandleStatChanged(StatId id)
+        {
+            ApplyAll();   // são só 13 números: recalcular tudo é mais simples e à prova de esquecimento
+        }
+
+        // Copia os valores dos Stats para os Satellites e o planeta (igual à Fase 6).
+        private void ApplyAll()
+        {
+            _orbit.SetStats(new SatelliteStats
+            {
+                damage = Stats.Value(StatId.Damage),
+                attackSpeed = Stats.Value(StatId.AttackSpeed),
+                criticalChance = Stats.Value(StatId.CriticalChance),
+                criticalFactor = Stats.Value(StatId.CriticalFactor),
+                attackRange = Stats.Value(StatId.AttackRange),
+                impetus = Stats.Value(StatId.Impetus),
+                orbitSpeed = Stats.Value(StatId.OrbitSpeed),
+            });
+
+            _planet.SetMaxHitpoints(Stats.Value(StatId.Hitpoints));
+            _planet.SetRegeneration(Stats.Value(StatId.Regeneration));
+            _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
+        }
+
+        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            AwardKill(enemy.Definition.Shards);
+        }
+
+        // NOVO: a Mothership paga os seus Shards pela mesma regra dos inimigos comuns.
+        private void HandleMothershipKilled(Mothership mothership)
+        {
+            AwardKill(mothership.Shards);
+        }
+
+        // NOVO: a fórmula de Shards por kill, num lugar só.
+        private void AwardKill(float baseShards)
+        {
+            Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            float multiplier = 1f + Stats.Value(StatId.ResourcePerWave);
+            foreach (int wave in paidWaves) Wallet.Add(_waveBalance.ClearBonus(wave) * multiplier);
+        }
+    }
+}
+```
+
+No Inspector do `RunEconomy`, preencha o campo novo **Motherships** com o `MothershipSpawner` (Passo 7).
+
+#### Passo 6 — Tecla de teste: `MothershipDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/MothershipDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Waves;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: esperar até a Wave 10 para ver a Mothership tornaria cada teste do boss muito lento.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools) que chama o mesmo Spawn que a Boss Wave
+    // usa, com a escalada da Wave atual, e registra a morte no Console.
+    // X = cria uma Mothership agora, com a escalada da Wave atual. Registra a morte no Console.
+    public sealed class MothershipDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private MothershipSpawner _spawner;
+        [SerializeField] private WaveDirector _waves;
+
+        // Escuta a morte das Motherships (e para de escutar no OnDisable).
+        private void OnEnable()
+        {
+            _spawner.MothershipKilled += HandleKilled;
+        }
+
+        private void OnDisable()
+        {
+            _spawner.MothershipKilled -= HandleKilled;
+        }
+
+        // Max(1, ...) evita a Wave 0 (antes de a run começar), que daria escalada abaixo da Wave 1.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.xKey.wasPressedThisFrame) _spawner.Spawn(Mathf.Max(1, _waves.CurrentWave));
+        }
+
+        // Escreve a morte no Console.
+        private void HandleKilled(Mothership mothership)
+        {
+            Debug.Log($"[Boss] Mothership da Wave {mothership.Wave} destruída (+{mothership.Shards} Shards).");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 7 — Import dos tiles do laser, prefab e cena
+
+1. **Mesh Type dos tiles do laser:** selecione `Art/VFX/SPR_VFX_Laser_Warning` e `SPR_VFX_Laser_Beam`. No Inspector, em **Advanced**, troque **Mesh Type** para `Full Rect` e clique **Apply**. Sem isso, o modo Tiled do `SpriteRenderer` não repete o tile, e a Unity mostra um aviso amarelo.
+2. **Prefab da Mothership:** objeto vazio `Mothership` com os componentes abaixo, e um filho vazio `View` com **Sprite Renderer** (célula 0 de `Art/Enemies/SPR_Enemy_Mothership`; **Sorting Layer** `World`), **Sprite Animator** (as 5 células; **Fps** `5`; **Loop** marcado, Seção 6.4) e **Iso View** (**Shadow Radius** `1.5`). Na raiz:
+   - **Laser Attack:** **Warning Frames** = as 2 células de `SPR_VFX_Laser_Warning`; **Beam Frames** = as 4 de `SPR_VFX_Laser_Beam`; **Impact Frames** = as 4 de `SPR_VFX_Laser_Impact`.
+   - **Mothership:** **Swarmer** = `Enemy_Swarmer`. O resto já vem com os valores da Seção 4.5.
+
+   Arraste para `Prefabs/Gameplay/` e apague da cena.
+3. **Explosão da Mothership:** no `ExplosionPool` (Fase 4), acrescente um 3º item em **Explosions**: `Mothership`, com as 6 células de `Art/VFX/SPR_VFX_Explosion_Mothership` e **Fps** `12`.
+4. Em `[Systems]`:
+   - `MothershipSpawner`, com o componente `MothershipSpawner`: **Prefab** = `Mothership`; **Waves** = `WaveDirector`; **Balance** = `WaveBalance`; **Enemies** = `EnemyPool`; **Planet** = o `PlanetHealth`; **Explosions** = `ExplosionPool`.
+   - `MothershipDevTools`, com o componente `MothershipDevTools`: **Spawner** = `MothershipSpawner`; **Waves** = `WaveDirector`.
+   - No `RunEconomy`, **Motherships** = `MothershipSpawner`.
+5. **Barra de HP:** no `HUDCanvas` (Fase 6), crie um objeto de UI `BossHealthBar` com o componente `BossHealthBar`, e dentro dele:
+   - `Root`: uma **UI → Image** ancorada em cima e centralizada (**top center**), **200 × 12**, **Pos Y** `−4`, com `SPR_UI_Panel` em **Image Type** `Sliced`.
+   - Dentro de `Root`: `Fill`, uma **UI → Image** que preenche o painel com margem de 3 px (stretch-stretch, **Left/Right/Top/Bottom** = 3), com **Color** magenta `#FF78DC`.
+   - Também dentro de `Root`: um TMP `Mothership` (m5x7, 16) logo abaixo da barra.
+
+   No `BossHealthBar`: **Spawner** = `MothershipSpawner`; **Root** = `Root`; **Fill** = `Fill`.
+
+#### Passo 8 — Commit
+
+`git add .` e `git commit -m "Phase 7: mothership, spiral orbit, telegraphed laser, boss health bar"`.
+
+**✅ Checkpoint:**
+- **X** cria uma Mothership fora da tela. Ela entra em linha reta, e a barra magenta aparece no topo da tela. Chegando a 7 u, começa a girar devagar no sentido anti-horário, **cada volta um pouco mais perto**, até parar de se aproximar numa órbita de 3,5 u (uma elipse na tela). Na metade de cima da órbita, ela passa atrás do planeta; a sombra grande dela no grid mostra onde está.
+- Com o alcance base (4 u), os Satellites só começam a atingi-la depois de cerca de uma volta. Com o **Range** comprado, antes. A barra de HP desce a cada acerto.
+- A cada 8 s aparece uma linha vermelha tracejada piscando entre ela e o planeta (na tela, do sprite dela até a borda do sprite do planeta), que **acompanha o movimento**. Depois de 1,5 s, vira um feixe com núcleo branco e um brilho na borda do planeta, e o HP do planeta cai 25 (na Wave 1; **F6** mostra o valor). Com **Defense %** comprada, o dano cai.
+- A cada 15 s, um cacho de 8 Swarmers sai de onde ela está e avança para o planeta.
+- Destruída, ela solta a explosão grande, a barra some, o saldo sobe 50 Shards e o Console mostra `[Boss] Mothership da Wave … destruída`.
+- Com **N** até a Wave 10, a Mothership nasce sozinha **do lado da seta do aviso**. Se o timer de 60 s acabar com ela viva, a Wave 11 começa com ela ainda em campo, e o Wave Clear só acontece depois que ela e todos os outros morrerem, pagando as Waves acumuladas juntas.
+- **Esc** congela a espiral, o laser (inclusive no meio do aviso) e o timer dos Swarmers.
+
+**Problemas comuns:**
+- **O laser aparece como um único tile esticado ou borrado:** o **Mesh Type** do tile não está em `Full Rect` (item 1 do Passo 7).
+- **O laser não aparece, mas o planeta perde HP:** as listas de frames do `LaserAttack` estão vazias.
+- **A Mothership nunca é atingida:** confira o **Radius** dela (1,5) e se o `TargetSelector` é a versão da Fase 3 que mede até a borda do alvo (`distância − Radius`).
+- **A Wave nunca termina depois que a Mothership morre:** o `MothershipSpawner` não chamou `AddExternalAlive(-1)`, e o Console costuma mostrar um erro no `HandleDied`. Confira também se ele é o único a criar Motherships (não arraste o prefab direto na cena).
+- **`NullReferenceException` no `RunEconomy` ao dar Play:** o campo novo **Motherships** está vazio.
+- **Os Swarmers da Mothership não aparecem:** o campo **Swarmer** do prefab está vazio.
+
+Próxima fase: **Fase 8 — Run: pausa, HUD e Results**. Ela junta tudo num ciclo de run completo: começar, pausar com a tela de pausa, morrer e mostrar o Results.
+
+---
+
+### Fase 8 — Run: pausa, HUD e Results
+
+> Objetivo desta fase: a run tem começo, meio e fim. O HUD mostra o HP do planeta, a Wave e o timer, e tem um botão de pausa que abre a tela de pausa (continuar, Settings, desistir). Quando o planeta chega a 0 HP, o jogo congela e aparece o **Results** com o resumo da run e os botões "jogar de novo" e "menu". Não existe Revive (Seção 4.6).
+
+**Conceitos novos:**
+- **Controlador da run (`RunController`):** o único dono do estado da run (`Running` ou `Ended`). As telas não decidem nada: elas mostram o estado e chamam métodos como `GiveUp` ou `PlayAgain`. Assim, a regra "a run acabou: pare as Waves, congele o mundo e mostre o resumo" fica num lugar só.
+- **Resumo da run (`RunSummary`):** um objeto de dados com tudo o que aconteceu na run (Wave, kills, tempo, Shards). O Results mostra, e a Fase 9 usa o mesmo objeto para as conquistas e o recorde de Wave.
+
+> **Diferença para o 8-Bit Armageddon:** lá, esta fase cria a interface de anúncios (`IAdService`), a oferta de Revive (`ReviveOfferView`) e a onda de choque (`ShockwaveView`). Este jogo não tem nenhum dos três (Seção 7.1), e o `RunController` fica com dois estados em vez de três.
+
+#### Passo 1 — O resumo e o controle da run: `RunSummary`, `RunController`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunSummary.cs
+using System;
+
+namespace Armageddon.Run
+{
+    // POR QUE: no fim da run, várias partes precisam dos mesmos números (Results, conquistas e recorde
+    // na Fase 9). Passar cada número separado seria frágil.
+    // ESTRATÉGIA: um objeto de dados puro (como o PlayerProfile), criado uma vez pelo RunController e
+    // entregue no evento RunEnded. [Serializable] deixa pronto para salvar como JSON, se preciso.
+    // O que aconteceu na run. O Results mostra; a Fase 9 usa para conquistas e recorde.
+    [Serializable]
+    public sealed class RunSummary
+    {
+        public int waveReached;
+        public int enemiesDestroyed;        // inimigos comuns + Motherships
+        public int mothershipsDestroyed;
+        public float survivalSeconds;
+        public float shardsEarned;          // todos os Shards ganhos, inclusive os gastos (mostrado no Results, Seção 6.3)
+        public bool gaveUp;
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunController.cs
+using System;
+using Armageddon.Core;
+using Armageddon.Economy;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Run
+{
+    // POR QUE: o fim da run envolve vários sistemas ao mesmo tempo: "quando o planeta morre, congela o mundo,
+    // para as Waves e mostra o Results". Se cada tela decidisse um pedaço, a run poderia acabar duas vezes
+    // (ex.: o jogador desistir no mesmo frame em que o planeta morre).
+    // ESTRATÉGIA: o único dono do estado da run (Running → Ended), numa máquina de estados mínima (ver
+    // WaveDirector). As telas só leem State, escutam o evento RunEnded e chamam métodos públicos (GiveUp,
+    // PlayAgain, GoToMenu). Ele também conta kills e tempo para montar o RunSummary.
+    // Ciclo de vida da run (Seção 4.6): começa e termina no Results. Não há Revive.
+    public sealed class RunController : MonoBehaviour
+    {
+        public enum RunState { Running, Ended }
+
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private RunEconomy _economy;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private MothershipSpawner _motherships;
+
+        private int _enemiesDestroyed;
+        private int _mothershipsDestroyed;
+
+        public RunState State { get; private set; } = RunState.Running;
+        public float SurvivalSeconds { get; private set; }
+
+        public event Action<RunSummary> RunEnded;
+
+        // Escuta a morte do planeta e as kills (para as estatísticas).
+        private void OnEnable()
+        {
+            _planet.Died += HandlePlanetDied;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;
+        }
+
+        private void OnDisable()
+        {
+            _planet.Died -= HandlePlanetDied;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;
+        }
+
+        // Começa a run. Start (e não Awake) para que todos os sistemas já tenham feito seu Awake.
+        private void Start()
+        {
+            _waves.StartRun();   // o WaveDirector fica com "Auto Start" desligado: quem começa a run é este script
+        }
+
+        // Conta o tempo de sobrevivência (Time.deltaTime é 0 na pausa, então a pausa não conta).
+        private void Update()
+        {
+            if (State == RunState.Running) SurvivalSeconds += Time.deltaTime;
+        }
+
+        // Contadores para o RunSummary.
+        private void HandleEnemyKilled(Enemy enemy) => _enemiesDestroyed++;
+
+        private void HandleMothershipKilled(Mothership mothership)
+        {
+            _enemiesDestroyed++;
+            _mothershipsDestroyed++;
+        }
+
+        // HP chegou a 0: o jogo congela e a run acaba (Seção 4.6).
+        // A pausa "Modal" (ver GameClock) congela o mundo sem abrir a tela de pausa.
+        private void HandlePlanetDied()
+        {
+            if (State != RunState.Running) return;
+            Services.Clock.Pause(PauseReason.Modal);
+            EndRun(gaveUp: false);
+        }
+
+        // Botão "desistir" da tela de pausa.
+        // Troca a pausa Manual pela Modal: a tela de pausa some (ela só aparece na Manual), mas o mundo continua parado.
+        public void GiveUp()
+        {
+            if (State != RunState.Running) return;
+            Services.Clock.Resume(PauseReason.Manual);
+            Services.Clock.Pause(PauseReason.Modal);   // o mundo continua congelado atrás do Results
+            EndRun(gaveUp: true);
+        }
+
+        // Botões do Results. Recarregar a Gameplay recria tudo do zero (o GameClock limpa as pausas ao carregar).
+        public void PlayAgain() => Services.Scenes.Load(GameScene.Gameplay);
+        public void GoToMenu() => Services.Scenes.Load(GameScene.MainMenu);
+
+        // Encerra a run: para as Waves e entrega o resumo a quem estiver ouvindo (ResultsView, RunDevTools, Fase 9).
+        private void EndRun(bool gaveUp)
+        {
+            State = RunState.Ended;
+            _waves.StopRun();
+            RunEnded?.Invoke(new RunSummary
+            {
+                waveReached = _waves.CurrentWave,
+                enemiesDestroyed = _enemiesDestroyed,
+                mothershipsDestroyed = _mothershipsDestroyed,
+                survivalSeconds = SurvivalSeconds,
+                shardsEarned = _economy.Wallet.TotalEarned,
+                gaveUp = gaveUp,
+            });
+        }
+    }
+}
+```
+
+#### Passo 2 — As telas da run: `HudView`, `PauseView`, `ResultsView`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/HudView.cs
+using Armageddon.Core;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o jogador precisa ver o estado da run o tempo todo (HP, Wave, tempo restante) e ter como pausar.
+    // ESTRATÉGIA: uma "view" (tela) que só LÊ o PlanetHealth e o WaveDirector a cada frame; não decide nada.
+    // O timer muda todo segundo e o HP várias vezes por segundo, então ler por frame é simples; para não
+    // gerar lixo de memória, os textos só são reescritos quando o número exibido muda.
+    // HUD da run (Seção 6.3): HP do planeta, Wave e timer, e o botão de pausa.
+    // A barra da Mothership é o BossHealthBar (Fase 7).
+    public sealed class HudView : MonoBehaviour
+    {
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private Image _healthFill;
+        [SerializeField] private TMP_Text _healthText;
+        [SerializeField] private TMP_Text _waveText;
+        [SerializeField] private TMP_Text _timerText;
+        [SerializeField] private Button _pauseButton;
+
+        // Só reescreve os textos quando o número muda: evita criar strings novas a cada frame.
+        // Os valores iniciais (-1, -2) são "impossíveis", para forçar a primeira escrita.
+        private int _shownHealth = -1;
+        private int _shownMaxHealth = -1;
+        private int _shownWave = -1;
+        private int _shownSeconds = -2;   // -1 já tem significado (timer vazio durante o aviso)
+
+        // Configura a barra (como a BossHealthBar) e liga o botão de pausa ao GameClock.
+        private void Awake()
+        {
+            _healthFill.sprite = PixelSprite.White;
+            _healthFill.type = Image.Type.Filled;
+            _healthFill.fillMethod = Image.FillMethod.Horizontal;
+            _pauseButton.onClick.AddListener(() => Services.Clock.Pause(PauseReason.Manual));
+        }
+
+        // Atualiza barra e textos depois de todos os Update do frame (valores já atualizados).
+        private void LateUpdate()
+        {
+            _healthFill.fillAmount = _planet.Max > 0f ? _planet.Current / _planet.Max : 0f;
+
+            int health = Mathf.CeilToInt(_planet.Current);   // arredonda para cima: 0,3 HP ainda mostra "1"
+            int maxHealth = Mathf.CeilToInt(_planet.Max);
+            if (health != _shownHealth || maxHealth != _shownMaxHealth)
+            {
+                _shownHealth = health;
+                _shownMaxHealth = maxHealth;
+                _healthText.text = $"{health}/{maxHealth}";
+            }
+
+            if (_waves.CurrentWave != _shownWave)
+            {
+                _shownWave = _waves.CurrentWave;
+                _waveText.text = $"Wave {_shownWave}";
+            }
+
+            int seconds = _waves.IsWarning ? -1 : Mathf.CeilToInt(_waves.TimeRemaining);
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                _timerText.text = seconds < 0 ? "" : $"{seconds}s";
+            }
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/PauseView.cs
+using Armageddon.Core;
+using Armageddon.Run;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: a pausa manual precisa de uma tela com "continuar" e "desistir"; sem ela, o jogador pausado
+    // não teria como sair da run.
+    // ESTRATÉGIA: a tela não guarda estado próprio: a cada frame, calcula "devo aparecer?" a partir do
+    // GameClock e do RunController, e só liga/desliga o _root quando a resposta muda. Os botões chamam
+    // o GameClock (continuar) e o RunController (desistir).
+    // Tela de pausa (Seção 6.3): continuar, Settings (Fase 11) e desistir da run.
+    // Aparece com a pausa MANUAL (botão, Esc ou a aba perdeu o foco) enquanto a run está rodando.
+    public sealed class PauseView : MonoBehaviour
+    {
+        [SerializeField] private RunController _run;
+        [SerializeField] private GameObject _root;   // o filho com fundo escuro + painel; este objeto em si fica sempre ativo
+        [SerializeField] private Button _continueButton;
+        [SerializeField] private Button _settingsButton;
+        [SerializeField] private Button _giveUpButton;
+
+        // Liga os botões e começa escondida.
+        private void Awake()
+        {
+            _continueButton.onClick.AddListener(() => Services.Clock.Resume(PauseReason.Manual));
+            _giveUpButton.onClick.AddListener(() => _run.GiveUp());
+            _settingsButton.interactable = false;   // a tela de Settings entra na Fase 11
+            _root.SetActive(false);
+        }
+
+        // Verificar a cada frame (2 booleanos) é mais simples e mais seguro do que acompanhar
+        // todas as combinações de pausa manual, pausa modal e estado da run.
+        // (LateUpdate continua rodando com timeScale = 0; só o deltaTime vira 0.)
+        private void LateUpdate()
+        {
+            bool visible = Services.IsReady
+                           && Services.Clock.IsPausedBy(PauseReason.Manual)
+                           && _run.State == RunController.RunState.Running;
+            if (_root.activeSelf != visible) _root.SetActive(visible);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/ResultsView.cs
+using Armageddon.Run;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o fim da run precisa de um fechamento: o que o jogador conseguiu e para onde ir depois.
+    // ESTRATÉGIA: uma view que só reage ao evento RunEnded e escreve os números do RunSummary. Os botões
+    // pedem ao RunController para trocar de cena. Não calcula nada.
+    // Results (Seção 6.3): estatísticas da run e os botões "jogar de novo" e "menu".
+    // O recorde de Wave entra na Fase 9, junto com o save do Best Wave.
+    public sealed class ResultsView : MonoBehaviour
+    {
+        [SerializeField] private RunController _run;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private TMP_Text _waveText;
+        [SerializeField] private TMP_Text _enemiesText;
+        [SerializeField] private TMP_Text _timeText;
+        [SerializeField] private TMP_Text _shardsText;
+        [SerializeField] private Button _playAgainButton;
+        [SerializeField] private Button _menuButton;
+
+        // Liga os botões e começa escondida.
+        private void Awake()
+        {
+            _playAgainButton.onClick.AddListener(() => _run.PlayAgain());
+            _menuButton.onClick.AddListener(() => _run.GoToMenu());
+            _root.SetActive(false);
+        }
+
+        // Aparece quando a run termina (inscreve no evento RunEnded).
+        private void OnEnable() => _run.RunEnded += Show;
+        private void OnDisable() => _run.RunEnded -= Show;
+
+        // Preenche os textos com o resumo e mostra a tela.
+        private void Show(RunSummary summary)
+        {
+            int seconds = Mathf.FloorToInt(summary.survivalSeconds);
+            _waveText.text = $"Wave {summary.waveReached}";
+            _enemiesText.text = summary.enemiesDestroyed.ToString();
+            // m:ss — divisão inteira dá os minutos; o resto (%) dá os segundos; ":00" força 2 dígitos.
+            _timeText.text = $"{seconds / 60}:{seconds % 60:00}";
+            _shardsText.text = Mathf.FloorToInt(summary.shardsEarned).ToString();
+            _root.SetActive(true);
+        }
+    }
+}
+```
+
+#### Passo 3 — Teclas de teste: `RunDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/RunDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Planets;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Run
+{
+    // POR QUE: testar o fim da run sem esperar o planeta cair de verdade.
+    // ESTRATÉGIA: componente de cena (mesma regra do CombatDevTools). Mata o planeta com um dano enorme,
+    // que passa pelo mesmo caminho do dano real, e escreve o resumo no Console.
+    // L = zera o HP do planeta.
+    public sealed class RunDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private RunController _run;
+
+        // Escuta o fim da run para escrever o resumo no Console.
+        private void OnEnable() => _run.RunEnded += HandleRunEnded;
+        private void OnDisable() => _run.RunEnded -= HandleRunEnded;
+
+        // Lê a tecla de teste.
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.lKey.wasPressedThisFrame) _planet.TakeDamage(1000000f);
+        }
+
+        // Escreve o RunSummary no Console para conferir os números do Results.
+        private void HandleRunEnded(RunSummary summary)
+        {
+            Debug.Log($"[Run] Fim: Wave {summary.waveReached}, {summary.enemiesDestroyed} inimigos, " +
+                      $"{summary.survivalSeconds:0}s, {summary.shardsEarned:0} Shards, desistiu: {summary.gaveUp}");
+        }
+#endif
+    }
+}
+```
+
+#### Passo 4 — Montar na cena
+
+1. **Lógica:** no `WaveDirector`, **desmarque Auto Start** (agora quem começa a run é o `RunController`). Em `[Systems]`, crie:
+   - `RunController`, com o componente `RunController`: **Planet** = o `PlanetHealth`; **Waves**, **Economy**, **Enemies**, **Motherships** = os objetos das fases anteriores.
+   - `RunDevTools`, com o componente `RunDevTools`: **Planet** e **Run**.
+2. **HUD** (no `HUDCanvas` da Fase 6), em pixels da tela de 320×180:
+   - `HealthBar`, ancorado em cima à esquerda (**top left**), **Pos** (4, −4), **80 × 8**: uma **Image** de fundo com `SPR_UI_Panel` (Sliced) e, dentro, uma **Image** `Fill` com margem de 2 px e **Color** laranja `#F28E17` (a cor do "meu"). Ao lado, o TMP `HealthText` (m5x7, 16).
+   - Em cima à direita (**top right**): o TMP `WaveText` e, abaixo dele, o `TimerText`, alinhados à direita; e um **Button** `PauseButton` de **16 × 16** (`SPR_UI_Button`, Sliced) com o texto `II`.
+   - Um objeto `HUD` com o componente `HudView`, com todos esses campos ligados.
+3. **Pausa:** no `HUDCanvas`, um objeto `PauseView` com o componente `PauseView` e um filho `Root`: uma **Image** preta com alfa ~50% cobrindo a tela inteira (para escurecer o jogo e bloquear os cliques) e, no centro, um painel `SPR_UI_Panel` (Sliced) de **120 × 80** com o título `Paused` e três botões de **100 × 16** (`SPR_UI_Button`): `Continue`, `Settings` e `Give up`. Ligue os campos.
+4. **Results:** `ResultsView` com o `Root` (fundo escuro e painel de **160 × 120**), o título `Results`, as linhas `Wave`, `Enemies`, `Time` e `Shards` (um TMP de rótulo e um TMP de valor em cada) e dois botões: `Play again` e `Menu`.
+5. **Ordem de desenho do Canvas:** na hierarquia do `HUDCanvas`, deixe nesta ordem, de cima para baixo: `HUD`, `BossHealthBar`, `UpgradeDrawer`, `PauseView`, `ResultsView`. Na UI, quem vem depois na lista é desenhado por cima.
+
+> Os textos das telas estão em inglês porque o inglês é o idioma base da tabela de Localization (Fase 1). A Fase 11 troca cada texto por uma chave traduzida.
+
+#### Passo 5 — Commit
+
+`git add .` e `git commit -m "Phase 8: run controller, pause screen, HUD, results"`.
+
+**✅ Checkpoint:**
+- O HUD mostra `100/100` e a barra laranja cheia, `Wave 1` e o timer contando de `30s` para baixo (durante o aviso de 2 s, o timer fica vazio).
+- O botão `II` (ou **Esc**) pausa o jogo e abre a tela de pausa. **Continue** volta. **Give up** leva direto ao Results.
+- **L** zera o HP: o jogo congela na hora e aparece o Results, sem nenhuma oferta no meio. O grid, o planeta e os inimigos continuam visíveis, parados, atrás do painel.
+- O Results mostra a Wave alcançada, os inimigos destruídos, o tempo (`m:ss`) e os Shards ganhos (incluindo os gastos). O Console repete o resumo (`[Run] Fim: …`).
+- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 5, sem pausa presa. **Menu** vai para o Main Menu.
+- Com o Results na tela, **Esc** não abre a pausa por cima.
+
+**Problemas comuns:**
+- **A run começa duas vezes (duas Waves 1 juntas):** o **Auto Start** do `WaveDirector` continua marcado.
+- **Depois do Play again, o jogo continua congelado:** o `GameClock` é o da versão antiga da Fase 1, que só limpava as pausas ao **sair** da Gameplay. A versão atual limpa a cada cena carregada (`SetGameplayActive`).
+- **Os botões das telas não respondem:** a tela está atrás de outra no Canvas (a ordem da hierarquia, item 5 do Passo 4), ou o fundo escuro de outra tela invisível está com **Raycast Target** marcado e ativo.
+- **O Results aparece, mas os inimigos continuam andando atrás dele:** o `HandlePlanetDied` não pausou com `PauseReason.Modal`. Confira se o `RunController` está igual ao do Passo 1.
+
+Próxima fase: **Fase 9 — Progressão entre runs**. Ela salva o recorde de Wave, cria os Planet Cores e Skins e as conquistas, e monta o Main Menu e a Core Select.

@@ -48,6 +48,13 @@ export const GAMES = [
     guideStart: /^## 10\. /,
   },
   {
+    source: 'GDD_8-Bit_Armageddon_Iso.md',
+    slug: '8-bit-armageddon-iso',
+    label: '8-Bit Armageddon Iso',
+    description: 'As regras do 8-Bit Armageddon com câmera isométrica, como jogo separado.',
+    guideStart: /^## 10\. /,
+  },
+  {
     source: 'RequiemOfBlessings.md',
     slug: 'requiem-of-blessings',
     label: 'Requiem of Blessings',
