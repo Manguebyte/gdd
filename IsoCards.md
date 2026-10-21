@@ -231,6 +231,8 @@ Cada Cidade vende esferas da cor do seu bioma, mais baratas, e das cores dos bio
 - **De Final Fantasy IX vêm:** a paleta quente de fantasia, as proporções e o charme dos personagens, e a aparência das cidades no mapa.
 - **Sprites:** como no FFT, cada personagem e monstro tem 2 direções desenhadas (frente e costas), espelhadas para as outras 2, com animações de parado e ataque. O movimento entre casas é um deslize feito em código.
 - **Processo:** uma cena-referência aprovada serve de `style_image` para todo o lote, e um teste de 3 assets é aprovado antes do lote completo.
+- **Cartas:** **Definido:** cada carta é uma carta de verdade em pixel art, vertical, de 56×80, com ilustração de 48×48 e moldura na cor da carta (a bicolor divide a moldura entre as duas cores), gema com o custo em Vigor e o nome na placa. Na mão, as cartas ficam em leque; a carta em foco aparece ampliada com o texto completo e o efeito de descarte.
+- **Interface:** **Definido:** toda informação fica dentro da tela do jogo (16:9), inclusive mapa, cidade, menus e cartas, sem elementos de interface fora dela. Os menus seguem as janelas azuis de Final Fantasy IX.
 
 ## Questões em aberto
 

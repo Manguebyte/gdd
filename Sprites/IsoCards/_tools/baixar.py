@@ -110,6 +110,7 @@ def main():
         for key, props in assets['cenario'].items():
             save_props(key, props)
         save_props('../mapa', assets['mapa'])
+        save_props('../cartas', assets['cartas'])
     write_meta()
 
 

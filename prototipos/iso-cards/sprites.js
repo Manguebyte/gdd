@@ -1,5 +1,17 @@
 // Gerado por Sprites/IsoCards/_tools/baixar.py: caixa visível [x0, y0, x1, y1] de cada sprite.
 window.SPRITE_META = {
+"personagens/anciao/ne.png": [
+11,
+4,
+53,
+59
+],
+"personagens/anciao/se.png": [
+11,
+4,
+54,
+59
+],
 "personagens/arqueiro/ataque-ne.png": [
 17,
 11,
@@ -34,6 +46,18 @@ window.SPRITE_META = {
 11,
 9,
 34,
+36
+],
+"personagens/bandido/ne.png": [
+16,
+11,
+38,
+35
+],
+"personagens/bandido/se.png": [
+16,
+12,
+30,
 36
 ],
 "personagens/berserker/ataque-ne.png": [
@@ -108,6 +132,18 @@ window.SPRITE_META = {
 55,
 54
 ],
+"personagens/driade/ne.png": [
+14,
+6,
+35,
+41
+],
+"personagens/driade/se.png": [
+11,
+7,
+35,
+42
+],
 "personagens/druida/ataque-ne.png": [
 12,
 8,
@@ -144,6 +180,18 @@ window.SPRITE_META = {
 40,
 41
 ],
+"personagens/escorpiao/ne.png": [
+6,
+12,
+43,
+40
+],
+"personagens/escorpiao/se.png": [
+8,
+4,
+43,
+44
+],
 "personagens/escudeiro/ataque-ne.png": [
 13,
 11,
@@ -179,6 +227,30 @@ window.SPRITE_META = {
 11,
 36,
 38
+],
+"personagens/golemAreia/ne.png": [
+12,
+6,
+54,
+56
+],
+"personagens/golemAreia/se.png": [
+10,
+6,
+53,
+57
+],
+"personagens/grifo/ne.png": [
+6,
+5,
+36,
+41
+],
+"personagens/grifo/se.png": [
+10,
+6,
+37,
+41
 ],
 "personagens/guerreiro/ataque-ne.png": [
 13,
@@ -252,6 +324,18 @@ window.SPRITE_META = {
 34,
 40
 ],
+"personagens/javali/ne.png": [
+9,
+7,
+40,
+40
+],
+"personagens/javali/se.png": [
+7,
+9,
+42,
+38
+],
 "personagens/ladrao/ataque-ne.png": [
 14,
 10,
@@ -287,6 +371,30 @@ window.SPRITE_META = {
 10,
 36,
 38
+],
+"personagens/lobo/ne.png": [
+8,
+6,
+38,
+41
+],
+"personagens/lobo/se.png": [
+5,
+8,
+38,
+41
+],
+"personagens/loboGelo/ne.png": [
+7,
+5,
+40,
+42
+],
+"personagens/loboGelo/se.png": [
+6,
+8,
+37,
+41
 ],
 "personagens/lodo/ataque-ne.png": [
 11,
@@ -359,6 +467,18 @@ window.SPRITE_META = {
 9,
 32,
 37
+],
+"personagens/mumia/ne.png": [
+13,
+8,
+36,
+39
+],
+"personagens/mumia/se.png": [
+12,
+9,
+34,
+41
 ],
 "personagens/paladino/ataque-ne.png": [
 14,
