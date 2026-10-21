@@ -369,8 +369,11 @@ function spawnEnemy(type, w, x, y) {
     t: Math.random() * 10, flash: 0, perp: dir + Math.PI / 2,
   });
 }
+// Cacho de Swarmers: 4 nas primeiras Waves deles (6–9, antes da 1ª Boss Wave), depois 8 (GDD).
+// Pedido do playtest: o cacho cheio chegava grande demais logo na estreia.
+const swarmSize = w => w < 10 ? 4 : 8;
 function spawnSwarm(w, x, y) {
-  for (let i = 0; i < 8; i++) spawnEnemy('swarmer', w, x + rand(-0.7, 0.7), y + rand(-0.7, 0.7));
+  for (let i = 0; i < swarmSize(w); i++) spawnEnemy('swarmer', w, x + rand(-0.7, 0.7), y + rand(-0.7, 0.7));
 }
 function spawnMothership(w, sector) {
   const a = (sector * 60 + 30) * DEG;
@@ -385,7 +388,7 @@ function spawnMothership(w, sector) {
 function processQueue() {
   while (run.queue.length && run.queue[0].at <= run.time) {
     const q = run.queue[0];
-    const size = q.type === 'swarmer' ? 8 : 1;
+    const size = q.type === 'swarmer' ? swarmSize(q.w) : 1;
     if (aliveCount() + size > MAX_ENEMIES) break;   // o slot espera na fila, não é descartado
     run.queue.shift();
     if (q.type === 'mothership') { spawnMothership(q.w, q.sector); continue; }
@@ -513,7 +516,7 @@ function updateMothership(m, dt) {
     }
     if (m.beamT > 0) m.beamT -= dt;
     m.swarmT -= dt;
-    if (m.swarmT <= 0 && aliveCount() + 8 <= MAX_ENEMIES) { m.swarmT = 15; spawnSwarm(m.w, m.x, m.y); }
+    if (m.swarmT <= 0 && aliveCount() + swarmSize(m.w) <= MAX_ENEMIES) { m.swarmT = 15; spawnSwarm(m.w, m.x, m.y); }
   }
   m.x = Math.cos(m.ang) * m.rad; m.y = Math.sin(m.ang) * m.rad;
 }
