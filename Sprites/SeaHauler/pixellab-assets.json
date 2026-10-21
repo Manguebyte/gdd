@@ -1,0 +1,103 @@
+{
+  "ship": {
+    "job_id": "f0a8b967-bc6e-47be-be03-2adc13ecc701",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/ship.png"
+  },
+  "rig-full": {
+    "job_id": "97660b5a-7187-45db-976e-6dc97f8ca9df",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rig-full.png"
+  },
+  "enemies/schooner": {
+    "job_id": "dc95b365-228d-4890-88c0-de9306cf5e88",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/schooner.png"
+  },
+  "rig-half": {
+    "job_id": "28029be3-0413-4d8f-a8b5-8fcdf3e87ccc",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rig-half.png"
+  },
+  "rig-reefed": {
+    "job_id": "f70696ef-28f8-4bbb-8a26-2b4b01cf697a",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rig-reefed.png"
+  },
+  "enemies/fireship": {
+    "job_id": "e56fc946-226e-4d4d-9dfb-fb3420cf8199",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/fireship.png"
+  },
+  "enemies/sloop": {
+    "job_id": "0c818e4b-d245-45d7-a3d0-715904a5b6b7",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/sloop.png"
+  },
+  "enemies/boarder": {
+    "job_id": "f7c39db4-2c1e-4168-84a5-468485681a73",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/boarder.png"
+  },
+  "enemies/galleon-bow": {
+    "job_id": "2db9bdef-e7d6-4a37-a935-87468a33ba32",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/galleon-bow.png"
+  },
+  "enemies/galleon-hull": {
+    "job_id": "8afbedbc-882c-4751-8b43-7bc0560af490",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/galleon-hull.png"
+  },
+  "rocks/rock-1": {
+    "job_id": "95a8ffc4-f6aa-4748-8de8-8108298b2f70",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rock-1.png"
+  },
+  "rocks/rock-2": {
+    "job_id": "3af3c538-cb51-4de6-acff-dc757127cc04",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rock-2.png"
+  },
+  "rocks/rock-3": {
+    "job_id": "ef428e1a-6dbc-463f-9e19-74042fff81b6",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/rock-3.png"
+  },
+  "_turret/longgun": {
+    "job_id": "8b985976-d542-4f7e-8de4-be566c615fb3",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/longgun.png"
+  },
+  "_turret/chainshot": {
+    "job_id": "a404a4ca-f210-443b-853c-402a053a5243",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/chainshot.png"
+  },
+  "_turret/carronade": {
+    "job_id": "e29ba92a-b031-4ef6-b98a-6c0b01966731",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/carronade.png"
+  },
+  "_turret/marines": {
+    "job_id": "dac4630b-381f-444d-b55e-3e66cea33ff0",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/marines.png"
+  },
+  "turrets/marines": {
+    "object_id": "49052d3e-4510-4837-a976-fd7233ae44ca",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/longgun": {
+    "object_id": "d4a337d9-d36b-4879-ab53-97674a0491f0",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/carronade": {
+    "object_id": "fb950158-efca-4e16-945c-c19c142a71ce",
+    "tool": "create_object_pro_flash (8 direções)"
+  },
+  "turrets/chainshot": {
+    "object_id": "8b09863a-f65b-4f2c-b9ec-233fcbcb21e5",
+    "tool": "create_object_pro_flash (8 direções)"
+  }
+}

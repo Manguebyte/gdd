@@ -147,6 +147,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'SeaHauler.md',
+    slug: 'sea-hauler',
+    label: 'Sea Hauler',
+    description: 'Tower defense em movimento no mar: uma fragata da Coroa foge de piratas até o porto; você cuida das velas e dos canhões.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'CacaAsBruxas.md',
     slug: 'caca-as-bruxas',

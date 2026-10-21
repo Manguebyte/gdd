@@ -1,0 +1,228 @@
+/* Sea Hauler — protótipo web. Tela de referência 1280×720 (a mesma do Canvas
+   Scaler do guia Unity, Fase 5.8), escalada para caber na janela (game.js → fit()).
+   Mesma estrutura do Space Hauler, com a paleta da Marinha: madeira escura,
+   latão, o azul do mar e o pergaminho das cartas náuticas. */
+:root {
+  --sand: #155a7a;
+  --rust: #b8202a;
+  --rust-dark: #3a0a08;
+  --ink: #120c08;
+  --cream: #f4ead2;
+  --steel: #4a3424;
+  --yellow: #f2c45a;
+  --green: #8ef0aa;
+  --red: #ff6a5a;
+  --cyan: #9fe0ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0604; }
+body { font-family: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif; color: var(--cream); user-select: none; -webkit-user-select: none; }
+button { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
+button:disabled { cursor: default; }
+.hidden { display: none !important; }
+
+#rotate {
+  display: none; position: fixed; inset: 0; z-index: 10;
+  align-items: center; justify-content: center; padding: 24px; text-align: center;
+  background: #0a0604; font-size: 28px; font-weight: 700;
+}
+@media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+
+#app { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: var(--sand); }
+#view { position: absolute; inset: 0; width: 1280px; height: 720px; display: block; }
+
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#hud button, #hud #shop, #hud #abilities, #hud #panel { pointer-events: auto; }
+
+.plate {
+  background: linear-gradient(180deg, #5a3a22, #2e1c10);
+  border: 2px solid #120c08; border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 3px 0 rgba(0,0,0,.35);
+}
+
+#top-left { position: absolute; left: 16px; top: 14px; display: flex; flex-direction: column; gap: 8px; }
+#gold-box { display: flex; align-items: baseline; gap: 8px; padding: 4px 14px 4px 10px; }
+#gold-box b { font-size: 34px; color: var(--yellow); line-height: 1; text-shadow: 0 2px 0 #000; }
+#gold-box small { font-size: 16px; letter-spacing: 2px; opacity: .8; }
+.coin { width: 22px; height: 22px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff2b0, var(--yellow) 45%, #a8781a); border: 2px solid #5a3a0a; align-self: center; }
+#hp-box { width: 280px; position: relative; }
+.bar { height: 22px; background: #1a100a; border: 2px solid #120c08; border-radius: 4px; overflow: hidden; position: relative; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transition: width .15s; }
+#hp-fill { background: linear-gradient(180deg, #c8a070, #7a5228); }
+#hp-fill.low { animation: pulse .5s infinite alternate; }
+#hp-text { position: absolute; left: 10px; top: 1px; font-size: 18px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+@keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.7); } }
+
+#top-center { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); width: 520px; text-align: center; }
+#leg-label { font-size: 22px; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 2px #000; margin-bottom: 4px; }
+#progress { position: relative; height: 14px; margin: 0 26px; background: rgba(20,12,6,.7); border: 2px solid #120c08; border-radius: 8px; }
+#progress-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--yellow); border-radius: 6px; }
+#progress .end { position: absolute; top: -6px; font-weight: 700; font-size: 18px; text-shadow: 0 1px 2px #000; }
+#progress .start { left: -22px; }
+#progress .finish { right: -26px; transform: translateX(50%); white-space: nowrap; }
+#progress-ship { position: absolute; top: -5px; width: 20px; height: 20px; margin-left: -10px; border-radius: 50% 4px 4px 50%; background: var(--cream); border: 2px solid #1a0c05; }
+#boss-bar { margin-top: 10px; }
+#boss-bar span { font-family: 'IM Fell English SC', serif; font-size: 20px; color: #ff9a8a; letter-spacing: 2px; text-shadow: 0 2px 2px #000; }
+#boss-bar .bar { height: 14px; margin-top: 2px; }
+#boss-fill { background: linear-gradient(180deg, #ff6a5a, #8c1e1a); }
+#squall-bar { margin-top: 8px; font-family: 'IM Fell English SC', serif; font-size: 24px; color: #dff4ff; text-shadow: 0 2px 2px #000; animation: pulse .4s infinite alternate; }
+
+#pause-btn { position: absolute; right: 16px; top: 14px; width: 44px; height: 44px; font-size: 20px; font-weight: 700; }
+
+/* Habilidades: canto inferior esquerdo. */
+#abilities { position: absolute; left: 16px; bottom: 16px; display: flex; gap: 10px; }
+.ability { position: relative; width: 92px; height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; overflow: hidden; }
+.ability canvas { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); }
+.ability .name { font-size: 17px; font-weight: 700; position: relative; }
+.ability .key { position: absolute; left: 6px; top: 3px; font-size: 15px; color: var(--yellow); font-weight: 700; }
+.ability .cd { position: absolute; inset: 0; background: conic-gradient(rgba(0,0,0,.7) calc(var(--cd) * 360deg), transparent 0); pointer-events: none; }
+.ability .secs { position: absolute; top: 26px; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 700; text-shadow: 0 2px 2px #000; }
+.ability.ready { animation: ready 1.2s infinite; }
+@keyframes ready { 50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 0 12px rgba(242,196,90,.8); } }
+
+/* Barra de compra: embaixo, no centro. */
+#shop { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; }
+.buy { width: 128px; height: 96px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5px; }
+.buy canvas { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
+.buy img.icon { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); height: 48px; image-rendering: pixelated; }
+.buy.poor img.icon { opacity: .5; }
+.touch .buy img.icon { height: 58px; }
+.buy .name { font-size: 18px; font-weight: 700; line-height: 1; }
+.buy .cost { font-size: 17px; color: var(--yellow); font-weight: 700; }
+.buy .key { position: absolute; left: 6px; top: 3px; font-size: 14px; opacity: .6; }
+.buy.selected { border-color: var(--green); box-shadow: 0 0 0 3px var(--green), 0 3px 0 rgba(0,0,0,.35); transform: translateY(-4px); }
+.buy.poor .cost { color: var(--red); }
+.buy.poor canvas { opacity: .5; }
+.buy.locked { filter: grayscale(1) brightness(.6); cursor: default; }
+.buy.locked .cost { color: var(--cream); font-size: 14px; }
+.buy:not(.locked):hover { filter: brightness(1.15); }
+
+/* Painel da defesa selecionada: canto inferior direito. */
+#panel { position: absolute; right: 16px; bottom: 16px; width: 270px; padding: 10px 12px; }
+#panel-title { font-size: 22px; font-weight: 700; color: var(--yellow); }
+#panel-info { font-size: 16px; opacity: .9; margin: 2px 0 8px; line-height: 1.25; }
+#panel .buttons { display: flex; gap: 8px; }
+#panel .buttons button { flex: 1; padding: 6px 4px; font-size: 18px; font-weight: 700; border-radius: 4px; border: 2px solid #05070f; }
+#upgrade-btn { background: #2a6a3a; }
+#sell-btn { background: #7a2c1a; }
+#panel .buttons button:disabled { background: #3a2a1e; opacity: .7; }
+#panel .buttons button:not(:disabled):hover { filter: brightness(1.2); }
+
+#toast { position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); font-size: 24px; font-weight: 700; color: #ffd27a; text-shadow: 0 2px 3px #000; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+#toast.show { opacity: 1; }
+#banner { position: absolute; left: 0; right: 0; top: 190px; text-align: center; font-family: 'IM Fell English SC', serif; font-size: 60px; color: #fff2d0; text-shadow: 0 4px 0 #2a1408, 0 0 24px rgba(0,0,0,.6); opacity: 0; transform: scale(.9); transition: opacity .25s, transform .25s; }
+#banner.show { opacity: 1; transform: scale(1); }
+#banner small { display: block; font-family: 'Barlow Condensed', sans-serif; font-size: 26px; font-weight: 700; letter-spacing: 2px; }
+
+/* ---------- Telas por cima (menu, mapa, resultado, pausa) ---------- */
+#overlay { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(16,40,56,.8), rgba(6,10,14,.94)); display: flex; align-items: center; justify-content: center; animation: fadein .35s; }
+@keyframes fadein { from { opacity: 0; } }
+#modal { text-align: center; }
+.title { font-family: 'IM Fell English SC', serif; font-size: 110px; line-height: .95; color: var(--yellow); text-shadow: 0 6px 0 #4a2a0a, 0 0 40px rgba(242,182,50,.35); letter-spacing: 4px; }
+.subtitle { font-size: 26px; margin: 10px 0 22px; opacity: .95; }
+.howto { display: inline-block; text-align: left; font-size: 20px; line-height: 1.45; padding: 12px 20px; margin-bottom: 20px; }
+.howto b { color: var(--yellow); }
+.stats { font-size: 18px; opacity: .75; margin-top: 16px; }
+.big-btn { display: inline-block; margin: 6px; padding: 10px 34px; font-size: 30px; font-weight: 700; letter-spacing: 2px; background: linear-gradient(180deg, #b8302a, #6a1410); border: 3px solid #1a0a03; border-radius: 6px; box-shadow: 0 4px 0 #1a0a03; }
+.big-btn small { font-size: 18px; opacity: .85; letter-spacing: 0; }
+.big-btn:disabled { filter: grayscale(.8) brightness(.6); cursor: default; }
+.big-btn.secondary { background: linear-gradient(180deg, #5a3a22, #2e1c10); }
+.big-btn.small { font-size: 22px; padding: 8px 20px; }
+.big-btn:hover { filter: brightness(1.15); }
+.big-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #1a0a03; }
+
+.route-head { font-family: 'IM Fell English SC', serif; font-size: 48px; color: var(--yellow); text-shadow: 0 4px 0 #4a2a0a; }
+.route-status { font-size: 22px; margin: 4px 0 8px; }
+.route-status b { color: var(--yellow); }
+#route-map { position: relative; width: 1160px; height: 430px; margin: 0 auto; }
+#route-map.chart { background: radial-gradient(ellipse at center, #efe2c0, #c8b080); border: 3px solid #4a2a10; border-radius: 10px; box-shadow: inset 0 0 40px rgba(90,50,10,.5); }
+#route-map svg { position: absolute; inset: 0; }
+.node { position: absolute; width: 132px; height: 84px; margin: -42px 0 0 -66px; padding: 6px 4px; border-radius: 8px; line-height: 1.15; font-size: 17px; }
+.node .n { font-size: 22px; font-weight: 700; }
+.node .risk { color: #ff9a8a; letter-spacing: 2px; }
+.node.t-port { background: linear-gradient(180deg, #1a5a6a, #0e2e3a); }
+.node.t-reefs .n { color: #d8c8a8; }
+.node.t-storm .n { color: #bfe0ff; }
+.node.t-cove .n { color: #ff9a8a; }
+.node.t-open .n { color: var(--cyan); }
+.node .bonus { font-size: 15px; color: var(--yellow); }
+.node.reachable { border-color: var(--green); box-shadow: 0 0 0 3px var(--green), 0 3px 0 rgba(0,0,0,.35); animation: bob 1.1s infinite ease-in-out; }
+.node.reachable:hover { filter: brightness(1.25); }
+.node.visited { background: linear-gradient(180deg, #7a5a1a, #4a340a); }
+.node.current { box-shadow: 0 0 0 3px var(--yellow); }
+.node.blocked { opacity: .45; cursor: default; }
+.node.boss { background: linear-gradient(180deg, #5a1a1a, #2a0a0a); }
+.node.boss .n { font-family: 'IM Fell English SC', serif; font-size: 28px; color: #ffb88a; }
+.node.origin { width: 84px; margin-left: -42px; cursor: default; }
+.node.origin .n { font-family: 'IM Fell English SC', serif; font-size: 28px; }
+@keyframes bob { 50% { transform: translateY(-4px); } }
+
+.result-title { font-family: 'IM Fell English SC', serif; font-size: 68px; line-height: 1; }
+.result-title.win { color: var(--yellow); text-shadow: 0 5px 0 #6a3a0a; }
+.result-title.lose { color: #ff8a7a; text-shadow: 0 5px 0 #2a0a08; }
+.result-text { font-size: 26px; margin: 16px 0 6px; line-height: 1.35; }
+.result-text b { color: var(--yellow); }
+.unlock { font-size: 24px; color: var(--green); font-weight: 700; margin: 8px 0; }
+
+/* ---------- Celular / tablet (body.touch, definido em game.js) ----------
+   A tela lógica é a mesma, mas num celular deitado ela aparece com ~55% do
+   tamanho; por isso botões e textos crescem aqui, para o dedo e para a leitura. */
+html, body, #app { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+.touch .buy .key, .touch .ability .key { display: none; }
+.touch .buy { width: 158px; height: 118px; }
+.touch .buy .name { font-size: 23px; }
+.touch .buy .cost { font-size: 21px; }
+.touch .buy canvas { transform: translateX(-50%) scale(1.2); transform-origin: top center; }
+.touch #shop { gap: 10px; bottom: 12px; }
+.touch .ability { width: 118px; height: 118px; }
+.touch .ability .name { font-size: 22px; }
+.touch .ability .secs { font-size: 34px; top: 32px; }
+.touch .ability canvas { transform: translateX(-50%) scale(1.3); transform-origin: top center; }
+.touch #pause-btn { width: 72px; height: 72px; font-size: 30px; }
+.touch #gold-box b { font-size: 44px; }
+.touch #gold-box small { font-size: 20px; }
+.touch #hp-box { width: 340px; }
+.touch #hp-box .bar { height: 30px; }
+.touch #hp-text { font-size: 23px; top: 2px; }
+.touch #leg-label { font-size: 28px; }
+.touch #panel { width: 360px; bottom: 150px; padding: 14px 16px; }
+.touch #panel-title { font-size: 28px; }
+.touch #panel-info { font-size: 21px; }
+.touch #panel .buttons button { font-size: 25px; padding: 12px 6px; }
+.touch #toast { font-size: 30px; bottom: 150px; }
+.touch .howto { font-size: 24px; }
+.touch .subtitle { font-size: 30px; }
+.touch .big-btn { font-size: 36px; padding: 14px 44px; }
+.touch .route-status { font-size: 25px; }
+.touch .node { width: 150px; height: 100px; margin: -50px 0 0 -75px; font-size: 20px; }
+.touch .node .n { font-size: 26px; }
+.touch .node .bonus { font-size: 18px; }
+
+/* Velas: telégrafo em pé, à esquerda, acima das habilidades. */
+#sails { position: absolute; left: 16px; bottom: 124px; width: 196px; padding: 6px 8px 8px; pointer-events: auto; display: flex; flex-direction: column; gap: 4px; }
+.sails-head { font-family: 'IM Fell English SC', serif; font-size: 20px; color: var(--yellow); text-align: center; letter-spacing: 2px; }
+.sail { position: relative; padding: 5px 4px; font-size: 19px; font-weight: 700; border-radius: 4px; border: 2px solid #120c08; background: #2e1c10; }
+.sail .key { position: absolute; left: 6px; top: 6px; font-size: 13px; opacity: .6; }
+.sail.on { background: linear-gradient(180deg, #f4ead2, #c8b088); color: #2a1408; box-shadow: 0 0 0 2px var(--yellow); }
+.sail.torn { text-decoration: line-through; color: #ff8a7a; }
+.sail:not(.on):hover { filter: brightness(1.3); }
+.sails-speed { font-size: 16px; text-align: center; opacity: .9; }
+.sails-escaped { font-size: 15px; text-align: center; color: var(--cyan); min-height: 18px; }
+
+/* Melhorias do navio: coluna à direita. */
+#upgrades { position: absolute; right: 16px; top: 72px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+.upg { width: 178px; height: 62px; position: relative; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding-left: 60px; text-align: left; }
+.upg canvas { position: absolute; top: 50%; left: 8px; transform: translateY(-50%); }
+.upg .name { font-size: 17px; font-weight: 700; line-height: 1; }
+.upg .cost { font-size: 15px; color: var(--yellow); font-weight: 700; }
+.upg .key { position: absolute; right: 6px; top: 3px; font-size: 13px; opacity: .6; }
+.upg.poor .cost { color: var(--red); }
+.upg.locked { filter: grayscale(.8) brightness(.7); cursor: default; }
+.upg:not(.locked):hover { filter: brightness(1.15); }
+.touch .upg { width: 210px; height: 78px; }
+.touch .upg .name { font-size: 21px; }
+.touch .upg .cost { font-size: 19px; }
+.touch .upg .key, .touch .sail .key { display: none; }
+.touch #sails { width: 230px; bottom: 148px; }
+.touch .sail { font-size: 24px; padding: 9px 4px; }
