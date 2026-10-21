@@ -1,0 +1,55 @@
+{
+  "personagens": {
+    "escudeiro": "64437b69-8701-41b2-8f99-0254d84f132c",
+    "guerreiro": "14003e59-33a0-4989-8674-19ec5643f183",
+    "paladino": "c1ce8e34-9e72-4020-82c6-2a80a488e765",
+    "mago": "8a214c0b-a1b6-497a-b628-e47d7e0d91a3",
+    "arqueiro": "bc5e87f5-3b87-46ba-a761-1d9301a11391",
+    "ladrao": "0155a518-904c-4470-a03f-1ff2024e7139",
+    "druida": "cd12101c-0766-481b-bc8b-b0abe2264adf",
+    "berserker": "2c3e05f5-e6db-49fc-b407-43a516cf4de3",
+    "homemSapo": "dabf7d79-e06b-40ef-9df3-588aa98abd45",
+    "lodo": "c89367e5-4e51-418a-9b8b-a04d221cf2ba",
+    "serpente": "33be638e-12a6-47bf-847b-5088260c7240",
+    "caranguejo": "588a0b84-5ab8-43f1-ae0d-9df5528c9f40",
+    "lobo": "2af9d6e0-fe5c-4773-8e49-fe4cd89d1d5c",
+    "driade": "dcf2ada4-3ac5-4da1-abd2-6b26a4b3b455",
+    "javali": "5db38a23-9b4d-4b5a-beb9-c866f7cdddb8",
+    "anciao": "4f345b82-755d-44b2-91a1-46ecd4230088",
+    "escorpiao": "eef09a31-80e2-469f-bfa0-86c0b28c02d5",
+    "mumia": "1df6d003-0961-49b5-b6f0-5f5a7ff81e67",
+    "bandido": "625f2d50-4622-482f-8978-e3d207041a79",
+    "golemAreia": "d503a718-64bf-4b77-bb69-55d1a8d97fec",
+    "grifo": "08fb872c-213b-4e45-8be4-45e6b2514c4e",
+    "loboGelo": "6c4b9363-9184-4d35-be81-53284bdd6635"
+  },
+  "tiles": {
+    "pantano": "e1ee33ca-72c3-47db-8877-0d78d6a28803",
+    "floresta": "e3029df0-8270-40c5-8565-71ff4d29c3d1",
+    "deserto": "54e392d5-1590-47ef-82d8-47ac2c506274",
+    "gelo": "d4356179-76a7-420c-af45-4521d91ef74e",
+    "fogo": "5162da4b-d7ba-4634-9d87-49df2b4efa39"
+  },
+  "cenario": {
+    "pantano": {
+      "arvore": "71067cd2-e9e8-4a05-80c8-5e531a7b3420",
+      "pedra": "86f91b83-8d20-4cf3-9e16-5f1947f6903b",
+      "deco": "075f345a-9ece-4a6f-b5c8-7ba6d2a8d5b6"
+    },
+    "floresta": { "arvore": "f791e9f6-7c38-4e53-8b1c-1dd738522eec", "pedra": "3e42e0dd-18a0-4ee9-92bd-8f6ff7505f02", "deco": "2a72abb3-12f0-4bcd-8531-088c87866a9a" },
+    "deserto": { "arvore": "2d313808-3e92-43dd-8982-c29423f7f156", "pedra": "123c3bb3-07ab-473b-9987-80abe11dd3d7", "deco": "ee54e855-0ecc-4d49-afdb-1a9c05f5f6f9" },
+    "gelo": { "arvore": "0db4af3c-2e53-47be-90c6-7cbbc7ce5f60", "pedra": "7ae7397d-86de-439d-ac5f-b118a7bfb91f", "deco": "8651e76d-e1c6-47b5-80f7-02811b1e2bf4" },
+    "fogo": { "arvore": "63d7d3d7-890b-4a48-88be-b26d84c49c17", "pedra": "e426998f-8e73-47b0-95d3-7161d4257590", "deco": "513400d3-86fd-4da8-b73b-a33f25ae71a3" }
+  },
+  "mapa": {
+    "cidade": "a9da01bf-02bf-423c-986d-afea68c9aa21",
+    "campo": "50c159db-c905-457f-b788-c6681bc06a4e",
+    "chefe": "08e8a8be-52dc-411b-b91b-1e795e77caa8",
+    "fundo": "6fcbc307-5919-4873-b711-8948cc70fb0b"
+  },
+  "referencia": {
+    "cena": "Sprites/IsoCards/example/cena-A2.png (job 6b98115d-1fee-4b3d-bb3f-76cbab7dd15e, índice 1)",
+    "estilo_personagens": "source_image_id 5c79fb96-db22-5157-b735-458a6791ef4b (Escudeiro do teste)",
+    "estilo_monstros": "source_image_id d7c70912-ce6d-534d-bf51-be0d7910271e (Homem-Sapo do teste)"
+  }
+}

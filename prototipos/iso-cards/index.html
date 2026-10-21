@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Iso Cards – protótipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div>
+      <h1>Iso Cards</h1>
+      <p class="sub">RPG tático de cartas da Manguebyte · protótipo</p>
+    </div>
+    <div class="topright">
+      <div class="wallet" id="wallet"></div>
+      <span class="turninfo" id="turninfo"></span>
+      <button class="btn ghost" id="newgame">Novo jogo</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="field" id="field">
+      <canvas id="cv" width="960" height="600" aria-label="Mapa do mundo ou campo de batalha isométrico"></canvas>
+      <div class="statusbar" id="scr-battle-bar">
+        <p class="status" id="status" aria-live="polite"></p>
+        <div>
+          <button class="btn ghost" id="cancel" hidden>Cancelar</button>
+          <button class="btn" id="endturn">Encerrar turno</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side" id="scr-map" hidden>
+      <section class="panel" id="mappanel"></section>
+    </aside>
+
+    <aside class="side" id="scr-battle" hidden>
+      <section class="panel"><h2>Seu grupo</h2><div id="party"></div></section>
+      <section class="panel"><h2>Inimigos</h2><div id="enemies"></div></section>
+      <section class="panel"><h2>Registro</h2><ul class="log" id="log"></ul></section>
+    </aside>
+  </div>
+
+  <section class="handwrap" id="handwrap">
+    <div class="handhead">
+      <h2 id="handtitle">Mão</h2>
+      <div class="vigor"><span>Vigor</span><span class="pips" id="vigor"></span></div>
+      <span class="counts" id="counts"></span>
+    </div>
+    <div class="hand" id="hand"></div>
+  </section>
+
+  <section class="city" id="scr-city" hidden>
+    <div class="cityhead">
+      <div><h2 id="cityname"></h2><p class="sub" id="citysub"></p></div>
+      <button class="btn" id="leavecity">Sair para o mapa</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="grupo">Grupo e classes</button>
+      <button role="tab" data-tab="montagem">Montagem</button>
+      <button role="tab" data-tab="loja">Loja de esferas</button>
+      <button role="tab" data-tab="forja">Forja</button>
+      <button role="tab" data-tab="livro">Livro de Receitas</button>
+    </div>
+    <div class="citybody" id="citybody"></div>
+  </section>
+
+  <details class="help">
+    <summary>Como jogar</summary>
+    <ul>
+      <li><b>Mapa do mundo:</b> clique num nó ligado por trilha. Chegar num Campo de batalha pela primeira vez inicia a luta; depois, dá para lutar ali de novo (farm). O chefe de cada região abre a trilha para a próxima.</li>
+      <li><b>Cidade:</b> o jogo grava ao entrar. Troque de classe pagando esferas da cor dela, monte baralhos de 40 cartas, compre esferas e forje cartas com esferas + 1 item.</li>
+      <li><b>Batalha:</b> cada personagem tem 3 de Vigor por turno e o próprio baralho. Clique na parte de cima de uma carta para jogá-la, ou na faixa de baixo para descartá-la e ganhar Vigor. Mover também é carta.</li>
+      <li><b>Altura:</b> não dá para subir mais de 1 nível por casa; ataque à distância de cima ganha +1 de alcance.</li>
+      <li><b>Derrota:</b> game over, e o jogo volta ao último save.</li>
+    </ul>
+  </details>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ovtitle">
+  <div class="modal">
+    <h2 id="ovtitle"></h2>
+    <div id="ovbody"></div>
+    <div class="ovbtns" id="ovbtns"></div>
+  </div>
+</div>
+
+<script src="sprites.js"></script>
+<script src="data.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

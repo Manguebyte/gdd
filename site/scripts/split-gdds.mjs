@@ -155,6 +155,14 @@ export const GAMES = [
     gddOnly: true,
   },
   {
+    // Ainda não tem guia Unity, só o GDD inicial.
+    source: 'IsoCards.md',
+    slug: 'iso-cards',
+    label: 'Iso Cards',
+    description: 'RPG tático isométrico em que toda ação é uma carta: viaje por 5 biomas, troque de classe e forje cartas com esferas.',
+    gddOnly: true,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',
