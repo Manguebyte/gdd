@@ -9,22 +9,28 @@ Começou como cópia de [`../fury-hauler/`](../fury-hauler/) (mesma estrutura: `
 
 ## O que tem
 - **Nave de carga** que voa sozinha pela rota, com **casco** de 500 e os **6 hardpoints**: proa, popa, 2 a bombordo e 2 a estibordo. Cada um só atira para o seu lado (arco de 180°); nenhum cobre 360°.
-- **As 4 defesas**: autocanhão, canhão de plasma (cone curto), arpão magnético (atordoa naves) e campo elétrico (choque passivo em quem encosta, inclusive piratas a bordo). Cada uma tem 3 níveis.
+- **As 6 defesas**: autocanhão, canhão de plasma (cone curto), arpão magnético (atordoa naves), campo elétrico (choque passivo em quem encosta, inclusive piratas a bordo) e as duas **de mineração**, as únicas que quebram asteroides: **laser de mineração** (feixe contínuo, mira primeiro a rocha que vai bater) e **canhão de fragmentação** (explosão em área, acerta naves e rochas). Cada uma tem 3 níveis.
+- **Dicas ao passar o mouse** em cada defesa da barra, em cada defesa montada (nível atual e o que o próximo dá), em cada hardpoint vazio, em cada upgrade da nave e em cada habilidade. No toque, a dica da defesa aparece enquanto ela está escolhida na barra.
 - **Os 4 inimigos** e o pirata a bordo: caças que rondam a nave e atiram, drones kamikaze, naves de abordagem que soltam piratas (eles sabotam o hardpoint onde sobem) e o **cruzador pirata** no último trecho, que chama caças e bloqueia a chegada ao destino.
 - **3 tipos de trecho** com padrões de ataque diferentes: **Espaço aberto** (perseguição por trás, risco 0), **Cinturão de asteroides** (emboscada pela frente e pelos lados, risco 1) e **Rota pirata** (cerco de todos os lados, risco 2). Cada ponto de risco dá +25% de sucata.
 - **Asteroides** no Cinturão: aparecem à frente, batem no casco e **não podem ser destruídos**.
-- **Carenagem** (botão ao lado da barra de compra, tecla C): 5 níveis, cada um com +50 de casco máximo e −12% de dano de colisão (asteroides e drones).
-- **Estação**: nó do mapa sem combate, onde se repara o casco (2 de casco por 1 de sucata) e se compra Carenagem.
+- **Painel Nave** (botão no fim da barra de compra, tecla N), com os upgrades da nave:
+  - **Carenagem** (tecla C): 5 níveis, cada um com +50 de casco máximo e −12% de dano de colisão (asteroides e drones).
+  - **Gerador de escudo** (anexo): 3 níveis de 60 de escudo, que absorve dano antes do casco (não segura piratas a bordo), recarrega depois de 3 s sem dano e enche a cada trecho. Aparece como uma bolha em volta da nave e uma barra embaixo do casco.
+  - **Casulos de armas dianteiro e traseiro** (anexos): +2 hardpoints cada, nas diagonais. Desenhados por código (sem sprite PixelLab ainda).
+  - **Piloto**: 3 níveis; +10% de velocidade por nível e desvio sozinho dos asteroides no caminho (a nave desliza para o lado e a câmera acompanha).
+- **Estação**: nó do mapa sem combate, onde se repara o casco (2 de casco por 1 de sucata) e se compram os upgrades da nave.
 - **Habilidades**: pós-combustor e nuvem de detritos, com cooldown.
 - **Run roguelite**: mapa de rota gerado com bifurcações, 6 camadas (5 trechos e o destino). Casco, defesas, Carenagem e sucata continuam de um trecho para o outro.
-- **Desbloqueios permanentes** placeholder: plasma ao concluir 1 trecho numa run, arpão ao concluir 3. Save no `localStorage`.
+- **Desbloqueios permanentes** placeholder: laser de mineração já liberado; plasma ao concluir 1 trecho numa run, fragmentação ao concluir 2, arpão ao concluir 3. Save no `localStorage`.
 - **Espaço isométrico** com a projeção do guia Unity: não há chão; a profundidade vem das estrelas em parallax, das boias da rota a cada 100 m e dos portais de salto no começo e no fim de cada trecho.
 
-- **Arte PixelLab** em `Sprites/SpaceHauler/` (ver o `README.md` de lá): nave, inimigos, Cruzador, pirata a bordo, as 4 torres em 8 direções e 3 asteroides, no estilo do Fury Hauler. Cada sprite é um redesenho da forma vetorial do protótipo, então se um não carregar (ou com `#vector`) o objeto volta ao desenho por código. O fundo de estrelas, os planetas, as boias e os efeitos continuam desenhados por código.
+- **Arte PixelLab** em `Sprites/SpaceHauler/` (ver o `README.md` de lá): nave, inimigos, Cruzador, pirata a bordo, as 4 primeiras torres em 8 direções e 3 asteroides, no estilo do Fury Hauler. O laser de mineração, o canhão de fragmentação, os casulos e o escudo ainda são desenhos vetoriais (o `#refs` já exporta as duas torres novas como referência). Cada sprite é um redesenho da forma vetorial do protótipo, então se um não carregar (ou com `#vector`) o objeto volta ao desenho por código. O fundo de estrelas, os planetas, as boias e os efeitos continuam desenhados por código.
 
 ## Controles
 - **Mouse:** clique numa defesa da barra e depois num hardpoint vazio; clique numa defesa montada para melhorar ou vender. Botão direito cancela.
-- **1 / 2:** pós-combustor / detritos. **Q W E R:** escolher defesa. **C:** Carenagem. **U / V:** melhorar / vender.
+- **Passar o mouse** em qualquer botão ou hardpoint mostra o que ele faz.
+- **1 / 2:** pós-combustor / detritos. **Q W E R T Y:** escolher defesa. **N:** painel Nave. **C:** Carenagem. **U / V:** melhorar / vender.
 - **Shift + clique:** monta e mantém a mesma defesa escolhida.
 - **Esc:** cancela. **P:** pausa (também pausa sozinho se a janela perder o foco).
 
@@ -39,7 +45,7 @@ Junte quantos quiser depois do `#`, separados por vírgula (ex.: `index.html#unl
 | `#type=open` / `asteroids` / `pirate` | O primeiro trecho da run é desse tipo. |
 | `#boss` | Pula direto para o último trecho (o do cruzador). |
 | `#route` / `#station` | Abre direto o mapa de rota / uma Estação (com o casco em 220). |
-| `#auto` | Piloto automático: escolhe a rota, monta do lado do ataque, compra Carenagem, repara e usa habilidades (`autoPlay` em `sim.js`). |
+| `#auto` | Piloto automático: escolhe a rota, monta do lado do ataque (laser de mineração na proa no Cinturão), compra Carenagem, Piloto, escudo e casulo traseiro, repara e usa habilidades (`autoPlay` em `sim.js`). |
 | `#warp30` | Quando o primeiro trecho começa, simula 30 s de uma vez (para a miniatura do hub). |
 | `#vector` | Ignora os sprites e usa só o desenho vetorial. |
 | `#refs` | Exporta as referências vetoriais para o PixelLab. |
@@ -63,3 +69,16 @@ Piloto automático no Node, 40 runs com sementes diferentes, com os números do 
 Casco perdido por trecho, em média: Espaço aberto ~60, Rota pirata ~57, **Cinturão de asteroides ~105**. O Cinturão é o trecho que mais pede Carenagem, que era a intenção. Mas a Rota pirata, que tem o maior risco, custa tanto quanto o Espaço aberto e dá 50% a mais de sucata: com estes números ela é a melhor escolha, e o risco dela precisa subir.
 
 O dano vem principalmente de **drones** e **piratas a bordo**. Antes de mexer em números, vale jogar: o piloto automático monta sempre o mesmo plano e não reage ao meio do trecho.
+
+### Depois das defesas de mineração, dos anexos e do Piloto
+Mesmo teste (40 runs, primeira run), com o piloto automático comprando as coisas novas:
+
+| Situação | Chegou ao destino | Asteroides que bateram por run |
+|---|---|---|
+| Tudo novo em uso | 40/40 | 2,6 (e ~13 quebrados) |
+| Sem anexos (escudo e casulo) | 29/40 | 2,0 |
+| Sem Piloto | 40/40 | 5,2 |
+| Sem laser de mineração | 38/40 | 4,8 |
+| Sem nada disso (como antes) | 21/40 | 7,5 |
+
+Casco perdido por trecho: Espaço aberto ~35, Rota pirata ~31, **Cinturão ~16** (era ~105). O jogo ficou bem mais fácil, e o maior responsável é o **escudo**. O Cinturão deixou de ser o trecho mais caro. Os números são placeholders e vão precisar subir (ver Parte 1 §17).

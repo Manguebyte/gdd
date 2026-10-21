@@ -8,7 +8,7 @@
 // ele é usado no lugar. HUD e telas são HTML por cima do canvas.
 (() => {
   'use strict';
-  const { CONFIG, PLATING, STATION, TRIP_TYPES, DEFENSES, DEFENSE_ORDER, ABILITIES } = window.SH_DATA;
+  const { CONFIG, PLATING, STATION, ANNEXES, ANNEX_ORDER, PILOT, TRIP_TYPES, DEFENSES, DEFENSE_ORDER, ABILITIES } = window.SH_DATA;
   const { Sim, autoPlay, levelMult } = window.SH;
 
   // A altura lógica é fixa (720). A largura acompanha a tela entre 16:9 e
@@ -83,10 +83,11 @@
   let autoTimer = 0;
   let refMode = false;      // exportando referências para o PixelLab (#refs): sem efeitos
 
-  const cam = { gx: 0 };
+  // gy: a câmera também acompanha o desvio lateral do Piloto.
+  const cam = { gx: 0, gy: 0 };
   let camWX = 0, camWY = 0, shake = 0, shakeX = 0, shakeY = 0;
   const hpScreen = [];
-  const muzzle = sim.hardpoints.map(() => 0);
+  const muzzle = []; // por índice de hardpoint (os casulos entram no meio da run)
   let particles = [], tracers = [], floaters = [];
 
   // ------------------------------------------------------------------ Projeção
@@ -360,7 +361,15 @@
   // ------------------------------------------------------------------ Asteroides
   // Rocha irregular: um polígono com o raio variando por vértice, girando devagar.
   function drawAsteroid(a) {
-    if (drawSprite(`asteroid-${1 + Math.floor(a.seed * 3)}`, a.x, a.y, FLY_H, false)) return;
+    if (a.gone) return;
+    drawRock(a);
+    if (a.hp < a.maxHp) {   // rocha sendo quebrada: barra de vida
+      const p = P(a.x, a.y, FLY_H + a.r * 9 + 22);
+      drawHpBar(p[0], p[1], { hp: a.hp, def: { maxHp: a.maxHp } });
+    }
+  }
+  function drawRock(a) {
+    if (drawSprite(`asteroid-${1 + Math.floor(a.seed * 3)}`, a.x, a.y, FLY_H, a.flash > 0)) return;
     const n = 9, pts = [], top = [];
     const spin = time * a.spin * 0.6;
     for (let i = 0; i < n; i++) {
@@ -378,16 +387,44 @@
   // ------------------------------------------------------------------ A nave
   function drawShip(bodyOnly = false) {
     const s = sim.ship;
-    const gx = s.x, gy = 0;
+    const gx = s.x, gy = s.y;
     const bob = sim.running ? Math.sin(time * 3) * 1.5 : 0;
     const flash = s.flash > 0;
+    // Casulos de armas: os de bombordo (+y, mais longe) atrás do casco, os de estibordo na frente.
+    const pods = sim.hardpoints.filter((hp) => hp.index >= 6);
+    for (const hp of pods) if (hp.offset[1] > 0) drawPod(hp, FLY_H + bob, flash);
     if (!drawSprite('ship', gx, gy, FLY_H + bob, flash)) drawShipVector(gx, gy, FLY_H + bob, flash);
+    for (const hp of pods) if (hp.offset[1] < 0) drawPod(hp, FLY_H + bob, flash);
     if (bodyOnly) return;
     // Brilho dos motores na popa (vale para o sprite e para o vetor).
     if (!flash && sim.running) {
       for (const y of [0.5, -0.5]) glow(P(gx - 4.0, gy + y, FLY_H + bob + 7), 16 + (s.speedMult > 1 ? 10 : 0), s.speedMult > 1 ? '#a8e8ff' : '#5ab8ff', 0.9);
     }
     drawShipTop(bob);
+    drawShield(bob);
+  }
+
+  // Casulo de armas (anexo): um bloco preso ao casco por uma haste, com o hardpoint em cima.
+  function drawPod(hp, base, flash) {
+    const s = sim.ship, [px, py] = hp.offset;
+    const side = Math.sign(py);
+    line(P(s.x + px, s.y + side * 0.9, base + 8), P(s.x + px, s.y + py, base + 8), flash ? '#fff' : '#5a607a', 4);
+    box(s.x + px, s.y + py, 1.1, 1.0, DECK_H - base, base, tones('#8a92aa', flash));
+  }
+
+  // Escudo de energia (anexo): uma bolha em volta da nave, mais forte quando leva um tiro.
+  function drawShield(bob) {
+    const s = sim.ship, max = sim.maxShield;
+    if (max <= 0 || s.shield <= 0 || !sim.running) return;
+    const p = P(s.x, s.y, FLY_H + bob + 14);
+    const f = s.shield / max, hit = s.shieldFlash > 0;
+    ctx.save();
+    ctx.globalAlpha = (hit ? 0.55 : 0.12 + 0.12 * f) + Math.sin(time * 4) * 0.03;
+    ellipse(p, 118, 62, 'rgba(90,220,255,.25)');
+    ctx.globalAlpha = hit ? 0.95 : 0.35 + 0.3 * f;
+    ctx.lineWidth = hit ? 3 : 1.5;
+    ellipse(p, 118, 62, null, hit ? '#e8ffff' : '#5af0ff');
+    ctx.restore();
   }
 
   function drawShipVector(gx, gy, base, flash) {
@@ -457,6 +494,19 @@
     if (drawSprite(turretSprite(def.id, aim), gx, gy, h)) {
       if (def.kind === 'cannon' && muzzle[hp.index] > 0) ellipse(tip(1.3, 5), 4, 3, '#ffe58a');
     } else switch (def.kind) {
+      case 'laser': {
+        box(gx, gy, 0.7, 0.7, 6, h, tones('#5a6a5a'));
+        line(P(gx, gy, h + 5), tip(1.2, 6), '#2a3a2a', 4);
+        ellipse(tip(1.25, 6), 3, 2.5, d.firing ? '#d8ffb0' : '#5aa83a', 'rgba(0,0,0,.5)');
+        if (d.firing) glow(tip(1.3, 6), 10, '#9aff6a', 0.8);
+        break;
+      }
+      case 'flak': {
+        box(gx, gy, 0.9, 0.8, 7, h, tones('#7a6a4a'));
+        line(P(gx - aim[0] * 0.2, gy - aim[1] * 0.2, h + 6), tip(1.4, 7), '#2a2418', 5);
+        ellipse(tip(1.45, 7), 3, 2.5, muzzle[hp.index] > 0 ? '#ffd27a' : '#3a3020', 'rgba(0,0,0,.5)');
+        break;
+      }
       case 'cannon': {
         box(gx, gy, 0.7, 0.7, 6, h, tones('#6a7898'));
         for (const off of [-0.12, 0.12]) {
@@ -527,7 +577,7 @@
   }
   // Para onde o inimigo aponta (para a nave), para virar o desenho.
   function facingToShip(e) {
-    const dx = sim.ship.x - e.x, dy = -e.y, len = Math.hypot(dx, dy) || 1;
+    const dx = sim.ship.x - e.x, dy = sim.ship.y - e.y, len = Math.hypot(dx, dy) || 1;
     return [dx / len, dy / len];
   }
 
@@ -610,7 +660,7 @@
       ellipse([sk[0] + 2.5, sk[1] - 1], 2, 2, '#1a0e08');
     }
     box(x - 1.6, y, 1.6, 1.6, 8, hull.top, tones('#4a3040', flash));
-    const [dx, dy] = refMode ? [1, 0] : (() => { const ddx = sim.ship.x - x, ddy = -y, l = Math.hypot(ddx, ddy) || 1; return [ddx / l, ddy / l]; })();
+    const [dx, dy] = refMode ? [1, 0] : (() => { const ddx = sim.ship.x - x, ddy = sim.ship.y - y, l = Math.hypot(ddx, ddy) || 1; return [ddx / l, ddy / l]; })();
     line(P(x - 1.6, y, hull.top + 5), P(x - 1.6 + dx * 2.4, y + dy * 2.4, hull.top + 5), '#1a1218', 5);
     for (const yy of [1.2, -1.2]) glow(P(hull.x0 - 0.3, y + yy, base + 12), 22, '#ff6a4a', 0.8);
   }
@@ -680,8 +730,39 @@
         }
         break;
       }
+      case 'flak': {
+        const [gx, gy] = sim.hardpointGround(d.hardpoint);
+        tracers.push({ from: [gx, gy, DECK_H + 6], to: [d.x, d.y, FLY_H + 10], life: 0.12, max: 0.12, color: '#ffd27a', width: 3 });
+        muzzle[d.hardpoint.index] = 0.12;
+        explosion(d.x, d.y, FLY_H + 10, 0.7);
+        emit({ gx: d.x, gy: d.y, h: FLY_H + 10, life: 0.3, size: 18, grow: 2, color: '#ffd27a', alpha: 0.9, kind: 'ring' });
+        break;
+      }
+      case 'asteroidDestroyed': {
+        const a = d.a;
+        for (let i = 0; i < 16; i++) {
+          const ang = Math.random() * Math.PI * 2, sp = rnd(2, 6);
+          emit({ gx: a.x, gy: a.y, h: FLY_H + 10, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, vh: rnd(-30, 30), life: rnd(0.6, 1.2), size: rnd(2, 4) * a.r / 1.5, grow: 0, color: i % 2 ? '#6a5a58' : '#857270', kind: 'debris' });
+        }
+        puff(a.x, a.y, FLY_H + 8, 6, '#6a5a58');
+        floater(a.x, a.y, FLY_H + 30, `+${d.gain}`);
+        break;
+      }
+      case 'shieldHit':
+        if (d.broke) { toast('Escudo caiu! Recarrega depois de alguns segundos sem dano'); sparks(s.x, s.y, FLY_H + 16, 24, '#9fe8ff'); }
+        break;
+      case 'annex': {
+        const a = ANNEXES[d.id];
+        floater(s.x, s.y, FLY_H + 40, a.maxLevel > 1 ? `${a.name} ${d.level}` : a.name, '#9fe8ff');
+        for (const hp of d.hardpoints) { const [gx, gy] = sim.hardpointGround(hp); puff(gx, gy, DECK_H, 6, '#c8d0e0'); sparks(gx, gy, DECK_H + 6, 10, '#9fe8ff'); }
+        if (d.hardpoints.length) toast(`+${d.hardpoints.length} hardpoints no ${a.name.toLowerCase()}`);
+        break;
+      }
+      case 'pilot':
+        floater(s.x, s.y, FLY_H + 40, `Piloto ${s.pilot}`, '#9fe8ff');
+        break;
       case 'enemyShot': {
-        const to = [s.x + rnd(-2.5, 2.5), rnd(-1, 1), rnd(12, 26)];
+        const to = [s.x + rnd(-2.5, 2.5), s.y + rnd(-1, 1), rnd(12, 26)];
         tracers.push({ from: [d.e.x, d.e.y, d.e.kind === 'cruiser' ? 34 : 15], to, life: 0.07, max: 0.07, color: '#ff5a7a', width: d.e.kind === 'cruiser' ? 3 : 1.5 });
         sparks(to[0], to[1], to[2], 3, '#ff9ab0');
         break;
@@ -706,7 +787,7 @@
           emit({ gx: d.a.x, gy: d.a.y, h: FLY_H + 10, vx: Math.cos(a) * sp + sim.shipSpeed * 0.3, vy: Math.sin(a) * sp, vh: rnd(-30, 30), life: rnd(0.6, 1.2), size: rnd(2, 4), grow: 0, color: '#6a5a58', kind: 'debris' });
         }
         shake = Math.max(shake, 9);
-        toast(sim.ship.plating ? `Asteroide! (Carenagem −${Math.round(sim.collisionReduction * 100)}%)` : 'Asteroide! A Carenagem reduz esse dano');
+        toast(sim.ship.plating ? `Asteroide! (Carenagem −${Math.round(sim.collisionReduction * 100)}%)` : 'Asteroide! Laser de mineração, Piloto e Carenagem ajudam');
         break;
       case 'shipHit':
         shake = Math.max(shake, Math.min(7, d.amount / 6));
@@ -719,7 +800,7 @@
         banner('CRUZADOR PIRATA!', 'Destrua o cruzador para chegar ao destino');
         break;
       case 'tripStarted':
-        cam.gx = s.x + 3;
+        cam.gx = s.x + 3; cam.gy = 0;
         particles = []; tracers = []; floaters = [];
         banner(d.settings.hasBoss ? 'RUMO AO DESTINO' : TRIP_TYPES[d.settings.type].name.toUpperCase(),
           d.settings.hasBoss ? 'O último trecho. Algo grande vem aí.' : TRIP_TYPES[d.settings.type].short);
@@ -728,15 +809,15 @@
         overlayHold = 1.8;
         ui.pending = null; ui.selected = null;
         if (d.success) banner('TRECHO CONCLUÍDO', sim.phase === 'result' ? 'Você chegou ao destino!' : 'Escolha o próximo caminho');
-        else { banner('NAVE DESTRUÍDA', ''); explosion(s.x, 0, 20, 3.5); explosion(s.x - 2, 0, 15, 2); shake = 20; }
+        else { banner('NAVE DESTRUÍDA', ''); explosion(s.x, s.y, 20, 3.5); explosion(s.x - 2, s.y, 15, 2); shake = 20; }
         break;
       case 'ability':
         if (d.ab.kind === 'afterburner') toast('PÓS-COMBUSTOR!');
-        else { const cl = sim.clouds[sim.clouds.length - 1]; puff(cl.x, 0, FLY_H + 8, 10, '#6a7088'); }
+        else { const cl = sim.clouds[sim.clouds.length - 1]; puff(cl.x, cl.y, FLY_H + 8, 10, '#6a7088'); }
         break;
       case 'plating':
-        sparks(s.x, 0, FLY_H + 12, 16, '#c8f0ff');
-        floater(s.x, 0, FLY_H + 40, `Carenagem ${s.plating}`, '#9fe8ff');
+        sparks(s.x, s.y, FLY_H + 12, 16, '#c8f0ff');
+        floater(s.x, s.y, FLY_H + 40, `Carenagem ${s.plating}`, '#9fe8ff');
         break;
       case 'build': {
         const [gx, gy] = sim.hardpointGround(d.hardpoint);
@@ -763,12 +844,12 @@
     const chance = (rate) => Math.random() < rate * dt;
     const boost = s.speedMult > 1;
     for (const y of [0.5, -0.5]) {
-      if (chance(boost ? 70 : 35)) emit({ gx: s.x - 4.1, gy: y + rnd(-0.1, 0.1), h: FLY_H + 7, vx: -rnd(4, 9), vy: rnd(-0.3, 0.3), vh: 0, life: rnd(0.25, 0.5), size: boost ? 3.5 : 2.5, grow: 0.5, kind: 'exhaust', layer: 'low' });
+      if (chance(boost ? 70 : 35)) emit({ gx: s.x - 4.1, gy: s.y + y + rnd(-0.1, 0.1), h: FLY_H + 7, vx: -rnd(4, 9), vy: rnd(-0.3, 0.3), vh: 0, life: rnd(0.25, 0.5), size: boost ? 3.5 : 2.5, grow: 0.5, kind: 'exhaust', layer: 'low' });
     }
-    if (boost && chance(40)) emit({ gx: s.x - 3.6, gy: rnd(-1.2, 1.2), h: rnd(4, 24), vx: 0, life: 0.25, size: 3, grow: 0, color: '#a8d8ff', alpha: 0.6, kind: 'streak' });
+    if (boost && chance(40)) emit({ gx: s.x - 3.6, gy: s.y + rnd(-1.2, 1.2), h: rnd(4, 24), vx: 0, life: 0.25, size: 3, grow: 0, color: '#a8d8ff', alpha: 0.6, kind: 'streak' });
     if (s.hull < sim.maxHull * 0.35) {
-      if (chance(14)) emit({ gx: s.x - 1 + rnd(-2, 2), gy: rnd(-1, 1), h: FLY_H + 20, vh: rnd(-10, 10), vx: -2, life: rnd(0.5, 0.8), size: 3, grow: 1.5, kind: 'fire' });
-      if (chance(10)) emit({ gx: s.x - 1 + rnd(-2, 2), gy: rnd(-1, 1), h: FLY_H + 22, vh: rnd(-10, 10), vx: -3, life: rnd(1, 1.6), size: 4, grow: 3, color: '#2a2434', alpha: 0.55, kind: 'smoke' });
+      if (chance(14)) emit({ gx: s.x - 1 + rnd(-2, 2), gy: s.y + rnd(-1, 1), h: FLY_H + 20, vh: rnd(-10, 10), vx: -2, life: rnd(0.5, 0.8), size: 3, grow: 1.5, kind: 'fire' });
+      if (chance(10)) emit({ gx: s.x - 1 + rnd(-2, 2), gy: s.y + rnd(-1, 1), h: FLY_H + 22, vh: rnd(-10, 10), vx: -3, life: rnd(1, 1.6), size: 4, grow: 3, color: '#2a2434', alpha: 0.55, kind: 'smoke' });
     }
     for (const hp of sim.hardpoints) {
       const d = hp.defense;
@@ -845,6 +926,21 @@
     ctx.globalAlpha = 1;
   }
 
+  // Feixe do laser de mineração: contínuo, do hardpoint até o alvo, enquanto estiver atirando.
+  function drawBeams() {
+    for (const hp of sim.hardpoints) {
+      const d = hp.defense;
+      if (!d || !d.firing || d.def.kind !== 'laser' || !d.beamTo) continue;
+      const [gx, gy] = sim.hardpointGround(hp);
+      const a = P(gx + d.aim[0] * 1.25, gy + d.aim[1] * 1.25, DECK_H + 6), b = P(d.beamTo[0], d.beamTo[1], FLY_H + 10);
+      const jitter = Math.random() * 0.3;
+      ctx.globalAlpha = 0.5 + jitter; line(a, b, '#9aff6a', 5);
+      ctx.globalAlpha = 1; line(a, b, '#eaffd8', 1.5);
+      glow(b, 12, '#9aff6a', 0.8);
+      if (Math.random() < 0.5) sparks(d.beamTo[0], d.beamTo[1], FLY_H + 10, 1, d.beamTo[2] ? '#c8a888' : '#d8ffb0');
+    }
+  }
+
   function drawFloaters() {
     ctx.font = '700 22px "Barlow Condensed", sans-serif';
     ctx.textAlign = 'center';
@@ -883,7 +979,7 @@
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, lw, lh);
     ctx.setTransform(LOW, 0, 0, LOW, (W / 2) * (1 - ZOOM) * ART, CAM_Y * (1 - ZOOM) * ART);
-    camWX = cam.gx * HW; camWY = -cam.gx * HH;
+    camWX = (cam.gx - cam.gy) * HW; camWY = -(cam.gx + cam.gy) * HH;
     shakeX = (Math.random() - 0.5) * shake; shakeY = (Math.random() - 0.5) * shake;
 
     const b = visibleBounds();
@@ -902,6 +998,7 @@
 
     drawParticles('high');
     drawTracers();
+    drawBeams();
 
     ctx = mainCtx;
     ctx.setTransform(k, 0, 0, k, 0, 0);
@@ -938,6 +1035,7 @@
     ui.hover = pickHardpoint(lx, ly);
     canvas.style.cursor = ui.hover !== null ? 'pointer' : 'default';
   });
+  canvas.addEventListener('pointerleave', () => { ui.hover = null; });
   canvas.addEventListener('contextmenu', (ev) => ev.preventDefault());
   canvas.addEventListener('pointerdown', (ev) => {
     if (sim.phase !== 'trip' || paused) return;
@@ -955,14 +1053,15 @@
     } else if (hp.defense) {
       ui.pending = null;
       ui.selected = ui.selected === index ? null : index;
+      if (ui.selected !== null) toggleShipPanel(false);
     } else {
       toast('Escolha uma defesa na barra de baixo');
     }
   });
 
-  function cancelAll() { ui.pending = null; ui.selected = null; }
+  function cancelAll() { ui.pending = null; ui.selected = null; toggleShipPanel(false); }
 
-  const BUY_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR'];
+  const BUY_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY'];
   addEventListener('keydown', (ev) => {
     if (ev.code === 'KeyP' || (ev.code === 'Escape' && paused)) { togglePause(); return; }
     if (sim.phase !== 'trip' || paused) return;
@@ -972,6 +1071,7 @@
     const bi = BUY_KEYS.indexOf(ev.code);
     if (bi >= 0) selectBuy(DEFENSE_ORDER[bi]);
     if (ev.code === 'KeyC') doPlating();
+    if (ev.code === 'KeyN') toggleShipPanel();
     if (ev.code === 'KeyU' && ui.selected !== null) doUpgrade();
     if (ev.code === 'KeyV' && ui.selected !== null) doSell();
   });
@@ -1013,6 +1113,7 @@
     }
     ui.pending = ui.pending === id ? null : id;
     ui.selected = null;
+    toggleShipPanel(false);
   }
 
   function iconCanvas(w, h, draw) {
@@ -1041,6 +1142,17 @@
       g.strokeStyle = '#b06aff'; g.lineWidth = 2;
       for (const x of [26, 32, 38]) { g.beginPath(); g.ellipse(x, 22 - (x - 26) / 3, 3, 5, 0, 0, Math.PI * 2); g.stroke(); }
       g.fillStyle = '#e0c8ff'; g.beginPath(); g.arc(46, 16, 4, 0, Math.PI * 2); g.fill();
+    } else if (kind === 'laser') {
+      g.fillStyle = '#5a6a5a'; g.fillRect(10, 24, 16, 12);
+      g.strokeStyle = '#2a3a2a'; g.lineWidth = 5; g.beginPath(); g.moveTo(20, 28); g.lineTo(32, 22); g.stroke();
+      g.strokeStyle = '#9aff6a'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 22); g.lineTo(52, 12); g.stroke();
+      g.fillStyle = '#857270'; g.beginPath(); g.arc(52, 11, 5, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#eaffd8'; g.beginPath(); g.arc(33, 22, 3, 0, Math.PI * 2); g.fill();
+    } else if (kind === 'flak') {
+      g.fillStyle = '#7a6a4a'; g.fillRect(12, 22, 18, 14);
+      g.strokeStyle = '#2a2418'; g.lineWidth = 6; g.beginPath(); g.moveTo(24, 26); g.lineTo(38, 19); g.stroke();
+      g.fillStyle = '#ffd27a';
+      for (const [x, y, r] of [[48, 13, 5], [42, 8, 2.5], [54, 20, 2.5], [54, 7, 2]]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
     } else {
       g.fillStyle = '#5a6080'; g.fillRect(18, 26, 20, 10);
       g.fillStyle = '#ffd84a'; g.beginPath(); g.arc(28, 18, 8, 0, Math.PI * 2); g.fill();
@@ -1063,7 +1175,7 @@
     const def = DEFENSES[id];
     const btn = document.createElement('button');
     btn.className = 'buy plate';
-    btn.innerHTML = `<span class="key">${BUY_KEYS[i].slice(3)}</span><span class="name">${def.name}</span><span class="cost"></span>`;
+    btn.innerHTML = `<span class="key">${BUY_KEYS[i].slice(3)}</span><span class="name">${def.button}</span><span class="cost"></span>`;
     // Ícone: o sprite PixelLab da torre (virada para a câmera); se não houver, o desenho vetorial.
     const sp = SPRITES[`turret-${id}-south`];
     if (sp) {
@@ -1074,26 +1186,78 @@
       btn.prepend(img);
     } else btn.prepend(iconCanvas(56, 44, (g) => drawDefenseIcon(g, id)));
     btn.addEventListener('click', () => selectBuy(id));
+    hoverTip(btn, () => defenseTip(def, null));
     shopEl.appendChild(btn);
     return { id, def, btn, cost: btn.querySelector('.cost') };
   });
 
-  // Carenagem: botão próprio, ao lado da barra de compra (é da nave, não de um hardpoint).
-  const platingBtn = document.createElement('button');
-  platingBtn.className = 'buy plate plating';
-  platingBtn.innerHTML = '<span class="key">C</span><span class="name">Carenagem</span><span class="cost"></span>';
-  platingBtn.prepend(iconCanvas(56, 44, (g) => {
-    g.fillStyle = '#121628'; g.beginPath(); g.ellipse(28, 38, 18, 4, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#9aa4c0'; g.beginPath(); g.moveTo(10, 30); g.lineTo(28, 6); g.lineTo(46, 30); g.lineTo(28, 36); g.closePath(); g.fill();
-    g.strokeStyle = '#3a4260'; g.lineWidth = 2; g.stroke();
-    g.fillStyle = '#c8d0e8'; for (const [x, y] of [[20, 26], [36, 26], [28, 16]]) { g.beginPath(); g.arc(x, y, 2, 0, Math.PI * 2); g.fill(); }
-  }));
-  platingBtn.addEventListener('click', doPlating);
-  shopEl.appendChild(platingBtn);
-  function doPlating() {
-    const res = sim.buyPlating();
+  // ------------------------------------------------------------------ Upgrades da nave
+  // POR QUE: Carenagem, anexos (escudo e casulos de armas) e Piloto são da nave, não de um
+  // hardpoint. Para a barra de compra não ficar larga demais, eles moram num painel só (NAVE),
+  // que a Estação também mostra.
+  // ESTRATÉGIA: cada upgrade é descrito por uma linha desta tabela (nível, custo, compra e o
+  // efeito do próximo nível); o painel, a Estação e as dicas leem todos daqui.
+  const fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
+  const SHIP_UPGRADES = [
+    { id: 'plating', name: 'Carenagem', key: 'C', desc: PLATING.desc, max: PLATING.maxLevel,
+      level: () => sim.ship.plating, cost: () => sim.platingCost(), buy: () => sim.buyPlating(),
+      effect: (n) => `${sim.cfg.shipBaseHull + PLATING.hullPerLevel * n} de casco máximo · −${Math.round(PLATING.collisionReductionPerLevel * n * 100)}% de dano de colisão` },
+    ...ANNEX_ORDER.map((id) => {
+      const a = ANNEXES[id];
+      return { id, name: a.name, desc: a.desc, max: a.maxLevel,
+        level: () => sim.annexLevel(id), cost: () => sim.annexCost(id), buy: () => sim.buyAnnex(id),
+        effect: (n) => id === 'shield'
+          ? `Escudo de ${a.shieldPerLevel * n} · recarrega ${a.regenPerSecond}/s depois de ${a.regenDelay} s sem dano`
+          : `+${a.hardpoints.length} hardpoints (${a.hardpoints.map((h) => h.label.replace(/^.*\((.*)\)$/, '$1')).join(' e ')})` };
+    }),
+    { id: 'pilot', name: 'Piloto', desc: PILOT.desc, max: PILOT.maxLevel,
+      level: () => sim.ship.pilot, cost: () => sim.pilotCost(), buy: () => sim.buyPilot(),
+      effect: (n) => `+${Math.round(PILOT.speedPerLevel * n * 100)}% de velocidade · desvia de asteroides a ${fmt(PILOT.dodgeSpeedPerLevel * n)} m/s` },
+  ];
+  function buyShipUpgrade(u) {
+    const res = u.buy();
     if (res === 'noScrap') toast('Sucata insuficiente');
-    else if (res === 'max') toast('Carenagem no nível máximo');
+    else if (res === 'max') toast(`${u.name} no nível máximo`);
+    return res;
+  }
+  function doPlating() { buyShipUpgrade(SHIP_UPGRADES[0]); }
+
+  function drawShipIcon(g) {
+    g.fillStyle = '#121628'; g.beginPath(); g.ellipse(28, 38, 20, 4, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#c8ccd8'; g.fillRect(10, 18, 34, 14);
+    g.fillStyle = '#d8782a'; g.fillRect(14, 12, 10, 6); g.fillRect(28, 12, 10, 6);
+    g.fillStyle = '#9aa0b4'; g.beginPath(); g.moveTo(44, 18); g.lineTo(52, 25); g.lineTo(44, 32); g.fill();
+    g.fillStyle = '#3ad0ff'; g.fillRect(38, 20, 5, 4);
+    g.strokeStyle = '#5af0ff'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(28, 24, 26, 15, 0, 0, Math.PI * 2); g.stroke();
+  }
+
+  // Botão NAVE na barra de compra: abre e fecha o painel de upgrades da nave.
+  const shipBtn = document.createElement('button');
+  shipBtn.className = 'buy plate ship-btn';
+  shipBtn.innerHTML = '<span class="key">N</span><span class="name">Nave</span><span class="cost">Upgrades</span>';
+  shipBtn.prepend(iconCanvas(56, 44, drawShipIcon));
+  shipBtn.addEventListener('click', () => toggleShipPanel());
+  hoverTip(shipBtn, () => `<div class="tip-title">Upgrades da nave</div><div class="tip-desc">Carenagem, anexos (escudo de energia e casulos com mais hardpoints) e Piloto. Ficam na nave, não num hardpoint, e valem até o fim da run.</div>`);
+  shopEl.appendChild(shipBtn);
+
+  const shipPanel = document.createElement('div');
+  shipPanel.id = 'ship-panel';
+  shipPanel.className = 'plate hidden';
+  shipPanel.innerHTML = '<div class="sp-title">UPGRADES DA NAVE</div>';
+  $('hud').appendChild(shipPanel);
+  const shipRows = SHIP_UPGRADES.map((u) => {
+    const btn = document.createElement('button');
+    btn.className = 'up-row';
+    btn.innerHTML = `<span class="name">${u.name}${u.key ? ` <i>${u.key}</i>` : ''}</span><span class="lv"></span><span class="cost"></span><span class="fx"></span>`;
+    btn.addEventListener('click', () => buyShipUpgrade(u));
+    hoverTip(btn, () => shipUpgradeTip(u), 'left');
+    shipPanel.appendChild(btn);
+    return { u, btn, lv: btn.querySelector('.lv'), cost: btn.querySelector('.cost'), fx: btn.querySelector('.fx') };
+  });
+  function toggleShipPanel(open = shipPanel.classList.contains('hidden')) {
+    shipPanel.classList.toggle('hidden', !open);
+    shipBtn.classList.toggle('selected', open);
+    if (open) { ui.selected = null; ui.pending = null; }
   }
 
   const abilityButtons = ABILITIES.map((ab, i) => {
@@ -1102,6 +1266,7 @@
     btn.innerHTML = `<span class="key">${i + 1}</span><span class="name">${ab.name}</span><span class="secs"></span><span class="cd"></span>`;
     btn.prepend(iconCanvas(48, 40, (g) => drawAbilityIcon(g, ab.kind)));
     btn.addEventListener('click', () => useAbility(i));
+    hoverTip(btn, () => `<div class="tip-title">${ab.name}</div><div class="tip-desc">${ab.desc}</div><div class="tip-stats">Recarga: ${ab.cooldown} s</div>`);
     abilitiesEl.appendChild(btn);
     return { btn, secs: btn.querySelector('.secs') };
   });
@@ -1120,21 +1285,104 @@
   $('upgrade-btn').addEventListener('click', doUpgrade);
   $('sell-btn').addEventListener('click', doSell);
 
-  function statsLine(d) {
-    const def = d.def, m = levelMult(d), fmt = (v) => (Math.round(v * 10) / 10).toString().replace('.', ',');
+  // Os números de uma defesa num nível (o upgrade multiplica dano e atordoamento).
+  function defenseStats(def, level) {
+    const m = levelMult({ def, level });
     switch (def.kind) {
-      case 'cannon': return `${fmt(def.damage * m / def.fireInterval)} de dano/s · alcance ${fmt(def.range)} m`;
-      case 'plasma': return `${fmt(def.damage * m)} de dano/s em cone · alcance ${fmt(def.range)} m`;
-      case 'harpoon': return `${fmt(def.damage * m)} de dano a cada ${fmt(def.fireInterval)} s · atordoa ${fmt(def.stunSeconds * m)} s · só naves`;
-      case 'field': return `choque de ${fmt(def.damage * m)}/s em quem chega a ${fmt(def.range)} m (inclusive piratas a bordo)`;
+      case 'cannon': return [`${fmt(def.damage * m / def.fireInterval)} de dano/s (${fmt(def.damage * m)} a cada ${fmt(def.fireInterval)} s)`, `Alcance ${fmt(def.range)} m · um alvo por vez`];
+      case 'plasma': return [`${fmt(def.damage * m)} de dano/s em todos no cone de ${def.coneDegrees}°`, `Alcance ${fmt(def.range)} m`];
+      case 'harpoon': return [`${fmt(def.damage * m)} de dano a cada ${fmt(def.fireInterval)} s · atordoa ${fmt(def.stunSeconds * m)} s`, `Alcance ${fmt(def.range)} m · só naves`];
+      case 'field': return [`Choque de ${fmt(def.damage * m)}/s em tudo a até ${fmt(def.range)} m`, 'Acerta piratas a bordo'];
+      case 'laser': return [`Asteroides: ${fmt(def.asteroidDamage * m)} de dano/s · naves: ${fmt(def.damage * m)}/s`, `Alcance ${fmt(def.range)} m`];
+      case 'flak': return [`${fmt(def.damage * m)} de dano em área (raio ${fmt(def.blastRadius)} m) a cada ${fmt(def.fireInterval)} s`, `Alcance ${fmt(def.range)} m · naves e asteroides`];
     }
-    return '';
+    return [];
+  }
+  function statsLine(d) { return defenseStats(d.def, d.level).join(' · '); }
+
+  // ------------------------------------------------------------------ Dicas (hover)
+  // POR QUE: o jogador precisa saber o que cada arma e cada upgrade faz antes de gastar sucata.
+  // ESTRATÉGIA: uma caixa só (#tip). Passar o mouse num botão da barra, do painel NAVE ou das
+  // habilidades, ou num hardpoint da nave, mostra a dica de quem está embaixo do mouse. O
+  // texto é recalculado todo quadro (custos e níveis mudam). No toque não há hover: a dica da
+  // defesa escolhida na barra aparece enquanto ela está selecionada.
+  const tipEl = document.createElement('div');
+  tipEl.id = 'tip';
+  tipEl.className = 'plate hidden';
+  $('hud').appendChild(tipEl);
+  let tipSource = null;  // { el, html } do botão embaixo do mouse
+  // side 'left': a dica fica à esquerda do botão (no painel NAVE, para não cobrir as outras linhas).
+  function hoverTip(el, html, side = 'above') {
+    el.addEventListener('pointerenter', (ev) => { if (ev.pointerType !== 'touch') tipSource = { el, html, side }; });
+    el.addEventListener('pointerleave', () => { if (tipSource && tipSource.el === el) tipSource = null; });
+  }
+
+  function defenseTip(def, d, hp) {
+    const locked = !sim.shop.includes(def);
+    const level = d ? d.level : 1;
+    let html = `<div class="tip-title">${def.name}${d ? ` <small>nível ${d.level}/${def.maxLevel}</small>` : ` <span class="tip-cost">${def.cost} sucata</span>`}</div>`;
+    if (hp) html += `<div class="tip-hp">${hp.label}${hp.saboteurs > 0 ? ' · <b>SABOTADA</b>' : ''}</div>`;
+    html += `<div class="tip-desc">${def.desc}</div><div class="tip-stats">${defenseStats(def, level).join('<br>')}</div>`;
+    if (d && d.level < def.maxLevel) html += `<div class="tip-next">Nível ${d.level + 1} (${sim.upgradeCost(d)} sucata): ${defenseStats(def, d.level + 1)[0]}</div>`;
+    if (!d && locked) html += `<div class="tip-lock">Libera ao concluir ${def.unlockAtBestTrips} ${def.unlockAtBestTrips === 1 ? 'trecho' : 'trechos'} numa run</div>`;
+    if (!d && !locked) html += '<div class="tip-foot">Atira sozinha, só dentro do arco do hardpoint onde for montada.</div>';
+    return html;
+  }
+  function shipUpgradeTip(u) {
+    const n = u.level();
+    let html = `<div class="tip-title">${u.name} <small>nível ${n}/${u.max}</small></div><div class="tip-desc">${u.desc}</div>`;
+    if (n > 0) html += `<div class="tip-stats">Agora: ${u.effect(n)}</div>`;
+    html += n < u.max ? `<div class="tip-next">${u.max > 1 ? `Nível ${n + 1}` : 'Comprar'} (${u.cost()} sucata): ${u.effect(n + 1)}</div>` : '<div class="tip-next">Nível máximo</div>';
+    return html;
+  }
+  function hardpointTip(hp) {
+    if (hp.defense) return defenseTip(hp.defense.def, hp.defense, hp);
+    const side = { 0: 'para a frente', 180: 'para trás', 90: 'para bombordo', '-90': 'para estibordo', 45: 'para a frente e bombordo', '-45': 'para a frente e estibordo', 135: 'para trás e bombordo', '-135': 'para trás e estibordo' }[hp.facing];
+    return `<div class="tip-title">${hp.label}</div><div class="tip-desc">Hardpoint vazio. Atira ${side || ''} (arco de ${hp.arc}°).${ui.pending ? ` Clique para montar: ${DEFENSES[ui.pending].name}.` : ' Escolha uma defesa na barra de baixo.'}</div>`;
+  }
+
+  // Põe a caixa acima do retângulo (ou à esquerda dele), em coordenadas da tela lógica,
+  // sem sair da tela.
+  function placeTip(x, top, bottom, leftEdge) {
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    let left = Math.max(8, Math.min(W - w - 8, x - w / 2));
+    let y = top - h - 10;
+    if (leftEdge !== undefined) { left = Math.max(8, leftEdge - w - 10); y = Math.min(H - h - 8, (top + bottom) / 2 - h / 2); }
+    if (y < 8) y = bottom + 10;
+    tipEl.style.left = `${left}px`; tipEl.style.top = `${y}px`;
+  }
+  let tipHtml = '';
+  function updateTip() {
+    let html = null, anchor = null;
+    if (sim.phase === 'trip' && !paused) {
+      if (tipSource && document.body.contains(tipSource.el) && tipSource.el.offsetParent) {
+        html = tipSource.html();
+        const r = tipSource.el.getBoundingClientRect(), a = app.getBoundingClientRect();
+        anchor = [(r.left + r.width / 2 - a.left) / scale, (r.top - a.top) / scale, (r.bottom - a.top) / scale];
+        if (tipSource.side === 'left') anchor.push((r.left - a.left) / scale);
+      } else if (ui.hover !== null && hpScreen[ui.hover] && sim.hardpoints[ui.hover]) {
+        html = hardpointTip(sim.hardpoints[ui.hover]);
+        const p = hpScreen[ui.hover];
+        const sx = W / 2 + (p[0] - W / 2) * ZOOM, sy = CAM_Y + (p[1] - CAM_Y) * ZOOM;
+        anchor = [sx, sy - 30, sy + 20];
+      } else if (TOUCH && ui.pending) {
+        const sb = shopButtons.find((b) => b.id === ui.pending);
+        html = defenseTip(sb.def, null);
+        const r = sb.btn.getBoundingClientRect(), a = app.getBoundingClientRect();
+        anchor = [(r.left + r.width / 2 - a.left) / scale, (r.top - a.top) / scale, (r.bottom - a.top) / scale];
+      }
+    }
+    tipEl.classList.toggle('hidden', !html);
+    if (!html) { tipHtml = ''; return; }
+    if (html !== tipHtml) { tipHtml = html; tipEl.innerHTML = html; }
+    placeTip(...anchor);
   }
 
   let panelSig = '';
   function updateHud() {
     const inTrip = sim.phase === 'trip' || overlayHold > 0;
     hud.classList.toggle('hidden', !inTrip);
+    updateTip();
     if (!inTrip) return;
     const s = sim.ship;
     $('scrap').textContent = sim.scrap;
@@ -1160,12 +1408,26 @@
       const text = locked ? `Concluir ${sb.def.unlockAtBestTrips} ${sb.def.unlockAtBestTrips === 1 ? 'trecho' : 'trechos'}` : `${sb.def.cost} sucata`;
       if (sb.cost.textContent !== text) sb.cost.textContent = text;
     }
-    const maxed = s.plating >= PLATING.maxLevel;
-    const ptext = maxed ? 'Nível máximo' : `Nv ${s.plating + 1} · ${sim.platingCost()}`;
-    const pcost = platingBtn.querySelector('.cost');
-    if (pcost.textContent !== ptext) pcost.textContent = ptext;
-    platingBtn.classList.toggle('poor', !maxed && sim.scrap < sim.platingCost());
-    platingBtn.classList.toggle('locked', maxed);
+    let affordable = false;
+    for (const row of shipRows) {
+      const n = row.u.level(), maxed = n >= row.u.max;
+      const lv = row.u.max > 1 ? `Nv ${n}/${row.u.max}` : n ? 'Instalado' : '';
+      const cost = maxed ? 'Máximo' : `${row.u.cost()}`;
+      const fx = maxed ? row.u.effect(n) : `${n ? 'Próximo: ' : ''}${row.u.effect(n + 1)}`;
+      if (row.lv.textContent !== lv) row.lv.textContent = lv;
+      if (row.cost.textContent !== cost) row.cost.textContent = cost;
+      if (row.fx.textContent !== fx) row.fx.textContent = fx;
+      row.btn.classList.toggle('poor', !maxed && sim.scrap < row.u.cost());
+      row.btn.classList.toggle('maxed', maxed);
+      if (!maxed && sim.scrap >= row.u.cost()) affordable = true;
+    }
+    shipBtn.classList.toggle('has-buy', affordable);
+    const shieldMax = sim.maxShield;
+    $('shield-box').classList.toggle('hidden', shieldMax <= 0);
+    if (shieldMax > 0) {
+      $('shield-fill').style.width = `${s.shield / shieldMax * 100}%`;
+      $('shield-text').textContent = `ESCUDO ${Math.ceil(s.shield)} / ${shieldMax}`;
+    }
     abilityButtons.forEach((ab, i) => {
       const f = sim.cooldown01(i);
       ab.btn.style.setProperty('--cd', f.toFixed(3));
@@ -1239,7 +1501,7 @@
     else if (name === 'resume') { paused = false; shownScreen = undefined; }
     else if (name === 'abandon') { paused = false; sim.abandon(); }
     else if (name.startsWith('repair')) { sim.repair(name === 'repairAll' ? Infinity : +name.slice(6)); shownScreen = undefined; }
-    else if (name === 'stationPlating') { doPlating(); shownScreen = undefined; }
+    else if (name.startsWith('ship:')) { buyShipUpgrade(SHIP_UPGRADES.find((u) => u.id === name.slice(5))); shownScreen = undefined; }
     else if (name === 'leave') sim.leaveStation();
   }
 
@@ -1252,11 +1514,11 @@
         <b>Comprar:</b> toque numa defesa na barra de baixo e depois num hardpoint vazio da nave.<br>
         <b>Melhorar ou vender:</b> toque numa defesa já montada.<br>
         <b>Hardpoints:</b> cada um só atira para o seu lado (proa, popa, bombordo, estibordo). Monte do lado do ataque.<br>
-        <b>Carenagem:</b> protege contra asteroides e drones. <b>Habilidades:</b> botões no canto.` : `
+        <b>Nave:</b> Carenagem, escudo, casulos com mais hardpoints e Piloto. <b>Habilidades:</b> botões no canto.` : `
         <b>Comprar:</b> clique numa defesa na barra de baixo e depois num hardpoint vazio da nave.<br>
-        <b>Melhorar ou vender:</b> clique numa defesa já montada.<br>
+        <b>Melhorar ou vender:</b> clique numa defesa já montada. <b>Passe o mouse</b> em qualquer coisa para ver o que ela faz.<br>
         <b>Hardpoints:</b> cada um só atira para o seu lado (proa, popa, bombordo, estibordo). Monte do lado do ataque.<br>
-        <b>Carenagem (C):</b> protege contra asteroides e drones. <b>Habilidades:</b> teclas 1 e 2. <b>Cancelar:</b> botão direito ou Esc. <b>Pausa:</b> P.`}
+        <b>Nave (N):</b> Carenagem (C), escudo, casulos com mais hardpoints e Piloto. <b>Habilidades:</b> 1 e 2. <b>Cancelar:</b> botão direito ou Esc. <b>Pausa:</b> P.`}
       </div><br>
       <button class="big-btn" data-act="start">DECOLAR</button>
       <div class="stats">Viagens: ${m.runsStarted} · Chegadas ao destino: ${m.runsCompleted} · Melhor run: ${m.bestTrips} ${m.bestTrips === 1 ? 'trecho' : 'trechos'}</div>`;
@@ -1324,13 +1586,19 @@
       const dis = real <= 0;
       return `<button class="big-btn ${dis ? 'secondary' : ''}" data-act="${act}" ${dis ? 'disabled' : ''}>${label} <small>(${sim.repairCost(Math.max(0, real))} sucata)</small></button>`;
     };
-    const platingMax = sim.ship.plating >= PLATING.maxLevel;
+    // Upgrades da nave (os mesmos do painel NAVE), com o efeito do próximo nível escrito.
+    const ups = SHIP_UPGRADES.map((u) => {
+      const n = u.level(), maxed = n >= u.max, dis = maxed || sim.scrap < u.cost();
+      return `<button class="station-up plate" data-act="ship:${u.id}" ${dis ? 'disabled' : ''}>
+        <b>${u.name}${u.max > 1 ? ` ${n}/${u.max}` : ''}</b><span>${maxed ? 'Máximo' : `${u.cost()} sucata`}</span>
+        <small>${maxed ? u.effect(n) : u.effect(n + 1)}</small></button>`;
+    }).join('');
     return `
       <div class="route-head">ESTAÇÃO</div>
       <div class="result-text">Casco <b>${Math.ceil(sim.ship.hull)}/${sim.maxHull}</b> · Sucata <b>${sim.scrap}</b><br>
       Reparo: ${STATION.hullPerScrap} de casco por 1 de sucata. Aqui não há piratas.</div>
       <div>${btn(step, `repair${step}`, `Reparar ${step}`)}${btn(Infinity, 'repairAll', 'Reparar tudo')}</div>
-      <div><button class="big-btn secondary" data-act="stationPlating" ${platingMax || sim.scrap < sim.platingCost() ? 'disabled' : ''}>${platingMax ? 'Carenagem no máximo' : `Carenagem nível ${sim.ship.plating + 1} <small>(${sim.platingCost()} sucata)</small>`}</button></div>
+      <div class="station-ups">${ups}</div>
       <br><button class="big-btn" data-act="leave">SEGUIR VIAGEM</button>`;
   }
 
@@ -1437,6 +1705,7 @@
 
     const target = sim.ship.x + 3 + (sim.ship.speedMult > 1 ? 2 : 0);
     cam.gx += (target - cam.gx) * (1 - Math.exp(-6 * dt));
+    cam.gy += (sim.ship.y * 0.7 - cam.gy) * (1 - Math.exp(-3 * dt));
     shake = Math.max(0, shake - 40 * dt);
 
     render();

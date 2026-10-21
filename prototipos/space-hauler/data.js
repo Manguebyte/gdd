@@ -31,6 +31,7 @@
 
   // Carenagem (Parte 1 §3): upgrade da própria nave, em níveis, comprado com sucata.
   const PLATING = {
+    desc: 'Blindagem da nave: cada nível dá +50 de casco máximo (e cura 50) e reduz em 12% o dano de colisão (asteroides e drones kamikaze).',
     maxLevel: 5,
     costPerLevel: 50,             // nível n custa 50 × n
     hullPerLevel: 50,             // + casco máximo (e cura o mesmo tanto, como um upgrade de vida)
@@ -42,13 +43,58 @@
     hullPerScrap: 2,              // 1 de sucata repara 2 de casco
   };
 
-  // Asteroides (Parte 1 §8): só no Cinturão de asteroides. Não podem ser destruídos.
+  // Asteroides (Parte 1 §8): só no Cinturão de asteroides. Só as defesas de mineração
+  // (laser de mineração e canhão de fragmentação) conseguem destruí-los.
   const ASTEROIDS = {
     perSecond: 0.4,               // quantos aparecem por segundo, à frente da nave
     aheadMin: 34, aheadMax: 42,   // m à frente da nave
     lateralSpread: 16,            // m para cada lado
     radiusMin: 0.8, radiusMax: 2.2,
     damagePerRadius: 16,          // dano = 16 × raio (um médio, raio 1,5, tira 24)
+    hpPerRadius: 30,              // vida = 30 × raio (um médio tem 45)
+    scrapPerRadius: 2,            // sucata ao destruir = 2 × raio, arredondado
+  };
+
+  // Anexos (Parte 1 §3): módulos presos à nave, fora dos hardpoints, comprados com sucata a
+  // qualquer momento da run. O nível n custa costPerLevel × n.
+  const ANNEXES = {
+    shield: {
+      id: 'shield', name: 'Gerador de escudo', maxLevel: 3, costPerLevel: 80,
+      shieldPerLevel: 60,         // pontos de escudo por nível
+      regenPerSecond: 12,         // recarga, depois de regenDelay segundos sem levar dano
+      regenDelay: 3,
+      desc: 'Escudo de energia que absorve o dano antes do casco: tiros, drones e asteroides (piratas a bordo já estão dentro dele). Recarrega sozinho depois de alguns segundos sem levar dano e enche no começo de cada trecho.',
+    },
+    podFront: {
+      id: 'podFront', name: 'Casulo dianteiro', maxLevel: 1, costPerLevel: 120,
+      desc: 'Casulo de armas preso nas diagonais da frente: +2 hardpoints, um de cada lado, que atiram para a frente e para o lado.',
+      hardpoints: [
+        { id: 'cdBb', label: 'Casulo dianteiro (bombordo)',  offset: [2.2, 2.4],   facing: 45,   arc: 180 },
+        { id: 'cdEb', label: 'Casulo dianteiro (estibordo)', offset: [2.2, -2.4],  facing: -45,  arc: 180 },
+      ],
+    },
+    podRear: {
+      id: 'podRear', name: 'Casulo traseiro', maxLevel: 1, costPerLevel: 120,
+      desc: 'Casulo de armas preso nas diagonais de trás: +2 hardpoints, um de cada lado, que atiram para trás e para o lado.',
+      hardpoints: [
+        { id: 'ctBb', label: 'Casulo traseiro (bombordo)',  offset: [-2.6, 2.4],  facing: 135,  arc: 180 },
+        { id: 'ctEb', label: 'Casulo traseiro (estibordo)', offset: [-2.6, -2.4], facing: -135, arc: 180 },
+      ],
+    },
+  };
+  const ANNEX_ORDER = ['shield', 'podFront', 'podRear'];
+
+  // Piloto (Parte 1 §3): upgrade da tripulação, em níveis. Cada nível deixa a nave mais rápida
+  // e faz o piloto desviar sozinho dos asteroides que estão no caminho. O jogador continua sem
+  // controlar a nave: quem desvia é o piloto.
+  const PILOT = {
+    maxLevel: 3, costPerLevel: 60,
+    speedPerLevel: 0.1,           // +10% de velocidade de cruzeiro por nível
+    dodgeSpeedPerLevel: 1.5,      // m/s de deslize lateral por nível (1,5 / 3 / 4,5)
+    lookAhead: 16,                // m: até onde o piloto enxerga asteroides à frente
+    margin: 0.5,                  // m de folga além do raio da rocha + raio da nave
+    maxOffset: 5,                 // m: o máximo que ele sai do centro da rota
+    desc: 'O piloto desvia sozinho dos asteroides que vão bater na nave e voa mais rápido. Cada nível desvia mais depressa. Mais rápido também quer dizer trechos mais curtos: menos inimigos e menos sucata.',
   };
 
   // Tipos de trecho (Parte 1 §8): o padrão de ataque e o risco de cada um.
@@ -76,31 +122,50 @@
   // DefenseDef (guia Unity, Fase 4.9).
   const DEFENSES = {
     cannon: {
-      id: 'cannon', kind: 'cannon', name: 'Autocanhão', short: 'Tiro rápido, um alvo',
+      id: 'cannon', kind: 'cannon', name: 'Autocanhão', button: 'Autocanhão', short: 'Tiro rápido, um alvo',
+      desc: 'Rajada rápida no inimigo mais perto dentro do arco. A defesa padrão: boa contra caças e drones. Não acerta asteroides.',
       cost: 40, upgradeCostPerLevel: 40, maxLevel: 3,
       range: 9, damage: 6, fireInterval: 0.15, bonusPerLevel: 0.35,
       unlockAtBestTrips: 0,
     },
     plasma: {
-      id: 'plasma', kind: 'plasma', name: 'Canhão de plasma', short: 'Cone curto, queima vários',
+      id: 'plasma', kind: 'plasma', name: 'Canhão de plasma', button: 'Plasma', short: 'Cone curto, queima vários',
+      desc: 'Jato de plasma num cone curto que queima todos os inimigos dentro dele ao mesmo tempo. Ótimo contra quem encosta na nave. Não acerta asteroides.',
       cost: 60, upgradeCostPerLevel: 60, maxLevel: 3,
       range: 4.5, damage: 35, coneDegrees: 60, bonusPerLevel: 0.35,
       unlockAtBestTrips: 1,
     },
     harpoon: {
-      id: 'harpoon', kind: 'harpoon', name: 'Arpão magnético', short: 'Atordoa naves',
+      id: 'harpoon', kind: 'harpoon', name: 'Arpão magnético', button: 'Arpão', short: 'Atordoa naves',
+      desc: 'Arpão lento e forte que prende uma nave inimiga: ela fica atordoada, perde o embalo e fica para trás. Só acerta naves.',
       cost: 70, upgradeCostPerLevel: 70, maxLevel: 3,
       range: 12, damage: 40, fireInterval: 3, stunSeconds: 2.5, bonusPerLevel: 0.35,
       unlockAtBestTrips: 3,
     },
     field: {
-      id: 'field', kind: 'field', name: 'Campo elétrico', short: 'Choque em quem encosta',
+      id: 'field', kind: 'field', name: 'Campo elétrico', button: 'Campo elétrico', short: 'Choque em quem encosta',
+      desc: 'Passivo: dá choque contínuo em tudo que chega perto do hardpoint, inclusive nos piratas a bordo. Não acerta asteroides.',
       cost: 50, upgradeCostPerLevel: 50, maxLevel: 3,
       range: 2.5, damage: 15, bonusPerLevel: 0.35,
       unlockAtBestTrips: 0,
     },
+    // Defesas de mineração (Parte 1 §4): as únicas que destroem asteroides.
+    laser: {
+      id: 'laser', kind: 'laser', name: 'Laser de mineração', button: 'Laser', short: 'Quebra asteroides',
+      desc: 'Feixe contínuo feito para quebrar asteroides: mira primeiro na rocha que vai bater na nave. Sem rocha por perto, atira nas naves, com dano baixo.',
+      cost: 55, upgradeCostPerLevel: 55, maxLevel: 3,
+      range: 14, damage: 8, asteroidDamage: 60, bonusPerLevel: 0.35,
+      unlockAtBestTrips: 0,
+    },
+    flak: {
+      id: 'flak', kind: 'flak', name: 'Canhão de fragmentação', button: 'Fragmentação', short: 'Explode em área',
+      desc: 'Projétil que explode em área: quebra asteroides e acerta todas as naves perto da explosão. Lento, mas pega um grupo inteiro.',
+      cost: 65, upgradeCostPerLevel: 65, maxLevel: 3,
+      range: 13, damage: 30, fireInterval: 1.2, blastRadius: 2, bonusPerLevel: 0.35,
+      unlockAtBestTrips: 2,
+    },
   };
-  const DEFENSE_ORDER = ['cannon', 'plasma', 'harpoon', 'field'];
+  const DEFENSE_ORDER = ['cannon', 'plasma', 'harpoon', 'field', 'laser', 'flak'];
 
   // EnemyDef (guia Unity, Fase 3.9). postDistance: a que distância da nave o inimigo
   // fica rondando, do lado de onde veio.
@@ -136,12 +201,14 @@
 
   // AbilityDef (guia Unity, Fase 6.5). Placeholders: a lista está Em aberto (Parte 1 §6).
   const ABILITIES = [
-    { id: 'afterburner', kind: 'afterburner', name: 'Pós-combustor', cooldown: 20, duration: 4, magnitude: 1.6 },
-    { id: 'debris', kind: 'debris', name: 'Detritos', cooldown: 15, duration: 5, magnitude: 1.5, size: 4, dropBehind: 5 },
+    { id: 'afterburner', kind: 'afterburner', name: 'Pós-combustor', cooldown: 20, duration: 4, magnitude: 1.6,
+      desc: 'A nave acelera ×1,6 por 4 s e deixa para trás quem está perseguindo.' },
+    { id: 'debris', kind: 'debris', name: 'Detritos', cooldown: 15, duration: 5, magnitude: 1.5, size: 4, dropBehind: 5,
+      desc: 'Solta uma nuvem de sucata atrás da nave: as naves que a atravessam ficam atordoadas por 1,5 s.' },
   ];
 
   const DATA = {
-    CONFIG, PLATING, STATION, ASTEROIDS, TRIP_TYPES, TRIP_TYPE_ORDER, BOSS_TRIP_TYPE,
+    CONFIG, PLATING, STATION, ASTEROIDS, ANNEXES, ANNEX_ORDER, PILOT, TRIP_TYPES, TRIP_TYPE_ORDER, BOSS_TRIP_TYPE,
     HARDPOINTS, DEFENSES, DEFENSE_ORDER, ENEMIES, ENEMY_POOL, ABILITIES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;

@@ -21,7 +21,7 @@ O padrão de ataque de um trecho: **Espaço aberto** (piratas perseguem por trá
 _Avoid_: bioma, terreno
 
 **Asteroide**:
-Rocha do Cinturão de asteroides que bate na nave e causa dano ao casco; não pode ser destruída, só aguentada com Carenagem.
+Rocha do Cinturão de asteroides que bate na nave e causa dano ao casco. Só as defesas de mineração a destroem; o Piloto desvia dela, e a Carenagem e o escudo ajudam a aguentar a batida.
 _Avoid_: obstáculo, meteoro
 
 **Estação**:
@@ -35,7 +35,7 @@ A nave de carga do jogador e "torre" do tower defense; anda sozinha, sem control
 _Avoid_: navio, caminhão, player
 
 **Hardpoint**:
-Um dos 6 pontos fixos da nave onde se monta uma defesa: 1 na proa, 1 na popa, 2 a bombordo e 2 a estibordo. Cada um só atira dentro do próprio arco de tiro; nenhum cobre 360°.
+Um dos pontos fixos da nave onde se monta uma defesa: 6 de fábrica (1 na proa, 1 na popa, 2 a bombordo e 2 a estibordo) e mais 2 por casulo de armas. Cada um só atira dentro do próprio arco de tiro; nenhum cobre 360°.
 _Avoid_: slot, torre, encaixe
 
 **Arco de tiro**:
@@ -43,12 +43,32 @@ A faixa de direções em que a defesa de um hardpoint consegue mirar: para frent
 _Avoid_: cone, alcance (alcance é a distância, não a direção)
 
 **Defesa**:
-Arma ou equipamento montado num hardpoint que mira e atira sozinho: Autocanhão, Canhão de plasma, Arpão magnético, Campo elétrico (passivo: fere quem encosta e os piratas a bordo daquele hardpoint).
+Arma ou equipamento montado num hardpoint que mira e atira sozinho: Autocanhão, Canhão de plasma, Arpão magnético, Campo elétrico (passivo: fere quem encosta e os piratas a bordo daquele hardpoint), Laser de mineração e Canhão de fragmentação.
 _Avoid_: torre, arma (para o conjunto)
+
+**Defesa de mineração**:
+Defesa que destrói asteroides: o Laser de mineração (feixe contínuo, prioriza a rocha que vai bater; fraco contra naves) e o Canhão de fragmentação (explosão em área, acerta naves e rochas). As outras defesas não acertam asteroides.
+_Avoid_: arma antimeteoro
 
 **Carenagem**:
 Upgrade da própria nave, fora dos hardpoints, comprado em níveis com sucata: cada nível aumenta o casco máximo e reduz o dano de colisão (asteroides e drones kamikaze). É a escolha "blindar" contra o "armar" dos hardpoints.
 _Avoid_: blindagem, casco reforçado, armadura
+
+**Anexo**:
+Módulo preso à nave, fora dos hardpoints, comprado com sucata a qualquer momento da run: o **Gerador de escudo** e os **Casulos de armas** (dianteiro e traseiro).
+_Avoid_: módulo, acessório, slot
+
+**Escudo**:
+Pontos de energia do Gerador de escudo que absorvem o dano antes do casco (tiros e colisões; não os piratas a bordo). Recarrega depois de um tempo sem levar dano e enche no começo de cada trecho.
+_Avoid_: escudo de energia (no texto curto), barreira, HP extra
+
+**Casulo de armas**:
+Anexo que acrescenta 2 hardpoints à nave, um de cada lado: o dianteiro nas diagonais da frente, o traseiro nas diagonais de trás.
+_Avoid_: pod, asa
+
+**Piloto**:
+Upgrade da tripulação, em níveis: a nave voa mais rápido e o piloto desvia sozinho dos asteroides no caminho. O jogador continua sem controlar a nave.
+_Avoid_: piloto automático (é o atalho de teste do protótipo), manobra
 
 **Casco**:
 Os pontos de vida da nave; chegar a zero acaba a run.

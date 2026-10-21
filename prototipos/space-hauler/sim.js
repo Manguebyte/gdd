@@ -11,7 +11,7 @@
   'use strict';
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.SH_DATA;
   const {
-    CONFIG, PLATING, STATION, ASTEROIDS, TRIP_TYPES, TRIP_TYPE_ORDER, BOSS_TRIP_TYPE,
+    CONFIG, PLATING, STATION, ASTEROIDS, ANNEXES, PILOT, TRIP_TYPES, TRIP_TYPE_ORDER, BOSS_TRIP_TYPE,
     HARDPOINTS, DEFENSES, DEFENSE_ORDER, ENEMIES, ENEMY_POOL, ABILITIES,
   } = D;
 
@@ -39,8 +39,10 @@
       this.unlockAll = !!opts.unlockAll;
       this.listeners = [];
 
-      this.ship = { x: 0, y: 0, hull: this.cfg.shipBaseHull, plating: 0, speedMult: 1, flash: 0 };
-      this.hardpoints = HARDPOINTS.map((h, i) => Object.assign({}, h, { index: i, defense: null, saboteurs: 0 }));
+      this.ship = { x: 0, y: 0, hull: this.cfg.shipBaseHull, plating: 0, pilot: 0, shield: 0, shieldIdle: 0, speedMult: 1, flash: 0, shieldFlash: 0 };
+      this.annexes = {};     // id do anexo → nível comprado nesta run
+      this.hardpoints = [];
+      this.resetHardpoints();
       this.enemies = [];
       this.asteroids = [];
       this.clouds = [];
@@ -72,9 +74,23 @@
     range(a, b) { return a + (b - a) * this.rand(); }
 
     get progress() { return Math.min(1, Math.max(0, this.ship.x / this.cfg.tripLength)); }
-    get shipSpeed() { return this.cfg.shipSpeed * this.ship.speedMult; }
+    // Velocidade de cruzeiro: a base mais o bônus do Piloto. É a que os piratas acompanham.
+    get cruiseSpeed() { return this.cfg.shipSpeed * (1 + PILOT.speedPerLevel * this.ship.pilot); }
+    get shipSpeed() { return this.cruiseSpeed * this.ship.speedMult; }
     get maxHull() { return this.cfg.shipBaseHull + PLATING.hullPerLevel * this.ship.plating; }
     get collisionReduction() { return PLATING.collisionReductionPerLevel * this.ship.plating; }
+    get maxShield() { return ANNEXES.shield.shieldPerLevel * (this.annexes.shield || 0); }
+
+    // Volta aos 6 hardpoints de fábrica; os dos casulos entram quando o anexo é comprado.
+    resetHardpoints() {
+      this.hardpoints = [];
+      for (const h of HARDPOINTS) this.addHardpoint(h);
+    }
+    addHardpoint(h) {
+      const hp = Object.assign({}, h, { index: this.hardpoints.length, defense: null, saboteurs: 0 });
+      this.hardpoints.push(hp);
+      return hp;
+    }
 
     // ------------------------------------------------------------------ Run (RunManager)
 
@@ -85,8 +101,11 @@
       this.visited = [];
       this.tripsDone = 0;
       this.result = null;
-      for (const hp of this.hardpoints) { hp.defense = null; hp.saboteurs = 0; }
+      this.resetHardpoints();
+      this.annexes = {};
       this.ship.plating = 0;
+      this.ship.pilot = 0;
+      this.ship.shield = 0;
       this.ship.hull = this.maxHull;
       this.ship.x = 0;
       this.scrap = this.cfg.startingScrap;
@@ -166,7 +185,10 @@
       this.nextSpawn = null;
       this.bossSpawned = false;
       this.ship.x = 0;
+      this.ship.y = 0;
       this.ship.speedMult = 1;
+      this.ship.shield = this.maxShield;   // o escudo é energia: enche no começo de cada trecho
+      this.ship.shieldIdle = 0;
       this.afterburnerTimer = 0;
       this.cooldowns = ABILITIES.map(() => 0);
       this.clearEnemies();
@@ -208,7 +230,9 @@
     update(dt) {
       this.time += dt;
       this.ship.flash = Math.max(0, this.ship.flash - dt);
+      this.ship.shieldFlash = Math.max(0, this.ship.shieldFlash - dt);
       for (const e of this.enemies) e.flash = Math.max(0, e.flash - dt);
+      for (const a of this.asteroids) a.flash = Math.max(0, (a.flash || 0) - dt);
       if (!this.running) return;
 
       const cfg = this.cfg;
@@ -218,7 +242,9 @@
         if (this.afterburnerTimer <= 0) this.ship.speedMult = 1;
       }
 
+      this.updateShield(dt);
       this.ship.x += this.shipSpeed * dt;
+      this.updatePilot(dt);
       this.updateSpawner(dt);
       this.updateAsteroids(dt);
       if (!this.running) return;
@@ -242,13 +268,86 @@
     // ------------------------------------------------------------------ Casco (ShipHull, HullPlating)
 
     // collision = true para asteroides e drones: a Carenagem reduz esse dano.
-    damageShip(amount, collision = false) {
+    // boarded = true para piratas a bordo: já estão dentro do escudo, então ele não segura.
+    damageShip(amount, collision = false, boarded = false) {
       if (!this.running || amount <= 0) return;
       const s = this.ship;
-      const final = collision ? amount * (1 - this.collisionReduction) : amount;
+      let final = collision ? amount * (1 - this.collisionReduction) : amount;
+      if (!boarded && s.shield > 0) {
+        // O escudo absorve primeiro (depois da Carenagem); só o que sobra chega ao casco.
+        const absorbed = Math.min(s.shield, final);
+        s.shield -= absorbed;
+        final -= absorbed;
+        s.shieldFlash = 0.15;
+        if (amount >= 1) this.emit('shieldHit', { amount: absorbed, broke: s.shield <= 0 });
+      }
+      if (!boarded) s.shieldIdle = 0;
+      if (final <= 0) return;
       s.hull = Math.max(0, s.hull - final);
       if (amount >= 1) { s.flash = 0.12; this.emit('shipHit', { amount: final, collision }); }
       if (s.hull <= 0) this.endTrip(false);
+    }
+
+    // Escudo (anexo Gerador de escudo): recarrega depois de um tempo sem levar dano.
+    updateShield(dt) {
+      const s = this.ship, max = this.maxShield;
+      if (max <= 0) return;
+      s.shieldIdle += dt;
+      if (s.shieldIdle >= ANNEXES.shield.regenDelay) s.shield = Math.min(max, s.shield + ANNEXES.shield.regenPerSecond * dt);
+    }
+
+    // ------------------------------------------------------------------ Anexos e Piloto
+
+    annexLevel(id) { return this.annexes[id] || 0; }
+    annexCost(id) { return ANNEXES[id].costPerLevel * (this.annexLevel(id) + 1); }
+
+    // Devolve 'ok', 'max' ou 'noScrap'. Como a Carenagem, pode ser comprado a qualquer momento.
+    buyAnnex(id) {
+      const def = ANNEXES[id], level = this.annexLevel(id);
+      if (level >= def.maxLevel) return 'max';
+      const cost = this.annexCost(id);
+      if (this.scrap < cost) return 'noScrap';
+      this.scrap -= cost;
+      this.annexes[id] = level + 1;
+      const added = (def.hardpoints || []).map((h) => this.addHardpoint(h));
+      if (id === 'shield') { this.ship.shield += def.shieldPerLevel; this.ship.shieldIdle = 0; }
+      this.emit('annex', { id, level: level + 1, hardpoints: added });
+      return 'ok';
+    }
+
+    pilotCost() { return PILOT.costPerLevel * (this.ship.pilot + 1); }
+
+    buyPilot() {
+      if (this.ship.pilot >= PILOT.maxLevel) return 'max';
+      const cost = this.pilotCost();
+      if (this.scrap < cost) return 'noScrap';
+      this.scrap -= cost;
+      this.ship.pilot++;
+      this.emit('pilot');
+      return 'ok';
+    }
+
+    // O Piloto desvia dos asteroides que vão bater na nave, deslizando para o lado.
+    // ESTRATÉGIA: olha as rochas até lookAhead metros à frente; se alguma está na linha da
+    // nave, escolhe um y livre (o lado mais perto do centro da rota primeiro) e desliza até
+    // ele na velocidade do nível. Sem perigo, volta devagar para o centro.
+    updatePilot(dt) {
+      const s = this.ship;
+      if (s.pilot <= 0) return;
+      const r0 = this.cfg.shipRadius + PILOT.margin;
+      const ahead = this.asteroids.filter((a) => !a.gone && a.x > s.x - a.r && a.x - s.x < PILOT.lookAhead);
+      const blocked = (y) => Math.abs(y) > PILOT.maxOffset || ahead.some((a) => Math.abs(a.y - y) < a.r + r0);
+      let target = 0;
+      const threat = ahead.filter((a) => Math.abs(a.y - s.y) < a.r + r0).sort((a, b) => a.x - b.x)[0];
+      if (threat) {
+        const sides = [threat.y + threat.r + r0, threat.y - threat.r - r0].sort((a, b) => Math.abs(a) - Math.abs(b));
+        target = sides.find((y) => !blocked(y));
+        if (target === undefined) target = sides.sort((a, b) => Math.abs(a - s.y) - Math.abs(b - s.y))[0];
+        target = Math.max(-PILOT.maxOffset, Math.min(PILOT.maxOffset, target));
+      } else if (blocked(0)) target = s.y; // o centro está ocupado: fica onde está
+      const speed = PILOT.dodgeSpeedPerLevel * s.pilot * (threat ? 1 : 0.4);
+      const step = speed * dt, diff = target - s.y;
+      s.y += Math.abs(diff) <= step ? diff : Math.sign(diff) * step;
     }
 
     platingCost() { return PLATING.costPerLevel * (this.ship.plating + 1); }
@@ -343,18 +442,19 @@
         this.asteroidBudget += ASTEROIDS.perSecond * dt;
         while (this.asteroidBudget >= 1) {
           this.asteroidBudget -= 1;
+          const r = this.range(ASTEROIDS.radiusMin, ASTEROIDS.radiusMax);
           this.asteroids.push({
             id: ++this.nextId,
             x: s.x + this.range(ASTEROIDS.aheadMin, ASTEROIDS.aheadMax),
             y: this.range(-ASTEROIDS.lateralSpread, ASTEROIDS.lateralSpread),
-            r: this.range(ASTEROIDS.radiusMin, ASTEROIDS.radiusMax),
+            r, hp: ASTEROIDS.hpPerRadius * r, maxHp: ASTEROIDS.hpPerRadius * r, flash: 0,
             spin: this.range(-1, 1), seed: this.rand(),
           });
         }
       }
       for (const a of this.asteroids) {
         if (a.gone) continue;
-        // Não podem ser destruídos: só batem (e se desfazem) ou ficam para trás.
+        // Só as defesas de mineração destroem asteroides; os outros batem (e se desfazem) ou ficam para trás.
         if (Math.hypot(a.x - s.x, a.y - s.y) < a.r + this.cfg.shipRadius) {
           a.gone = true;
           this.emit('asteroidHit', { a });
@@ -363,6 +463,37 @@
         } else if (a.x < s.x - 20) a.gone = true;
       }
       this.asteroids = this.asteroids.filter((a) => !a.gone);
+    }
+
+    // A rocha vai bater na nave se ninguém fizer nada? (está à frente e na linha dela)
+    onCollisionCourse(a) {
+      const s = this.ship;
+      return a.x > s.x - a.r && Math.abs(a.y - s.y) < a.r + this.cfg.shipRadius + PILOT.margin;
+    }
+
+    // Asteroide mais perto no alcance e no arco do hardpoint, dando prioridade aos que vão bater.
+    findAsteroid(hp, range) {
+      const [gx, gy] = this.hardpointGround(hp);
+      let best = null, bestScore = Infinity;
+      for (const a of this.asteroids) {
+        if (a.gone) continue;
+        const sqr = (a.x - gx) ** 2 + (a.y - gy) ** 2;
+        if (sqr > (range + a.r) ** 2 || !this.canTarget(hp, a.x, a.y)) continue;
+        const score = sqr - (this.onCollisionCourse(a) ? 1e6 : 0);
+        if (score < bestScore) { best = a; bestScore = score; }
+      }
+      return best;
+    }
+
+    damageAsteroid(a, amount) {
+      if (a.gone) return;
+      a.hp -= amount;
+      a.flash = 0.06;
+      if (a.hp > 0) return;
+      a.gone = true;
+      const gain = Math.round(ASTEROIDS.scrapPerRadius * a.r);
+      this.scrap += gain;
+      this.emit('asteroidDestroyed', { a, gain });
     }
 
     // ------------------------------------------------------------------ Inimigos (Enemy e filhos)
@@ -385,7 +516,7 @@
       else {
         // Acompanha a velocidade de CRUZEIRO da nave (sem o pós-combustor): só a aproximação
         // (def.speed) é do próprio inimigo. Piratas a bordo andam junto com o hardpoint.
-        if (e.kind !== 'pirate') e.x += this.cfg.shipSpeed * dt;
+        if (e.kind !== 'pirate') e.x += this.cruiseSpeed * dt;
         this.tickEnemy(e, dt);
       }
       if (!e.removed && Math.hypot(e.x - this.ship.x, e.y - this.ship.y) > this.cfg.enemyDespawnDistance) this.removeEnemy(e, false);
@@ -450,7 +581,7 @@
           if (!e.hardpoint) break;
           const [gx, gy] = this.hardpointGround(e.hardpoint);
           e.x = gx; e.y = gy;
-          this.damageShip(def.damage * dt);
+          this.damageShip(def.damage * dt, false, true);
           break;
         }
       }
@@ -554,6 +685,39 @@
             if ((e.x - gx) ** 2 + (e.y - gy) ** 2 > rangeSqr) continue;
             this.damageEnemy(e, dmg * dt);
             d.firing = true;
+          }
+          break;
+        }
+        case 'laser': {
+          // Primeiro a rocha (de preferência a que vai bater); sem rocha, as naves, com dano baixo.
+          const rock = this.findAsteroid(hp, def.range);
+          const target = rock || this.findNearest(hp, def.range, false);
+          if (!target) break;
+          d.aim = normalize(target.x - gx, target.y - gy, d.aim);
+          d.firing = true;
+          d.beamTo = [target.x, target.y, !!rock];
+          if (rock) this.damageAsteroid(rock, def.asteroidDamage * levelMult(d) * dt);
+          else this.damageEnemy(target, dmg * dt);
+          break;
+        }
+        case 'flak': {
+          d.cooldown -= dt;
+          if (d.cooldown > 0) break;
+          // Mira na rocha que vai bater; senão na nave mais perto; senão em qualquer rocha.
+          const rock = this.findAsteroid(hp, def.range);
+          const ship = this.findNearest(hp, def.range, true);
+          const target = rock && this.onCollisionCourse(rock) ? rock : ship || rock;
+          if (!target) break;
+          d.cooldown = def.fireInterval;
+          d.aim = normalize(target.x - gx, target.y - gy, d.aim);
+          const bx = target.x, by = target.y, r2 = def.blastRadius * def.blastRadius;
+          this.emit('flak', { hardpoint: hp, x: bx, y: by });
+          // A explosão acerta naves e rochas no raio (piratas a bordo estão no casco, não lá fora).
+          for (const e of this.enemies) {
+            if (this.isAlive(e) && e.def.isShip && (e.x - bx) ** 2 + (e.y - by) ** 2 <= r2) this.damageEnemy(e, dmg);
+          }
+          for (const a of this.asteroids) {
+            if (!a.gone && (a.x - bx) ** 2 + (a.y - by) ** 2 <= (def.blastRadius + a.r) ** 2) this.damageAsteroid(a, dmg);
           }
           break;
         }
@@ -736,15 +900,23 @@
     if (sim.phase !== 'trip' || !sim.running) return;
 
     const order = AUTO_ORDER[sim.settings.type];
+    // No Cinturão, a proa recebe o laser de mineração (se liberado) para quebrar as rochas.
+    const laserAtBow = sim.settings.asteroids && sim.shop.includes(DEFENSES.laser);
     for (let i = 0; i < order.length; i++) {
       const hp = sim.hardpoints.find((h) => h.id === order[i]);
       if (hp.defense) continue;
       const late = i >= order.length - 2 ? DEFENSES[AUTO_LATE[i - (order.length - 2)]] : null;
-      const def = late && sim.shop.includes(late) ? late : DEFENSES.cannon;
+      const def = i === 0 && laserAtBow ? DEFENSES.laser : late && sim.shop.includes(late) ? late : DEFENSES.cannon;
       if (sim.scrap >= def.cost) sim.buy(hp.index, def.id);
       return; // espera juntar para este hardpoint antes de pular para o próximo
     }
     if (sim.settings.asteroids && sim.ship.plating < 3 && sim.scrap >= sim.platingCost()) { sim.buyPlating(); return; }
+    if (sim.settings.asteroids && sim.ship.pilot < 2 && sim.scrap >= sim.pilotCost()) { sim.buyPilot(); return; }
+    if (!sim.annexLevel('shield') && sim.scrap >= sim.annexCost('shield')) { sim.buyAnnex('shield'); return; }
+    // Hardpoints dos casulos: depois de tudo, autocanhão no que estiver vazio.
+    const empty = sim.hardpoints.find((h) => !h.defense);
+    if (empty) { if (sim.scrap >= DEFENSES.cannon.cost) sim.buy(empty.index, 'cannon'); return; }
+    if (!sim.annexLevel('podRear') && sim.scrap >= sim.annexCost('podRear') + 100) { sim.buyAnnex('podRear'); return; }
     let cheapest = null;
     for (const hp of sim.hardpoints) {
       const d = hp.defense;

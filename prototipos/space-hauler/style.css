@@ -30,12 +30,14 @@ button:disabled { cursor: default; }
 
 #app { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: var(--sand); }
 #view { position: absolute; inset: 0; width: 1280px; height: 720px; display: block; }
-.buy.plating { border-color: #3a6a8a; }
-.buy.plating .name { color: #9fe8ff; }
+.buy.ship-btn { border-color: #3a6a8a; }
+.buy.ship-btn .name { color: #9fe8ff; }
+.buy.ship-btn .cost { color: #9fe8ff; font-size: 15px; }
+.buy.ship-btn.has-buy:not(.selected) { animation: ready 1.2s infinite; }
 
 /* ---------- HUD ---------- */
 #hud { position: absolute; inset: 0; pointer-events: none; }
-#hud button, #hud #shop, #hud #abilities, #hud #panel { pointer-events: auto; }
+#hud button, #hud #shop, #hud #abilities, #hud #panel, #hud #ship-panel { pointer-events: auto; }
 
 .plate {
   background: linear-gradient(180deg, #1e2648, #10152c);
@@ -52,6 +54,10 @@ button:disabled { cursor: default; }
 .bar { height: 22px; background: #0a0e20; border: 2px solid #05070f; border-radius: 4px; overflow: hidden; position: relative; }
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; transition: width .15s; }
 #hp-fill { background: linear-gradient(180deg, #7ae8ff, #2a7ab8); }
+#shield-box { width: 280px; position: relative; margin-top: -4px; }
+#shield-box .bar { height: 16px; }
+#shield-fill { background: linear-gradient(180deg, #c8fbff, #3ac8e8); }
+#shield-text { position: absolute; left: 10px; top: 0; font-size: 14px; font-weight: 700; color: #0a2a3a; text-shadow: 0 1px 0 rgba(255,255,255,.5); }
 #hp-fill.low { animation: pulse .5s infinite alternate; }
 #hp-text { position: absolute; left: 10px; top: 1px; font-size: 18px; font-weight: 700; text-shadow: 0 1px 2px #000; }
 @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.7); } }
@@ -71,8 +77,8 @@ button:disabled { cursor: default; }
 
 #pause-btn { position: absolute; right: 16px; top: 14px; width: 44px; height: 44px; font-size: 20px; font-weight: 700; }
 
-/* Habilidades: canto inferior esquerdo. */
-#abilities { position: absolute; left: 16px; bottom: 16px; display: flex; gap: 10px; }
+/* Habilidades: canto inferior esquerdo, uma em cima da outra (a barra de compra é larga). */
+#abilities { position: absolute; left: 16px; bottom: 16px; display: flex; flex-direction: column-reverse; gap: 10px; }
 .ability { position: relative; width: 92px; height: 92px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 6px; overflow: hidden; }
 .ability canvas { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); }
 .ability .name { font-size: 17px; font-weight: 700; position: relative; }
@@ -84,12 +90,12 @@ button:disabled { cursor: default; }
 
 /* Barra de compra: embaixo, no centro. */
 #shop { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 8px; }
-.buy { width: 128px; height: 96px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5px; }
+.buy { width: 112px; height: 96px; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding-bottom: 5px; }
 .buy canvas { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
 .buy img.icon { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); height: 48px; image-rendering: pixelated; }
 .buy.poor img.icon { opacity: .5; }
 .touch .buy img.icon { height: 58px; }
-.buy .name { font-size: 18px; font-weight: 700; line-height: 1; }
+.buy .name { font-size: 17px; font-weight: 700; line-height: 1; text-align: center; }
 .buy .cost { font-size: 17px; color: var(--yellow); font-weight: 700; }
 .buy .key { position: absolute; left: 6px; top: 3px; font-size: 14px; opacity: .6; }
 .buy.selected { border-color: var(--green); box-shadow: 0 0 0 3px var(--green), 0 3px 0 rgba(0,0,0,.35); transform: translateY(-4px); }
@@ -99,8 +105,35 @@ button:disabled { cursor: default; }
 .buy.locked .cost { color: var(--cream); font-size: 14px; }
 .buy:not(.locked):hover { filter: brightness(1.15); }
 
-/* Painel da defesa selecionada: canto inferior direito. */
-#panel { position: absolute; right: 16px; bottom: 16px; width: 270px; padding: 10px 12px; }
+/* Painel da defesa selecionada: canto inferior direito, acima da barra de compra. */
+#panel { position: absolute; right: 16px; bottom: 124px; width: 270px; padding: 10px 12px; }
+
+/* Painel NAVE: upgrades da nave (Carenagem, anexos, Piloto). Mesmo canto do painel da defesa. */
+#ship-panel { position: absolute; right: 16px; bottom: 124px; width: 360px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+#ship-panel .sp-title { font-family: 'Orbitron', 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 16px; color: #9fe8ff; letter-spacing: 2px; }
+.up-row { display: grid; grid-template-columns: 1fr auto auto; grid-template-rows: auto auto; column-gap: 10px; align-items: baseline; text-align: left; padding: 5px 8px; border-radius: 4px; background: rgba(8,12,30,.6); border: 2px solid #05070f; }
+.up-row .name { font-size: 19px; font-weight: 700; }
+.up-row .name i { font-style: normal; font-size: 13px; opacity: .55; }
+.up-row .lv { font-size: 15px; opacity: .8; }
+.up-row .cost { font-size: 18px; font-weight: 700; color: var(--yellow); min-width: 44px; text-align: right; }
+.up-row .fx { grid-column: 1 / -1; font-size: 14px; opacity: .75; line-height: 1.15; }
+.up-row.poor .cost { color: var(--red); }
+.up-row.maxed { opacity: .55; cursor: default; }
+.up-row.maxed .cost { color: var(--cream); }
+.up-row:not(.maxed):hover { filter: brightness(1.25); }
+
+/* Dica (hover): o que a arma ou o upgrade faz. */
+#tip { position: absolute; z-index: 5; width: 300px; padding: 8px 11px; font-size: 16px; line-height: 1.25; pointer-events: none; border-color: #3a6a8a; }
+#tip .tip-title { font-size: 21px; font-weight: 700; color: var(--yellow); }
+#tip .tip-title small { font-size: 15px; color: var(--cream); opacity: .8; }
+#tip .tip-cost { float: right; font-size: 16px; color: var(--yellow); margin-top: 4px; }
+#tip .tip-hp { font-size: 14px; opacity: .75; }
+#tip .tip-hp b { color: #ff6a8a; }
+#tip .tip-desc { margin: 3px 0 5px; }
+#tip .tip-stats { color: #9fe8ff; }
+#tip .tip-next { color: var(--green); margin-top: 4px; }
+#tip .tip-lock { color: #ff8a9a; margin-top: 4px; }
+#tip .tip-foot { font-size: 14px; opacity: .65; margin-top: 4px; }
 #panel-title { font-size: 22px; font-weight: 700; color: var(--yellow); }
 #panel-info { font-size: 16px; opacity: .9; margin: 2px 0 8px; line-height: 1.25; }
 #panel .buttons { display: flex; gap: 8px; }
@@ -161,6 +194,13 @@ button:disabled { cursor: default; }
 .result-title.lose { color: #ff7a8a; text-shadow: 0 5px 0 #2a0a12; }
 .result-text { font-size: 26px; margin: 16px 0 6px; line-height: 1.35; }
 .result-text b { color: var(--yellow); }
+.station-ups { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 1000px; margin: 10px auto 0; }
+.station-up { width: 190px; padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; text-align: center; }
+.station-up b { font-size: 20px; }
+.station-up span { color: var(--yellow); font-weight: 700; font-size: 17px; }
+.station-up small { font-size: 14px; opacity: .8; line-height: 1.15; }
+.station-up:disabled { opacity: .5; }
+.station-up:not(:disabled):hover { filter: brightness(1.25); }
 .unlock { font-size: 24px; color: var(--green); font-weight: 700; margin: 8px 0; }
 
 /* ---------- Celular / tablet (body.touch, definido em game.js) ----------
@@ -168,8 +208,8 @@ button:disabled { cursor: default; }
    tamanho; por isso botões e textos crescem aqui, para o dedo e para a leitura. */
 html, body, #app { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 .touch .buy .key, .touch .ability .key { display: none; }
-.touch .buy { width: 158px; height: 118px; }
-.touch .buy .name { font-size: 23px; }
+.touch .buy { width: 136px; height: 116px; }
+.touch .buy .name { font-size: 20px; }
 .touch .buy .cost { font-size: 21px; }
 .touch .buy canvas { transform: translateX(-50%) scale(1.2); transform-origin: top center; }
 .touch #shop { gap: 10px; bottom: 12px; }
@@ -184,7 +224,15 @@ html, body, #app { touch-action: none; -webkit-touch-callout: none; -webkit-tap-
 .touch #hp-box .bar { height: 30px; }
 .touch #hp-text { font-size: 23px; top: 2px; }
 .touch #trip-label { font-size: 28px; }
-.touch #panel { width: 360px; bottom: 150px; padding: 14px 16px; }
+.touch #panel { width: 360px; bottom: 140px; padding: 14px 16px; }
+.touch #ship-panel { width: 440px; bottom: 140px; }
+.touch .up-row { padding: 9px 10px; }
+.touch .up-row .name { font-size: 24px; }
+.touch .up-row .cost { font-size: 22px; }
+.touch .up-row .fx { font-size: 17px; }
+.touch #tip { width: 380px; font-size: 20px; }
+.touch #tip .tip-title { font-size: 25px; }
+.touch #shield-box { width: 340px; }
 .touch #panel-title { font-size: 28px; }
 .touch #panel-info { font-size: 21px; }
 .touch #panel .buttons button { font-size: 25px; padding: 12px 6px; }

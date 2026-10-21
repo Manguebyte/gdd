@@ -54,13 +54,20 @@
 
 - **Definido:** a nave é a "torre" do tower defense. Ela voa sozinha pela rota, do começo ao fim do trecho, e o jogador não tem nenhum controle de movimento.
 - **Definido:** a nave tem **casco** (os pontos de vida). Casco zero acaba a run.
-- **Definido:** as defesas são montadas em **6 hardpoints fixos na própria nave** e viajam com ela: **1 na proa** (frente), **1 na popa** (trás), **2 a bombordo** (lado esquerdo) e **2 a estibordo** (lado direito).
+- **Definido:** as defesas são montadas em **6 hardpoints fixos na própria nave** e viajam com ela: **1 na proa** (frente), **1 na popa** (trás), **2 a bombordo** (lado esquerdo) e **2 a estibordo** (lado direito). Os **casulos de armas** (anexos, abaixo) acrescentam mais hardpoints durante a run.
 - **Definido:** cada hardpoint **só atira dentro do seu arco de tiro**: a proa para a frente, a popa para trás, e os laterais para o próprio lado. **Nenhum hardpoint cobre 360°.** Com ataques vindo de todos os lados (§8), o jogador sempre fica com um lado mais fraco, e a decisão "qual arma vai em qual hardpoint" é o centro do jogo. Placeholder: os 6 arcos têm 180°.
 - **Definido:** o casco **não se recupera sozinho** entre trechos. Ele só é reparado na **Estação** (§9), pagando sucata.
 - **Definido: Carenagem.** É um **upgrade da própria nave**, fora dos hardpoints, comprado **em níveis com sucata**, a qualquer momento da run (inclusive no meio de um trecho e na Estação). Cada nível **aumenta o casco máximo** e **reduz o dano de colisão** (asteroides e drones kamikaze). É a escolha "blindar" contra o "armar" dos hardpoints, e é o que torna o Cinturão de asteroides sobrevivível (§8).
+- **Definido: Anexos.** São **módulos presos à nave**, fora dos hardpoints, comprados com sucata a qualquer momento da run (como a Carenagem) e mantidos até o fim dela. Os do MVP:
+  - **Gerador de escudo:** um **escudo de energia** que absorve o dano **antes do casco**: tiros, drones e asteroides. Não segura os **piratas a bordo** (eles já estão dentro dele). Recarrega sozinho depois de alguns segundos sem levar dano e enche no começo de cada trecho. É comprado em níveis; cada nível aumenta o escudo.
+  - **Casulos de armas:** cada casulo acrescenta **2 hardpoints** novos, um de cada lado da nave. O **dianteiro** fica nas diagonais da frente (atira para a frente e para o lado) e o **traseiro** nas diagonais de trás (para trás e para o lado). Os novos hardpoints seguem as mesmas regras dos outros: arco limitado, uma defesa cada, podem ser sabotados.
+- **Definido: Piloto.** É um **upgrade da tripulação**, em níveis, comprado com sucata a qualquer momento da run. Cada nível faz a nave **voar mais rápido** e faz o piloto **desviar sozinho dos asteroides** que estão no caminho, deslizando para o lado. **O jogador continua sem controlar a nave**: quem desvia é o piloto. Voar mais rápido também tem um custo: o trecho acaba mais cedo, então aparecem menos inimigos e sobra menos sucata. Os piratas acompanham a nova velocidade de cruzeiro (§7).
 - **Em aberto:**
   - O número de níveis e os valores de cada nível. Placeholder: 5 níveis; cada um custa 50 × nível, dá +50 de casco máximo (e cura os mesmos 50) e −12% de dano de colisão.
-  - Se a nave tem outros upgrades próprios (velocidade, mais hardpoints) ou se existem várias naves para escolher.
+  - Números do escudo, dos casulos e do Piloto (placeholders em §16).
+  - Se existem outros anexos (ex.: torre de reparo, sensor de inimigos fora da tela) e se algum anexo ocupa espaço (um limite de anexos por nave).
+  - Se o Piloto também desvia de drones kamikaze ou só de asteroides (placeholder: só asteroides).
+  - Se existem várias naves para escolher.
   - Se os arcos de tiro podem ter tamanhos diferentes por hardpoint (ex.: a proa com 120°).
 
 ## 4. Defesas
@@ -74,9 +81,13 @@
 | **Autocanhão** | Tiro rápido, dano baixo, um alvo por vez. A defesa "padrão". |
 | **Canhão de plasma** | Cone curto com dano contínuo em todos dentro dele. Bom contra quem encosta na nave. |
 | **Arpão magnético** | Tiro lento e forte que **prende** uma nave inimiga: ela fica atordoada, perde o embalo e fica para trás. Só acerta naves. |
-| **Campo elétrico** | Passiva: dá choque contínuo em tudo que chega perto do hardpoint, inclusive nos **piratas a bordo**. Não reduz dano: quem protege o casco é a Carenagem (§3). |
+| **Campo elétrico** | Passiva: dá choque contínuo em tudo que chega perto do hardpoint, inclusive nos **piratas a bordo**. Não reduz dano: quem protege o casco é a Carenagem e o escudo (§3). |
+| **Laser de mineração** | Feixe contínuo feito para **quebrar asteroides**: mira primeiro na rocha que vai bater na nave. Sem rocha por perto, atira nas naves, com dano baixo. |
+| **Canhão de fragmentação** | Tiro lento que **explode em área**: quebra asteroides e acerta todas as naves perto da explosão. |
 
+- **Definido: defesas de mineração.** O laser de mineração e o canhão de fragmentação são as **únicas defesas que destroem asteroides** (§8). As outras quatro não acertam rochas. Montar uma delas na proa é a resposta "armada" ao Cinturão, ao lado da "blindada" (Carenagem e escudo) e da do Piloto (desviar).
 - **Definido:** cada defesa pode ser **melhorada** com sucata.
+- **Definido:** passar o mouse numa defesa (na barra de compra ou já montada num hardpoint) mostra **o que ela faz** e seus números (§13).
 - **Em aberto:**
   - Números de cada defesa (dano, alcance, cadência, custo). Placeholders em §16.
   - Quantos níveis de upgrade e se o upgrade só aumenta números ou também muda o comportamento.
@@ -90,7 +101,7 @@
   - **comprar** uma defesa e montar num hardpoint vazio;
   - **melhorar** uma defesa já montada;
   - **trocar** uma defesa: vender a atual (recebendo parte do valor) e comprar outra no lugar;
-  - **comprar um nível de Carenagem** (§3).
+  - **comprar um nível de Carenagem**, um **anexo** ou um nível de **Piloto** (§3).
 - **Definido:** na **Estação** (§9), a sucata também paga o **reparo do casco**.
 - **Definido:** a sucata continua de um trecho para o outro dentro da mesma run e zera quando a run acaba.
 - **Em aberto** (com os placeholders do Fury Hauler):
@@ -140,7 +151,10 @@
 | **Cinturão de asteroides** | Pela frente e pelos lados (emboscada) | **Asteroides** que batem no casco |
 | **Rota pirata** | De todos os lados (cerco de 360°) | Mais risco e mais sucata |
 
-- **Definido: asteroides.** No Cinturão de asteroides, rochas aparecem à frente da nave. As que estão no caminho **batem no casco e causam dano**, e **não podem ser destruídas** pelas defesas. A única proteção é a **Carenagem** (§3). Isso faz o Cinturão ser o trecho que mais cobra "blindar" em vez de "armar".
+- **Definido: asteroides.** No Cinturão de asteroides, rochas aparecem à frente da nave. As que estão no caminho **batem no casco e causam dano**. Há três jeitos de lidar com elas, e o Cinturão é o trecho que mais cobra escolher entre eles:
+  - **Quebrar:** só as **defesas de mineração** (laser de mineração e canhão de fragmentação, §4) destroem asteroides. Cada rocha quebrada solta um pouco de sucata.
+  - **Desviar:** o **Piloto** (§3) desvia sozinho das rochas no caminho.
+  - **Aguentar:** a **Carenagem** reduz o dano de colisão e o **escudo** absorve parte dele (§3).
 - **Em aberto:**
   - Quantos trechos por run (placeholder: 6 camadas, sendo 5 comuns e o do destino).
   - O risco de cada tipo de trecho. Placeholder: vem do tipo (Espaço aberto 0, Cinturão 1, Rota pirata 2), e cada ponto de risco dá mais inimigos e +25% de sucata.
@@ -155,7 +169,7 @@
   - Se a Estação tem combate. Placeholder: **não**: é uma parada sem piratas, com uma tela de reparo, e não conta como trecho concluído.
   - Preço do reparo. Placeholder: 1 de sucata repara 2 de casco.
   - Quantas Estações aparecem. Placeholder: no máximo uma por camada, com 25% de chance nas camadas do meio (nunca na primeira nem na do destino).
-  - Se a Estação vende outras coisas (defesas mais baratas, habilidades). Placeholder: só reparo e Carenagem.
+  - Se a Estação vende outras coisas (defesas mais baratas, habilidades). Placeholder: reparo e os upgrades da nave (Carenagem, anexos e Piloto), pelo mesmo preço da viagem.
 
 ## 10. Progressão Permanente (Meta)
 
@@ -163,7 +177,7 @@
 - **Em aberto:**
   - **O que** é desbloqueado (defesas, habilidades, naves, hardpoints, bônus iniciais).
   - **Como** se desbloqueia.
-  - Placeholder do MVP (o mesmo do Fury Hauler): autocanhão e campo elétrico começam liberados; o canhão de plasma libera depois de concluir 1 trecho em qualquer run, e o arpão magnético depois de concluir 3 trechos numa mesma run.
+  - Placeholder do MVP (o mesmo do Fury Hauler): autocanhão, campo elétrico e laser de mineração começam liberados; o canhão de plasma libera depois de concluir 1 trecho em qualquer run, o canhão de fragmentação depois de concluir 2 trechos numa mesma run, e o arpão magnético depois de concluir 3. Anexos e Piloto começam liberados.
 
 ## 11. Condições de Vitória e Derrota
 
@@ -183,13 +197,14 @@
 **Definido:** o que fica na tela durante o trecho é derivado das mecânicas:
 
 - Sucata atual.
-- Casco (atual / máximo) e o nível da Carenagem.
+- Casco (atual / máximo) e o nível da Carenagem; o escudo (atual / máximo), quando há Gerador de escudo.
 - Progresso do trecho e o tipo de trecho.
-- Barra de compra com as defesas liberadas e seus custos, e o botão da **Carenagem** com o custo do próximo nível.
+- Barra de compra com as defesas liberadas e seus custos, e o botão **Nave**, que abre o painel de upgrades da nave: Carenagem, anexos e Piloto, cada um com nível, custo e o efeito do próximo nível.
 - Painel da defesa selecionada (nível, melhorar, vender).
 - Botões das habilidades com cooldown visível.
+- **Dicas ao passar o mouse:** em cada defesa da barra, em cada defesa montada (com o hardpoint, o nível atual e o que o próximo nível dá), em cada upgrade da nave e em cada habilidade, uma caixa diz **o que aquilo faz** e seus números. No toque, onde não existe "passar o mouse", a dica da defesa aparece enquanto ela está escolhida na barra.
 - No mapa de rota: o tipo de cada nó (ícone e nome), o risco e o bônus de sucata.
-- Na Estação: casco, sucata, botões de reparo e de Carenagem.
+- Na Estação: casco, sucata, botões de reparo e os upgrades da nave.
 
 **Em aberto:** layout final, indicador de inimigos fora da tela (importante agora que eles vêm de qualquer lado).
 
@@ -207,8 +222,9 @@
 **Definido:** entra no MVP:
 
 - Nave voando sozinha numa rota isométrica no espaço, com casco e 6 hardpoints de arco limitado.
-- As 4 defesas da §4, com compra, upgrade e venda por sucata em tempo real.
-- A Carenagem (§3).
+- As 6 defesas da §4 (inclusive as 2 de mineração), com compra, upgrade e venda por sucata em tempo real.
+- A Carenagem, os anexos (Gerador de escudo e os 2 casulos de armas) e o Piloto (§3).
+- Dicas ao passar o mouse (§13).
 - Os 4 inimigos da §7 (mais o pirata a bordo que a nave de abordagem solta).
 - Os 3 tipos de trecho da §8, com asteroides no Cinturão.
 - A Estação (§9).
@@ -222,7 +238,7 @@
 - Arte final de todos os objetos e áudio.
 - A especiaria (§1).
 - Mais defesas, inimigos, habilidades e tipos de nó no mapa.
-- Outras naves e upgrades próprios da nave além da Carenagem.
+- Outras naves e outros anexos.
 - Leaderboard.
 
 ### Placeholders de Balanceamento
@@ -245,6 +261,15 @@
 | Bombordo frente / trás | (1,2, 1,3) / (−1,2, 1,3), virados para a esquerda | 180° |
 | Estibordo frente / trás | (1,2, −1,3) / (−1,2, −1,3), virados para a direita | 180° |
 | Popa | (−3, 0), virado para trás | 180° |
+| Casulo dianteiro (anexo): bombordo / estibordo | (2,2, 2,4) / (2,2, −2,4), virados a 45° / −45° (frente e lado) | 180° |
+| Casulo traseiro (anexo): bombordo / estibordo | (−2,6, 2,4) / (−2,6, −2,4), virados a 135° / −135° (trás e lado) | 180° |
+
+| Anexo / Piloto | Custo | Efeito |
+|---|---|---|
+| Gerador de escudo | 3 níveis; nível n custa 80 × n | +60 de escudo por nível; recarrega 12/s depois de 3 s sem levar dano; enche no começo de cada trecho |
+| Casulo dianteiro | 120 (uma vez) | +2 hardpoints |
+| Casulo traseiro | 120 (uma vez) | +2 hardpoints |
+| Piloto | 3 níveis; nível n custa 60 × n | +10% de velocidade de cruzeiro por nível; desvia de asteroides deslizando para o lado a 1,5 × nível m/s; enxerga 16 m à frente; sai no máximo 5 m do centro da rota |
 
 | Defesa | Custo (e custo de upgrade por nível) | Alcance | Efeito |
 |---|---|---|---|
@@ -252,6 +277,8 @@
 | Canhão de plasma | 60 | 4,5 | 35 de dano/s em cone de 60° |
 | Arpão magnético | 70 | 12 | 40 de dano a cada 3 s, atordoa 2,5 s, só naves |
 | Campo elétrico | 50 | 2,5 | 15 de dano/s em quem estiver perto (inclusive piratas a bordo) |
+| Laser de mineração | 55 | 14 | 60 de dano/s em asteroides, 8 de dano/s em naves; mira primeiro na rocha em rota de colisão |
+| Canhão de fragmentação | 65 | 13 | 30 de dano em área (raio 2 m) a cada 1,2 s, em naves e asteroides |
 
 | Inimigo | Vida | Aproximação (sobra sobre a velocidade de cruzeiro) | Ataque | Sucata | Custo de spawn | Dificuldade mínima |
 |---|---|---|---|---|---|---|
@@ -272,7 +299,7 @@
 | Estação | até 1 por camada do meio, 25% de chance |
 | Risco | Espaço aberto 0, Cinturão 1, Rota pirata 2; cada ponto dá +25% de sucata |
 | Cruzador aparece em | 30% do último trecho |
-| Asteroides | 0,4 por segundo, 34 a 42 m à frente, até 16 m para cada lado; raio 0,8 a 2,2 m; dano = 16 × raio |
+| Asteroides | 0,4 por segundo, 34 a 42 m à frente, até 16 m para cada lado; raio 0,8 a 2,2 m; dano = 16 × raio; vida = 30 × raio; quebrado, solta 2 × raio de sucata |
 
 | Habilidade | Cooldown | Efeito |
 |---|---|---|
@@ -284,7 +311,9 @@
 - **Pilar de design** (há uma proposta na §1).
 - **Profundidade da decisão de hardpoint.** É o coração do jogo e o maior risco: os padrões de ataque por tipo de trecho (§8) existem para que "qual arma em qual lado" mude de um trecho para o outro. Se o jogador montar o mesmo plano em toda run, a decisão morreu.
 - **Peso da Rota pirata.** Na primeira leitura do protótipo, ela custa tanto casco quanto o Espaço aberto e paga 50% a mais de sucata, o que a faz a melhor escolha sempre. O risco dela precisa subir.
-- Número de níveis e valores da Carenagem; tamanho dos arcos por hardpoint (§3).
+- **Anexos podem matar o "lado mais fraco".** Com os dois casulos, a nave tem 10 hardpoints e cobre quase tudo, o que enfraquece a decisão central (§3). E o escudo, com os placeholders, é o upgrade que mais aumenta a chance de chegar ao destino na leitura do piloto automático. Os dois podem precisar ficar mais caros, ou o número de anexos ser limitado.
+- **O Cinturão ficou fácil.** Com laser de mineração, Piloto e escudo, o piloto automático perde bem menos casco no Cinturão do que antes. Os números de vida dos asteroides e do laser vão precisar subir se o Cinturão deixar de ser o trecho que "cobra" (§8).
+- Número de níveis e valores da Carenagem, do escudo, dos casulos e do Piloto; outros anexos; tamanho dos arcos por hardpoint (§3).
 - Números, níveis e upgrades que mudam comportamento (§4).
 - Coleta de sucata, pausa durante alocação, valor de venda, mover defesas (§5).
 - Lista de habilidades (§6).
@@ -305,6 +334,8 @@
 > Guia fase a fase para implementar o MVP do Space Hauler em Unity 6, com build Web. Os números vêm dos placeholders da Parte 1 §16 e ficam em assets (`GameConfig` e os `...Def`), para dar para balancear sem mexer no código. As regras marcadas como **Em aberto** que o código precisa decidir de algum jeito viram opções do `GameConfig` ou ficam isoladas num lugar só, para trocar de ideia sem reescrever nada.
 >
 > **De onde vem este guia.** A estrutura é a do guia do [Fury Hauler](FuryHauler.md), porque o jogo nasceu dele: mesma projeção isométrica, mesmo jeito de montar defesas, mesma run. O que muda: não há estrada (a Fase 1 monta um fundo de estrelas), os hardpoints não cobrem 360°, os inimigos vêm de qualquer lado conforme o tipo de trecho (Fase 3), há asteroides (Fase 3), Carenagem (Fase 5) e Estação (Fase 7). O projeto Unity é outro, separado do Fury Hauler.
+>
+> **Ainda não está neste guia.** A Parte 1 ganhou depois dele: as **defesas de mineração** (laser de mineração e canhão de fragmentação) e, com elas, **asteroides que podem ser destruídos**; os **anexos** (Gerador de escudo e casulos de armas com mais hardpoints); o **Piloto** (mais velocidade e desvio de asteroides); e as **dicas ao passar o mouse**. O guia abaixo ainda monta a versão anterior (4 defesas, 6 hardpoints, asteroides indestrutíveis, só Carenagem). O protótipo em `prototipos/space-hauler/` já tem tudo isso e serve de referência de comportamento até o guia ser atualizado.
 
 ## Convenções
 
