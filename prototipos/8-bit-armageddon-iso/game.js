@@ -23,23 +23,25 @@ const SPAWN_R = 12;
 const MAX_ENEMIES = 150;
 const PROJECTILE_SPEED = 10;      // "Em aberto" no GDD: valor inicial do código
 const DEG = Math.PI / 180;
+const DRAWER_STRIP_H = 22;         // faixa das abas (gaveta fechada)
+const DRAWER_OPEN_H = 60;          // gaveta aberta: faixa + uma fileira de cards compactos
 
 // ============================================================ dados de design
 
 const STATS = [
-  { id: 'damage',       track: 'offense', name: 'Damage',            base: 10,  inc: 3,     cap: null, cost:  5, icon: 0,  fmt: v => fmt(v) },
-  { id: 'attackSpeed',  track: 'offense', name: 'Attack Speed',      base: 1,   inc: 0.08,  cap: 6,    cost:  6, icon: 1,  fmt: v => v.toFixed(2) + '/s' },
-  { id: 'critChance',   track: 'offense', name: 'Critical Chance',   base: 0,   inc: 0.015, cap: 0.8,  cost:  8, icon: 2,  fmt: v => pct(v) },
-  { id: 'critFactor',   track: 'offense', name: 'Critical Factor',   base: 1.5, inc: 0.1,   cap: 6,    cost:  8, icon: 3,  fmt: v => v.toFixed(1) + 'x' },
-  { id: 'attackRange',  track: 'offense', name: 'Attack Range',      base: 4,   inc: 0.15,  cap: 8,    cost:  6, icon: 4,  fmt: v => v.toFixed(2) + 'u' },
-  { id: 'impetus',      track: 'offense', name: 'Impetus',           base: 0,   inc: 0.004, cap: 0.12, cost: 10, icon: 5,  fmt: v => pct(v) + '/u' },
-  { id: 'orbitSpeed',   track: 'offense', name: 'Orbit Speed',       base: 45,  inc: 5,     cap: 180,  cost:  6, icon: 6,  fmt: v => Math.round(v) + '°/s' },
-  { id: 'hitpoints',    track: 'defense', name: 'Hitpoints',         base: 100, inc: 25,    cap: null, cost:  5, icon: 7,  fmt: v => fmt(v) },
-  { id: 'regen',        track: 'defense', name: 'Regeneration',      base: 0,   inc: 0.4,   cap: null, cost:  8, icon: 8,  fmt: v => v.toFixed(1) + '/s' },
-  { id: 'defAbs',       track: 'defense', name: 'Defense (abs.)',    base: 0,   inc: 0.5,   cap: null, cost:  8, icon: 9,  fmt: v => v.toFixed(1) },
-  { id: 'defRel',       track: 'defense', name: 'Defense (rel.)',    base: 0,   inc: 0.015, cap: 0.75, cost: 10, icon: 10, fmt: v => pct(v) },
-  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost:  6, icon: 11, fmt: v => '+' + pct(v) },
-  { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost:  6, icon: 12, fmt: v => '+' + pct(v) },
+  { id: 'damage',       track: 'offense', name: 'Damage',            base: 10,  inc: 3,     cap: null, cost:  5, icon: 0,  fmt: v => fmt(v), desc: 'Dano de cada tiro dos Satellites.' },
+  { id: 'attackSpeed',  track: 'offense', name: 'Attack Speed',      base: 1,   inc: 0.08,  cap: 6,    cost:  6, icon: 1,  fmt: v => v.toFixed(2) + '/s', desc: 'Tiros por segundo de cada Satellite.' },
+  { id: 'critChance',   track: 'offense', name: 'Critical Chance',   base: 0,   inc: 0.015, cap: 0.8,  cost:  8, icon: 2,  fmt: v => pct(v), desc: 'Chance de um tiro ser crítico.' },
+  { id: 'critFactor',   track: 'offense', name: 'Critical Factor',   base: 1.5, inc: 0.1,   cap: 6,    cost:  8, icon: 3,  fmt: v => v.toFixed(1) + 'x', desc: 'Multiplicador do dano de um tiro crítico.' },
+  { id: 'attackRange',  track: 'offense', name: 'Attack Range',      base: 4,   inc: 0.15,  cap: 8,    cost:  6, icon: 4,  fmt: v => v.toFixed(2) + 'u', desc: 'Distância máxima até onde os Satellites atiram.' },
+  { id: 'impetus',      track: 'offense', name: 'Impetus',           base: 0,   inc: 0.004, cap: 0.12, cost: 10, icon: 5,  fmt: v => pct(v) + '/u', desc: 'Dano extra por unidade de distância entre o Satellite e o alvo.' },
+  { id: 'orbitSpeed',   track: 'offense', name: 'Orbit Speed',       base: 45,  inc: 5,     cap: 180,  cost:  6, icon: 6,  fmt: v => Math.round(v) + '°/s', desc: 'Velocidade da órbita: menos tempo com Quadrants sem cobertura.' },
+  { id: 'hitpoints',    track: 'defense', name: 'Hitpoints',         base: 100, inc: 25,    cap: null, cost:  5, icon: 7,  fmt: v => fmt(v), desc: 'HP máximo do planeta. A compra também cura a mesma quantidade.' },
+  { id: 'regen',        track: 'defense', name: 'Regeneration',      base: 0,   inc: 0.4,   cap: null, cost:  8, icon: 8,  fmt: v => v.toFixed(1) + '/s', desc: 'HP que o planeta recupera por segundo.' },
+  { id: 'defAbs',       track: 'defense', name: 'Defense (abs.)',    base: 0,   inc: 0.5,   cap: null, cost:  8, icon: 9,  fmt: v => v.toFixed(1), desc: 'Dano fixo removido de cada golpe no planeta. Forte contra muitos golpes fracos.' },
+  { id: 'defRel',       track: 'defense', name: 'Defense (rel.)',    base: 0,   inc: 0.015, cap: 0.75, cost: 10, icon: 10, fmt: v => pct(v), desc: 'Porcentagem do dano removida de cada golpe no planeta. Forte contra golpes grandes.' },
+  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost:  6, icon: 11, fmt: v => '+' + pct(v), desc: 'Shards a mais por nave destruída.' },
+  { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost:  6, icon: 12, fmt: v => '+' + pct(v), desc: 'Bônus de Shards a mais ao limpar a tela (Wave Clear).' },
 ];
 const STAT = Object.fromEntries(STATS.map(s => [s.id, s]));
 
@@ -56,6 +58,7 @@ const ICON = { shards: 17, trophy: 19, trophyLocked: 20 };
 // (não são Stats). Custo do 2º, 3º e 4º Satellite — valor inicial, ajustar jogando.
 const SATELLITE_COSTS = [10, 50, 100];
 const MAX_SATELLITES = 4;
+const SATELLITE_DESC = 'Mais um Satellite na órbita. Todos ficam igualmente espaçados e cada um só atira no Quadrant onde está.';
 
 const CORES = [
   { id: 'Terra', name: 'Terra Core', mods: 'Equilibrado', skins: ['Classic', 'Ocean', 'Desert'] },
@@ -64,10 +67,11 @@ const CORES = [
 ];
 
 const ENEMIES = {
-  grunt:   { hp: 10, dmg: 5,  speed: 0.8, shards: 1,   r: 0.5,  wave: 1, weight: 50 },
-  scout:   { hp: 6,  dmg: 3,  speed: 2.0, shards: 1,   r: 0.5,  wave: 3, weight: 25 },
-  swarmer: { hp: 3,  dmg: 2,  speed: 1.2, shards: 0.5, r: 0.25, wave: 6, weight: 15 },
-  brute:   { hp: 80, dmg: 20, speed: 0.5, shards: 4,   r: 0.75, wave: 8, weight: 10 },
+// speed: 20% abaixo do GDD (0,8 / 2,0 / 1,2 / 0,5), pedido do playtest: as naves estavam rápidas demais.
+  grunt:   { hp: 10, dmg: 5,  speed: 0.64, shards: 1,   r: 0.5,  wave: 1, weight: 50 },
+  scout:   { hp: 6,  dmg: 3,  speed: 1.6,  shards: 1,   r: 0.5,  wave: 3, weight: 25 },
+  swarmer: { hp: 3,  dmg: 2,  speed: 0.96, shards: 0.5, r: 0.25, wave: 6, weight: 15 },
+  brute:   { hp: 80, dmg: 20, speed: 0.4,  shards: 4,   r: 0.75, wave: 8, weight: 10 },
 };
 const MOTHERSHIP = { hp: 1200, laser: 25, shards: 50, r: 1.5 };
 
@@ -229,7 +233,7 @@ function resize() {
 window.addEventListener('resize', () => {
   resize();
   // Só reajusta a altura da gaveta: reconstruir os cards perderia a posição da rolagem.
-  if (hud && drawerTrack) hud.drawer.style.height = Math.round(VH * 0.4) + 'px';
+  if (hud && drawerTrack) hud.drawer.style.height = DRAWER_OPEN_H + 'px';
   if (hud) updateArrows();
 });
 
@@ -247,8 +251,8 @@ function newRun() {
   const r = {
     core: save.core, skin: save.skin,
     levels: Object.fromEntries(STATS.map(s => [s.id, 0])),
-    shards: 5, totalShards: 0, shardFrac: 0,   // 5 Shards iniciais (Seção 4.2): dá para o 1º Upgrade
-    wave: 0, waveTimer: 0, warn: 0, warnWave: 0, warnSectors: [],
+    shards: 10, totalShards: 0, shardFrac: 0,   // 10 Shards iniciais (o GDD diz 5): dá para 1–2 Upgrades logo no início
+    wave: 0, waveTimer: 0, warn: 0, warnWave: 0, warnSectors: [], waveTypes: [],
     queue: [], unpaid: [], enemies: [], projectiles: [], fx: [], nums: [],
     satAngle: 45, sats: [], quadFlash: [0, 0, 0, 0],
     time: 0, kills: 0, crits: 0, mothershipsKilled: 0,
@@ -341,21 +345,26 @@ function prepareWave(w) {
 
 function startWave(w) {
   run.wave = w;
-  run.waveTimer = isBoss(w) ? 60 : 30;
+  run.waveTimer = isBoss(w) ? 120 : 60;   // o dobro do GDD (60/30 s), pedido do playtest
   run.unpaid.push(w);
   const sectors = run.warnSectors;
   if (isBoss(w)) {
+    run.waveTypes = ['mothership', 'swarmer'];   // os Swarmers vêm da Mothership
     run.queue.push({ at: run.time, w, type: 'mothership', sector: sectors[0] });
     run.bossHitFree = true;
   } else {
     const n = Math.min(6 + 2 * w, 60);
     const pool = Object.entries(ENEMIES).filter(([, e]) => e.wave <= w);
     const total = pool.reduce((a, [, e]) => a + e.weight, 0);
+    const types = new Set();
     for (let i = 0; i < n; i++) {
       let r = Math.random() * total, type = pool[0][0];
       for (const [k, e] of pool) { if ((r -= e.weight) < 0) { type = k; break; } }
-      run.queue.push({ at: run.time + i * 20 / n, w, type, sector: sectors[Math.floor(Math.random() * sectors.length)] });
+      types.add(type);
+      // Nascem espalhados por 40 s (o dobro dos 20 s do GDD), acompanhando o timer dobrado.
+      run.queue.push({ at: run.time + i * 40 / n, w, type, sector: sectors[Math.floor(Math.random() * sectors.length)] });
     }
+    run.waveTypes = Object.keys(ENEMIES).filter(k => types.has(k));
   }
   if (w === 10) unlockAch('holdingLine');
   if (w === 20) unlockAch('frozen');
@@ -620,7 +629,7 @@ function unlockAch(id) {
 // ============================================================ render do mundo
 
 function planetScreen() {
-  const drawerH = drawerTrack ? Math.round(VH * 0.4) : 22;
+  const drawerH = drawerTrack ? DRAWER_OPEN_H : DRAWER_STRIP_H;
   // O centro sobe metade do FLOOR_DROP: assim o planeta (no plano de voo) e o chão (embaixo dele)
   // ficam centrados juntos na área livre.
   const free = drawerTrack ? VH - drawerH : VH;
@@ -797,7 +806,7 @@ function render(dt) {
   // Setas dos Spawn Sectors na borda da tela. A direção do setor no chão é projetada na tela, e a seta
   // usada é a das 6 pré-desenhadas (30°, 90°… na tela) mais próxima dela: nada é girado.
   if (run.warn > 0 && IMG.arrows && !run.over) {
-    const top = 24, bottom = (drawerTrack ? Math.round(VH * 0.4) : 22) + 12, side = 12;
+    const top = 24, bottom = (drawerTrack ? DRAWER_OPEN_H : DRAWER_STRIP_H) + 12, side = 12;
     for (const s of run.warnSectors) {
       const a = (s * 60 + 30) * DEG;
       let dx = Math.cos(a) - Math.sin(a), dy = (Math.cos(a) + Math.sin(a)) / 2;   // na tela, y para cima
@@ -951,6 +960,7 @@ const SCREENS = {
       <div class="hpbar">${iconHtml(STAT.hitpoints.icon)}<div class="bar"><i></i><b></b></div></div>
       <div class="wave-info"><span class="w"></span> <span class="t"></span></div>
       <button class="btn pause-btn">II</button>
+      <div class="foes hidden"></div>
       <div class="boss-bar hidden"><span>Mothership</span><div class="bar"><i></i></div></div>
     </div>`);
     ui.appendChild(h);
@@ -958,13 +968,14 @@ const SCREENS = {
     hud.wave = $('.wave-info .w', h); hud.timer = $('.wave-info .t', h);
     hud.boss = $('.boss-bar', h); hud.bossFill = $('.boss-bar i', h);
     $('.pause-btn', h).onclick = () => pause(true);
+    hud.foes = $('.foes', h); hud.foesKey = '';
 
     const d = el(`<div id="drawer">
       <div class="drawer-strip">
         <span class="money shards">${iconHtml(ICON.shards)}<span class="sh">0</span></span><span class="spacer"></span>
       </div>
       <div class="drawer-body hidden">
-        <div class="qty"></div>
+        <div class="qty"><button class="btn"></button></div>
         <div class="cards-wrap">
           <div class="cards"></div>
           <button class="btn arrow l hidden">&lt;</button><button class="btn arrow r hidden">&gt;</button>
@@ -977,13 +988,14 @@ const SCREENS = {
       b.onclick = () => { drawerTrack = drawerTrack === t.id ? null : t.id; buildDrawer(); };
       strip.appendChild(b);
     }
-    const qty = $('.qty', d);
-    for (const [v, label] of [[1, 'x1'], [10, 'x10'], [Infinity, 'Max']]) {
-      const b = el(`<button class="btn${buyQty === v ? ' selected' : ''}">${label}</button>`);
-      b.onclick = () => { buyQty = v; qty.querySelectorAll('.btn').forEach(x => x.classList.remove('selected')); b.classList.add('selected'); refreshDrawer(true); };
-      qty.appendChild(b);
-    }
+    // Um só botão que alterna x1 → x10 → Max: ocupa uma linha só na gaveta compacta.
+    const qty = $('.qty .btn', d), QTY = [[1, 'x1'], [10, 'x10'], [Infinity, 'Max']];
+    const showQty = () => { qty.textContent = QTY.find(([v]) => v === buyQty)[1]; };
+    qty.onclick = () => { buyQty = QTY[(QTY.findIndex(([v]) => v === buyQty) + 1) % QTY.length][0]; showQty(); refreshDrawer(true); };
+    showQty();
     ui.appendChild(d);
+    hud.tip = el(`<div class="tip hidden"></div>`);
+    ui.appendChild(hud.tip);
     hud.drawer = d; hud.shards = $('.sh', d); hud.body = $('.drawer-body', d); hud.cards = $('.cards', d);
     // A fileira de cards rola na horizontal: a roda do mouse (vertical) também rola, e as setas
     // aparecem quando há cards escondidos daquele lado (no celular, o dedo arrasta normalmente).
@@ -1066,7 +1078,8 @@ function buildDrawer() {
   if (!hud) return;
   const open = !!drawerTrack;
   hud.body.classList.toggle('hidden', !open);
-  hud.drawer.style.height = open ? Math.round(VH * 0.4) + 'px' : '';
+  hud.drawer.style.height = open ? DRAWER_OPEN_H + 'px' : '';
+  hideTip();
   hud.drawer.querySelectorAll('.tab').forEach(t => t.classList.toggle('open', t.dataset.track === drawerTrack));
   $('.qty', hud.drawer).classList.toggle('hidden', drawerTrack === 'satellites');
   hud.cards.innerHTML = '';
@@ -1076,7 +1089,7 @@ function buildDrawer() {
   if (!open) return;
   if (drawerTrack === 'satellites') {
     run.sats.forEach((s, i) => {
-      const row = el(`<div class="sat-row framed"><span class="row">${iconHtml(16)}<span>Satellite ${i + 1}</span></span></div>`);
+      const row = el(`<div class="sat-row framed"><span class="row">${iconHtml(16)}<span class="name">Satellite ${i + 1}</span></span></div>`);
       const b = el(`<button class="btn" title="Target Priority">${PRIORITIES.find(p => p.id === s.priority).name}</button>`);
       b.onclick = () => {
         const idx = PRIORITIES.findIndex(p => p.id === s.priority);
@@ -1089,11 +1102,10 @@ function buildDrawer() {
     if (run.sats.length < MAX_SATELLITES) {
       const card = el(`<div class="card">
         <span class="row">${iconHtml(16)}<span class="name">Satellite ${run.sats.length + 1}</span></span>
-        <span class="vals">${run.sats.length} &gt; <em>${run.sats.length + 1}</em> em órbita</span>
-        <span class="row"><span class="spacer"></span><span class="money shards cost"></span></span>
+        <span class="row"><span class="vals">${run.sats.length} &gt; <em>${run.sats.length + 1}</em></span><span class="spacer"></span><span class="money shards cost"></span></span>
       </div>`);
       card.dataset.sat = '1';
-      card.onclick = buySatellite;
+      attachTip(card, buySatellite);
       hud.cards.appendChild(card);
       hud.cardEls.push(card);
     }
@@ -1102,16 +1114,83 @@ function buildDrawer() {
   }
   for (const s of STATS.filter(s => s.track === drawerTrack)) {
     const card = el(`<div class="card">
-      <span class="row">${iconHtml(s.icon)}<span class="name">${s.name}</span></span>
-      <span class="vals"></span>
-      <span class="row"><span class="lvl">Nv <span class="lv"></span></span><span class="spacer"></span><span class="money shards cost"></span></span>
+      <span class="row">${iconHtml(s.icon)}<span class="name">${s.name}</span><span class="spacer"></span><span class="lvl">Nv <span class="lv"></span></span></span>
+      <span class="row"><span class="vals"></span><span class="spacer"></span><span class="money shards cost"></span></span>
     </div>`);
-    card.onclick = () => buyStat(s.id);
     card.dataset.stat = s.id;
+    attachTip(card, () => buyStat(s.id));
     hud.cards.appendChild(card);
     hud.cardEls.push(card);
   }
   refreshDrawer(true);
+}
+
+// Explicação de cada card: hover no mouse; no toque, pressionar e segurar mostra sem comprar
+// (o toque curto continua comprando).
+const LONG_PRESS = 0.35;   // segundos
+function attachTip(card, buy) {
+  let timer = null, held = false;
+  const cancel = () => { clearTimeout(timer); timer = null; };
+  card.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') showTip(card); });
+  card.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hideTip(); });
+  card.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse') return;
+    held = false;
+    cancel();
+    timer = setTimeout(() => { held = true; showTip(card); }, LONG_PRESS * 1000);
+  });
+  card.addEventListener('pointerup', e => { if (e.pointerType !== 'mouse') { cancel(); if (held) hideTip(); } });
+  card.addEventListener('pointercancel', () => { cancel(); hideTip(); });
+  card.addEventListener('contextmenu', e => e.preventDefault());
+  card.onclick = () => { if (held) { held = false; return; } buy(); };
+}
+
+function showTip(card) {
+  if (!hud || !hud.tip || !card.isConnected) return;
+  let name, desc, next = '';
+  if (card.dataset.sat) { name = `Satellite ${run.sats.length + 1}`; desc = SATELLITE_DESC; }
+  else {
+    const s = STAT[card.dataset.stat], lvl = run.levels[s.id];
+    name = s.name; desc = s.desc;
+    next = atCap(s.id, lvl) ? 'Nível máximo' : `Nv ${lvl + 1}: ${s.fmt(statFor(s.id, lvl + 1))}`;
+  }
+  hud.tip.innerHTML = `<span class="tname">${name}</span><span>${desc}</span>${next ? `<span class="subtitle">${next}</span>` : ''}`;
+  hud.tip.classList.remove('hidden');
+  hud.tipCard = card;
+  // Posição em pixels de jogo: o #ui é escalado por P.
+  const ur = ui.getBoundingClientRect(), cr = card.getBoundingClientRect();
+  const x = (cr.left - ur.left) / P, y = (cr.top - ur.top) / P;
+  const w = hud.tip.offsetWidth, h = hud.tip.offsetHeight;
+  hud.tip.style.left = Math.round(clamp(x, 2, VW - w - 2)) + 'px';
+  hud.tip.style.top = Math.round(Math.max(2, y - h - 2)) + 'px';
+}
+
+function hideTip() {
+  if (!hud || !hud.tip) return;
+  hud.tip.classList.add('hidden');
+  hud.tipCard = null;
+}
+
+// Painel dos inimigos da Wave atual (canto superior direito): HP e ATK de cada tipo, já escalados
+// pela Wave, para o jogador decidir entre Offense e Defense. Na Boss Wave, ATK é o laser.
+function foeStats(type, w) {
+  if (type === 'mothership') return { hp: MOTHERSHIP.hp * Math.pow(1.09, w - 1), atk: MOTHERSHIP.laser * Math.pow(1.06, w - 1) };
+  const e = ENEMIES[type];
+  return { hp: e.hp * Math.pow(1.09, w - 1), atk: e.dmg * Math.pow(1.06, w - 1) };
+}
+function updateFoes() {
+  const w = run.wave, key = w + ':' + run.waveTypes.join(',');
+  if (key === hud.foesKey) return;
+  hud.foesKey = key;
+  hud.foes.innerHTML = '';
+  hud.foes.classList.toggle('hidden', !w || !run.waveTypes.length);
+  for (const type of run.waveTypes) {
+    const { hp, atk } = foeStats(type, w);
+    const row = el(`<div class="foe"><canvas width="16" height="16"></canvas><span class="hp">${iconHtml(STAT.hitpoints.icon)}${fmt(hp)}</span><span class="atk">${iconHtml(STAT.damage.icon)}${fmt(atk)}</span></div>`);
+    const img = IMG[type], cell = type === 'mothership' ? 64 : 32;
+    if (img) { const g = $('canvas', row).getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, cell, cell, 0, 0, 16, 16); }
+    hud.foes.appendChild(row);
+  }
 }
 
 function updateArrows() {
@@ -1127,6 +1206,7 @@ function refreshDrawer(force) {
   if (!force && clock - lastRefresh < 0.1) return;
   lastRefresh = clock;
   hud.shards.textContent = fmt(run.shards);
+  if (force && hud.tipCard) showTip(hud.tipCard);
   for (const c of hud.cardEls || []) {
     if (c.dataset.sat) {
       const cost = satelliteCost();
@@ -1167,6 +1247,7 @@ function updateHud() {
   const m = run.enemies.find(e => e.type === 'mothership');
   hud.boss.classList.toggle('hidden', !m);
   if (m) hud.bossFill.style.width = (100 * m.hp / m.maxHp) + '%';
+  updateFoes();
   refreshDrawer(false);
   // Dica contextual: só na primeira vez que dá para comprar Damage.
   const showHint = !save.hints.buy && !drawerTrack && run.shards >= upgradeCost('damage', run.levels.damage) && !run.over;

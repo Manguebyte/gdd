@@ -176,6 +176,26 @@ html, body {
 .boss-bar .bar > i { background: #c74dff; }
 .boss-bar span { color: #d9a0ff; text-shadow: 1px 1px 0 #000; }
 
+/* Inimigos da Wave atual, embaixo do botão de pausa */
+.foes {
+  position: absolute; right: 4px; top: 22px; display: flex; flex-direction: column; gap: 1px;
+  padding: 1px 3px 2px 1px; background: rgba(20, 20, 28, .75); border: 1px solid #000; pointer-events: none;
+}
+.foe { display: flex; align-items: center; gap: 3px; white-space: nowrap; text-shadow: 1px 1px 0 #000; }
+.foe canvas { width: 16px; height: 16px; image-rendering: pixelated; flex: none; }
+.foe .hp { color: #7fe07f; min-width: 36px; }
+.foe .hp, .foe .atk { display: inline-flex; align-items: center; }
+.foe .icon { margin: -4px -1px -4px -3px; }
+.foe .atk { color: var(--offense); }
+
+/* Explicação de um card da gaveta (hover / pressionar e segurar) */
+.tip {
+  position: absolute; z-index: 2; max-width: 150px; display: flex; flex-direction: column; gap: 2px;
+  padding: 3px 5px 4px; background: #23222c; border: 1px solid #000; outline: 1px solid var(--dim); outline-offset: -2px;
+  pointer-events: none;
+}
+.tip .tname { color: var(--shard); }
+
 .toast {
   position: absolute; left: 50%; top: 34px; transform: translateX(-50%);
   padding: 1px 5px 2px; background: rgba(20, 20, 28, .9); border: 1px solid #000; outline: 1px solid var(--offense); outline-offset: -2px; display: flex; align-items: center; gap: 3px;
@@ -207,20 +227,20 @@ html, body {
 .tab[data-track="satellites"] .lbl { color: var(--satellites); }
 .tab.open .lbl { text-decoration: underline; }
 .drawer-body { flex-direction: row; }
-.qty { flex: none; display: flex; flex-direction: column; gap: 1px; padding: 3px 0 3px 4px; }
-.qty .btn { min-height: 13px; padding: 0 4px 1px; flex: 1; }
+.qty { flex: none; display: flex; padding: 2px 0 2px 3px; }
+.qty .btn { min-width: 28px; padding: 0 3px 1px; color: var(--shard); }
 .cards-wrap { flex: 1; min-width: 0; position: relative; display: flex; }
 .arrow { position: absolute; top: 50%; transform: translateY(-50%); min-height: 22px; padding: 2px 3px 3px; z-index: 1; }
 .arrow.l { left: 1px; }
 .arrow.r { right: 1px; }
 .cards {
-  flex: 1; min-height: 0; min-width: 0; display: flex; gap: 3px; padding: 3px 4px;
+  flex: 1; min-height: 0; min-width: 0; display: flex; gap: 2px; padding: 2px 3px;
   overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
 }
 .cards::-webkit-scrollbar { display: none; }
 .card {
-  flex: none; min-width: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px;
-  padding: 2px 5px 3px; cursor: pointer; line-height: 9px;
+  flex: none; min-width: 62px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px;
+  padding: 2px 6px 3px; cursor: pointer; line-height: 9px; -webkit-touch-callout: none;
   border-image: url("ui/btn_normal.png") 8 fill / 8px stretch;
 }
 .card.poor { border-image-source: url("ui/btn_disabled.png"); }
@@ -231,11 +251,14 @@ html, body {
 .card .lvl { color: var(--dim); }
 .card .vals { white-space: nowrap; padding-left: 2px; }
 .card .cost .icon { margin: -4px -2px -3px -3px; }
+.card .row { gap: 2px; }
+.card .row > .icon, .sat-row .row > .icon { margin: -3px -1px -4px -2px; }   /* ícone não aumenta a altura da linha */
 .card .vals em { font-style: normal; color: var(--utility); }
 @keyframes pulse { 50% { filter: brightness(1.35); } }
-.sat-row { flex: none; width: 84px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px; padding: 2px 5px 3px; line-height: 9px; }
+.sat-row { flex: none; min-width: 70px; display: flex; flex-direction: column; justify-content: space-between; gap: 1px; padding: 2px 4px 3px; line-height: 9px; }
 .sat-row.framed { border-image: url("ui/btn_disabled.png") 8 fill / 8px stretch; }
-.sat-row .btn { min-height: 14px; padding: 1px 4px 2px; }
+.sat-row .btn { min-height: 12px; padding: 0 4px 1px; }
+.sat-row .name { white-space: nowrap; }
 
 /* ---------- resultados / pausa ---------- */
 .dialog { margin: auto; padding: 6px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 150px; }

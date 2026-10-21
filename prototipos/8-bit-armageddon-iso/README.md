@@ -16,6 +16,14 @@ Começou como cópia de [`../8-bit-armageddon/`](../8-bit-armageddon/), mas é u
 ## Arte
 Quase toda a arte é a do 8-Bit Armageddon, lida direto de [`Sprites/8-Bit-Armageddon/`](../../Sprites/8-Bit-Armageddon/): os discos voadores já são vistos em 3/4 e o planeta é uma esfera, então funcionam em iso sem redesenho. A única arte nova é o chão do grid, em [`Sprites/8-Bit-Armageddon-Iso/Grid/`](../../Sprites/8-Bit-Armageddon-Iso/Grid/). Os dois caminhos precisam ir para o site (`deploy-site.yml`).
 
+## Diferenças do GDD (playtest)
+Ajustes pedidos depois de jogar, ainda não levados à Parte 1 do GDD:
+- A run começa com **10 Shards** (GDD: 5).
+- Cada Wave dura **60 s** (Boss Wave: **120 s**), e os inimigos nascem ao longo de 40 s (GDD: 30 s / 60 s, nascendo em 20 s).
+- Grunt, Scout, Swarmer e Brute são **20% mais lentos** (0,64 / 1,6 / 0,96 / 0,4 u/s). A Mothership não mudou.
+- O canto superior direito mostra o HP e o ATK (já escalados pela Wave) de cada tipo de inimigo da Wave atual.
+- A gaveta aberta é mais baixa (cards de 2 linhas, um botão só que alterna x1 / x10 / Max). Passar o mouse sobre um card, ou pressionar e segurar no celular, mostra o que o upgrade faz sem comprar.
+
 ## O que ficou de fora
 - Anúncios e Revive: não existem neste jogo (GDD §4.6).
 - Áudio, idioma inglês, vibração, modo daltônico.
