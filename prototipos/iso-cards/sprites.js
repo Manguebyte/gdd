@@ -1,10 +1,34 @@
 // Gerado por Sprites/IsoCards/_tools/baixar.py: caixa visível [x0, y0, x1, y1] de cada sprite.
 window.SPRITE_META = {
+"personagens/anciao/ataque-ne.png": [
+19,
+12,
+61,
+67
+],
+"personagens/anciao/ataque-se.png": [
+19,
+12,
+62,
+67
+],
 "personagens/anciao/ne.png": [
 11,
 4,
 53,
 59
+],
+"personagens/anciao/parado-ne.png": [
+18,
+12,
+61,
+67
+],
+"personagens/anciao/parado-se.png": [
+19,
+13,
+62,
+67
 ],
 "personagens/anciao/se.png": [
 11,
@@ -48,10 +72,34 @@ window.SPRITE_META = {
 34,
 36
 ],
+"personagens/bandido/ataque-ne.png": [
+18,
+11,
+37,
+35
+],
+"personagens/bandido/ataque-se.png": [
+17,
+12,
+31,
+36
+],
 "personagens/bandido/ne.png": [
 16,
 11,
 38,
+35
+],
+"personagens/bandido/parado-ne.png": [
+17,
+11,
+38,
+35
+],
+"personagens/bandido/parado-se.png": [
+16,
+12,
+30,
 35
 ],
 "personagens/bandido/se.png": [
@@ -132,9 +180,105 @@ window.SPRITE_META = {
 55,
 54
 ],
+"personagens/diabrete/ataque-ne.png": [
+11,
+7,
+40,
+36
+],
+"personagens/diabrete/ataque-se.png": [
+10,
+7,
+36,
+39
+],
+"personagens/diabrete/ne.png": [
+10,
+7,
+40,
+37
+],
+"personagens/diabrete/parado-ne.png": [
+10,
+7,
+39,
+36
+],
+"personagens/diabrete/parado-se.png": [
+10,
+8,
+33,
+36
+],
+"personagens/diabrete/se.png": [
+11,
+8,
+36,
+40
+],
+"personagens/dragao/ataque-ne.png": [
+15,
+12,
+61,
+65
+],
+"personagens/dragao/ataque-se.png": [
+12,
+11,
+62,
+61
+],
+"personagens/dragao/ne.png": [
+6,
+4,
+51,
+55
+],
+"personagens/dragao/parado-ne.png": [
+14,
+12,
+59,
+63
+],
+"personagens/dragao/parado-se.png": [
+12,
+11,
+61,
+61
+],
+"personagens/dragao/se.png": [
+6,
+5,
+55,
+55
+],
+"personagens/driade/ataque-ne.png": [
+15,
+8,
+35,
+43
+],
+"personagens/driade/ataque-se.png": [
+13,
+9,
+37,
+44
+],
 "personagens/driade/ne.png": [
 14,
 6,
+35,
+41
+],
+"personagens/driade/parado-ne.png": [
+14,
+7,
+33,
+41
+],
+"personagens/driade/parado-se.png": [
+11,
+7,
 35,
 41
 ],
@@ -180,11 +324,35 @@ window.SPRITE_META = {
 40,
 41
 ],
+"personagens/escorpiao/ataque-ne.png": [
+10,
+16,
+46,
+42
+],
+"personagens/escorpiao/ataque-se.png": [
+11,
+8,
+46,
+48
+],
 "personagens/escorpiao/ne.png": [
 6,
 12,
 43,
 40
+],
+"personagens/escorpiao/parado-ne.png": [
+10,
+15,
+47,
+44
+],
+"personagens/escorpiao/parado-se.png": [
+13,
+8,
+47,
+47
 ],
 "personagens/escorpiao/se.png": [
 8,
@@ -228,11 +396,71 @@ window.SPRITE_META = {
 36,
 38
 ],
+"personagens/espectro/ataque-ne.png": [
+16,
+11,
+44,
+47
+],
+"personagens/espectro/ataque-se.png": [
+16,
+12,
+44,
+50
+],
+"personagens/espectro/ne.png": [
+13,
+5,
+39,
+43
+],
+"personagens/espectro/parado-ne.png": [
+17,
+9,
+43,
+47
+],
+"personagens/espectro/parado-se.png": [
+15,
+11,
+44,
+48
+],
+"personagens/espectro/se.png": [
+13,
+7,
+40,
+44
+],
+"personagens/golemAreia/ataque-ne.png": [
+17,
+12,
+62,
+62
+],
+"personagens/golemAreia/ataque-se.png": [
+18,
+13,
+59,
+63
+],
 "personagens/golemAreia/ne.png": [
 12,
 6,
 54,
 56
+],
+"personagens/golemAreia/parado-ne.png": [
+14,
+9,
+52,
+59
+],
+"personagens/golemAreia/parado-se.png": [
+13,
+9,
+50,
+58
 ],
 "personagens/golemAreia/se.png": [
 10,
@@ -240,11 +468,71 @@ window.SPRITE_META = {
 53,
 57
 ],
+"personagens/golemMagma/ataque-ne.png": [
+14,
+9,
+39,
+42
+],
+"personagens/golemMagma/ataque-se.png": [
+14,
+8,
+36,
+40
+],
+"personagens/golemMagma/ne.png": [
+11,
+6,
+39,
+40
+],
+"personagens/golemMagma/parado-ne.png": [
+13,
+9,
+36,
+42
+],
+"personagens/golemMagma/parado-se.png": [
+12,
+11,
+35,
+43
+],
+"personagens/golemMagma/se.png": [
+11,
+7,
+38,
+40
+],
+"personagens/grifo/ataque-ne.png": [
+10,
+9,
+41,
+46
+],
+"personagens/grifo/ataque-se.png": [
+11,
+6,
+38,
+43
+],
 "personagens/grifo/ne.png": [
 6,
 5,
 36,
 41
+],
+"personagens/grifo/parado-ne.png": [
+10,
+9,
+41,
+46
+],
+"personagens/grifo/parado-se.png": [
+12,
+7,
+39,
+43
 ],
 "personagens/grifo/se.png": [
 10,
@@ -324,10 +612,34 @@ window.SPRITE_META = {
 34,
 40
 ],
+"personagens/javali/ataque-ne.png": [
+9,
+7,
+41,
+40
+],
+"personagens/javali/ataque-se.png": [
+10,
+11,
+44,
+40
+],
 "personagens/javali/ne.png": [
 9,
 7,
 40,
+40
+],
+"personagens/javali/parado-ne.png": [
+9,
+7,
+40,
+40
+],
+"personagens/javali/parado-se.png": [
+9,
+11,
+43,
 40
 ],
 "personagens/javali/se.png": [
@@ -372,11 +684,35 @@ window.SPRITE_META = {
 36,
 38
 ],
+"personagens/lobo/ataque-ne.png": [
+9,
+9,
+41,
+43
+],
+"personagens/lobo/ataque-se.png": [
+9,
+12,
+43,
+45
+],
 "personagens/lobo/ne.png": [
 8,
 6,
 38,
 41
+],
+"personagens/lobo/parado-ne.png": [
+10,
+9,
+40,
+43
+],
+"personagens/lobo/parado-se.png": [
+9,
+11,
+42,
+45
 ],
 "personagens/lobo/se.png": [
 5,
@@ -384,11 +720,35 @@ window.SPRITE_META = {
 38,
 41
 ],
+"personagens/loboGelo/ataque-ne.png": [
+10,
+9,
+45,
+46
+],
+"personagens/loboGelo/ataque-se.png": [
+8,
+11,
+43,
+45
+],
 "personagens/loboGelo/ne.png": [
 7,
 5,
 40,
 42
+],
+"personagens/loboGelo/parado-ne.png": [
+11,
+9,
+44,
+46
+],
+"personagens/loboGelo/parado-se.png": [
+8,
+9,
+39,
+43
 ],
 "personagens/loboGelo/se.png": [
 6,
@@ -468,10 +828,34 @@ window.SPRITE_META = {
 32,
 37
 ],
+"personagens/mumia/ataque-ne.png": [
+12,
+8,
+37,
+39
+],
+"personagens/mumia/ataque-se.png": [
+14,
+8,
+34,
+40
+],
 "personagens/mumia/ne.png": [
 13,
 8,
 36,
+39
+],
+"personagens/mumia/parado-ne.png": [
+13,
+9,
+34,
+40
+],
+"personagens/mumia/parado-se.png": [
+11,
+10,
+33,
 39
 ],
 "personagens/mumia/se.png": [
@@ -516,6 +900,42 @@ window.SPRITE_META = {
 34,
 35
 ],
+"personagens/salamandra/ataque-ne.png": [
+7,
+17,
+46,
+44
+],
+"personagens/salamandra/ataque-se.png": [
+9,
+7,
+38,
+41
+],
+"personagens/salamandra/ne.png": [
+4,
+14,
+42,
+40
+],
+"personagens/salamandra/parado-ne.png": [
+8,
+15,
+46,
+44
+],
+"personagens/salamandra/parado-se.png": [
+11,
+5,
+39,
+41
+],
+"personagens/salamandra/se.png": [
+11,
+7,
+39,
+41
+],
 "personagens/serpente/ataque-ne.png": [
 9,
 9,
@@ -551,6 +971,42 @@ window.SPRITE_META = {
 7,
 36,
 42
+],
+"personagens/yeti/ataque-ne.png": [
+17,
+11,
+53,
+58
+],
+"personagens/yeti/ataque-se.png": [
+14,
+11,
+54,
+57
+],
+"personagens/yeti/ne.png": [
+14,
+7,
+49,
+54
+],
+"personagens/yeti/parado-ne.png": [
+15,
+10,
+48,
+55
+],
+"personagens/yeti/parado-se.png": [
+16,
+10,
+47,
+54
+],
+"personagens/yeti/se.png": [
+13,
+8,
+51,
+55
 ],
 "cenario/deserto/arvore.png": [
 5,
