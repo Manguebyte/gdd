@@ -1,10 +1,10 @@
 # GDD — Sea Hauler
 
-> Documento vivo. Rascunho inicial: o conceito está fechado nas linhas gerais (tower defense em que a "torre" é uma fragata da Marinha britânica fugindo de piratas até o porto), mas os números de balanceamento ainda não foram decididos. Os valores da tabela §17 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
+> Documento vivo. Rascunho inicial: o conceito está fechado nas linhas gerais (tower defense em que a "torre" é um navio da Marinha britânica fugindo de piratas até o porto), mas os números de balanceamento ainda não foram decididos. Os valores da tabela §17 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 >
-> **De onde vem este jogo.** **Definido:** o Sea Hauler é um **jogo separado**, derivado do [Space Hauler](SpaceHauler.md) (que por sua vez veio do [Fury Hauler](FuryHauler.md)): troca a nave de carga no espaço por uma **fragata da Coroa britânica** no mar, com piratas no rastro. Ele tem GDD, glossário ([`contexts/sea-hauler/CONTEXT.md`](contexts/sea-hauler/CONTEXT.md)), protótipo e save próprios. Os documentos evoluem sozinhos: uma mudança num jogo não vale para o outro.
+> **De onde vem este jogo.** **Definido:** o Sea Hauler é um **jogo separado**, derivado do [Space Hauler](SpaceHauler.md) (que por sua vez veio do [Fury Hauler](FuryHauler.md)): troca a nave de carga no espaço por um **navio da Coroa britânica** no mar, com piratas no rastro. Ele tem GDD, glossário ([`contexts/sea-hauler/CONTEXT.md`](contexts/sea-hauler/CONTEXT.md)), protótipo e save próprios. Os documentos evoluem sozinhos: uma mudança num jogo não vale para o outro.
 >
-> **O que muda em relação ao Space Hauler**, em uma linha cada: o jogador **controla as velas** (3 posições) e correr deixa os perseguidores para trás, mas **quem fica para trás não dá ouro**; são **8 portinholas** com bordadas fortes (3 de cada lado), e 4 delas começam fechadas; além do Forro de cobre (o equivalente da Carenagem), o navio tem **Velame** e **Tripulação**; há um quarto tipo de trecho, a **Tempestade**.
+> **O que muda em relação ao Space Hauler**, em uma linha cada: o jogador **controla as velas** (3 posições) e correr deixa os perseguidores para trás, mas **quem fica para trás não dá ouro**; há **3 classes de navio** (Corveta, Fragata e Navio de linha), e a run começa na menor; o navio maior se compra no **Porto**, com mais casco e portinholas, mas mais lento; as portinholas têm bordadas fortes e parte delas começa fechada; além do Forro de cobre (o equivalente da Carenagem), o navio tem **Velame** e **Tripulação**; há um quarto tipo de trecho, a **Tempestade**.
 
 ## Índice
 
@@ -27,7 +27,7 @@
 ## 1. Visão Geral
 
 - **Nome:** **Definido:** *Sea Hauler* (nome de trabalho; pode mudar).
-- **Gênero:** **Definido:** tower defense em movimento com estrutura **roguelite**, como o Space Hauler. No lugar da torre fixa há um **navio**: uma fragata da Marinha britânica levando uma carga da Coroa do **porto de origem (A)** ao **porto de destino (B)**, fugindo de piratas.
+- **Gênero:** **Definido:** tower defense em movimento com estrutura **roguelite**, como o Space Hauler. No lugar da torre fixa há um **navio** da Marinha britânica (começa numa corveta e pode trocar por navios maiores) levando uma carga da Coroa do **porto de origem (A)** ao **porto de destino (B)**, fugindo de piratas.
 - **Dimensão:** **Definido:** 2.5D. A lógica do jogo roda num plano 2D (a superfície do mar, em metros) e a arte é desenhada em perspectiva isométrica. Não há física 3D. Todos navegam no mesmo plano.
 - **Câmera/perspectiva:** **Definido:** isométrica, seguindo o navio (a mesma da série Hauler).
 - **Plataforma-alvo:** **Definido:** Web (navegador), jogado com mouse; o protótipo também funciona no celular deitado (toque), como o Space Hauler.
@@ -37,7 +37,7 @@
   - *FTL*: cuidar de um navio sob ataque e escolher a rota entre portos e mares perigosos.
   - *Kingdom Rush* / *Bloons TD*: comprar e melhorar armas com moeda ganha na partida.
 - **Pilar de design:** **Em aberto**. Proposta para discutir, não decidida: *"Correr ou lutar: o navio segue de qualquer jeito, e a cada momento você escolhe entre fugir inteiro ou ficar para saquear."*
-- **Fantasia central:** ser o capitão de uma fragata da Coroa perseguida por piratas, decidindo em tempo real quanto pano içar, onde pôr cada canhão e quando gastar o ouro dos piratas afundados no próprio navio.
+- **Fantasia central:** ser o capitão de um navio da Coroa perseguido por piratas, decidindo em tempo real quanto pano içar, onde pôr cada canhão e quando gastar o ouro dos piratas afundados no próprio navio.
 
 ## 2. Loop Principal
 
@@ -53,33 +53,51 @@
 
 ## 3. O Navio e as Velas
 
-- **Definido:** o navio é a "torre" do tower defense: uma **fragata** de três mastros. Ele segue a rota sozinho, do começo ao fim do trecho. O jogador não vira o leme.
+- **Definido:** o navio é a "torre" do tower defense: um navio de guerra de três mastros. Ele segue a rota sozinho, do começo ao fim do trecho. O jogador não vira o leme.
 - **Definido:** o navio tem **casco** (os pontos de vida). Casco zero afunda o navio e acaba a run.
 - **Definido: as velas.** O jogador escolhe em tempo real entre **3 posições**:
 
 | Posição | O que faz |
 |---|---|
 | **Rizadas** | Devagar. Os piratas alcançam mais rápido e o trecho dura mais (mais combate, mais ouro). Bater em rochedo dói menos. |
-| **Meio pano** | O ritmo dos piratas: quem vem por trás se aproxima só com a própria sobra. É a posição de saída. |
+| **Meio pano** | Perto do ritmo dos piratas (igual na Fragata): quem vem por trás se aproxima com a própria sobra. É a posição de saída. |
 | **Pano cheio** | Mais rápido que os piratas: quem vem por trás com pouca sobra **fica para trás** e sai do jogo **sem dar ouro**. Bater em rochedo dói mais. Na Tempestade, rajadas rasgam as velas (§9). |
 
 - **Definido: "fuga custa saque".** Correr é a defesa contra perseguição, mas o ouro só vem de quem é afundado. Fugir de tudo deixa o navio inteiro e pobre; ficar para lutar deixa o navio rico e machucado. É a decisão que este jogo acrescenta à série Hauler.
-- **Definido:** os piratas navegam num **ritmo de cruzeiro fixo** (o "ritmo do mar", igual ao Meio pano) e só se aproximam do navio com uma **sobra pequena** própria de cada tipo (§8). Eles não acompanham o Pano cheio.
+- **Definido:** os piratas navegam num **ritmo de cruzeiro fixo** (o "ritmo do mar", igual ao Meio pano da Fragata) e só se aproximam do navio com uma **sobra pequena** própria de cada tipo (§8). Eles não acompanham o Pano cheio.
 - **Definido:** trocar de posição **não muda a velocidade de uma vez**: o navio ganha ou perde embalo aos poucos.
 - **Definido:** o casco **não se recupera sozinho** entre trechos. Ele é reparado no **Porto** (§10), pagando ouro, e devagar durante o trecho se o navio tiver **Tripulação** (§6).
 - **Em aberto:**
-  - Os números das 3 posições. Placeholder: Rizadas 6 m/s, Meio pano 10 m/s, Pano cheio 13 m/s (mais o Velame), ritmo do mar 10 m/s, aceleração 3 m/s².
+  - Os números das 3 posições, que mudam com a classe do navio (placeholders em §17). Ritmo do mar 10 m/s, aceleração 3 m/s².
   - Se as velas deveriam ter mais posições ou um controle contínuo.
-  - Se existem vários navios para escolher (corveta, fragata, navio de linha).
+
+### 3.1 Classes de navio
+
+- **Definido:** há **3 classes de navio**, da menor para a maior: **Corveta**, **Fragata** e **Navio de linha**. A run **começa na Corveta**.
+- **Definido:** entre os trechos, no **Porto** (§10), o jogador pode **comprar um navio maior** com ouro.
+- **Definido:** o navio maior tem **mais casco e mais portinholas**, mas é **mais lento**: as velas de cada posição andam menos. A Corveta foge de quase tudo de Pano cheio; o Navio de linha, nem de Pano cheio passa muito do ritmo dos piratas, então tem que lutar. É a mesma troca "fuga custa saque" (§3), agora na escolha do navio.
+- **Definido:** ao trocar de navio, **as armas voltam como ouro** (o valor de venda de cada uma, §6) e o navio novo chega **sem armas**. As **melhorias** (Forro de cobre, Velame, Tripulação) **continuam**. As portinholas do navio novo começam abertas ou fechadas como manda a classe.
+
+| Classe | Papel |
+|---|---|
+| **Corveta** | Pequena e rápida. Pouco casco e 6 portinholas. Foge bem. |
+| **Fragata** | O meio-termo: 8 portinholas, com bordadas de 3. |
+| **Navio de linha** | Muito casco e 10 portinholas (bordadas de 4), mas lento: tem que aguentar o combate. |
+
+- **Em aberto:**
+  - Os números de cada classe e o preço (placeholders em §17).
+  - Se o navio novo chega com o **casco inteiro** (placeholder: sim, é um navio novo) ou com o mesmo dano do antigo.
+  - Se dá para voltar a um navio **menor** (placeholder: não, só maior).
+  - Se as classes viram desbloqueios da meta-progressão (ex.: começar uma run já na Fragata).
 
 ## 4. Portinholas
 
-- **Definido:** as armas são montadas em **8 portinholas fixas no próprio navio** e viajam com ele: **1 na proa** (o caça-proa), **3 a bombordo** (lado esquerdo), **3 a estibordo** (lado direito) e **1 na popa** (o caça-popa). As **bordadas** (os 3 de cada lado) são o forte do navio, como num navio de guerra de verdade.
+- **Definido:** as armas são montadas em **portinholas fixas no próprio navio** e viajam com ele: **1 na proa** (o caça-proa), as **bordadas** a bombordo (lado esquerdo) e a estibordo (lado direito), e **1 na popa** (o caça-popa). O tamanho das bordadas depende da classe (§3.1): 2 de cada lado na Corveta, 3 na Fragata e 4 no Navio de linha. As bordadas são o forte do navio, como num navio de guerra de verdade.
 - **Definido:** cada portinhola **só atira dentro do seu arco de tiro**: a proa para a frente, a popa para trás e as laterais para o próprio lado. **Nenhuma cobre 360°.** Como no Space Hauler, a decisão "qual arma vai em qual portinhola" é o centro do jogo.
-- **Definido:** **4 portinholas começam fechadas** e se abrem com ouro, uma de cada vez, numa melhoria chamada **Portinholas** (§6). O jogador escolhe qual abrir. Placeholder: começam abertas a proa, a popa e a do meio de cada bordada.
+- **Definido:** **parte das portinholas começa fechada** e se abre com ouro, uma de cada vez, numa melhoria chamada **Portinholas** (§6). O jogador escolhe qual abrir. Placeholder: na Corveta, 2 fechadas (as da frente das bordadas); na Fragata, 4 (as das pontas das bordadas); no Navio de linha, 4 (as das pontas).
 - **Em aberto:**
-  - O tamanho dos arcos. Placeholder: os 8 com 180°.
-  - Quais portinholas começam abertas e o preço de abrir cada uma (placeholder: 60, 80, 100 e 120, nesta ordem, para qualquer portinhola).
+  - O tamanho dos arcos. Placeholder: todos com 180°.
+  - Quais portinholas começam abertas e o preço de abrir cada uma (placeholder: 60, 80, 100 e 120, nesta ordem, para qualquer portinhola; o preço volta ao começo quando se troca de navio).
 
 ## 5. Armas
 
@@ -109,7 +127,7 @@
   - **melhorar** uma arma já montada;
   - **trocar** uma arma: vender a atual (recebendo parte do valor) e comprar outra no lugar;
   - comprar um nível de uma **melhoria do navio** (abaixo).
-- **Definido: melhorias do navio.** São da própria fragata, fora das portinholas, compradas **em níveis com ouro**, a qualquer momento da run (inclusive no meio de um trecho e no Porto):
+- **Definido: melhorias do navio.** São do próprio navio, fora das portinholas, compradas **em níveis com ouro**, a qualquer momento da run (inclusive no meio de um trecho e no Porto):
 
 | Melhoria | O que cada nível faz |
 |---|---|
@@ -182,15 +200,16 @@
 ## 10. Porto
 
 - **Definido:** o **Porto** é um tipo de nó do mapa de rota. Nele, o jogador **repara o casco pagando ouro**. É o único jeito de recuperar muito casco de uma vez (a Tripulação só conserta devagar).
+- **Definido:** o Porto tem um **estaleiro**: é o único lugar onde se **troca de navio** por um maior (§3.1).
 - **Em aberto:**
   - Se o Porto tem combate. Placeholder: **não**: é uma parada sem piratas, com uma tela de reparo, e não conta como trecho concluído.
   - Preço do reparo. Placeholder: 1 de ouro repara 2 de casco.
-  - Quantos Portos aparecem. Placeholder: no máximo um por camada, com 25% de chance nas camadas do meio (nunca na primeira nem na do destino).
-  - Se o Porto vende outras coisas (armas mais baratas, habilidades). Placeholder: reparo e as melhorias do navio (Forro de cobre, Velame, Tripulação).
+  - Quantos Portos aparecem. Placeholder: no máximo um por camada, com 40% de chance nas camadas do meio (nunca na primeira nem na do destino). Subiu de 25% quando o Porto passou a vender navios.
+  - Se o Porto vende outras coisas (armas mais baratas, habilidades). Placeholder: reparo, as melhorias do navio (Forro de cobre, Velame, Tripulação) e os navios maiores.
 
 ## 11. Progressão Permanente (Meta)
 
-- **Definido:** quando a run acaba, o jogador recomeça do zero, mas mantém **desbloqueios permanentes**.
+- **Definido:** quando a run acaba, o jogador recomeça do zero (de volta à **Corveta**), mas mantém **desbloqueios permanentes**.
 - **Em aberto:**
   - **O que** é desbloqueado (armas, habilidades, navios, portinholas abertas no começo, bônus iniciais).
   - **Como** se desbloqueia.
@@ -205,9 +224,9 @@
 ## 13. Estilo Visual
 
 - **Definido:** **pixel art isométrica 2D**, como os protótipos da série Hauler: isométrico 2:1, contorno escuro seletivo, luz do alto à esquerda, feita no **PixelLab** como redesenho das formas vetoriais do protótipo. O estilo passa por um **teste com poucos sprites** antes do lote completo.
-- **Definido:** a fragata do jogador tem a estética da **Marinha britânica do século XVIII** à la *Piratas do Caribe*: casco quase preto com a **faixa ocre** das portinholas, velas creme, convés de madeira, bandeira azul com a cruz vermelha na popa, fuzileiros de casaca vermelha. Os piratas têm cascos de madeira gasta, **velas pretas** e a bandeira de caveira.
+- **Definido:** os navios do jogador têm a estética da **Marinha britânica do século XVIII** à la *Piratas do Caribe*: casco quase preto com a **faixa ocre** das portinholas, velas creme, convés de madeira, bandeira azul com a cruz vermelha na popa, fuzileiros de casaca vermelha. Os piratas têm cascos de madeira gasta, **velas pretas** e a bandeira de caveira.
 - **Definido:** o plano do jogo é o **mar**: azul-petróleo com cristas de onda presas à superfície (elas correm para trás quando o navio anda), **esteira de espuma** atrás do navio, **boias** vermelhas a bombordo e verdes a estibordo a cada 100 m (com a distância até o fim), **ilhas** com coqueiros ao longe, um **farol** no começo e no fim de cada trecho e o **porto de destino** com um forte no último. A Tempestade escurece o mar e traz chuva e relâmpagos.
-- **Definido:** o mastreame é um sprite separado do casco, um para cada posição das velas, e fica **meio transparente** enquanto o jogador mexe nas portinholas (senão as velas escondem as armas de bombordo).
+- **Definido:** cada classe de navio tem seu casco e seu mastreame; o mastreame é um sprite separado do casco, um para cada posição das velas, e fica **meio transparente** enquanto o jogador mexe nas portinholas (senão as velas escondem as armas de bombordo).
 - **Em aberto:** paleta final; quantas direções cada navio inimigo precisa (no protótipo, um sprite só por inimigo, sempre com a proa para a frente da rota).
 
 ## 14. HUD / UI
@@ -215,7 +234,7 @@
 **Definido:** o que fica na tela durante o trecho é derivado das mecânicas:
 
 - Ouro atual.
-- Casco (atual / máximo).
+- A classe do navio e o casco (atual / máximo).
 - Progresso do trecho e o tipo de trecho.
 - **Velas:** as 3 posições (a atual destacada), a velocidade do navio comparada à dos piratas e quantos inimigos ficaram para trás neste trecho.
 - Barra de compra com as armas liberadas e seus custos.
@@ -224,7 +243,7 @@
 - Botões das habilidades com cooldown visível.
 - Na Tempestade, a contagem até a próxima rajada.
 - No mapa de rota: o tipo de cada nó (ícone e nome), o risco e o bônus de ouro.
-- No Porto: casco, ouro, botões de reparo e das melhorias.
+- No Porto: casco, ouro, botões de reparo e das melhorias, e o estaleiro com os navios maiores (preço, casco, portinholas, velocidades e quanto as armas atuais rendem na troca).
 
 **Em aberto:** layout final, indicador de inimigos fora da tela.
 
@@ -241,7 +260,8 @@
 
 **Definido:** entra no MVP:
 
-- Navio navegando sozinho numa rota isométrica no mar, com casco, **velas em 3 posições** e 8 portinholas de arco limitado (4 fechadas no começo).
+- Navio navegando sozinho numa rota isométrica no mar, com casco, **velas em 3 posições** e portinholas de arco limitado (parte fechada no começo).
+- As **3 classes de navio** (§3.1), com a troca no Porto.
 - As 4 armas da §5, com compra, upgrade e venda por ouro em tempo real.
 - As 4 melhorias do navio (§6).
 - Os 4 inimigos da §8 (mais o pirata a bordo que a chalupa solta).
@@ -256,7 +276,7 @@
 
 - Arte final de todos os objetos e áudio.
 - Mais armas, inimigos, habilidades e tipos de nó no mapa.
-- Outros navios.
+- Mais classes de navio ou variações (ex.: um bergantim entre a Corveta e a Fragata).
 - Leaderboard.
 
 ### Placeholders de Balanceamento
@@ -265,8 +285,7 @@
 
 | Item | Valor placeholder |
 |---|---|
-| Navio | 500 de casco, raio de colisão 1,6 m |
-| Velas | Rizadas 6 m/s, Meio pano 10 m/s, Pano cheio 13 m/s; aceleração 3 m/s² |
+| Velas | aceleração 3 m/s² (as velocidades vêm da classe, abaixo) |
 | Ritmo do mar (piratas) | 10 m/s |
 | Trecho | 900 m (~90 s a Meio pano) |
 | Ouro inicial da run | 100 |
@@ -278,12 +297,19 @@
 | Portinholas | abrir custa 60, 80, 100 e 120 (a 1ª, 2ª, 3ª e 4ª abertas) |
 | Reparo no Porto | 1 de ouro = 2 de casco |
 
-| Portinhola | Posição (m, a partir do centro do navio) | Arco | Começa |
-|---|---|---|---|
-| Proa | (3,2, 0), virada para frente | 180° | aberta |
-| Bombordo frente / meio / trás | (1,7, 1) / (0,1, 1) / (−1,5, 1), viradas para a esquerda | 180° | só a do meio aberta |
-| Estibordo frente / meio / trás | (1,7, −1) / (0,1, −1) / (−1,5, −1), viradas para a direita | 180° | só a do meio aberta |
-| Popa | (−3,1, 0), virada para trás | 180° | aberta |
+| Classe | Preço no Porto | Casco | Raio de colisão | Velas: Rizadas / Meio / Cheio | Portinholas (abertas no começo) |
+|---|---|---|---|---|---|
+| Corveta | — (a run começa nela) | 350 | 1,3 m | 7 / 11 / 15 m/s | 6 (4) |
+| Fragata | 250 | 500 | 1,6 m | 6 / 10 / 13 m/s | 8 (4) |
+| Navio de linha | 450 | 800 | 2,0 m | 5 / 9 / 11,5 m/s | 10 (6) |
+
+Portinholas de cada classe (m, a partir do centro do navio; todas com arco de 180°; a proa virada para frente, a popa para trás, bombordo para a esquerda e estibordo para a direita):
+
+| Classe | Proa | Bordadas (x; y = ±lado) | Popa | Fechadas no começo |
+|---|---|---|---|---|
+| Corveta | (2,6, 0) | x = 0,9 e −0,7; y = ±0,8 | (−2,5, 0) | as da frente (x = 0,9) |
+| Fragata | (3,2, 0) | x = 1,7, 0,1 e −1,5; y = ±1 | (−3,1, 0) | as das pontas (x = 1,7 e −1,5) |
+| Navio de linha | (4, 0) | x = 2,4, 0,8, −0,8 e −2,4; y = ±1,2 | (−3,9, 0) | as das pontas (x = 2,4 e −2,4) |
 
 | Arma | Custo (e custo de upgrade por nível) | Alcance | Efeito |
 |---|---|---|---|
@@ -308,7 +334,7 @@
 | Arco de spawn | Mar aberto: 145° a 215° (trás); Recifes: −110° a 110° (frente e lados); Enseada: 0° a 360°; Tempestade: 100° a 260° (trás e lados) |
 | Inimigo sai do jogo | a mais de 40 m do navio (sem ouro) |
 | Camadas da rota | 6 (5 comuns + destino), 2 a 3 nós por camada |
-| Porto | até 1 por camada do meio, 25% de chance |
+| Porto | até 1 por camada do meio, 40% de chance |
 | Risco | Mar aberto 0, Recifes 1, Enseada 2, Tempestade 1; cada ponto dá +25% de ouro |
 | Galeão aparece em | 30% do último trecho |
 | Rochedos | 0,4 por segundo a Meio pano (a densidade é por distância), 34 a 42 m à frente, até 16 m para cada lado; raio 0,8 a 2,2 m; dano = 16 × raio × (velocidade ÷ ritmo do mar) |
@@ -325,6 +351,7 @@
 - **A troca "fuga custa saque" precisa morder.** Na primeira leitura do protótipo (piloto automático), o Pano cheio no Mar aberto custa ~60% menos casco e ~30% menos ouro que o Meio pano, o que parece uma troca de verdade; mas Pano cheio o tempo todo perde feio nos Recifes e na Tempestade, então a decisão muda com o tipo de trecho, que é a intenção. Falta conferir jogando se ela se sustenta.
 - **Profundidade da decisão de portinhola.** Herdado do Space Hauler: os padrões de ataque por tipo de trecho (§9) existem para que "qual arma em qual lado" mude de um trecho para o outro.
 - **Peso da Enseada pirata.** Como a Rota pirata do Space Hauler, ela custa pouco casco e paga mais ouro.
+- **A escada de navios.** No piloto automático, com o navio fixo a run inteira, a Corveta chega ao porto em 27 de 60 runs, a Fragata em 34 e o Navio de linha em 44: o navio maior ajuda, como devia. Falta ver jogando se a troca (perder as armas pela metade do valor) pesa o bastante e se a lentidão do Navio de linha incomoda.
 - **Economia generosa.** O piloto automático termina os trechos com ouro sobrando para tudo; o custo das melhorias ou o ouro por pirata precisa ser revisto.
 - Números das velas e se existem mais navios (§3).
 - Arcos e portinholas abertas no começo (§4).
@@ -4477,10 +4504,155 @@ namespace SeaHauler.UI
 }
 ```
 
-### 7.7 O Porto: `PortPanel`
+### 7.7 As classes de navio: `ShipClassDef`
+
+A run começa na Corveta, e no Porto dá para comprar um navio maior (Parte 1 §3.1). Cada classe é um asset com casco, velocidades das velas, portinholas e sprites. Até aqui esses números moravam no `GameConfig` (casco, raio e velocidades) e nas 8 portinholas montadas à mão na Fase 2; a partir desta seção eles vêm da classe.
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Data/ShipClassDef.cs
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace SeaHauler.Data
+{
+    // Uma portinhola da classe: o mesmo que a Gunport tinha no Inspector.
+    [Serializable]
+    public struct GunportSpec
+    {
+        public string label;
+        public Vector2 offset;          // metros a partir do centro do navio
+        public float facingDegrees;     // 0 proa, 90 bombordo, -90 estibordo, 180 popa
+        [Range(10f, 359f)] public float arcDegrees;
+        public bool startsOpen;
+    }
+
+    // POR QUE: o navio maior aguenta e atira mais, mas corre menos (Parte 1 §3.1).
+    // Tudo que muda de uma classe para outra fica num asset, para criar ou
+    // balancear uma classe sem abrir código.
+    // ESTRATÉGIA: o ShipController lê este asset em ApplyClass e reconfigura as
+    // portinholas e os sprites; o ShipHull e o SailController leem casco e
+    // velocidades daqui em vez do GameConfig.
+    [CreateAssetMenu(menuName = "Sea Hauler/Ship Class", fileName = "ShipClass")]
+    public class ShipClassDef : ScriptableObject
+    {
+        public string displayName = "Corveta";
+        public string shortDescription = "Rápida e leve: foge bem, aguenta pouco";
+        public int cost;                     // preço no Porto (a classe inicial não é vendida)
+
+        [Header("Casco e velas")]
+        public float hull = 350f;
+        public float radius = 1.3f;          // raio de colisão com rochedos
+        public float reefedSpeed = 7f;       // m/s
+        public float halfSpeed = 11f;
+        public float fullSpeed = 15f;        // sem Velame
+
+        [Header("Portinholas")]
+        public List<GunportSpec> gunports = new();
+
+        [Header("Arte")]
+        public Sprite hullSprite;
+        public Sprite[] rigSprites = new Sprite[3]; // Rizadas, Meio pano, Pano cheio
+    }
+}
+```
+
+Na `Gunport` (versão final da Fase 4), adicione o método que aplica uma `GunportSpec`. Ele troca os campos que antes vinham do Inspector e esvazia a portinhola:
+
+```csharp
+        // Reconfigura a portinhola para uma classe de navio (Fase 7): posição, arco e
+        // se começa aberta. Sai sem arma e sem piratas (a troca só acontece no Porto).
+        public void Configure(GunportSpec spec)
+        {
+            _label = spec.label;
+            _offset = spec.offset;
+            _facingDegrees = spec.facingDegrees;
+            _arcDegrees = spec.arcDegrees;
+            _startsOpen = spec.startsOpen;
+            _saboteurs = 0;
+            ResetForRun();
+        }
+```
+
+(adicione `using SeaHauler.Data;` no topo da `Gunport`, se ainda não tiver.)
+
+No `ShipController` (Fase 2), as portinholas deixam de ser só as que estão na cena: o navio passa a ter um **estoque** de portinholas filhas (10, o máximo de uma classe) e liga só as que a classe usa. Troque os campos, o `Awake` e acrescente o `ApplyClass`:
+
+```csharp
+        [SerializeField] private SpriteRenderer _bodyRenderer;      // o casco
+        [SerializeField] private SpriteRenderer _rigRenderer;       // o mastreame (velas)
+        [SerializeField] private ShipClassDef _startClass;          // a Corveta
+        [SerializeField] private CameraFollow _camera;
+        [SerializeField] private float _cameraLeadPerSpeed = 0.4f;
+
+        private readonly List<Gunport> _pool = new();       // todas as portinholas filhas
+        private readonly List<Gunport> _gunports = new();   // só as que a classe usa
+        private Sprite[] _rigSprites = new Sprite[3];
+
+        public ShipClassDef Class { get; private set; }
+
+        private void Awake()
+        {
+            Body = GetComponent<GroundBody>();
+            Hull = GetComponent<ShipHull>();
+            Sails = GetComponent<SailController>();
+            GetComponentsInChildren(true, _pool);
+            foreach (Gunport gunport in _pool) gunport.Bind(this);
+            ApplyClass(_startClass);
+        }
+
+        // Troca o navio: casco, velas e sprites vêm da classe, e o estoque de
+        // portinholas é reconfigurado (as que sobram ficam desligadas). Quem chama
+        // (a run) cuida do ouro das armas e do casco.
+        public void ApplyClass(ShipClassDef def)
+        {
+            Class = def;
+            _gunports.Clear();
+            for (int i = 0; i < _pool.Count; i++)
+            {
+                bool used = i < def.gunports.Count;
+                _pool[i].Clear();
+                _pool[i].gameObject.SetActive(used);
+                if (!used) continue;
+                _pool[i].Configure(def.gunports[i]);
+                _gunports.Add(_pool[i]);
+            }
+            if (_bodyRenderer != null && def.hullSprite != null) _bodyRenderer.sprite = def.hullSprite;
+            _rigSprites = def.rigSprites;
+        }
+```
+
+e, no `Update`, troque `_rigSprites` de campo do Inspector pela cópia da classe (o código do `Update` continua igual, porque o nome é o mesmo). Apague o campo `[SerializeField] private Sprite[] _rigSprites` da Fase 2.
+
+> `GetComponentsInChildren(true, ...)` inclui filhos desligados: sem o `true`, depois da primeira troca as portinholas desligadas sumiriam do estoque.
+
+Agora casco, velas e rochedos leem a classe:
+
+- **`ShipHull`:** troque `GameConfig.I.shipBaseHull` por `_shipCtrl.Class.hull` no `Max`, com o campo `private ShipController _shipCtrl;` preenchido no `Awake` (`_shipCtrl = GetComponent<ShipController>();`, antes do `Current = Max`). Como o `ShipController` aplica a classe no `Awake` dele, garanta a ordem com `[DefaultExecutionOrder(-10)]` no `ShipController`.
+- **`SailController.SpeedOf`:**
+
+```csharp
+        public float SpeedOf(SailSetting setting)
+        {
+            ShipClassDef cls = _ship.Class;
+            return setting switch
+            {
+                SailSetting.Reefed => cls.reefedSpeed,
+                SailSetting.Half => cls.halfSpeed,
+                _ => cls.fullSpeed + (_upgrades != null ? _upgrades.FullSpeedBonus : 0f),
+            };
+        }
+```
+
+  com `private ShipController _ship;` preenchido no `Awake` do `SailController` (`_ship = GetComponent<ShipController>();`).
+- **`ReefField`:** troque `cfg.shipRadius` por `_leg.Ship.Class.radius`.
+- **`GameConfig`:** apague `shipBaseHull`, `shipRadius`, `reefedSpeed`, `halfSpeed` e `fullSpeed` (o compilador aponta quem ainda usa) e mude `portChance` para `0.4`.
+
+### 7.8 O Porto: `PortPanel`
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/UI/PortPanel.cs
+using SeaHauler.Data;
 using SeaHauler.Economy;
 using SeaHauler.Run;
 using SeaHauler.Ship;
@@ -4491,12 +4663,13 @@ using UnityEngine.UI;
 namespace SeaHauler.UI
 {
     // POR QUE: o Porto (Parte 1 §10) é o lugar de recuperar muito casco de uma
-    // vez. Ele não tem combate: é uma tela com reparo, as melhorias do navio e
-    // "zarpar".
-    // ESTRATÉGIA: a tela só mostra e chama o RunManager (reparo, zarpar). As
-    // melhorias usam os mesmos UpgradeButton do HUD (Fase 5), colocados também
-    // nesta tela: nada de código novo para elas. Redesenha quando o ouro ou o
-    // casco mudam.
+    // vez e o único de trocar de navio. Ele não tem combate: é uma tela com
+    // reparo, as melhorias do navio, o estaleiro e "zarpar".
+    // ESTRATÉGIA: a tela só mostra e chama o RunManager (reparo, navio, zarpar).
+    // As melhorias usam os mesmos UpgradeButton do HUD (Fase 5), colocados também
+    // nesta tela: nada de código novo para elas. O estaleiro é refeito a cada
+    // Refresh, com um botão por classe maior que a atual (o mesmo jeito do mapa
+    // de rota). Redesenha quando o ouro ou o casco mudam.
     public class PortPanel : MonoBehaviour
     {
         [SerializeField] private RunManager _run;
@@ -4507,6 +4680,8 @@ namespace SeaHauler.UI
         [SerializeField] private Button _repairAllButton;
         [SerializeField] private TMP_Text _repairAllLabel;
         [SerializeField] private Button _leaveButton;
+        [SerializeField] private Transform _shipOffers;     // container com VerticalLayoutGroup
+        [SerializeField] private Button _shipOfferPrefab;   // botão com um TMP_Text filho
         [SerializeField] private int _repairStep = 50;
 
         private void Start()
@@ -4534,12 +4709,31 @@ namespace SeaHauler.UI
             float all = _run.RepairableAmount(float.MaxValue);
             _repairAllLabel.text = $"Reparar tudo: {all:0} ({_run.RepairCost(all)} ouro)";
             _repairAllButton.interactable = all > 0f;
+
+            RefreshShipOffers();
+        }
+
+        // Um botão por navio maior: preço, casco, portinholas e quanto as armas rendem.
+        private void RefreshShipOffers()
+        {
+            foreach (Transform child in _shipOffers) Destroy(child.gameObject);
+            int refund = _run.WeaponsRefund();
+            foreach (ShipClassDef cls in _run.ShipsForSale())
+            {
+                Button button = Instantiate(_shipOfferPrefab, _shipOffers);
+                ShipClassDef captured = cls; // cópia para o "=>" abaixo lembrar desta classe
+                button.GetComponentInChildren<TMP_Text>().text =
+                    $"{cls.displayName} ({cls.cost} ouro)\n{cls.shortDescription} - casco {cls.hull:0}, " +
+                    $"{cls.gunports.Count} portinholas. Suas armas rendem {refund}.";
+                button.interactable = GoldWallet.Instance.Amount + refund >= cls.cost;
+                button.onClick.AddListener(() => _run.BuyShip(captured));
+            }
         }
     }
 }
 ```
 
-### 7.8 A run: `RunManager`
+### 7.9 A run: `RunManager`
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Run/RunManager.cs
@@ -4561,8 +4755,8 @@ namespace SeaHauler.Run
     // painéis (menu, mapa, Porto, resultado) por cima do jogo. O navio é o
     // mesmo objeto a run inteira: armas, portinholas abertas, melhorias, casco,
     // ouro e a posição das velas continuam de um nó para o outro naturalmente,
-    // e o LegManager só o recoloca no começo da rota. O Porto não chama o
-    // LegManager: é só uma tela. Fora do trecho, as teclas das velas ficam
+    // e o LegManager só o recoloca no começo da rota, até o jogador trocar de
+    // navio no Porto (BuyShip). O Porto não chama o LegManager: é só uma tela. Fora do trecho, as teclas das velas ficam
     // desligadas, para Z/X/C não mexerem no navio atrás de um menu.
     public class RunManager : MonoBehaviour
     {
@@ -4574,6 +4768,7 @@ namespace SeaHauler.Run
         [SerializeField] private List<WeaponDef> _allWeapons = new();
         [SerializeField] private List<LegTypeDef> _legTypes = new();   // Mar aberto, Recifes, Enseada, Tempestade
         [SerializeField] private LegTypeDef _destinationType;          // padrão do último trecho
+        [SerializeField] private List<ShipClassDef> _shipClasses = new(); // Corveta, Fragata, Navio de linha (do menor ao maior)
 
         [Header("Telas")]
         [SerializeField] private GameObject _menuPanel;
@@ -4607,7 +4802,7 @@ namespace SeaHauler.Run
             _legsDone = 0;
 
             _allocation.CancelAll();
-            foreach (Gunport gunport in _ship.Gunports) gunport.ResetForRun();
+            _ship.ApplyClass(_shipClasses[0]);   // toda run começa na Corveta (já esvazia as portinholas)
             _upgrades.ResetLevels();
             _ship.Hull.ResetFull();   // depois das melhorias, para o máximo já ser o sem Forro de cobre
             _ship.Sails.Set(SailSetting.Half);
@@ -4667,6 +4862,36 @@ namespace SeaHauler.Run
             if (amount <= 0f) return;
             if (!GoldWallet.Instance.TrySpend(RepairCost(amount))) return;
             _ship.Hull.Repair(amount);
+        }
+
+        // Classes maiores que a atual (o estaleiro do Porto só vende para cima).
+        public List<ShipClassDef> ShipsForSale()
+        {
+            int at = _shipClasses.IndexOf(_ship.Class);
+            return _shipClasses.GetRange(at + 1, _shipClasses.Count - at - 1);
+        }
+
+        // Quanto as armas montadas rendem se forem vendidas (a troca de navio as vende).
+        public int WeaponsRefund()
+        {
+            int total = 0;
+            foreach (Gunport gunport in _ship.Gunports)
+                if (!gunport.IsEmpty) total += _allocation.SellValue(gunport.Installed);
+            return total;
+        }
+
+        // Botão de um navio no estaleiro (Parte 1 §3.1): as armas voltam como ouro,
+        // as melhorias continuam e o navio novo sai com o casco inteiro (placeholder).
+        public void BuyShip(ShipClassDef cls)
+        {
+            if (!ShipsForSale().Contains(cls)) return;
+            int refund = WeaponsRefund();
+            if (GoldWallet.Instance.Amount + refund < cls.cost) return;
+            GoldWallet.Instance.Add(refund);
+            if (!GoldWallet.Instance.TrySpend(cls.cost)) return;
+            _allocation.CancelAll();
+            _ship.ApplyClass(cls);
+            _ship.Hull.ResetFull();
         }
 
         // Botão "Zarpar" do Porto. O Porto não conta como trecho concluído.
@@ -4745,7 +4970,7 @@ namespace SeaHauler.Run
 
 > A arma nova liberada só aparece na barra de compra na **próxima** run, porque `UnlockedWeapons()` é lido no `NewRun`. É uma escolha de simplicidade, não de design: se o jogo quiser liberar no meio da run, basta chamar `_shop.SetWeapons(UnlockedWeapons())` também no `OnLegEnded`.
 
-### 7.9 Montar na cena
+### 7.10 Montar na cena
 
 1. **LegManager:** desligue `Start On Play`. A partir de agora quem começa os trechos é a run.
 2. **Portinholas:** confira que nenhum `Test Weapon` está preenchido.
@@ -4760,26 +4985,37 @@ namespace SeaHauler.Run
 | `Storm` | Tempestade | Rajadas rasgam o Pano cheio | 1 | 100 / 260 | 0.6 | não | **sim** |
 | `Destination` | Entrada do porto | Perseguição e Galeão | 0 | 145 / 215 | 1 | não | não |
 
-5. **Run:** GameObject `Run` com **RunManager**: `Leg`, `Ship`, `Upgrades` = Ship, `Allocation`, `Shop`, `All Weapons` = os 4 assets de arma, `Leg Types` = OpenSea, Reefs, PirateCove, Storm, `Destination Type` = Destination.
-6. **Painéis** (filhos do Canvas, cada um com uma Image de fundo escura cobrindo a tela inteira, para bloquear cliques no jogo por baixo):
+5. **Classes de navio** (em `ScriptableObjects/Ships/`, **Create → Sea Hauler → Ship Class**), números da Parte 1 §17:
+
+| Asset | Display Name | Cost | Hull | Radius | Reefed / Half / Full | Portinholas |
+|---|---|---|---|---|---|---|
+| `Corvette` | Corveta | 0 | 350 | 1.3 | 7 / 11 / 15 | 6, da tabela "Portinholas de cada classe" |
+| `Frigate` | Fragata | 250 | 500 | 1.6 | 6 / 10 / 13 | 8 (as da Fase 2) |
+| `LineShip` | Navio de linha | 450 | 800 | 2.0 | 5 / 9 / 11.5 | 10 |
+
+   No `Ship`, deixe **10** filhos com **Gunport** (duplique 2 dos da Fase 2): os valores do Inspector deles não importam mais, porque a classe os sobrescreve. Ligue `Start Class` = `Corvette` e `Body Renderer` = o sprite `Body`.
+6. **Run:** GameObject `Run` com **RunManager**: `Leg`, `Ship`, `Upgrades` = Ship, `Allocation`, `Shop`, `All Weapons` = os 4 assets de arma, `Leg Types` = OpenSea, Reefs, PirateCove, Storm, `Destination Type` = Destination, `Ship Classes` = Corvette, Frigate, LineShip (nessa ordem).
+7. **Painéis** (filhos do Canvas, cada um com uma Image de fundo escura cobrindo a tela inteira, para bloquear cliques no jogo por baixo):
    - `MenuPanel`: título "SEA HAULER", texto `MenuStats` e botão "Zarpar" → **On Click** = `Run` → `RunManager.NewRun`.
    - `RoutePanel`: título "Escolha o próximo trecho" e um objeto `Columns` com **HorizontalLayoutGroup** (Spacing `40`, Child Alignment `Middle Center`). Ligue **RouteMapView** no `RoutePanel`, com `Run` = `Run` e `Columns Container` = `Columns`.
-   - `PortPanel`: título "Porto", texto `Status`, botões `RepairStep`, `RepairAll` e `Leave` ("Zarpar"), três botões de melhoria com **UpgradeButton** (os mesmos da Fase 5, duplicados para cá) e o componente **PortPanel** com tudo ligado (`Run`, `Ship`).
+   - `PortPanel`: título "Porto", texto `Status`, botões `RepairStep`, `RepairAll` e `Leave` ("Zarpar"), três botões de melhoria com **UpgradeButton** (os mesmos da Fase 5, duplicados para cá), um objeto `ShipOffers` com **VerticalLayoutGroup** e o componente **PortPanel** com tudo ligado (`Run`, `Ship`, `Ship Offers` = `ShipOffers`, `Ship Offer Prefab` = um Button `420 × 70` com um TextMeshPro filho, salvo em `Prefabs/UI/`).
    - `ResultPanel`: texto `ResultText`, botão "Nova viagem" → `RunManager.NewRun` e botão "Menu" → `RunManager.BackToMenu`.
-7. **Prefabs de UI** (em `Prefabs/UI/`):
+8. **Prefabs de UI** (em `Prefabs/UI/`):
    - `RouteColumn`: um RectTransform vazio com **VerticalLayoutGroup** (Spacing `20`, Child Alignment `Middle Center`) e **Content Size Fitter** (Vertical Fit = Preferred Size).
    - `RouteNodeButton`: um Button `180 × 110` com filhos `Label` (TextMeshPro) e `CurrentFrame` (Image só de borda, dourada).
-8. Na `RouteMapView`, ligue `Column Prefab` = `RouteColumn` e `Node Prefab` = `RouteNodeButton`.
+9. Na `RouteMapView`, ligue `Column Prefab` = `RouteColumn` e `Node Prefab` = `RouteNodeButton`.
 
 ### ✅ Checkpoint da Fase 7
 - O jogo abre no menu, com as estatísticas zeradas na primeira vez.
 - "Zarpar" mostra o mapa: 6 colunas, a última só com "PORTO DE DESTINO (B)"; cada nó mostra o tipo ("Mar aberto", "Recifes", "Enseada pirata", "Tempestade") ou "PORTO"; só os nós da primeira coluna são clicáveis.
 - Escolher um trecho esconde o mapa e começa o trecho **com o padrão do tipo**: nos Recifes, os piratas vêm pela frente e aparecem rochedos; na Enseada, de todo lado; na Tempestade, menos piratas e rajadas.
+- A run começa na **Corveta**: 350 de casco, 6 portinholas (4 abertas) e Pano cheio a 15 m/s.
+- No Porto, o estaleiro mostra a Fragata (250) e o Navio de linha (450), com quanto as armas atuais rendem. Comprar vende as armas, cobra o navio, troca as portinholas e o sprite, e o casco volta cheio no máximo da classe nova (mais o Forro de cobre). Depois de comprar o Navio de linha, o estaleiro fica vazio.
 - Escolher um Porto abre a tela de reparo: "Reparar 50" cobra 25 de ouro; "Reparar tudo" para no casco máximo ou quando o ouro acaba; as melhorias funcionam ali também; "Zarpar" volta ao mapa, e o Porto **não** conta como trecho concluído.
 - Armas, portinholas abertas, melhorias, ouro, casco e a posição das velas continuam de um nó para o outro.
 - No mapa, apertar `C` não muda as velas (as teclas só valem no trecho).
 - No último trecho aparece o Galeão; afundá-lo e chegar ao fim mostra "Você chegou ao porto!".
-- Perder mostra a tela de resultado; "Nova viagem" recomeça com 100 de ouro, navio sem armas, 4 portinholas fechadas, melhorias no nível 0, Meio pano e casco cheio (500).
+- Perder mostra a tela de resultado; "Nova viagem" recomeça com 100 de ouro, de volta à Corveta sem armas, 2 portinholas fechadas, melhorias no nível 0, Meio pano e casco cheio (350).
 - Na primeira run só há canhão longo e fuzileiros na barra; depois de uma run em que concluiu pelo menos 1 trecho, a carronada aparece na próxima.
 - Fechar e abrir o jogo de novo mantém as estatísticas do menu.
 
@@ -4787,8 +5023,8 @@ namespace SeaHauler.Run
 - **Clicar no mapa também clica no navio por trás:** o painel não tem uma Image de fundo com **Raycast Target** ligado, então o `EventSystem` não sabe que o mouse está sobre a UI.
 - **O trecho começa sozinho ao abrir o jogo:** o `Start On Play` do `LegManager` ainda está ligado.
 - **`NullReferenceException` no `RouteNode.ToSettings`:** o `Destination Type` do `RunManager` está vazio, ou a lista `Leg Types` está vazia.
-- **"Nova viagem" começa com casco 750:** o `ResetFull` foi chamado antes do `ResetLevels` das melhorias. A ordem do `NewRun` importa.
-- **"Nova viagem" começa com as 8 portinholas abertas:** o `NewRun` está chamando `Clear` em vez de `ResetForRun` nas portinholas.
+- **"Nova viagem" começa com casco a mais:** o `ResetFull` foi chamado antes do `ResetLevels` das melhorias (ou antes do `ApplyClass`). A ordem do `NewRun` importa.
+- **Depois de trocar de navio, sobram portinholas de outra classe:** o `ShipController` não está desligando as portinholas que a classe não usa, ou o `Awake` pegou o estoque sem `GetComponentsInChildren(true, ...)`.
 - **As estatísticas zeram ao rodar de novo no Editor:** o PlayerPrefs do Editor é separado do da build, mas persiste entre Plays. Se zerar, confira se o `Save()` está sendo chamado. Para apagar de propósito: **Edit → Clear All PlayerPrefs**.
 
 Próxima fase: **Build Web e Próximos Passos**.

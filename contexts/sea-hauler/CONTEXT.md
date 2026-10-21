@@ -1,6 +1,6 @@
 # Sea Hauler
 
-Tower defense em movimento com estrutura roguelite, no mar: uma fragata da Coroa britânica navega sozinha de um porto a outro, fugindo de piratas, e o jogador decide quanto pano içar e quais armas montar em quais portinholas. Jogo próprio, derivado do Space Hauler, mas com glossário independente. Termos em pt-BR.
+Tower defense em movimento com estrutura roguelite, no mar: um navio da Coroa britânica navega sozinho de um porto a outro, fugindo de piratas, e o jogador decide quanto pano içar e quais armas montar em quais portinholas. Jogo próprio, derivado do Space Hauler, mas com glossário independente. Termos em pt-BR.
 
 ## Viagem
 
@@ -29,7 +29,7 @@ Golpe de vento da Tempestade, avisado alguns segundos antes; se pega o navio de 
 _Avoid_: tornado, vento (sozinho)
 
 **Porto**:
-Nó do mapa de rota onde, entre trechos, o jogador repara o casco pagando ouro e compra melhorias do navio. Não tem combate.
+Nó do mapa de rota onde, entre trechos, o jogador repara o casco pagando ouro, compra melhorias do navio e troca de navio no estaleiro. Não tem combate.
 _Avoid_: estação, loja, doca
 
 **Porto de destino**:
@@ -39,8 +39,12 @@ _Avoid_: destino (sozinho, quando houver ambiguidade)
 ## O navio
 
 **Navio**:
-A fragata do jogador e "torre" do tower defense; segue a rota sozinha (o jogador não vira o leme) e afunda quando o casco chega a zero.
+O navio do jogador e "torre" do tower defense; segue a rota sozinho (o jogador não vira o leme) e afunda quando o casco chega a zero.
 _Avoid_: nave, barco, player
+
+**Classe de navio**:
+O tipo do navio do jogador: **Corveta** (a inicial, rápida e leve), **Fragata** ou **Navio de linha** (muito casco e portinholas, mas lento). Troca-se por uma maior no Porto; as armas voltam como ouro. No código, `ShipClassDef`.
+_Avoid_: modelo, nível do navio, tier
 
 **Velas**:
 O controle de velocidade do jogador, em três posições: **Rizadas** (devagar), **Meio pano** (o ritmo dos piratas) e **Pano cheio** (mais rápido que os piratas). No código, `SailSetting`.
@@ -55,11 +59,11 @@ Estado em que o navio fica preso em Rizadas por alguns segundos, depois de uma r
 _Avoid_: atordoado, stun
 
 **Portinhola**:
-Um dos 8 pontos fixos do navio onde se monta uma arma: 1 na proa (caça-proa), 3 a bombordo, 3 a estibordo e 1 na popa (caça-popa). Cada uma só atira dentro do próprio arco de tiro; nenhuma cobre 360°. Quatro começam fechadas. No código, `Gunport`.
+Um dos pontos fixos do navio onde se monta uma arma: 1 na proa (caça-proa), as bordadas a bombordo e a estibordo e 1 na popa (caça-popa). Quantas são depende da classe (6, 8 ou 10). Cada uma só atira dentro do próprio arco de tiro; nenhuma cobre 360°. Parte delas começa fechada. No código, `Gunport`.
 _Avoid_: hardpoint, slot, encaixe
 
 **Bordada**:
-O conjunto das portinholas de um lado do navio (3 de cada lado). Também é o nome de uma habilidade (todas as armas recarregam em dobro).
+O conjunto das portinholas de um lado do navio (2, 3 ou 4, conforme a classe). Também é o nome de uma habilidade (todas as armas recarregam em dobro).
 _Avoid_: lateral (para o conjunto)
 
 **Arco de tiro**:
@@ -71,7 +75,7 @@ O que se monta numa portinhola e mira e atira sozinho: Canhão longo, Carronada,
 _Avoid_: defesa, torre
 
 **Melhoria do navio**:
-Upgrade da própria fragata, fora das portinholas, comprado em níveis com ouro: **Forro de cobre** (+ casco máximo e − dano de colisão), **Velame** (Pano cheio mais rápido), **Tripulação** (conserta o casco devagar durante o trecho) e **Portinholas** (abre uma portinhola fechada).
+Upgrade do próprio navio, fora das portinholas, comprado em níveis com ouro: **Forro de cobre** (+ casco máximo e − dano de colisão), **Velame** (Pano cheio mais rápido), **Tripulação** (conserta o casco devagar durante o trecho) e **Portinholas** (abre uma portinhola fechada).
 _Avoid_: anexo, módulo, carenagem
 
 **Forro de cobre**:

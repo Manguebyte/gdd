@@ -1,6 +1,26 @@
 // Gerado por _tools/baixar.py: sprites PixelLab do Sea Hauler e o ponto de apoio
 // no plano (âncora, em px do PNG) de cada um. Não edite à mão.
 window.SEA_SPRITES = {
+  "corvette": {
+    "path": "corvette",
+    "ax": 76,
+    "ay": 75
+  },
+  "corvette-rig-reefed": {
+    "path": "corvette-rig-reefed",
+    "ax": 52,
+    "ay": 113
+  },
+  "corvette-rig-half": {
+    "path": "corvette-rig-half",
+    "ax": 52,
+    "ay": 114
+  },
+  "corvette-rig-full": {
+    "path": "corvette-rig-full",
+    "ax": 53,
+    "ay": 114
+  },
   "ship": {
     "path": "ship",
     "ax": 94,
@@ -20,6 +40,26 @@ window.SEA_SPRITES = {
     "path": "rig-full",
     "ax": 50,
     "ay": 140
+  },
+  "line": {
+    "path": "line",
+    "ax": 114,
+    "ay": 96
+  },
+  "line-rig-reefed": {
+    "path": "line-rig-reefed",
+    "ax": 60,
+    "ay": 165
+  },
+  "line-rig-half": {
+    "path": "line-rig-half",
+    "ax": 59,
+    "ay": 169
+  },
+  "line-rig-full": {
+    "path": "line-rig-full",
+    "ax": 63,
+    "ay": 170
   },
   "schooner": {
     "path": "enemies/schooner",

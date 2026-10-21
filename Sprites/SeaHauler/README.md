@@ -6,8 +6,8 @@ Sprites do protótipo `prototipos/sea-hauler/`, que os carrega direto desta past
 
 | Pasta | Conteúdo |
 |---|---|
-| `ship.png` | O casco da fragata, sem mastros nem armas (as armas são sprites à parte, nas portinholas). |
-| `rig-reefed.png`, `rig-half.png`, `rig-full.png` | O mastreame, um por posição das velas (Rizadas, Meio pano, Pano cheio). Mesma âncora do casco: encaixam sozinhos. |
+| `ship.png`, `corvette.png`, `line.png` | O casco da Fragata, da Corveta e do Navio de linha, sem mastros nem armas (as armas são sprites à parte, nas portinholas). |
+| `rig-*.png`, `corvette-rig-*.png`, `line-rig-*.png` | O mastreame de cada classe, um por posição das velas (`-reefed`, `-half`, `-full`). Mesma âncora do casco da classe: encaixam sozinhos. |
 | `enemies/` | `schooner` (escuna), `fireship` (brulote), `sloop` (chalupa), `boarder` (pirata a bordo), `galleon-bow` e `galleon-hull` (as duas peças do Galeão). |
 | `rocks/` | `rock-1`, `rock-2` e `rock-3` (o jogo sorteia um por rochedo). |
 | `turrets/<id>/<direção>.png` | As 4 armas (`longgun`, `carronade`, `chainshot`, `marines`) nas 8 direções do PixelLab. O jogo escolhe a direção mais perto da mira. |

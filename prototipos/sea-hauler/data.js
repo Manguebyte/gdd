@@ -7,10 +7,8 @@
 
   // GameConfig (guia Unity, Fase 2.1).
   const CONFIG = {
-    shipBaseHull: 500,
     seaSpeed: 10,                // m/s: o ritmo de cruzeiro dos piratas (eles não acompanham o Pano cheio)
     sailAcceleration: 3,         // m/s²: quanto a velocidade do navio muda por segundo ao trocar as velas
-    shipRadius: 1.6,             // m: raio de colisão do navio (rochedos)
     legLength: 900,              // m
     laneHalfWidth: 6,            // m: largura da área dos barris de pólvora
     enemyDespawnDistance: 40,    // m: quem fica mais longe que isso do navio sai do jogo, sem ouro
@@ -24,18 +22,18 @@
     routeLayers: 6,              // inclui o trecho do chefe
     minNodesPerLayer: 2,
     maxNodesPerLayer: 3,
-    portChance: 0.25,            // chance de uma camada do meio ter um Porto
+    portChance: 0.4,             // chance de uma camada do meio ter um Porto
     goldBonusPerRisk: 0.25,
     carryHullBetweenLegs: true,  // Definido: o casco só volta no Porto (e devagar, com a Tripulação)
     bossBlocksArrival: true,     // Em aberto (Parte 1 §8)
   };
 
   // As 3 posições das velas (Parte 1 §3). O jogador troca em tempo real.
-  // A velocidade do Pano cheio sobe com o Velame.
+  // A velocidade de cada posição vem da classe do navio (SHIPS); o Pano cheio sobe com o Velame.
   const SAILS = [
-    { id: 'reefed', name: 'Rizadas',    short: 'Devagar: mais combate, rochedos doem menos', speed: 6 },
-    { id: 'half',   name: 'Meio pano',  short: 'O ritmo dos piratas',                         speed: 10 },
-    { id: 'full',   name: 'Pano cheio', short: 'Foge de quem vem por trás',                    speed: 13 },
+    { id: 'reefed', name: 'Rizadas',    short: 'Devagar: mais combate, rochedos doem menos' },
+    { id: 'half',   name: 'Meio pano',  short: 'Perto do ritmo dos piratas' },
+    { id: 'full',   name: 'Pano cheio', short: 'Foge de quem vem por trás' },
   ];
   const START_SAIL = 1;
 
@@ -55,7 +53,7 @@
     costs: [60, 80, 100, 120],       // a 1ª aberta custa 60, a 2ª 80...
   };
 
-  // Porto (Parte 1 §10): nó sem combate onde se repara o casco.
+  // Porto (Parte 1 §10): nó sem combate onde se repara o casco e se troca de navio.
   const PORT = {
     hullPerGold: 2,                  // 1 de ouro repara 2 de casco
   };
@@ -88,20 +86,63 @@
   const LEG_TYPE_ORDER = ['open', 'reefs', 'cove', 'storm'];
   const BOSS_LEG_TYPE = 'open';  // placeholder: o último trecho é perseguição por trás
 
-  // As 8 portinholas (Parte 1 §4). offset em metros a partir do centro do navio;
-  // facing em graus (0 frente, 90 bombordo/esquerda, -90 estibordo/direita, 180 trás).
-  // Nenhuma cobre 360°. As bordadas (3 de cada lado) são o forte do navio.
+  // As classes de navio (Parte 1 §3): a run começa na Corveta, e no Porto dá para
+  // comprar uma classe maior (as armas voltam como ouro, as melhorias continuam).
+  // O maior aguenta e atira mais, mas corre menos: fugir fica mais difícil.
+  // gunports: offset em metros a partir do centro do navio; facing em graus (0 frente,
+  // 90 bombordo/esquerda, -90 estibordo/direita, 180 trás). Nenhuma cobre 360°.
   // open: começa aberta; as outras se abrem com ouro (Portinholas).
-  const GUNPORT_LIST = [
-    { id: 'proa', label: 'Proa (caça-proa)',   offset: [3.2, 0],     facing: 0,   arc: 180, open: true },
-    { id: 'bb1',  label: 'Bombordo frente',    offset: [1.7, 1.0],   facing: 90,  arc: 180, open: false },
-    { id: 'bb2',  label: 'Bombordo meio',      offset: [0.1, 1.0],   facing: 90,  arc: 180, open: true },
-    { id: 'bb3',  label: 'Bombordo trás',      offset: [-1.5, 1.0],  facing: 90,  arc: 180, open: false },
-    { id: 'eb1',  label: 'Estibordo frente',   offset: [1.7, -1.0],  facing: -90, arc: 180, open: false },
-    { id: 'eb2',  label: 'Estibordo meio',     offset: [0.1, -1.0],  facing: -90, arc: 180, open: true },
-    { id: 'eb3',  label: 'Estibordo trás',     offset: [-1.5, -1.0], facing: -90, arc: 180, open: false },
-    { id: 'popa', label: 'Popa (caça-popa)',   offset: [-3.1, 0],    facing: 180, arc: 180, open: true },
-  ];
+  // draw: medidas do desenho vetorial (o protótipo) e os sprites PixelLab da classe.
+  const port = (id, label, x, y, facing, open) => ({ id, label, offset: [x, y], facing, arc: 180, open });
+  const SHIPS = {
+    corvette: {
+      id: 'corvette', name: 'Corveta', short: 'Rápida e leve: foge bem, aguenta pouco',
+      cost: 0, hull: 350, radius: 1.3, speeds: [7, 11, 15],
+      gunports: [
+        port('proa', 'Proa (caça-proa)', 2.6, 0, 0, true),
+        port('bb1', 'Bombordo frente', 0.9, 0.8, 90, false),
+        port('bb2', 'Bombordo trás', -0.7, 0.8, 90, true),
+        port('eb1', 'Estibordo frente', 0.9, -0.8, -90, false),
+        port('eb2', 'Estibordo trás', -0.7, -0.8, -90, true),
+        port('popa', 'Popa (caça-popa)', -2.5, 0, 180, true),
+      ],
+      draw: { L: 5.4, W: 1.5, H: 12, masts: [{ x: 1.6, h: 62 }, { x: 0.2, h: 70 }, { x: -1.2, h: 54 }], yard: 1.1, hullSprite: 'corvette', rigSprite: 'corvette-rig' },
+    },
+    frigate: {
+      id: 'frigate', name: 'Fragata', short: 'O meio-termo',
+      cost: 250, hull: 500, radius: 1.6, speeds: [6, 10, 13],
+      gunports: [
+        port('proa', 'Proa (caça-proa)', 3.2, 0, 0, true),
+        port('bb1', 'Bombordo frente', 1.7, 1.0, 90, false),
+        port('bb2', 'Bombordo meio', 0.1, 1.0, 90, true),
+        port('bb3', 'Bombordo trás', -1.5, 1.0, 90, false),
+        port('eb1', 'Estibordo frente', 1.7, -1.0, -90, false),
+        port('eb2', 'Estibordo meio', 0.1, -1.0, -90, true),
+        port('eb3', 'Estibordo trás', -1.5, -1.0, -90, false),
+        port('popa', 'Popa (caça-popa)', -3.1, 0, 180, true),
+      ],
+      draw: { L: 6.8, W: 1.9, H: 14, masts: [{ x: 2.3, h: 74 }, { x: 0.8, h: 84 }, { x: -0.8, h: 64 }], yard: 1.3, hullSprite: 'ship', rigSprite: 'rig' },
+    },
+    lineship: {
+      id: 'lineship', name: 'Navio de linha', short: 'Aguenta muito, mas é lento',
+      cost: 450, hull: 800, radius: 2.0, speeds: [5, 9, 11.5],
+      gunports: [
+        port('proa', 'Proa (caça-proa)', 4.0, 0, 0, true),
+        port('bb1', 'Bombordo 1', 2.4, 1.2, 90, false),
+        port('bb2', 'Bombordo 2', 0.8, 1.2, 90, true),
+        port('bb3', 'Bombordo 3', -0.8, 1.2, 90, true),
+        port('bb4', 'Bombordo 4', -2.4, 1.2, 90, false),
+        port('eb1', 'Estibordo 1', 2.4, -1.2, -90, false),
+        port('eb2', 'Estibordo 2', 0.8, -1.2, -90, true),
+        port('eb3', 'Estibordo 3', -0.8, -1.2, -90, true),
+        port('eb4', 'Estibordo 4', -2.4, -1.2, -90, false),
+        port('popa', 'Popa (caça-popa)', -3.9, 0, 180, true),
+      ],
+      draw: { L: 8.4, W: 2.3, H: 18, masts: [{ x: 2.9, h: 86 }, { x: 1.0, h: 96 }, { x: -1.1, h: 76 }], yard: 1.6, hullSprite: 'line', rigSprite: 'line-rig' },
+    },
+  };
+  const SHIP_ORDER = ['corvette', 'frigate', 'lineship'];
+  const START_SHIP = 'corvette';
 
   // WeaponDef (guia Unity, Fase 4.1).
   const WEAPONS = {
@@ -172,7 +213,7 @@
 
   const DATA = {
     CONFIG, SAILS, START_SAIL, COPPER, RIGGING, CREW, GUNPORTS, PORT, ROCKS, SQUALLS,
-    LEG_TYPES, LEG_TYPE_ORDER, BOSS_LEG_TYPE, GUNPORT_LIST, WEAPONS, WEAPON_ORDER,
+    LEG_TYPES, LEG_TYPE_ORDER, BOSS_LEG_TYPE, SHIPS, SHIP_ORDER, START_SHIP, WEAPONS, WEAPON_ORDER,
     ENEMIES, ENEMY_POOL, ABILITIES,
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = DATA;

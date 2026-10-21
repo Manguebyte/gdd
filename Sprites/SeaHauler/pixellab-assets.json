@@ -99,5 +99,45 @@
   "turrets/chainshot": {
     "object_id": "8b09863a-f65b-4f2c-b9ec-233fcbcb21e5",
     "tool": "create_object_pro_flash (8 direções)"
+  },
+  "corvette": {
+    "job_id": "1dc30c95-3b4b-4440-a51b-3579b8701382",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/corvette.png"
+  },
+  "corvette-rig-reefed": {
+    "job_id": "70dd44e4-b341-47f5-9789-85e57b413d4f",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/corvette-rig-reefed.png"
+  },
+  "corvette-rig-half": {
+    "job_id": "286c38f8-911a-4f95-9571-8e28353602db",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/corvette-rig-half.png"
+  },
+  "corvette-rig-full": {
+    "job_id": "51e008f3-f146-42dc-97c5-625c9066fb39",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/corvette-rig-full.png"
+  },
+  "line": {
+    "job_id": "68bca31d-9116-46a6-8efc-af7522c05915",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/line.png"
+  },
+  "line-rig-reefed": {
+    "job_id": "405fc59c-4d4d-4c7b-9128-4df205f633eb",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/line-rig-reefed.png"
+  },
+  "line-rig-half": {
+    "job_id": "24a21fb6-046d-45c7-9cae-715360c415e5",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/line-rig-half.png"
+  },
+  "line-rig-full": {
+    "job_id": "c7f3b043-1428-4452-8c12-7e58c4a3898a",
+    "tool": "edit_image_pro_flash",
+    "ref": "_refs/line-rig-full.png"
   }
 }

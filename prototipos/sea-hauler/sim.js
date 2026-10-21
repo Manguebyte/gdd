@@ -12,7 +12,7 @@
   const D = (typeof module !== 'undefined' && module.exports) ? require('./data.js') : root.SEA_DATA;
   const {
     CONFIG, SAILS, START_SAIL, COPPER, RIGGING, CREW, GUNPORTS, PORT, ROCKS, SQUALLS,
-    LEG_TYPES, LEG_TYPE_ORDER, BOSS_LEG_TYPE, GUNPORT_LIST, WEAPONS, WEAPON_ORDER,
+    LEG_TYPES, LEG_TYPE_ORDER, BOSS_LEG_TYPE, SHIPS, SHIP_ORDER, START_SHIP, WEAPONS, WEAPON_ORDER,
     ENEMIES, ENEMY_POOL, ABILITIES,
   } = D;
 
@@ -42,11 +42,12 @@
       this.listeners = [];
 
       this.ship = {
-        x: 0, y: 0, hull: this.cfg.shipBaseHull, flash: 0,
-        sail: START_SAIL, speed: SAILS[START_SAIL].speed, torn: 0,
+        x: 0, y: 0, cls: SHIPS[START_SHIP], hull: SHIPS[START_SHIP].hull, flash: 0,
+        sail: START_SAIL, speed: SHIPS[START_SHIP].speeds[START_SAIL], torn: 0,
         copper: 0, rigging: 0, crew: 0,
       };
-      this.gunports = GUNPORT_LIST.map((g, i) => Object.assign({}, g, { index: i, isOpen: g.open, weapon: null, saboteurs: 0 }));
+      this.gunports = [];
+      this.setClass(SHIPS[START_SHIP]);
       this.enemies = [];
       this.rocks = [];
       this.barrels = [];
@@ -80,7 +81,7 @@
     range(a, b) { return a + (b - a) * this.rand(); }
 
     get progress() { return Math.min(1, Math.max(0, this.ship.x / this.cfg.legLength)); }
-    get maxHull() { return this.cfg.shipBaseHull + COPPER.hullPerLevel * this.ship.copper; }
+    get maxHull() { return this.ship.cls.hull + COPPER.hullPerLevel * this.ship.copper; }
     get collisionReduction() { return COPPER.collisionReductionPerLevel * this.ship.copper; }
     get fireRateMult() { return this.broadsideTimer > 0 ? ABILITIES[1].magnitude : 1; }
     get openedCount() { return this.gunports.filter((g) => g.isOpen && !g.open).length; }
@@ -89,7 +90,37 @@
 
     // Velocidade de uma posição das velas, já com o Velame no Pano cheio.
     sailSpeed(i) {
-      return SAILS[i].speed + (i === FULL ? RIGGING.fullSpeedPerLevel * this.ship.rigging : 0);
+      return this.ship.cls.speeds[i] + (i === FULL ? RIGGING.fullSpeedPerLevel * this.ship.rigging : 0);
+    }
+
+    // ------------------------------------------------------------------ Classe do navio (ShipClassDef)
+
+    // Troca as portinholas pelas da classe (todas vazias, abertas ou fechadas como na classe).
+    setClass(cls) {
+      this.ship.cls = cls;
+      this.gunports = cls.gunports.map((g, i) => Object.assign({}, g, { index: i, isOpen: g.open, weapon: null, saboteurs: 0 }));
+    }
+
+    // Classes maiores que a atual, que o Porto vende.
+    shipsForSale() {
+      const at = SHIP_ORDER.indexOf(this.ship.cls.id);
+      return SHIP_ORDER.slice(at + 1).map((id) => SHIPS[id]);
+    }
+
+    // Compra um navio maior no Porto. As armas voltam como ouro (o valor de venda),
+    // as melhorias continuam e o navio novo chega com o casco inteiro (placeholder,
+    // Parte 1 §10). Devolve 'ok', 'notPort', 'notBigger' ou 'noGold'.
+    buyShip(id) {
+      if (this.phase !== 'port') return 'notPort';
+      const cls = SHIPS[id];
+      if (!this.shipsForSale().includes(cls)) return 'notBigger';
+      const refund = this.gunports.reduce((sum, g) => sum + (g.weapon ? this.sellValue(g.weapon) : 0), 0);
+      if (this.gold + refund < cls.cost) return 'noGold';
+      this.gold += refund - cls.cost;
+      this.setClass(cls);
+      this.ship.hull = this.maxHull;
+      this.emit('shipBought', { cls, refund });
+      return 'ok';
     }
     // A posição que vale de verdade: velas rasgadas ficam em Rizadas.
     get effectiveSail() { return this.ship.torn > 0 ? REEFED : this.ship.sail; }
@@ -112,7 +143,7 @@
       this.visited = [];
       this.legsDone = 0;
       this.result = null;
-      for (const g of this.gunports) { g.weapon = null; g.saboteurs = 0; g.isOpen = g.open; }
+      this.setClass(SHIPS[START_SHIP]);
       Object.assign(this.ship, { copper: 0, rigging: 0, crew: 0, sail: START_SAIL, torn: 0, x: 0 });
       this.ship.hull = this.maxHull;
       this.gold = this.cfg.startingGold;
@@ -416,7 +447,7 @@
       for (const r of this.rocks) {
         if (r.gone) continue;
         // Não podem ser destruídos: só batem ou ficam para trás. Quanto mais rápido, pior a batida.
-        if (Math.hypot(r.x - s.x, r.y - s.y) < r.r + this.cfg.shipRadius) {
+        if (Math.hypot(r.x - s.x, r.y - s.y) < r.r + s.cls.radius) {
           r.gone = true;
           this.emit('rockHit', { r });
           this.damageShip(ROCKS.damagePerRadius * r.r * (s.speed / this.cfg.seaSpeed), true);
@@ -812,13 +843,17 @@
   // barata, compra Forro de cobre nos Recifes, repara no Porto, usa as habilidades e
   // mexe nas velas (Pano cheio quando só há perseguidores; Meio pano na Tempestade e nos
   // Recifes). Serve para testar o balanceamento no Node e para o atalho #auto.
-  // Ordem das portinholas por tipo de trecho: primeiro o lado de onde os piratas vêm.
-  const AUTO_ORDER = {
-    open:  ['popa', 'bb2', 'eb2', 'bb3', 'eb3', 'proa', 'bb1', 'eb1'],
-    reefs: ['proa', 'bb2', 'eb2', 'bb1', 'eb1', 'popa', 'bb3', 'eb3'],
-    cove:  ['popa', 'proa', 'bb2', 'eb2', 'bb1', 'eb3', 'eb1', 'bb3'],
-    storm: ['popa', 'bb2', 'eb2', 'bb3', 'eb3', 'proa', 'bb1', 'eb1'],
-  };
+  // Ordem das portinholas por tipo de trecho: primeiro as viradas para o lado de onde os
+  // piratas vêm (a direção do meio do arco de spawn); na Enseada (360°), na ordem da classe.
+  // Funciona com qualquer classe de navio, porque só olha o facing de cada portinhola.
+  const AUTO_FACE = { open: 180, reefs: 0, storm: 180, cove: null };
+  function autoOrder(sim, type) {
+    const face = AUTO_FACE[type] === undefined ? 180 : AUTO_FACE[type];
+    const list = sim.gunports.slice();
+    if (face === null) return list;
+    const off = (g) => Math.abs(((g.facing - face + 540) % 360) - 180);
+    return list.sort((a, b) => off(a) - off(b) || Math.abs(a.offset[0] - (face === 0 ? 9 : -9)) - Math.abs(b.offset[0] - (face === 0 ? 9 : -9)));
+  }
   const AUTO_LATE = ['carronade', 'marines'];
 
   function autoPlay(sim) {
@@ -827,11 +862,19 @@
       if (!options.length) return;
       // Machucado: prefere o Porto, se der.
       const port = options.find((n) => n.type === 'port');
-      if (port && sim.ship.hull < sim.maxHull * 0.7) { sim.chooseNode(port); return; }
+      const next = sim.shipsForSale()[0];
+      const canBuy = next && sim.gold >= next.cost;
+      if (port && (sim.ship.hull < sim.maxHull * 0.7 || canBuy)) { sim.chooseNode(port); return; }
       sim.chooseNode(options[Math.floor(sim.rand() * options.length)]);
       return;
     }
     if (sim.phase === 'port') {
+      // Troca pelo próximo navio se o ouro (com a venda das armas) der e sobrar uma reserva.
+      const next = sim.shipsForSale()[0];
+      if (next) {
+        const refund = sim.gunports.reduce((sum, g) => sum + (g.weapon ? sim.sellValue(g.weapon) : 0), 0);
+        if (sim.gold + refund >= next.cost + 120) sim.buyShip(next.id);
+      }
       sim.repair(Math.min(sim.missingHull(), Math.max(0, (sim.gold - 60) * PORT.hullPerGold)));
       sim.leavePort();
       return;
@@ -844,9 +887,9 @@
     const low = sim.ship.hull < sim.maxHull * 0.4;
     sim.setSail(type === 'reefs' || type === 'storm' ? 1 : (low || type === 'open') ? 2 : 1);
 
-    const order = AUTO_ORDER[type] || AUTO_ORDER.open;
+    const order = autoOrder(sim, type);
     for (let i = 0; i < order.length; i++) {
-      const g = sim.gunports.find((p) => p.id === order[i]);
+      const g = order[i];
       if (g.weapon) continue;
       if (!g.isOpen) {
         if (sim.gold >= sim.openCost()) sim.openGunport(g.index);

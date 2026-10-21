@@ -8,7 +8,7 @@
 // HTML por cima do canvas.
 (() => {
   'use strict';
-  const { SAILS, COPPER, RIGGING, CREW, PORT, LEG_TYPES, WEAPONS, WEAPON_ORDER, ABILITIES } = window.SEA_DATA;
+  const { SAILS, COPPER, RIGGING, CREW, PORT, LEG_TYPES, WEAPONS, WEAPON_ORDER, ABILITIES, SHIPS, SHIP_ORDER } = window.SEA_DATA;
   const { Sim, autoPlay, levelMult } = window.SEA;
 
   // A altura lógica é fixa (720). A largura acompanha a tela entre 16:9 e
@@ -19,7 +19,7 @@
   const TOUCH = window.matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
   const HW = 16, HH = 8;          // meia largura / meia altura de 1 metro do plano, em px
   const CAM_Y = H * (TOUCH ? 0.5 : 0.58); // no toque a barra de baixo é maior: o navio sobe um pouco
-  const DECK_H = 10;              // altura do convés (onde ficam as portinholas), em px
+  let DECK_H = 10;                // altura do convés (onde ficam as portinholas), em px; muda com a classe do navio
   const ZOOM = 1.25;              // aproximação da câmera (tudo é desenhado em escala 1 e ampliado)
   const FULL = SAILS.length - 1;
 
@@ -30,6 +30,8 @@
   let warpSeconds = warpFlag ? +warpFlag.slice(4) : 0;
   // #type=reefs: o primeiro trecho da run é desse tipo (para testar cada padrão).
   const typeFlag = [...flags].find((f) => f.startsWith('type='));
+  // #ship=frigate / lineship: a run começa nessa classe de navio.
+  const shipFlag = [...flags].find((f) => f.startsWith('ship='));
 
   // ------------------------------------------------------------------ Save (MetaProgress)
   const SAVE_KEY = 'seahauler.meta';
@@ -88,7 +90,7 @@
   const cam = { gx: 0 };
   let camWX = 0, camWY = 0, shake = 0, shakeX = 0, shakeY = 0;
   const portScreen = [];
-  const muzzle = sim.gunports.map(() => 0);
+  const muzzle = new Array(12).fill(0);   // clarão da boca de cada portinhola (a maior classe tem 10)
   let particles = [], shots = [], floaters = [];
 
   // ------------------------------------------------------------------ Projeção
@@ -437,84 +439,99 @@
   }
 
   // ------------------------------------------------------------------ O navio
-  const SAIL_SPRITE = ['rig-reefed', 'rig-half', 'rig-full'];
+  // Cada classe (Corveta, Fragata, Navio de linha) tem as medidas do desenho e os
+  // nomes dos sprites em SHIPS[...].draw: um casco e um mastreame por posição das velas.
+  const SAIL_NAMES = ['reefed', 'half', 'full'];
+  const rigSprite = (d, sail) => `${d.rigSprite}-${SAIL_NAMES[sail]}`;
   // As portinholas de bombordo (+y) e a proa ficam "atrás" do mastreame na tela.
-  const isFarPort = (g) => g.offset[1] > 0 || g.offset[0] > 2.5;
+  const isFarPort = (g, d) => g.offset[1] > 0 || g.offset[0] > d.masts[0].x + 0.2;
 
   function drawShip() {
-    const s = sim.ship;
+    const s = sim.ship, d = s.cls.draw;
     const gx = s.x, gy = 0;
     const bob = sim.running ? Math.sin(time * 2.2) * 1.2 : 0;
     const flash = s.flash > 0;
-    if (!drawSprite('ship', gx, gy, bob, flash)) drawShipVector(gx, gy, bob, flash);
-    drawPorts(true, bob);
+    DECK_H = d.H - 4;
+    if (!drawSprite(d.hullSprite, gx, gy, bob, flash)) drawShipVector(gx, gy, bob, flash, d);
+    drawPorts(true, bob, d);
     // O mastreame fica meio transparente enquanto o jogador mexe nas portinholas.
     const busy = ui.pending || ui.selected !== null || ui.hover !== null;
     ctx.globalAlpha = busy ? 0.4 : 1;
     const sail = sim.effectiveSail;
-    if (!drawSprite(SAIL_SPRITE[sail], gx, gy, bob, flash)) drawRigVector(gx, gy, bob, sail, flash, s.torn > 0);
-    if (s.torn > 0 && !refMode) drawRags(gx, gy, bob);
+    if (!drawSprite(rigSprite(d, sail), gx, gy, bob, flash)) drawRigVector(gx, gy, bob, sail, flash, s.torn > 0, d);
+    if (s.torn > 0 && !refMode) drawRags(gx, gy, bob, d);
     ctx.globalAlpha = 1;
-    drawPorts(false, bob);
+    drawPorts(false, bob, d);
     for (const e of sim.enemies) if (e.kind === 'boarder' && !e.removed) drawBoarder(e, DECK_H + bob);
   }
 
-  function drawShipVector(gx, gy, base, flash) {
+  function drawShipVector(gx, gy, base, flash, d) {
     const b = base - 4; // linha d'água: o casco afunda um pouco no mar
-    const c = hull(gx, gy, 6.8, 1.9, 14, b, tones('#2a221c', flash), 0.18);
+    const half = d.L / 2;
+    const c = hull(gx, gy, d.L, d.W, d.H, b, tones('#2a221c', flash), 0.18);
     if (!flash) {
-      // Faixa ocre das portinholas (o "xadrez de Nelson") e as tampas pretas.
-      line(P(c.x0, c.y0, b + 8), P(gx + 2.4, c.y0, b + 8), '#d8a838', 4);
-      for (let i = 0; i < 8; i++) { const p = P(c.x0 + 0.5 + i * 0.7, c.y0, b + 8); ctx.fillStyle = '#1a1410'; ctx.fillRect(p[0] - 2, p[1] - 2, 4, 4); }
-      line(P(c.x0, c.y0, b + 2), P(gx + 2.6, c.y0, b + 2), '#b87a3a', 1.5); // cobre na linha d'água
+      // Faixa ocre das portinholas (o "xadrez de Nelson") e as tampas pretas. O
+      // navio de linha tem duas cobertas de canhões, então duas faixas.
+      const decks = d.H >= 18 ? [b + 6, b + 12] : [b + d.H * 0.57];
+      for (const h of decks) {
+        line(P(c.x0, c.y0, h), P(gx + half * 0.7, c.y0, h), '#d8a838', 4);
+        const n = Math.round(d.L / 0.85);
+        for (let i = 0; i < n; i++) { const p = P(c.x0 + 0.5 + i * 0.7, c.y0, h); if (i * 0.7 + 0.5 < d.L * 0.82) { ctx.fillStyle = '#1a1410'; ctx.fillRect(p[0] - 2, p[1] - 2, 4, 4); } }
+      }
+      line(P(c.x0, c.y0, b + 2), P(gx + half * 0.76, c.y0, b + 2), '#b87a3a', 1.5); // cobre na linha d'água
     }
     // Janelas da câmara do capitão, na popa.
-    if (!flash) for (let i = 0; i < 4; i++) { const p = P(c.x0, c.y0 + 0.3 + i * 0.43, b + 9); ctx.fillStyle = '#ffd88a'; ctx.fillRect(p[0] - 1, p[1] - 2, 3, 3); }
+    if (!flash) for (let i = 0; i < 4; i++) { const p = P(c.x0, c.y0 + d.W * 0.16 + i * d.W * 0.22, b + d.H * 0.64); ctx.fillStyle = '#ffd88a'; ctx.fillRect(p[0] - 1, p[1] - 2, 3, 3); }
     // Convés de madeira.
-    plateDeck(gx, gy, c.top, flash);
+    plateDeck(gx, gy, c.top, flash, d);
     // Gurupés na proa.
-    line(P(gx + 3.4, gy, c.top + 2), P(gx + 5.0, gy, c.top + 12), flash ? '#fff' : '#4a3424', 3);
+    line(P(gx + half, gy, c.top + 2), P(gx + half + 1.6, gy, c.top + 12), flash ? '#fff' : '#4a3424', 3);
     // Mastro da bandeira na popa.
-    const pole = P(gx - 3.35, gy - 0.6, c.top);
+    const pole = P(gx - half + 0.05, gy - d.W * 0.3, c.top);
     line(pole, [pole[0], pole[1] - 22], '#3a2a1a', 2);
     if (!flash) drawFlag([pole[0] - 1, pole[1] - 22], 14, 9);
   }
-  function plateDeck(gx, gy, h, flash) {
+  function plateDeck(gx, gy, h, flash, d) {
     if (flash) return;
-    for (let i = 0; i < 5; i++) line(P(gx - 1.8 + i * 1.0, gy - 0.9, h), P(gx - 1.8 + i * 1.0, gy + 0.9, h), 'rgba(40,24,12,.35)', 1);
+    const n = Math.max(3, Math.round(d.L / 1.4));
+    for (let i = 0; i < n; i++) {
+      const x = gx - d.L * 0.27 + i * (d.L * 0.55 / (n - 1));
+      line(P(x, gy - d.W * 0.47, h), P(x, gy + d.W * 0.47, h), 'rgba(40,24,12,.35)', 1);
+    }
   }
 
   // Mastros e velas. sail: 0 Rizadas (velas enroladas nas vergas), 1 Meio pano
   // (só as de cima), 2 Pano cheio (todas). Cada mastro é uma linha em pé.
-  const MASTS = [{ x: 2.3, h: 74 }, { x: 0.8, h: 84 }, { x: -0.8, h: 64 }];
-  function drawRigVector(gx, gy, base, sail, flash, torn) {
-    const deck = base + 10;
+  function drawRigVector(gx, gy, base, sail, flash, torn, d) {
+    const deck = base + d.H - 4;
     const cream = '#efe6d0';
-    for (const m of MASTS) {
+    const Y = d.yard;   // meia largura das vergas
+    for (const m of d.masts) {
       const mx = gx + m.x;
       line(P(mx, gy, deck), P(mx, gy, deck + m.h), flash ? '#fff' : '#3a2a1a', 3);
       // Vergas (as traves das velas) em três alturas.
       const yards = [0.35, 0.62, 0.86].map((f) => deck + m.h * f);
-      for (const y of yards) line(P(mx, gy - 1.3, y), P(mx, gy + 1.3, y), flash ? '#fff' : '#3a2a1a', 2);
+      for (const y of yards) line(P(mx, gy - Y, y), P(mx, gy + Y, y), flash ? '#fff' : '#3a2a1a', 2);
       if (sail === 0 || torn) {
         // Velas enroladas: um rolo creme em cima de cada verga.
-        for (const y of yards) line(P(mx, gy - 1.2, y + 2), P(mx, gy + 1.2, y + 2), flash ? '#fff' : '#d8ccb0', 4);
+        for (const y of yards) line(P(mx, gy - Y * 0.92, y + 2), P(mx, gy + Y * 0.92, y + 2), flash ? '#fff' : '#d8ccb0', 4);
         continue;
       }
       const bulge = 0.35;
-      squareSail(mx, gy, 1.25, yards[1] + 1, yards[2] - 1, bulge * 0.7, cream, flash);           // gávea
-      squareSail(mx, gy, 1.0, yards[2] + 1, deck + m.h - 2, bulge * 0.5, cream, flash);           // joanete
-      if (sail === FULL) squareSail(mx, gy, 1.4, deck + 12, yards[0] + 1, bulge, cream, flash);    // vela grande
-      else line(P(mx, gy - 1.2, yards[0] + 2), P(mx, gy + 1.2, yards[0] + 2), flash ? '#fff' : '#d8ccb0', 4);
+      squareSail(mx, gy, Y * 0.96, yards[1] + 1, yards[2] - 1, bulge * 0.7, cream, flash);         // gávea
+      squareSail(mx, gy, Y * 0.77, yards[2] + 1, deck + m.h - 2, bulge * 0.5, cream, flash);       // joanete
+      if (sail === FULL) squareSail(mx, gy, Y * 1.08, deck + 12, yards[0] + 1, bulge, cream, flash); // vela grande
+      else line(P(mx, gy - Y * 0.92, yards[0] + 2), P(mx, gy + Y * 0.92, yards[0] + 2), flash ? '#fff' : '#d8ccb0', 4);
     }
     // Bujarrona: o triângulo entre o gurupé e o mastro de proa.
-    if (sail > 0 && !torn) poly([P(gx + 4.8, gy, deck + 10), P(gx + 3.3, gy, deck + 6), P(gx + 2.5, gy, deck + 46)], flash ? '#ffffff' : cream, 'rgba(60,44,30,.7)');
+    const half = d.L / 2, fore = d.masts[0];
+    if (sail > 0 && !torn) poly([P(gx + half + 1.4, gy, deck + 10), P(gx + half - 0.1, gy, deck + 6), P(gx + fore.x + 0.2, gy, deck + fore.h * 0.62)], flash ? '#ffffff' : cream, 'rgba(60,44,30,.7)');
   }
   // Velas rasgadas: trapos batendo nas vergas.
-  function drawRags(gx, gy, base) {
-    for (const m of MASTS) {
+  function drawRags(gx, gy, base, d) {
+    for (const m of d.masts) {
       for (let i = 0; i < 3; i++) {
-        const p = P(gx + m.x, gy + (i - 1) * 0.8, base + 10 + m.h * 0.6);
+        const p = P(gx + m.x, gy + (i - 1) * 0.8, base + d.H - 4 + m.h * 0.6);
         const sway = Math.sin(time * 12 + i + m.x) * 4;
         line(p, [p[0] + 6 + sway, p[1] + 10], '#e8dcc0', 2);
       }
@@ -522,8 +539,8 @@
   }
 
   // Portinholas, armas e piratas a bordo, de trás para frente.
-  function drawPorts(far, bob) {
-    const order = sim.gunports.filter((g) => isFarPort(g) === far)
+  function drawPorts(far, bob, d) {
+    const order = sim.gunports.filter((g) => isFarPort(g, d) === far)
       .sort((a, b) => (b.offset[0] + b.offset[1]) - (a.offset[0] + a.offset[1]));
     for (const g of order) {
       const [sx, sy] = sim.gunportGround(g);
@@ -1364,7 +1381,7 @@
     const hpf = s.hull / sim.maxHull;
     $('hp-fill').style.width = `${hpf * 100}%`;
     $('hp-fill').classList.toggle('low', hpf < 0.3);
-    $('hp-text').textContent = `CASCO ${Math.ceil(s.hull)} / ${sim.maxHull}`;
+    $('hp-text').textContent = `${s.cls.name.toUpperCase()} · CASCO ${Math.ceil(s.hull)} / ${sim.maxHull}`;
     $('leg-label').textContent = sim.settings ? sim.settings.label : '';
     const prog = sim.progress;
     $('progress-fill').style.width = `${prog * 100}%`;
@@ -1444,6 +1461,7 @@
     sim.newRun();
     runStartShop = sim.shop.slice();
     if (flags.has('rich')) sim.gold = 9999;
+    if (shipFlag && SHIPS[shipFlag.slice(5)]) { sim.setClass(SHIPS[shipFlag.slice(5)]); sim.ship.hull = sim.maxHull; }
     if (typeFlag) {
       const t = typeFlag.slice(5);
       for (const n of sim.route.layers[0]) { n.type = t; n.risk = LEG_TYPES[t] ? LEG_TYPES[t].risk : 0; n.label = LEG_TYPES[t] ? LEG_TYPES[t].name : n.label; }
@@ -1488,6 +1506,7 @@
     else if (name === 'abandon') { paused = false; sim.abandon(); }
     else if (name.startsWith('repair')) { sim.repair(name === 'repairAll' ? Infinity : +name.slice(6)); shownScreen = undefined; }
     else if (name.startsWith('up-')) { doShipUpgrade(name.slice(3)); shownScreen = undefined; }
+    else if (name.startsWith('ship-')) { sim.buyShip(name.slice(5)); ui.selected = null; ui.pending = null; shownScreen = undefined; }
     else if (name === 'leave') sim.leavePort();
   }
 
@@ -1496,13 +1515,13 @@
     const click = TOUCH ? 'toque' : 'clique';
     return `
       <div class="title">SEA HAULER</div>
-      <div class="subtitle">Leve a fragata da Coroa até o porto, com os piratas no seu rastro. Ela navega sozinha: você cuida das velas e dos canhões.</div>
+      <div class="subtitle">Leve o navio da Coroa até o porto, com os piratas no seu rastro. Ela navega sozinha: você cuida das velas e dos canhões.</div>
       <div class="howto plate">
         <b>Comprar:</b> ${click} numa arma na barra de baixo e depois numa portinhola aberta.<br>
         <b>Melhorar, vender ou abrir portinhola:</b> ${click} na portinhola.<br>
         <b>Portinholas:</b> cada uma só atira para o seu lado. As bordadas (3 de cada lado) são o forte do navio; 4 começam fechadas.<br>
         <b>Velas${TOUCH ? '' : ' (Z X C)'}:</b> de Pano cheio você deixa os perseguidores para trás, mas quem fica para trás não dá ouro.<br>
-        <b>Melhorias${TOUCH ? '' : ' (F G T)'}:</b> Forro de cobre, Velame e Tripulação.${TOUCH ? '' : ' <b>Habilidades:</b> 1 e 2. <b>Pausa:</b> P.'}
+        <b>Melhorias${TOUCH ? '' : ' (F G T)'}:</b> Forro de cobre, Velame e Tripulação. <b>Navios:</b> você zarpa numa Corveta; troque por um maior no Porto.${TOUCH ? '' : ' <b>Habilidades:</b> 1 e 2. <b>Pausa:</b> P.'}
       </div><br>
       <button class="big-btn" data-act="start">ZARPAR</button>
       <div class="stats">Viagens: ${m.runsStarted} · Chegadas ao porto: ${m.runsCompleted} · Melhor run: ${m.bestLegs} ${m.bestLegs === 1 ? 'trecho' : 'trechos'}</div>`;
@@ -1574,12 +1593,25 @@
       const lvl = sim.ship[u.kind], maxed = lvl >= sim.upgradeMax(u.kind), cost = sim.upgradeCostOf(u.kind);
       return `<button class="big-btn secondary small" data-act="up-${u.kind}" ${maxed || sim.gold < cost ? 'disabled' : ''}>${maxed ? `${u.name} no máximo` : `${u.name} ${lvl + 1} <small>(${cost} ouro)</small>`}</button>`;
     }).join('');
+    // Estaleiro: os navios maiores que o atual. As armas voltam como ouro (valor de venda).
+    const refund = sim.gunports.reduce((sum, g) => sum + (g.weapon ? sim.sellValue(g.weapon) : 0), 0);
+    const ships = sim.shipsForSale().map((cls) => {
+      const can = sim.gold + refund >= cls.cost;
+      const fmtSpeeds = cls.speeds.map((v) => String(v).replace('.', ',')).join(' / ');
+      return `<button class="big-btn ship-btn ${can ? '' : 'secondary'}" data-act="ship-${cls.id}" ${can ? '' : 'disabled'}>${cls.name} <small>(${cls.cost} ouro)</small>
+        <span class="ship-info">${cls.short} · casco ${cls.hull} · ${cls.gunports.length} portinholas · velas ${fmtSpeeds} m/s</span></button>`;
+    }).join('');
+    const yard = ships ? `
+      <div class="route-head small">ESTALEIRO</div>
+      <div class="result-text small">Seu navio: <b>${sim.ship.cls.name}</b>. Trocar vende as armas (você recebe <b>${refund}</b> de ouro por elas);
+      as melhorias continuam e o navio novo sai com o casco inteiro.</div>
+      <div>${ships}</div>` : '';
     return `
       <div class="route-head">PORTO</div>
-      <div class="result-text">Casco <b>${Math.ceil(sim.ship.hull)}/${sim.maxHull}</b> · Ouro <b>${sim.gold}</b><br>
+      <div class="result-text">${sim.ship.cls.name} · Casco <b>${Math.ceil(sim.ship.hull)}/${sim.maxHull}</b> · Ouro <b>${sim.gold}</b><br>
       Reparo: ${PORT.hullPerGold} de casco por 1 de ouro. Aqui não há piratas.</div>
       <div>${btn(step, `repair${step}`, `Reparar ${step}`)}${btn(Infinity, 'repairAll', 'Reparar tudo')}</div>
-      <div>${upg}</div>
+      <div>${upg}</div>${yard}
       <br><button class="big-btn" data-act="leave">ZARPAR</button>`;
   }
 
@@ -1638,8 +1670,11 @@
     const savedTime = time;
     time = 0;
     sim.ship.x = 0;
-    render('ship', 0, 0, () => drawShipVector(0, 0, 0, false));
-    SAIL_SPRITE.forEach((name, i) => render(name, 0, 0, () => drawRigVector(0, 0, 0, i, false, false)));
+    for (const id of SHIP_ORDER) {
+      const d = SHIPS[id].draw;
+      render(d.hullSprite, 0, 0, () => drawShipVector(0, 0, 0, false, d));
+      SAIL_NAMES.forEach((_, i) => render(rigSprite(d, i), 0, 0, () => drawRigVector(0, 0, 0, i, false, false, d)));
+    }
     render('schooner', 0, 0, () => drawSchooner(0, 0, 0, false, false));
     render('fireship', 0, 0, () => drawFireship(0, 0, 0, false, false));
     render('sloop', 0, 0, () => drawSloop(0, 0, 0, false, false, 2));
