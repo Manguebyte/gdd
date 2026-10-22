@@ -98,6 +98,14 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    // Ainda não tem guia Unity; o protótipo é o próprio jogo da v2.
+    source: 'GuerreiroDaMasmorraV2.md',
+    slug: 'guerreiro-da-masmorra-v2',
+    label: 'Guerreiro da Masmorra v2',
+    description: 'A evolução do Guerreiro da Masmorra: o ataque vem de uma mão de dados forjados com sangue, e as combinações liberam os especiais.',
+    gddOnly: true,
+  },
+  {
     source: 'CraftDice.md',
     slug: 'craft-dice',
     label: 'Craft Dice',
