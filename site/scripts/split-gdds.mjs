@@ -154,6 +154,15 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    // O guia começa pela versão web (TypeScript, a do protótipo) e termina com o porte para Unity.
+    source: 'MarbleArena.md',
+    slug: 'marble-arena',
+    label: 'Marble Arena',
+    description: 'Bolinha de gude 3D com física: mire, escolha força e ângulo e tire as casadas do triângulo.',
+    guideStart: /^# Parte 2\b/,
+    guideLabel: 'Guias (Web e Unity)',
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'CacaAsBruxas.md',
     slug: 'caca-as-bruxas',
@@ -354,7 +363,7 @@ function buildIntro() {
       ? `[${g.guideLabel}](./${g.slug}/guia-unity.md)`
       : g.gddOnly
         ? `[GDD](./${g.slug}/gdd.md)`
-        : `[GDD](./${g.slug}/gdd.md) · [Guia Unity](./${g.slug}/guia-unity.md)`;
+        : `[GDD](./${g.slug}/gdd.md) · [${g.guideLabel ?? 'Guia Unity'}](./${g.slug}/guia-unity.md)`;
     return `| [${g.label}](./${g.slug}/${first}.md) | ${g.description} | ${links} |`;
   });
   return (
