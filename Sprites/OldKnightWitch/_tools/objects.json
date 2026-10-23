@@ -1,0 +1,19 @@
+{
+  "_comment": "Objetos de 1 direção do PixelLab (create_1_direction_object + animate_object v3): as gosmas do prólogo. anims: nome -> [URL com {i}, nº de quadros].",
+  "slime": {
+    "object_id": "e2219c22-2a28-4b76-8059-c12da1335770",
+    "base": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/e2219c22-2a28-4b76-8059-c12da1335770/rotations/unknown.png",
+    "anims": {
+      "idle": ["https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/e2219c22-2a28-4b76-8059-c12da1335770/animations/8910ee25-1823-4d63-b69d-363ce1695392/unknown/{i}.png", 7],
+      "attack": ["https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/e2219c22-2a28-4b76-8059-c12da1335770/animations/5f96e99e-aad6-4211-805c-8eb099e7753d/unknown/{i}.png", 7]
+    }
+  },
+  "slimeking": {
+    "object_id": "bc1ed634-184d-4097-8f22-544a6551f9ee",
+    "base": "https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/bc1ed634-184d-4097-8f22-544a6551f9ee/rotations/unknown.png",
+    "anims": {
+      "idle": ["https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/bc1ed634-184d-4097-8f22-544a6551f9ee/animations/95100eb0-2ce4-4cbb-8bd1-7a8d80d33e96/unknown/{i}.png", 7],
+      "attack": ["https://backblaze.pixellab.ai/file/pixellab-characters/objects/b6fbbf99-a093-4f32-b1d5-41913afcc286/bc1ed634-184d-4097-8f22-544a6551f9ee/animations/c3b21bee-13f7-48f7-af06-27ab15caf2a2/unknown/{i}.png", 7]
+    }
+  }
+}

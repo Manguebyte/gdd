@@ -3,6 +3,7 @@
 > Documento vivo. Rascunho inicial, a refinar com o protótipo.
 > O jogo parte do **Guerreiro da Masmorra (app)**, a versão do app Android (`prototipos/guerreiro-da-masmorra-app/`, em 3D em `prototipos/guerreiro-da-masmorra-app-3d/`), e muda três coisas: o elenco vira uma **dupla** (o Velho Cavaleiro e a Bruxa) que troca de lugar no meio da luta, a Bruxa joga com um **deck de cartas e mana**, e toda a arte é refeita. As regras do Guerreiro que continuam iguais não são copiadas aqui: cada seção aponta para a seção de `GuerreiroDaMasmorra.md` que vale e lista só o que muda.
 > Números marcados como **proposta** são um ponto de partida para o protótipo. Eles continuam **Em aberto** até o playtest.
+> **Protótipo jogável:** `prototipos/old-knight-and-the-witch/` (cópia do Guerreiro 3D do app, com a dupla, as cartas, o prólogo e a arte nova do PixelLab em `Sprites/OldKnightWitch/`).
 
 **Gênero:** RPG por turnos com reações em tempo real (QTE) e deckbuilding · **Dimensão:** 3D com personagens em sprites 2D (HD-2D) · **Plataforma:** Android (protótipo web antes) · **Orientação:** retrato · **Engine:** Unity 6
 
@@ -43,6 +44,39 @@
 - **Fantasia central:** o mestre velho e cansado e a aprendiz impaciente, que se protegem um ao outro trocando de lugar.
 - **Referências:** Guerreiro da Masmorra 3D (app), a base de tudo; Slay the Spire (deck montado e mana por turno); Octopath Traveler (HD-2D); Final Fantasy X (troca de personagem no meio do turno).
 
+### 1.1 Enredo
+
+- **Definido:**
+  - O jogo se passa na época da **caça às bruxas**.
+  - A garota é condenada por ser acusada de bruxaria e foge para uma **floresta**.
+  - Ela ainda não sabe usar bem os próprios poderes.
+- **Definido:** o começo do jogo é o **treinamento dela na floresta**, enfrentando **gosmas**. É onde o jogador aprende as mecânicas básicas da Bruxa.
+- **Definido:**
+  - Na **terceira onda** da floresta ela não consegue vencer o chefe.
+  - O velho, que estava **cortando lenha** naquela floresta, aparece com um **machado** e salva a Bruxa.
+  - Depois desse treinamento o jogo continua como o Guerreiro da Masmorra 3D (app), já com a dupla.
+- **Definido:** os inimigos seguem a temática da caça às bruxas (§8). No meio da batalha eles **falam sobre a bruxa**: dizem que ela merece morrer, que vai queimar e coisas assim.
+- **Proposta (texto do protótipo):**
+  - **A sentença:** na praça de "Vila Cinzenta", a garota ruiva de capa cinza é condenada à fogueira.
+  - **A fuga:** uma faísca escapa da mão dela, queima as cordas, e ela foge para a "floresta proibida".
+  - **Quem é o velho:** depois do resgate, ele conta que já foi cavaleiro da Ordem que caça bruxas e que largou a espada por causa das fogueiras.
+  - **A espada:** ele entra na cabana e volta com a espada gigantesca, partida ao meio. Assim o machado do resgate e a espada da §3 são as duas armas do mesmo velho: a do lenhador e a do cavaleiro.
+- **Em aberto:** os nomes da vila, da Ordem e dos dois personagens; o que acontece depois da masmorra 33 (o desfecho da história).
+
+### 1.2 O prólogo na floresta
+
+- **Definido:** o prólogo substitui o Campo de Treinamento do app. Tem 3 ondas, com a **Bruxa sozinha**:
+  - **Onda 1:** 2 gosmas. Ensina a jogar cartas e as reações (parry, salto e esquiva lateral).
+  - **Onda 2:** 3 gosmas. Ensina que defender bem dá mana.
+  - **Onda 3:** a **Gosma Rainha**, que a Bruxa não consegue derrotar. Depois de alguns golpes, a Rainha a derruba, o lenhador chega com o machado e mata a gosma.
+- **Proposta:**
+  - As gosmas são lentas: o círculo de reação dura 1,25 s em vez de 0,9 s.
+  - A Bruxa não morre no prólogo: o HP não cai abaixo de 1.
+  - A Gosma Rainha não pode ser derrotada pela Bruxa.
+  - O roteiro do resgate começa quando a Rainha ataca pela 2ª vez ou quando o HP da Bruxa cai a 35%.
+  - O prólogo pode ser pulado.
+- **Definido:** no fim do prólogo, o Velho Cavaleiro entra na dupla e o jogo segue o loop do app (§9).
+
 ## 2. O que vem do Guerreiro da Masmorra (app)
 
 **Definido:** o jogo segue o Guerreiro da Masmorra (app) em tudo o que esta seção não muda. Fora do combate, o loop é o mesmo do app: acampamento, Tochas, ouro, Souls com árvore de habilidades, missões diárias, baú do dia, biomas e interiores, chefes, 33 masmorras e NG+.
@@ -53,7 +87,7 @@
 | Reações (parry, salto, lateral) | `GuerreiroDaMasmorra.md` §5 | Valem para os dois personagens. Entram também as reações que o app acrescentou: **abaixar** e a lateral **com lado certo** (§5) |
 | Ações do herói, Fúria, exaustão, cansaço | `GuerreiroDaMasmorra.md` §6 e §7 | São as regras do **Cavaleiro**. A Bruxa não usa Fúria (§7) |
 | Especiais e minijogos | `GuerreiroDaMasmorra.md` §7.1 | Liberados pela **árvore de Souls** do app (§9.3), não pelo atributo Habilidade. A Fúria total usa a **barra de toques** do app |
-| Monstros, golpes nomeados, chefes, mecânicas especiais | `GuerreiroDaMasmorra.md` §8 | O elenco é o do **app**, com nomes e arte novos (§8) |
+| Monstros, golpes nomeados, chefes, mecânicas especiais | `GuerreiroDaMasmorra.md` §8 | Os comportamentos são os do app; os inimigos viram caçadores de bruxas, com nomes, arte e falas novos (§8) |
 | Masmorras, escala, recompensas, derrota, NG+ | `GuerreiroDaMasmorra.md` §9 | Biomas e interiores do app; recompensa extra de carta para a Bruxa (§9.2) |
 | Acampamento, mercado, gemas, Tochas, baú | `GuerreiroDaMasmorra.md` §10 | Atributos comprados **por personagem**; gemas só do Cavaleiro (§9.1) |
 | Mago Arcanista e mapa-múndi | `GuerreiroDaMasmorra.md` §11 e §12 | **Fora.** A Bruxa substitui o Mago, com outra mecânica de cartas |
@@ -66,7 +100,8 @@
 | **A Bruxa** | adolescente ruiva com uma capa cinza; ataca com uma varinha mágica | golpes rápidos e em área | 45 | 8 | 2 | 13 | 2 |
 
 - HP, ATK, DEF, velocidade e vagas são **proposta**. Para comparar: o Guerreiro do app começa com 60 / 10 / 3 e velocidade 10.
-- **Em aberto:** os nomes dos dois (hoje são "o Velho Cavaleiro" e "a Bruxa"); a história de como se juntaram; se a Bruxa está na dupla desde o tutorial ou entra depois. **Proposta:** os dois desde o Campo de Treinamento, porque a troca é a mecânica central.
+- **Definido (enredo, §1.1):** a Bruxa começa sozinha, no prólogo da floresta. O Velho Cavaleiro entra na dupla quando a salva da Gosma Rainha.
+- **Em aberto:** os nomes dos dois (hoje são "o Velho Cavaleiro" e "a Bruxa").
 
 ## 4. Turnos, Iniciativa e Troca
 
@@ -165,24 +200,42 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 
 ## 8. Monstros
 
-- **Definido:** o elenco é o do **app**: os comuns e chefes do Guerreiro original (`GuerreiroDaMasmorra.md` §8, com os mesmos atributos, velocidades, golpes nomeados, desbloqueio por nível e mecânicas especiais), com os nomes de fantasia sombria que o app deu a alguns e mais o chefe **Arqueiro Ancestral**.
-- **Definido:** toda a arte é refeita (§10).
+- **Definido:** os inimigos seguem a temática da **caça às bruxas**: aldeões, caçadores, guardas e padres da Inquisição, carrascos e os chefes da Ordem. As regras de combate continuam as do app: cada inimigo novo usa o comportamento de um monstro do Guerreiro original (golpes nomeados, velocidade, ataque à distância, fogo, suporte), com nome e arte novos. Ver `GuerreiroDaMasmorra.md` §8.
+- **Definido:** toda a arte é refeita (§10). A floresta do prólogo tem as **gosmas** (§1.2).
+- **Proposta (elenco do protótipo):** 8 comuns e 4 chefes. A ordem das listas decide o grupo e o chefe fixo de cada masmorra, como no app.
 
-| id (código) | Nome no app | Muda em relação a `GuerreiroDaMasmorra.md` §8 |
-|---|---|---|
-| `pawn` | Cavaleiro Negro | só o nome |
-| `archer` | Arqueiro Espectral | só o nome |
-| `lancer` | Lanceiro Sepulcral | só o nome |
-| `monk` | Cultista | só o nome (continua sendo o suporte que cura e amaldiçoa) |
-| `gnome` | Servo Deformado | só o nome |
-| `thief` | Espectro Ladino | só o nome |
-| `snake` | Serpente Podre | só o nome |
-| `skull` | Lich Amaldiçoado | só o nome |
-| `shaman` | Necromante | só o nome |
-| `panda` | Ogro Carrasco | só o nome |
-| `archerlord` | Arqueiro Ancestral (chefe) | **novo:** HP 175, ATK 19, DEF 5, velocidade 8, a partir do nível efetivo 3, luta à distância |
+| Comportamento (`kind` do app) | Inimigo | Papel | HP / ATK / DEF | A partir do nível |
+|---|---|---|---|---|
+| `pawn` | Aldeão Furioso (forcado) | rápido, golpes simples | 30 / 9 / 2 | 1 |
+| `archer` | Caçador de Bruxas (besta) | à distância | 24 / 12 / 1 | 1 |
+| `lancer` | Guarda da Inquisição (alabarda) | combos com salto | 40 / 11 / 4 | 1 |
+| `monk` | Padre Inquisidor | suporte: cura os aliados e amaldiçoa | 26 / 10 / 2 | 1 |
+| `thief` | Cão de Caça | rápido, esquiva lateral | 26 / 10 / 1 | 2 |
+| `torch` | Aldeã com Tocha | fogo: gruda brasa (a "dinamite" do app) | 28 / 10 / 2 | 3 |
+| `tnt` | Fanático do Piche | fogo à distância (jarros de piche) | 22 / 9 / 1 | 3 |
+| `mino` | Carrasco (machado) | pesado | 46 / 13 / 3 | 4 |
+| `boss` (chefe) | Capitão da Ordem | chefe de espada e escudo | 160 / 20 / 6 | 1 |
+| `kingslime` (chefe) | Gosma Rainha | a chefe do prólogo, que volta nas masmorras | 200 / 18 / 4 | 1 |
+| `archerlord` (chefe) | Caçador-Mor | só esquivas com lado e um salto (tabela abaixo) | 175 / 19 / 5 | 3 |
+| `troll` (chefe) | Grande Inquisidor | lento e brutal, golpes de fogo sagrado | 230 / 21 / 7 | 6 |
 
-- **Arqueiro Ancestral — Definido (herdado do app):** não tem parry. Todo golpe é uma sequência de esquivas com lado marcado que sempre termina num salto (que abre o Ataque Aéreo):
+- **Gosmas do prólogo — proposta:** a Gosma tem os golpes Gosmada (parry), Pulo Gosmento (salto) e Rolada Viscosa (lateral), velocidade 9, HP 14 a 18 e ATK 5. A Gosma Rainha do prólogo tem HP 400 e ATK 7 e não pode ser derrotada pela Bruxa (§1.2).
+- **Falas — Definido:** no meio da batalha os inimigos falam contra a bruxa. **Proposta (protótipo):**
+  - **Quando:** um balão sobre a cabeça do inimigo, por cerca de 2,4 s, quando a onda começa, antes de alguns golpes e quando a dupla troca de lugar.
+  - **De quem:** cada tipo tem falas próprias. Exemplos:
+    - Aldeão: "Minha vaca morreu por sua culpa!"
+    - Padre: "Em nome do Tribunal, eu te condeno!"
+    - Caçador-Mor: "Já cacei cem bruxas. Você é a próxima."
+  - **Para todos:** há falas gerais, como "Queimem a bruxa!", "Bruxa maldita! Merece a morte!" e "A fogueira espera por você, menina!".
+  - **Com o Cavaleiro em campo:** as falas viram contra ele: "Traidor da Ordem! Vai queimar junto com ela!" e "Saia da frente, velho! A bruxa é nossa!".
+  - **Bichos:** cão e gosmas só rosnam ou borbulham.
+- **Em aberto:**
+  - o elenco completo (o app tem 19 comuns e 8 chefes);
+  - os nomes definitivos;
+  - uma rodada de falas própria para os chefes no começo da onda 3.
+- **Nota para o guia Unity:** a Fase 1 ainda semeia o elenco com os nomes do app. Os `kind` e os golpes não mudam, então trocar o elenco é só trocar os nomes e os ids de sprite no seeder.
+
+- **Caçador-Mor (o Arqueiro Ancestral do app) — Definido (herdado do app):** não tem parry. Todo golpe é uma sequência de esquivas com lado marcado que sempre termina num salto (que abre o Ataque Aéreo):
 
 | Golpe | Hits (notação de `GuerreiroDaMasmorra.md` §8.3, com `A` = abaixar, `S<` / `S>` = lateral para a esquerda / direita) | Nível efetivo mínimo |
 |---|---|---|
@@ -190,8 +243,8 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 | Cerco de Flechas | `S>.8 A.8 S<.8 J.9` | 1 |
 | Salva do Ancestral | `A.8 S<.8 S>.8a J.95` | 6 |
 
-- **Ordem dos chefes — Definido (herdado do app):** Cavaleiro, Rei Slime, Árvore Anciã, Urso, Minotauro Ancestral, Troll, Ogro Carrasco, **Arqueiro Ancestral** (último da lista; a ordem decide o chefe fixo de cada masmorra).
-- **Em aberto:** novos nomes para o elenco (o app mudou só alguns) e se algum monstro novo deve existir para valorizar a área da Bruxa (por exemplo, enxames de 4 a 5 monstros fracos).
+- **Ordem dos chefes — proposta (protótipo):** Capitão da Ordem, Gosma Rainha, Caçador-Mor, Grande Inquisidor.
+- **Em aberto:** algum monstro novo que valorize a área da Bruxa, por exemplo enxames de 4 a 5 aldeões fracos.
 
 ## 9. Masmorras, Acampamento e Progressão
 
@@ -237,7 +290,7 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 
 ### 9.4 Outros sistemas do app
 
-- **Definido (herdado do app):** missões diárias com recompensa em ouro (Caçador de Chefões, Intocável, Cofre Cheio, Ceifador de Almas, Impecável), zeradas na virada do dia; recorde de maior dano num golpe; Baú do Dia; tutorial no Campo de Treinamento.
+- **Definido (herdado do app):** missões diárias com recompensa em ouro (Caçador de Chefões, Intocável, Cofre Cheio, Ceifador de Almas, Impecável), zeradas na virada do dia; recorde de maior dano num golpe; Baú do Dia. O tutorial do app (Campo de Treinamento) é substituído pelo prólogo na floresta (§1.2).
 - **Proposta:** uma missão diária nova para a dupla: "Troca Perfeita": troque de personagem 10 vezes e vença a masmorra.
 
 ## 10. Estilo Visual
@@ -258,7 +311,7 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
   - **Painel da dupla** no canto de baixo: retrato e HP dos dois, com destaque em quem está em campo. A barra de Fúria só aparece com o Cavaleiro em campo, e as **gemas de mana** só com a Bruxa.
   - **Mão da Bruxa** na base da tela, no lugar do menu de comandos: até 4 a 6 cartas em leque, com o custo de mana no canto. Tocar uma carta a seleciona e mostra o efeito; segurar 0,5 s a joga no alvo atual. Ao lado ficam os botões **Encerrar**, **Trocar**, **Poção** e **Fugir**.
   - **Acampamento:** abas com o Cavaleiro e a Bruxa para comprar atributos e abrir a árvore de cada um, e uma tela de **Deck**.
-- **Em aberto:** se segurar 0,5 s é rápido o bastante para o ritmo "rápido" da Bruxa, ou se tocar duas vezes na carta é melhor.
+- **Em aberto:** se segurar 0,5 s é rápido o bastante para o ritmo "rápido" da Bruxa, ou se tocar duas vezes na carta é melhor. **O protótipo usa dois toques:** o 1º mostra o efeito no log, o 2º lança.
 
 ## 12. Áudio
 
@@ -276,6 +329,8 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 ## 14. Escopo do MVP
 
 **Dentro:**
+- O enredo de abertura e o prólogo na floresta, com o resgate pelo lenhador (§1.1 e §1.2).
+- Os inimigos da caça às bruxas e as falas deles (§8).
 - A dupla com troca, iniciativa por velocidade e as duas vagas da Bruxa.
 - O Cavaleiro completo (o motor do Guerreiro do app) e a Bruxa com deck inicial, mana, cartas de recompensa e tela de Deck.
 - As 33 masmorras com NG+, o elenco do app com arte nova, os biomas e interiores, o acampamento, a árvore de Souls, as missões diárias, o Baú do Dia e o tutorial.
@@ -289,8 +344,8 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 
 ## 15. Em aberto
 
-- Nomes dos personagens, história e como a dupla se conhece (§3).
-- Se a Bruxa está desde o tutorial (§3).
+- Nomes dos personagens, da vila e da Ordem, e o desfecho da história (§1.1 e §3).
+- Elenco completo da caça às bruxas e falas dos chefes (§8).
 - Bônus de troca (§4.1) e se o Cavaleiro age em rodadas alternadas (§4.2).
 - Todos os números marcados como proposta: atributos e velocidades (§3), mana, mão e cartas (§7), custos de remoção e tamanho do deck (§7.3), árvore da Bruxa (§9.3).
 - Os bônus por nível da árvore do Cavaleiro e a janela da Sequência Mortal (§9.3).

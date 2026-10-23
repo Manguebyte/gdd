@@ -1,0 +1,18 @@
+{
+  "_comment": "Personagens do PixelLab (create_character, standard, 4 direções, 64 px num canvas de 92). dir = direção usada no jogo: os heróis aparecem de costas (north) na batalha e de frente (south) no acampamento; os inimigos olham para o herói (south).",
+  "witch":       { "id": "06d49913-1c1c-422d-bde1-060a38374e01", "dirs": ["north", "south"] },
+  "oldknight":   { "id": "9ce1ee9e-7bf1-4d58-a55a-6dc3f9a247ac", "dirs": ["north", "south"] },
+  "woodcutter":  { "id": "840a86cb-16ba-4f4e-9c5f-9e563f44ab76", "dirs": ["north", "south"] },
+  "villager":    { "id": "56b66644-1c24-4678-8aeb-40258a22e4f2", "dirs": ["south"] },
+  "crossbow":    { "id": "ca1cc58d-249a-4bf8-be5b-6787ed9c9302", "dirs": ["south"] },
+  "guard":       { "id": "2862ca1d-a558-4353-8b36-ed0576c2ec0f", "dirs": ["south"] },
+  "priest":      { "id": "c68de1cd-3f40-4238-9c3f-a06e0b94cfc3", "dirs": ["south"] },
+  "torchwoman":  { "id": "b9904c33-4510-4fa6-ac89-caaa69d789cb", "dirs": ["south"] },
+  "zealot":      { "id": "edc4c35f-e614-433b-95b1-b3eb8b1ddc00", "dirs": ["south"] },
+  "hound":       { "id": "bb46411d-c77f-4f67-936d-e46f9495a7c9", "dirs": ["south"] },
+  "executioner": { "id": "2227f0bf-2ffe-4cd9-a2b6-4a1bb143c4b9", "dirs": ["south"] },
+  "captain":     { "id": "c9c53936-6db9-472b-82d4-2fc4086fbd38", "dirs": ["south"] },
+  "masterhunter":{ "id": "cf1ec118-0763-4d51-a1da-0d7cbe90f4bc", "dirs": ["south"] },
+  "inquisitor":  { "id": "c4cc4c09-0806-456d-8724-3614308b9163", "dirs": ["south"] },
+  "_slimes_object": "6a2803ea-3ce1-4165-bbf9-3428f1c9018e"
+}
