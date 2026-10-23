@@ -78,7 +78,8 @@ const ENEMIES = {
   swarmer: { hp: 3,  dmg: 2,  speed: 0.96, shards: 0.5, r: 0.25, wave: 6, weight: 15 },
   brute:   { hp: 80, dmg: 20, speed: 0.4,  shards: 4,   r: 0.75, wave: 8, weight: 10 },
 };
-const MOTHERSHIP = { hp: 1200, laser: 25, shards: 50, r: 1.5 };
+// laser: 30% abaixo do GDD (25), pedido do playtest: o laser da Wave 10 estava forte demais.
+const MOTHERSHIP = { hp: 1200, laser: 17.5, shards: 50, r: 1.5 };
 
 // ---------- modo Invasion (Seção 4.7): valores iniciais do GDD, ajustar jogando
 const SIEGE_TIME = 120;       // s para derrubar cada Target Planet
@@ -1149,33 +1150,42 @@ const SCREENS = {
   },
 
   cores() {
+    // Layout em 3 faixas: topo (Voltar e título), meio (os Cores ou a explicação do Invasion, que ocupa o
+    // espaço que sobrar) e rodapé fixo (o modo e o botão de começar). Com o rodapé fixo, o botão nunca
+    // sai da tela, qualquer que seja a altura da janela.
     const s = el(`<div class="screen"></div>`);
     s.appendChild(topbar('Core Select'));
+    const middle = el(`<div class="screen-middle"></div>`);
+    s.appendChild(middle);
+
     // Modo: Last Stand ou Invasion (este liberado pela conquista Holding the Line).
     const unlockedInv = invasionUnlocked();
     if (!unlockedInv) save.mode = 'laststand';
-    const modes = el(`<div class="row" style="margin-bottom:4px">
-      <button class="btn" data-mode="laststand">${save.mode === 'laststand' ? '&gt; ' : ''}Last Stand</button>
-      <button class="btn" data-mode="invasion"${unlockedInv ? '' : ' disabled'}>${save.mode === 'invasion' ? '&gt; ' : ''}Invasion${unlockedInv ? '' : ' (Wave 10)'}</button>
+    const invasion = save.mode === 'invasion';
+    const footer = el(`<div class="screen-footer">
+      <button class="btn mode${invasion ? '' : ' sel'}" data-mode="laststand">Last Stand</button>
+      <button class="btn mode${invasion ? ' sel' : ''}" data-mode="invasion"${unlockedInv ? '' : ' disabled'}>Invasion${unlockedInv ? '' : ' (Wave 10)'}</button>
+      <span class="spacer"></span>
+      <button class="btn play">${invasion ? 'Começar invasão' : 'Começar run'}</button>
     </div>`);
-    modes.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+    footer.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
       if (b.dataset.mode === 'invasion' && !unlockedInv) return;
       save.mode = b.dataset.mode; writeSave(); showScreen('cores');
     });
-    s.appendChild(modes);
-    if (save.mode === 'invasion') {
-      s.appendChild(el(`<div class="panel" style="max-width:240px;padding:6px;display:flex;flex-direction:column;gap:3px">
+    $('.play', footer).onclick = () => { newRun(); showScreen('game'); };
+    s.appendChild(footer);
+
+    if (invasion) {
+      middle.appendChild(el(`<div class="panel" style="max-width:240px;padding:6px;display:flex;flex-direction:column;gap:3px">
         <span class="h" style="margin:0">Invasion</span>
         <span>Agora você é a invasão. Toque perto da borda para escolher o Spawn Sector e lance naves pela aba Deploy.</span>
         <span class="subtitle">Derrube o planeta antes do Siege Timer (${SIEGE_TIME} s). Ache o Quadrant sem Satellite.</span>
         <span class="subtitle">Recorde: ${save.bestPlanet} planetas</span>
       </div>`));
-      const go = el(`<button class="btn" style="margin-top:8px;width:120px">Começar invasão</button>`);
-      go.onclick = () => { newRun(); showScreen('game'); };
-      s.appendChild(go);
       ui.appendChild(s);
       return;
     }
+
     const wrap = el(`<div class="cores"></div>`);
     for (const c of CORES) {
       const unlocked = save.cores.includes(c.id);
@@ -1196,10 +1206,7 @@ const SCREENS = {
       box.onclick = () => { if (!unlocked) return; if (save.core !== c.id) { save.core = c.id; save.skin = 'Classic'; writeSave(); showScreen('cores'); } };
       wrap.appendChild(box);
     }
-    s.appendChild(wrap);
-    const play = el(`<button class="btn" style="margin-top:8px;width:120px">Começar run</button>`);
-    play.onclick = () => { newRun(); showScreen('game'); };
-    s.appendChild(play);
+    middle.appendChild(wrap);
     ui.appendChild(s);
   },
 
@@ -1321,12 +1328,12 @@ const SCREENS = {
     if (r.mode === 'invasion') {
       const s = el(`<div class="screen"><div class="dialog panel">
         <span class="h">Invasão encerrada</span>
-        ${planetHtml(r.core, r.skin)}
+        <div class="row result-body">${planetHtml(r.core, r.skin)}
         <div class="stats">
           <span>Planetas destruídos</span><span>${r.planetsDown}</span>
           <span>Naves lançadas</span><span>${fmt(r.launched)}</span>
           <span>Tempo</span><span>${mins}:${String(secs).padStart(2, '0')}</span>
-        </div>
+        </div></div>
         <span class="${r.newBest ? 'badge' : 'subtitle'}">${r.newBest ? 'Novo recorde!' : `Recorde: ${save.bestPlanet} planetas`}</span>
         <div class="row" style="margin-top:4px">
           <button class="btn" data-again>Jogar de novo</button>
@@ -1340,14 +1347,14 @@ const SCREENS = {
     }
     const s = el(`<div class="screen"><div class="dialog panel">
       <span class="h">Planeta destruído</span>
-      ${planetHtml(r.core, r.skin)}
+      <div class="row result-body">${planetHtml(r.core, r.skin)}
       <div class="stats">
         <span>Wave alcançada</span><span>${r.wave}</span>
         <span>Inimigos destruídos</span><span>${fmt(r.kills)}</span>
         <span>Tempo</span><span>${mins}:${String(secs).padStart(2, '0')}</span>
         <span>Shards coletados</span><span>${fmt(r.totalShards)}</span>
         <span>Motherships</span><span>${r.mothershipsKilled}</span>
-      </div>
+      </div></div>
       <span class="${r.newBest ? 'badge' : 'subtitle'}">${r.newBest ? 'Novo recorde!' : `Recorde: Wave ${save.best}`}</span>
       <div class="row" style="margin-top:4px">
         <button class="btn" data-again>Jogar de novo</button>

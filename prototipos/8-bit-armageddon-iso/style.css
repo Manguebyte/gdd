@@ -116,6 +116,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   padding: 8px;
+  overflow-y: auto;   /* segurança: numa janela baixa demais, a tela rola em vez de cortar */
   background: rgba(10, 8, 30, .72);
 }
 
@@ -140,16 +141,22 @@ html, body {
 
 /* ---------- core select ---------- */
 .cores { display: flex; gap: 6px; }
-.core { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 96px; padding: 6px 4px; }
+/* Telas em 3 faixas (Core Select): o meio ocupa o que sobrar e o rodapé fica sempre visível. */
+.screen-middle { flex: 1; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.screen-footer { width: 100%; display: flex; align-items: center; gap: 4px; padding-top: 2px; flex: none; }
+.screen-footer .mode.sel { color: var(--shard); }
+.screen-footer .play { color: var(--shard); min-width: 100px; }
+.core { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 96px; padding: 3px 4px; }
 .core.sel { outline: 1px solid var(--shard); }
-.core .mods { color: var(--dim); text-align: center; min-height: 30px; }
+.core .mods { color: var(--dim); text-align: center; min-height: 20px; }
 .skins { display: flex; gap: 2px; }
-.skin { width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
+.skin { width: 18px; height: 18px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
+.skin .planet-spin { transform: scale(.5); margin: -8px; }   /* miniatura de 16 px: o painel cabe em telas de 180 px */
 .skin.sel { border-color: var(--shard); }
 .skin.locked { cursor: default; }
 
 /* ---------- achievements ---------- */
-.ach-list { width: 100%; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px; align-content: start; }
+.ach-list { width: 100%; flex: 1; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 2px; align-content: start; }
 .ach { display: flex; align-items: center; gap: 4px; padding: 3px 5px; min-height: 26px; border-image: url("ui/btn_normal.png") 8 fill / 8px stretch; }
 .ach.locked { border-image-source: url("ui/btn_disabled.png"); }
 .ach .txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
@@ -262,5 +269,7 @@ html, body {
 
 /* ---------- resultados / pausa ---------- */
 .dialog { margin: auto; padding: 6px 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 150px; }
+/* Results: o planeta ao lado dos números, para o diálogo caber em 180 px de altura. */
+.result-body { gap: 10px; align-items: center; }
 .stats { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 4px 0; }
 .stats span:nth-child(even) { text-align: right; color: var(--shard); }

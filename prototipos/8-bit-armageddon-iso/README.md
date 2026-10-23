@@ -29,7 +29,8 @@ Quase toda a arte é a do 8-Bit Armageddon, lida direto de [`Sprites/8-Bit-Armag
 Ajustes pedidos depois de jogar, ainda não levados à Parte 1 do GDD:
 - A run começa com **10 Shards** (GDD: 5).
 - Cada Wave dura **60 s** (Boss Wave: **120 s**), e os inimigos nascem ao longo de 40 s (GDD: 30 s / 60 s, nascendo em 20 s).
-- Grunt, Scout, Swarmer e Brute são **20% mais lentos** (0,64 / 1,6 / 0,96 / 0,4 u/s). A Mothership não mudou.
+- Grunt, Scout, Swarmer e Brute são **20% mais lentos** (0,64 / 1,6 / 0,96 / 0,4 u/s). A velocidade da Mothership não mudou.
+- O laser da Mothership causa **30% menos** dano: 17,5 de base (GDD: 25), ainda multiplicado pela escalada de dano da Wave. Na Wave 10, ~30 por disparo em vez de ~42.
 - Nas Waves 6 a 9, os Swarmers nascem em cachos de **4** (GDD: 8). Da Wave 10 em diante, voltam a 8.
 - O canto superior direito mostra o HP e o ATK (já escalados pela Wave) de cada tipo de inimigo da Wave atual.
 - A gaveta aberta é mais baixa (cards de 2 linhas, um botão só que alterna x1 / x10 / Max). Passar o mouse sobre um card, ou pressionar e segurar no celular, mostra o que o upgrade faz sem comprar.
