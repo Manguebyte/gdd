@@ -1,4 +1,4 @@
-# GDD — 8-Bit Armageddon
+# GDD — Orbitfall
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
 **Plataformas:** Android (Google Play) e Web (site próprio + itch.io)
@@ -7,13 +7,17 @@
 **Público-alvo:** 13+. Fãs de roguelike incremental (ex: The Tower, Vampire Survivors, Kingdom Rush) com foco em runs curtas e replayability
 **Glossário:** os termos canônicos (em inglês) estão em [`contexts/8-bit-armageddon/CONTEXT.md`](contexts/8-bit-armageddon/CONTEXT.md). Este documento e o código usam só esses termos.
 
+> **Nome.** **Definido:** o jogo se chama **Orbitfall** (antes: *8-Bit Armageddon*). O nome antigo continua nos arquivos e no código (`GDD_8-Bit_Armageddon.md`, `Sprites/8-Bit-Armageddon/`, `prototipos/8-bit-armageddon/`, namespace `Armageddon.*` no guia Unity), porque trocá-lo quebra links e caminhos de arte; isso fica para uma tarefa à parte. **Em aberto:** confirmar que o nome está livre na Google Play, no itch.io e como domínio, antes de usar na loja.
+
 ---
 
 ## 1. Conceito Central (Pitch)
 
 O jogador defende um planeta contra ondas infinitas de invasores alienígenas vindos do espaço. Os **Satellites** orbitam o planeta e disparam **automaticamente**; o papel do jogador é decidir, em tempo real, como investir os **Shards** coletados a cada inimigo destruído, transformando o planeta em uma fortaleza cada vez mais poderosa até que, inevitavelmente, ele caia. Toda run começa do zero: não há moeda permanente nem upgrades que passam de uma run para a outra. O que fica são as conquistas, que liberam novos Planet Cores e Skins, e o recorde de Wave a bater.
 
-**Fantasia central:** "Eu sou o último ponto de defesa de um mundo. Quanto mais eu resistir, mais forte eu fico, mas os aliens também."
+**Definido: dois modos de jogo.** O modo descrito acima é o **Last Stand**, o modo principal. O modo **Invasion** inverte os papéis: o planeta no centro se defende sozinho, com as mesmas regras, e o jogador comanda a invasão, lançando as naves alienígenas pelos Spawn Sectors para derrubar uma sequência de planetas (Seção 4.7). Salvo indicação, as Seções 3 a 4.6 descrevem o Last Stand.
+
+**Fantasia central:** "Eu sou o último ponto de defesa de um mundo. Quanto mais eu resistir, mais forte eu fico, mas os aliens também." No Invasion: "Agora eu sou os aliens, e cada planeta é uma fortaleza a ser quebrada."
 
 ---
 
@@ -78,6 +82,8 @@ dano = Damage × (1 + Impetus × distânciaAoCentro) × (crítico ? CriticalFact
 ```
 O crítico é sorteado a cada disparo com probabilidade Critical Chance.
 
+**Definido: Multishot.** A cada disparo, o Satellite sorteia **Multishot Chance**. Se der certo, ele dispara **ao mesmo tempo** um projétil extra em cada um de até **Multishot Targets** outros inimigos válidos (no Quadrant dele e no Attack Range), diferentes do alvo principal e escolhidos na ordem da Target Priority dele. Cada projétil extra usa a fórmula de dano inteira (com Impetus pela distância do próprio alvo) e sorteia o próprio crítico. Se houver menos inimigos válidos que Multishot Targets, sobram menos projéteis extras: o jogo nunca põe dois no mesmo alvo. Um projétil extra não sorteia Multishot de novo.
+
 ### 4.2 Stats do planeta (Upgrades)
 
 Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
@@ -98,10 +104,13 @@ Os Stats são organizados em três **Tracks**, que são as três abas da gaveta 
 | **Attack Range** | Raio de detecção e disparo, medido do centro do planeta | 4,0 u | +0,15 u | 8,0 u | 6 |
 | **Impetus** | Dano extra por unidade de distância do alvo | 0%/u | +0,4%/u | 12%/u | 10 |
 | **Orbit Speed** | Velocidade da órbita dos Satellites | 45°/s | +5°/s | 180°/s | 6 |
+| **Multishot Chance** | Probabilidade de um disparo virar Multishot (Seção 4.1) | 0% | +2 p.p. | 50% | 10 |
+| **Multishot Targets** | Alvos extras de cada Multishot | 1 | +1 | 4 | 25 |
 
 Observações de design:
 - Critical Chance e Critical Factor são separados para permitir builds de "chance alta + fator baixo" e o oposto.
 - Impetus incentiva Attack Range alto e a Target Priority Farthest.
+- Multishot Chance e Multishot Targets também são separados: Targets sozinho não faz nada, e Chance sozinho dá no máximo 1 alvo extra. O Multishot rende mais contra muitos inimigos juntos (Swarmer, Waves de 3 Spawn Sectors) e quase nada contra a Mothership sozinha.
 - Orbit Speed decide quanto tempo um Quadrant fica sem cobertura quando o jogador tem menos de 4 Satellites. Com o valor base, 1 Satellite dá a volta em 8 s e fica 2 s em cada Quadrant. Um Grunt leva uns 3,7 s para cruzar o Attack Range base, então alguns chegam ao planeta nas primeiras Waves. Isso é proposital: cria o incentivo para comprar Orbit Speed ou o Satellite 2.
 
 #### 🛡️ Defense
@@ -111,10 +120,27 @@ Observações de design:
 | **Regeneration** | HP recuperado por segundo | 0 | +0,4/s | — | 8 |
 | **Defense (absolute)** | Dano fixo removido de cada hit | 0 | +0,5 | — | 8 |
 | **Defense (relative)** | % de dano removido de cada hit | 0% | +1,5 p.p. | 75% | 10 |
+| **Energy Shield** | Cargas do escudo: cada carga anula um hit inteiro | 0 | +1 | 3 | preço fixo (abaixo) |
+| **Reflect Shield** | Põe o Reflector em órbita (nível 1) e define o **Reflect Damage**, dano fixo de cada reflexo | 0 (sem Reflector) | nível 1 = 15; depois +8 | — | 15 |
 
-**Definido:** dano recebido = `max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative))`. A defesa absoluta é aplicada primeiro, e nenhum hit causa menos que 1 de dano. A absoluta é forte contra muitos hits fracos (Swarmer); a relativa, contra hits grandes (Brute, laser da Mothership).
+**Definido:** dano recebido = `max(1, (danoBruto − DefenseAbsolute) × (1 − DefenseRelative))`. A defesa absoluta é aplicada primeiro, e nenhum hit causa menos que 1 de dano. Antes dessa conta, o hit pode ser anulado por uma carga do Energy Shield (abaixo). A absoluta é forte contra muitos hits fracos (Swarmer); a relativa, contra hits grandes (Brute, laser da Mothership).
 
 Ao comprar um nível de Hitpoints, o HP atual sobe na mesma quantidade (o jogador não "perde" a compra por estar ferido).
+
+**Definido: Energy Shield.**
+- Uma bolha em volta do planeta com até 3 **cargas**, uma por nível. Cada hit que chega ao planeta (inimigo kamikaze, Gunner Bolt, laser da Mothership) gasta **1 carga** e é anulado por inteiro: o planeta não toma dano e a Defense nem é calculada. Sem carga, o hit segue a fórmula de dano acima.
+- A carga do nível comprado já vem cheia. Enquanto houver carga faltando, o escudo **recarrega 1 carga a cada 12 s** (valor inicial). O relógio da recarga não reinicia quando o planeta toma hit.
+- É um Stat de preço fixo, uma exceção à fórmula `baseCost × 1.15^nível`: nível 1 = **30**, nível 2 = **90**, nível 3 = **250** Shards (valor inicial). Como o número de cargas é inteiro, o Planet Core não muda as cargas.
+- Observação de design: uma carga vale o mesmo contra um Swarmer (2 de dano) e contra o laser da Mothership. O escudo é a resposta para hits grandes e raros; a Defense (absolute), para muitos hits pequenos.
+- Visual: a bolha mostra quantas cargas restam (um anel por carga, `VFX/SPR_VFX_EnergyShield`) e estoura quando a última se gasta (`VFX/SPR_VFX_EnergyShield_Pop`). Ver Seção 6.4.
+
+**Definido: Reflect Shield.**
+- O nível 1 põe em órbita o **Reflector**, um escudo-satélite. Ele **não é um Satellite**: não atira, não conta no limite de 4 e não tem Target Priority. Fica numa órbita própria, de **2,5 u** de raio (por fora da órbita dos Satellites, de 1,75 u), gira no sentido **horário** (o contrário dos Satellites) a **30°/s** fixos e cobre um arco de **40°** centrado nele, o **Reflect Arc**. Nada atinge o Reflector.
+- **Gunner Bolt:** um Bolt que cruza o círculo de 2,5 u dentro do Reflect Arc é **refletido**. Ele não chega ao planeta e volta, teleguiado, para o Gunner que o disparou, causando **Reflect Damage**. Se esse Gunner já morreu, vai para o inimigo vivo mais perto; se não houver nenhum, some.
+- **Laser da Mothership:** se, no instante do disparo, a linha do laser cruza o Reflect Arc, o laser é **bloqueado**: o planeta não toma dano e a Mothership toma Reflect Damage.
+- **Kamikaze:** um inimigo comum cuja borda cruza o círculo de 2,5 u dentro do Reflect Arc toma Reflect Damage. Se sobreviver, é empurrado **1,5 u** para fora, na direção oposta ao planeta. Cada inimigo só pode ser atingido pelo Reflector uma vez a cada 1 s. A Mothership não sofre esse empurrão.
+- O Reflect Damage é **absoluto**: não usa Damage, Critical nem Impetus. É o valor do Stat Reflect Shield (nível 1 = 15, cada nível seguinte +8), e o +30% de Defense do Ice Core vale para ele.
+- Observação de design: o Reflector é forte contra Swarmers (que morrem num toque) e contra Gunners, e uma loteria contra o laser (com 40° de arco, ele está no caminho em cerca de 1 de cada 9 lasers). **Em aberto:** se vale um segundo Reflector, ou um Stat para aumentar o arco ou a velocidade dele.
 
 #### 💰 Utility
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
@@ -155,11 +181,11 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
 | Dano do inimigo | `baseDamage × 1.06^(w−1)` |
 | Bônus de Wave Clear (por Wave paga) | `(5 + w) × (1 + Resource per Wave)` Shards |
 
-**Composição:** cada slot de spawn sorteia um tipo de inimigo entre os já liberados, com os pesos Grunt 50, Scout 25, Swarmer 15, Brute 10 (os pesos são renormalizados entre os tipos liberados). Um slot de Swarmer gera um cacho de 8.
+**Composição:** cada slot de spawn sorteia um tipo de inimigo entre os já liberados, com os pesos Grunt 50, Scout 25, Gunner 12, Swarmer 15, Brute 10 (os pesos são renormalizados entre os tipos liberados). Um slot de Swarmer gera um cacho de 8.
 
 ### 4.4 Inimigos
 
-**Definido:** todos os inimigos comuns são **kamikaze**: avançam até o planeta, causam dano ao tocar (distância < raio do planeta) e somem sem dar Shards.
+**Definido:** os inimigos comuns são **kamikaze**: avançam até o planeta, causam dano ao tocar (distância < raio do planeta) e somem sem dar Shards. A exceção é o **Gunner**, que ataca à distância (abaixo).
 
 **Definido (valor inicial, ajustar via Analytics):** valores na Wave 1, antes da escalada da Seção 4.3.
 
@@ -167,10 +193,17 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
 |---|---|---|---|---|---|---|
 | **Grunt** | 10 | 5 | 0,8 u/s | 1 | 1 | Linha reta até o planeta |
 | **Scout** | 6 | 3 | 2,0 u/s | 1 | 3 | Zigue-zague leve (amplitude 0,5 u, 1,5 Hz) |
+| **Gunner** | 14 | 4 por Bolt | 0,9 u/s | 2 | 5 | Para fora do planeta e atira Gunner Bolts (abaixo) |
 | **Swarmer** | 3 | 2 | 1,2 u/s | 1 a cada 2 | 6 | Nasce em cachos de 8, espalhados |
 | **Brute** | 80 | 20 | 0,5 u/s | 4 | 8 | Linha reta, lento |
 
 Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarmer) são acumuladas e pagas quando somam 1.
+
+**Definido: Gunner.**
+- Raio 0,5 u. Avança em linha reta até **4,5 u** do centro, onde a borda dele fica exatamente no Attack Range base (4,5 − 0,5 = 4 u), e para ali.
+- Parado, dispara um **Gunner Bolt** a cada **2,5 s**: um projétil em linha reta para o planeta, a **4 u/s**, que causa o dano do Gunner quando chega à borda do planeta. O Bolt não é alvo dos Satellites. Ele é anulado por uma carga do Energy Shield e refletido pelo Reflector (Seção 4.2).
+- O Gunner nunca encosta no planeta: só sai de campo morrendo. Por isso a Wave dele só termina em Wave Clear quando o jogador o mata. Com menos de 4 Satellites, ele só toma tiro quando um Satellite passa pelo Quadrant dele.
+- **Arte:** um disco lavanda mais pesado e escuro que o Grunt, com uma torre e uma lente magenta que pulsa (`Enemies/SPR_Enemy_Gunner`). O Bolt é uma bolinha magenta (`Projectiles/SPR_Projectile_GunnerBolt`), diferente da bolinha laranja do Satellite. Ver Seção 6.4.
 
 ### 4.5 Boss Wave — Mothership
 
@@ -178,7 +211,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 - Toda Wave múltipla de 10 (10, 20, 30…) é uma **Boss Wave**: nasce uma única **Mothership**, sem inimigos comuns. HP e dano escalam com a mesma fórmula da Seção 4.3.
 - A Mothership **não é kamikaze**. Ela nasce na borda (12 u), no Spawn Sector indicado pelo aviso da Boss Wave, e desce em linha reta a **1,5 u/s** até **7 u** do centro. Durante a entrada ela já pode ser atingida (se estiver no alcance), mas só começa a atacar quando chega aos 7 u.
 - **Espiral:** dali em diante ela gira devagar (10°/s, uma volta a cada 36 s) e **se aproxima em espiral**, perdendo **1,5 u de raio por volta**, de forma contínua, até uma **órbita mínima de 3,5 u**, onde continua girando e atacando. Com a regra de alcance pela borda (Seção 4.1), o Attack Range base (4 u) a alcança depois de cerca de 1 volta; quem comprou Range a alcança antes.
-- **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta.
+- **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta. O laser conta como 1 hit para o Energy Shield e pode ser bloqueado pelo Reflector (Seção 4.2).
 - **Swarmers:** a cada 15 s, solta um cacho de 8 Swarmers.
 - **Barra de HP** no topo da tela enquanto ela estiver viva.
 - Se o timer de 60 s acabar com a Mothership viva, ela **continua em campo** junto com as Waves seguintes até ser destruída.
@@ -195,6 +228,53 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
   - Se recusar, se a contagem acabar ou se o anúncio falhar: vai para Results.
 - **Pausa:** o botão de pausa congela o jogo. O jogo também **pausa sozinho** quando o app vai para segundo plano ou a aba do navegador perde o foco.
 
+### 4.7 Modo Invasion
+
+**Definido: conceito.** É o Last Stand ao contrário. O planeta no centro é o inimigo e se defende sozinho com as regras das Seções 4.1 a 4.6: Satellites, Quadrants, Target Priority, Stats, Energy Shield e Reflect Shield. O jogador comanda a invasão: gasta **Plasma** para lançar as naves alienígenas (Grunt, Scout, Swarmer, Gunner, Brute e, mais tarde, a Mothership) pelos Spawn Sectors. O desafio é ler a defesa: achar o Quadrant que está sem Satellite, mandar Swarmers quando o planeta não tem Multishot, mandar Gunners quando o Reflector está do outro lado.
+
+**Definido: estrutura da run.**
+- A run é uma sequência de **Target Planets**. Cada um tem um **Siege Timer** de **120 s**. O jogador vence o planeta quando zera o HP dele e passa para o próximo, mais forte. Se o timer acabar com o planeta vivo, a run acaba.
+- O recorde do Invasion é o **Best Planet**: o maior número de planetas destruídos numa run. Ele fica ao lado do Best Wave, no Main Menu e no Results.
+- **Desbloqueio:** o Invasion libera com a conquista *Holding the Line* (Wave 10 no Last Stand). Quem chega lá já entendeu Quadrants, órbita e Upgrades, e é isso que o Invasion pede para ler.
+- **Revive no Invasion:** **Em aberto.** A proposta é o mesmo anúncio dar **+30 s** de Siege Timer uma vez por run, quando o timer acaba.
+
+**Definido: o planeta defensor (IA).**
+- Cada Target Planet sorteia um Planet Core (Terra, Ice ou Magma, com os modificadores da Seção 5.2) e um **perfil de compra** que combina com ele: Terra é equilibrado; Ice prioriza Defense, Energy Shield e Reflect Shield; Magma prioriza Damage, Critical e Multishot.
+- O planeta **n** começa com `min(1 + floor((n − 1) / 2), 4)` Satellites e com `20 × 1,35^(n−1)` Shards (valor inicial), gastos na hora segundo o perfil.
+- Durante o cerco, a IA ganha Shards como o jogador ganharia no Last Stand: pelos valores da Seção 4.4 a cada nave que destrói, e um bônus de `5 + n` a cada 30 s. Ela gasta assim que pode. Os Satellites dela usam a Target Priority Closest.
+- **Fortress:** todo planeta múltiplo de 5 começa com 4 Satellites e o Reflect Shield no nível 3, faz o papel da Boss Wave e dá o dobro de Plasma ao cair.
+- **Em aberto:** a ordem exata de compra de cada perfil, e se o jogador vê os Stats do planeta (proposta: um painel com os níveis, para a leitura da defesa ser uma habilidade e não um chute).
+
+**Definido: Plasma e lançamento (valor inicial, ajustar via Analytics).**
+- **Plasma** é a moeda do Invasion e substitui os Shards para o jogador. A run começa com **20**. A renda é de **3 Plasma/s**, mais **1 Plasma** por nave que acerta o planeta (o Gunner Bolt também conta) e **`10 × n`** Plasma por planeta destruído. O que sobra passa para o próximo planeta.
+- **Lançar:** as 6 setas de Spawn Sector ficam sempre visíveis na borda da tela, e uma delas está selecionada. O jogador toca numa seta para escolher o setor e depois num card da aba **Deploy** da gaveta. A nave nasce num ponto aleatório do setor, a **9 u** do centro (dentro da tela, para o jogador ver a nave sair), e segue o comportamento da Seção 4.4.
+- As naves usam os valores da Wave 1 (Seção 4.4), mudados só pelos Fleet Upgrades. A escalada fica do lado do planeta.
+
+| Nave | Custo (Plasma) | Liberada no planeta |
+|---|---|---|
+| **Grunt** | 4 | 1 |
+| **Scout** | 5 | 1 |
+| **Swarmer** (cacho de 8) | 8 | 2 |
+| **Gunner** | 10 | 3 |
+| **Brute** | 18 | 4 |
+| **Mothership** | 120 (no máximo 1 em campo) | 6 |
+
+- A Mothership do jogador segue a Seção 4.5 (entrada, espiral, laser a cada 8 s, cacho de Swarmers a cada 15 s), com HP e dano da Wave 1.
+
+**Definido: Fleet Upgrades.** Comprados com Plasma na aba **Fleet**, valem até o fim da run (passam de um planeta para o outro). O custo segue a fórmula da Seção 4.2.
+
+| Fleet Upgrade | Efeito | Por nível | Teto | baseCost |
+|---|---|---|---|---|
+| **Hull** | HP de todas as naves | +10% | — | 15 |
+| **Warheads** | Dano de todas as naves (contato, Bolt e laser) | +10% | — | 15 |
+| **Thrusters** | Velocidade de todas as naves | +5% | +50% | 20 |
+| **Plasma Flow** | Renda de Plasma | +0,5/s | — | 20 |
+
+**Em aberto:**
+- As conquistas próprias do Invasion e se ele libera Planet Cores ou Skins.
+- Se a Target Priority da IA muda com o perfil.
+- O balanceamento inteiro desta seção. Os números acima são um ponto de partida para o protótipo.
+
 ---
 
 ## 5. Progressão entre runs
@@ -203,8 +283,8 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 
 **Definido:**
 - Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 5 Shards e as 4 Target Priorities disponíveis.
-- Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 13 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
-- O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e o **recorde de Wave** (Best Wave: a maior Wave alcançada, mostrada no Main Menu e no Results).
+- Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 17 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
+- O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e os recordes: **Best Wave** no Last Stand (a maior Wave alcançada) e **Best Planet** no Invasion (Seção 4.7), os dois mostrados no Main Menu e no Results.
 - Consequência de design: a variedade entre runs vem do Planet Core escolhido e da estratégia de Upgrades, não de um ponto de partida que cresce. Sem Perks, nenhuma run começa mais forte que a primeira. **Em aberto:** se o começo da run (Seções 4.2 e 4.3) precisa de ajuste por causa disso (ajustar via Analytics).
 
 ### 5.2 Planet Cores
@@ -315,6 +395,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
 - **Câmera:** com a gaveta aberta, a visão desliza para o planeta ficar inteiro no centro da área livre (o mundo sobe; a câmera desce). O jogo nunca pausa.
+- **No Invasion:** a gaveta tem as abas **Deploy** (um card por nave, com o custo em Plasma) e **Fleet** (os Fleet Upgrades), e o saldo é de Plasma. **Definido:** Deploy, Fleet, o Plasma e os Fleet Upgrades usam **verde-azulado (teal)**, a cor do jogador no Invasion: não é vermelho nem lavanda/magenta, e não se confunde com as abas do Last Stand.
 - **Aba Satellites:** uma linha por Satellite em órbita, com um seletor da Target Priority (as 4 prioridades), e um botão para comprar o próximo Satellite com o preço em Shards (Seção 4.2). O botão some quando a órbita já tem 4.
 
 **Definido: arte da interface.**
@@ -326,8 +407,8 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 **Definido: fluxo de telas.**
 1. **Boot:** logo e carregamento.
 2. **Consent:** tela de consentimento GDPR/LGPD, só no primeiro uso (e onde a lei exigir).
-3. **Main Menu:** Play, Planet Cores & Skins, Achievements, Settings, e o recorde de Wave.
-4. **Core Select:** escolher o Planet Core e a Skin antes da run.
+3. **Main Menu:** Play, Planet Cores & Skins, Achievements, Settings, e os recordes (Best Wave e Best Planet).
+4. **Core Select:** escolher o modo (Last Stand ou Invasion, este bloqueado até a conquista *Holding the Line*) e, no Last Stand, o Planet Core e a Skin antes da run. No Invasion, o Planet Core é do planeta inimigo e é sorteado (Seção 4.7).
 5. **Gameplay:** HUD (HP do planeta, Wave atual e timer, botão de pausa, barra de HP da Mothership quando houver) e a gaveta de upgrades.
 6. **Pause:** continuar, Settings, desistir da run (vai para Results).
 7. **Revive Offer:** ver Seção 4.6.
@@ -370,6 +451,10 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 | `Enemies/SPR_Enemy_Swarmer` | 32×32 | 1 linha | 2 | 4 | loop | `Enemies` | Núcleo pulsando. |
 | `Enemies/SPR_Enemy_Brute` | 32×32 | 1 linha | 1 | — | — | `Enemies` | Cada **coluna** é uma variação visual (4), sorteada no spawn. Sem animação. |
 | `Enemies/SPR_Enemy_Mothership` | **64×64** | 1 linha | 5 | 5 | loop | `Enemies` | Luzes da borda acendendo em sequência. Única célula de 64×64. |
+| `Enemies/SPR_Enemy_Gunner` | 32×32 | 1 linha | 4 | 6 | loop | `Enemies` | A lente magenta pulsa (apagada, média, acesa, média). Sem variações. |
+| `Satellites/SPR_Reflector` | 32×32 | 1 linha | 2 | 2 | loop | `Satellites` | Corpo do Reflector (Seção 4.2), luz acesa e apagada. Nunca gira. O arco de 40° em volta é desenhado por código. |
+| `Projectiles/SPR_Projectile_GunnerBolt` | 32×32 | 1 linha | 2 | 8 | loop | `Projectiles` | Gunner Bolt, magenta. O rastro é desenhado por código, como o do projétil do Satellite. |
+| `Projectiles/SPR_Projectile_Reflected` | 32×32 | 1 linha | 2 | 8 | loop | `Projectiles` | Tiro devolvido pelo Reflector, azul-claro. |
 | `Backgrounds/SPR_Background_Space` | 32×32 | 1 linha | — | — | — | `Background` | 4 tiles de fundo, **sorteados** por célula de 32×32 para cobrir a tela (não é animação). |
 | `Backgrounds/SPR_Background_StarTwinkle` | 32×32 | 1 linha | 4 | 4 | loop | `Background` | Estrela grande piscando, espalhada por cima dos tiles. |
 
@@ -383,6 +468,8 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 | `VFX/SPR_VFX_Laser_Warning` | 32×32 | 2 | 6 | loop por 1,5 s | `VFX` | Aviso do laser. Tile repetido e girado ao longo da linha Mothership → planeta (Seção 6.2). |
 | `VFX/SPR_VFX_Laser_Beam` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Feixe do laser. Mesmo uso do aviso. |
 | `VFX/SPR_VFX_Laser_Impact` | 32×32 | 4 | 12 | loop enquanto dispara | `VFX` | Ponta do feixe, na borda do planeta. |
+| `VFX/SPR_VFX_EnergyShield` | **48×48** | 4 | 6 | loop | `VFX` | Bolha do Energy Shield. **Linha** = número de cargas (1, 2 ou 3 anéis); coluna = frame do brilho que dá a volta. Fica centralizada no planeta. |
+| `VFX/SPR_VFX_EnergyShield_Pop` | **48×48** | 5 | 12 | uma vez | `VFX` | Estouro do escudo quando a última carga se gasta. |
 
 #### Interface
 
@@ -392,10 +479,10 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 | `UI/SPR_UI_Button` | 32×32 | 3 colunas | Botão normal, pressionado e desabilitado (as 3 *sprites* do *Sprite Swap* do Button). 9-slice com bordas de 8 px. |
 | `UI/SPR_UI_DrawerStrip` | 32×32 | 1 célula | Faixa da gaveta fechada. *Image Type = Tiled*, repetida na horizontal por toda a largura. |
 | `UI/SPR_UI_SpawnSectorArrow` | 32×32 | 6 linhas × 2 | Linha = Spawn Sector (30°, 90°, 150°, 210°, 270°, 330°); coluna = aceso / apagado, piscando a 4 fps durante o aviso de 2 s. |
-| `UI/SPR_UI_Icons` | 32×32 | 8 colunas × 3 linhas | Ícones de 16 px centralizados na célula. Ordem das células abaixo. |
+| `UI/SPR_UI_Icons` | 32×32 | 8 colunas × 5 linhas | Ícones de 16 px centralizados na célula. Ordem das células abaixo. |
 | `Fonts/m5x7.ttf` | — | — | Fonte do jogo. Vira um *Font Asset* do TextMeshPro, usado no tamanho 16 (Seção 6.3). |
 
-**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust (sem uso) · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada (sem uso).
+**Ordem das células de `SPR_UI_Icons`** (da esquerda para a direita, de cima para baixo, começando em 0): 0 Damage · 1 Attack Speed · 2 Critical Chance · 3 Critical Factor · 4 Attack Range · 5 Impetus · 6 Orbit Speed · 7 Hitpoints · 8 Regeneration · 9 Defense (absolute) · 10 Defense (relative) · 11 Resource Bonus · 12 Resource per Wave · 13 aba Offense · 14 aba Defense · 15 aba Utility · 16 aba Satellites · 17 Shards · 18 Stardust (sem uso) · 19 troféu desbloqueado · 20 troféu bloqueado · 21 troféu com recompensa coletada (sem uso) · 22 Multishot Chance · 23 Multishot Targets · 24 Energy Shield · 25 Reflect Shield · 26 aba Deploy · 27 aba Fleet · 28 Plasma · 29 Hull · 30 Warheads · 31 Thrusters · 32 Plasma Flow. As células 22 a 32 foram acrescentadas para o Orbitfall, depois das que já existiam, sem mudar a ordem das outras.
 
 ---
 
@@ -446,15 +533,18 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 ## 8. Escopo da versão 1.0
 
 **Definido:** a 1.0 contém:
-1. 4 inimigos comuns (Grunt, Scout, Swarmer, Brute) + a Mothership a cada 10 Waves.
+1. 5 inimigos comuns (Grunt, Scout, Gunner, Swarmer, Brute) + a Mothership a cada 10 Waves.
 2. Waves híbridas com Spawn Sectors e aviso na borda da tela.
-3. 13 Stats em 3 Tracks, com Upgrades pela gaveta.
+3. 17 Stats em 3 Tracks, com Upgrades pela gaveta (inclui Multishot, Energy Shield e Reflect Shield).
+3b. O modo Invasion (Seção 4.7), liberado por conquista.
 4. 1 a 4 Satellites em órbita, comprados durante a run, cada um atacando o Quadrant onde está, com Target Priority por Satellite (4 prioridades).
 5. 3 Planet Cores, 6 Skins desbloqueáveis, 15 conquistas, recorde de Wave.
 6. Revive (com anúncio recompensado), pausa (inclusive automática), Results.
 7. Settings e acessibilidade completos (Seção 6.3), dicas contextuais de onboarding.
 8. Inglês e Português (Brasil).
 9. Android (Google Play) e Web (site próprio + itch.io), com save local, consentimento e analytics.
+
+**Definido:** o guia Unity cobre o Gunner, o Multishot, o Energy Shield e o Reflect Shield na **Fase 8A**, e o modo Invasion na **Fase 8B**, entre a Fase 8 e a 9. A escolha do modo no menu e o recorde Best Planet entram com a Fase 9.
 
 **Metas de performance (Definido):**
 - Android mínimo: 8.0 (API 26).
@@ -468,7 +558,7 @@ Referência técnica para importar e usar a arte no Unity. Os arquivos estão em
 Candidatos para updates, em ordem aproximada de prioridade (a decidir com base no Analytics):
 - Novos bosses (variações da Mothership com padrões de ataque diferentes).
 - Novos Planet Cores e Skins.
-- Novos inimigos (ex.: inimigo com escudo frontal, inimigo que ataca à distância).
+- Novos inimigos (ex.: inimigo com escudo frontal). O que ataca à distância já entrou: é o Gunner.
 - Google Play Games Services (conquistas e placares).
 - Save na nuvem.
 - IAP "remover anúncios", se os dados indicarem.
@@ -571,6 +661,15 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | `Armageddon.World` | `ShockwaveView` | O anel da onda de choque do Revive, desenhado por código | 8 |
 | `Armageddon.Run` | `RunDevTools` | Teclas de teste da run (só no Editor e em builds de desenvolvimento) | 8 |
 | `Armageddon.UI` | `HudView`, `PauseView`, `ReviveOfferView`, `ResultsView` | Telas da run | 8 |
+| `Armageddon.Planets` | `EnergyShield`, `EnergyShieldView` | Cargas do Energy Shield, recarga e a bolha | 8A |
+| `Armageddon.Combat` | `Reflector`, `ReflectorArcView` | O Reflect Shield: órbita, Reflect Arc, tiros devolvidos | 8A |
+| `Armageddon.Enemies` | `EnemyBolt`, `BoltPool` | O Gunner Bolt e o pool dele | 8A |
+| `Armageddon.Economy` | `StatApplier` | Copia os Stats para Satellites, planeta e escudos (nos dois modos) | 8A |
+| `Armageddon.Run` | `IRunFlow` | O que a tela de pausa precisa da run, nos dois modos | 8B |
+| `Armageddon.Invasion` | `AiProfile`, `InvasionBalance`, `FleetUpgrades` | Dados e números do Invasion, Fleet Upgrades | 8B |
+| `Armageddon.Invasion` | `PlanetAI`, `SiegeController`, `InvasionSummary` | A IA que compra para o planeta e o ciclo do cerco | 8B |
+| `Armageddon.Invasion` | `FleetLauncher`, `SectorPicker`, `InvasionDevTools` | Lançar naves, escolher o Spawn Sector, teclas de teste | 8B |
+| `Armageddon.UI` | `InvasionDrawer`, `ShipCard`, `FleetCard`, `InvasionHudView`, `IntelPanel`, `InvasionResultsView` | Telas do Invasion | 8B |
 | `Armageddon.Meta` | `PlanetCoreDefinition`, `SkinDefinition` | Planet Cores e Skins | 9 |
 | `Armageddon.Meta` | `AchievementDefinition`, `AchievementService` | Conquistas | 9 |
 | `Armageddon.UI` | `MainMenuView`, `CoreSelectView`, `AchievementsView` | Telas do menu | 9 |
@@ -594,6 +693,8 @@ Todos os scripts principais do jogo, com a fase em que cada um é criado. Use es
 | 6 | Stats, Shards, Upgrades e gaveta | ✅ Escrita |
 | 7 | Mothership | ✅ Escrita |
 | 8 | Run: Revive, pausa, Results | ✅ Escrita |
+| 8A | Gunner, Multishot, Energy Shield e Reflect Shield | ✅ Escrita |
+| 8B | Modo Invasion | ✅ Escrita |
 | 9 | Progressão entre runs: Planet Cores, Skins, conquistas, recorde de Wave e Main Menu | A escrever |
 | 10 | Anúncios, consentimento e analytics | A escrever |
 | 11 | Localização, Settings e acessibilidade | A escrever |
@@ -6827,4 +6928,2599 @@ namespace Armageddon.Run
 - **`The type or namespace name 'Clock' does not exist in the namespace 'Armageddon.Services'`:** algum arquivo foi criado no namespace `Armageddon.Services`. Os provedores de plataforma usam `Armageddon.Platform` (Passo 1); não existe namespace `Armageddon.Services`.
 - **Os inimigos voltam a dar dano logo depois do Revive:** os que estavam longe continuam vindo (a onda só limpa 4 u). É o esperado; o planeta tem 50% do HP para aguentar.
 
-Próxima fase: **Fase 9 — Progressão entre runs**. Ela salva o recorde de Wave, cria os Planet Cores e Skins e as conquistas, e monta o Main Menu e a Core Select.
+Próxima fase: **Fase 8A — Gunner, Multishot, Energy Shield e Reflect Shield**. Ela traz as novidades de combate do Orbitfall: o inimigo que atira, o Multishot e os dois escudos.
+
+---
+
+### Fase 8A — Gunner, Multishot, Energy Shield e Reflect Shield
+
+> Objetivo desta fase: entram as novidades de combate do Orbitfall (Seções 4.1, 4.2 e 4.4). Os Satellites ganham o **Multishot** (às vezes atiram em mais de um inimigo de uma vez); o planeta ganha o **Energy Shield** (cargas que anulam golpes inteiros) e o **Reflect Shield** (o Reflector, um escudo-satélite que devolve tiros); e chega o **Gunner**, o primeiro inimigo que não é kamikaze: ele para fora do planeta e atira **Gunner Bolts**. São 4 Stats novos na gaveta, que passa a ter 17.
+
+> **Por que "8A"?** As Fases 9 a 15 já são citadas pelo resto do guia (save, menus, anúncios...). Esta fase e a 8B (o modo Invasion) entram entre a 8 e a 9 sem mudar esses números. Elas só dependem do que foi feito até a Fase 8.
+
+**Conceitos novos:**
+- **Enum guardado como número:** o Unity salva um enum num asset como o **número** da opção (Damage = 0, AttackSpeed = 1...). Por isso os 4 Stats novos entram **no fim** do `StatId`: no meio, eles empurrariam os números dos Stats antigos, e os assets da Fase 6 passariam a apontar para o Stat errado. A mesma regra vale para o `ExplosionKind`.
+- **Exceções dentro da definição:** o Energy Shield tem **preço fixo** por nível (30, 90, 250), e o Reflect Shield vale 0 no nível 0 e **15** no nível 1. Em vez de criar classes novas de Stat, o `StatDefinition` ganha três campos opcionais (tabela de preços, bônus do primeiro nível e "número inteiro"). Os 13 Stats antigos deixam esses campos vazios e continuam iguais.
+- **Inimigo com dois comportamentos:** o `Enemy` continua sendo um prefab só. A `EnemyDefinition` diz se ele é kamikaze (`Hold Distance` = 0) ou se para a uma distância e atira (o Gunner).
+- **Um "registro" para quem é único:** o Reflector é perguntado por três sistemas (o tiro do Gunner, o laser da Mothership e os kamikazes). Em vez de arrastar o Reflector no Inspector de cada prefab, ele se publica numa propriedade estática, `Reflector.Current`, como o `TargetRegistry` faz com os alvos.
+- **O escudo vem antes da defesa:** o `PlanetHealth` pergunta ao `EnergyShield` se ele absorve o golpe **antes** de aplicar a fórmula de defesa. Um golpe absorvido não passa por ela.
+
+#### Passo 1 — Os 4 Stats novos: `StatDefinition` e `RunStats`
+
+Substitua o `StatDefinition` da Fase 6 por esta versão. Ela acrescenta os 4 Stats no fim do `StatId` e os três campos opcionais:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatDefinition.cs
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: cada Stat precisa de um identificador que o código use sem depender de nomes de asset.
+    // ESTRATÉGIA: enum; os assets StatDefinition dizem "eu sou o Stat X" por este id.
+    // Os 17 Stats da Seção 4.2. Os 4 da Fase 8A ficam NO FIM: o Unity guarda o enum no asset como número,
+    // e inserir no meio mudaria o número (e portanto o Stat) de todos os assets que vêm depois.
+    public enum StatId
+    {
+        Damage, AttackSpeed, CriticalChance, CriticalFactor, AttackRange, Impetus, OrbitSpeed,
+        Hitpoints, Regeneration, DefenseAbsolute, DefenseRelative,
+        ResourceBonus, ResourcePerWave,
+        MultishotChance, MultishotTargets, EnergyShield, ReflectShield,   // Fase 8A
+    }
+
+    // Em qual Track (aba da gaveta) o Stat aparece.
+    public enum StatTrack { Offense, Defense, Utility }
+
+    // Como o valor aparece no card.
+    public enum StatFormat { Number, Percent, PerSecond, Multiplier, Units, DegreesPerSecond, PercentPerUnit }
+
+    // POR QUE: os 17 Stats seguem a mesma regra (base + incremento × nível, teto, custo crescente); só os
+    // números mudam. É a "definição" (o que o Stat É), separada do "estado" (em que nível ele está na run).
+    // ESTRATÉGIA: ScriptableObject (ver EnemyDefinition), um asset por Stat (Stat_Damage...). Nunca muda
+    // durante o jogo: quem guarda o nível é o RunStats. Também sabe se formatar para o card (Format).
+    // Os três campos de "Casos especiais" existem para o Energy Shield e o Reflect Shield (Seção 4.2); nos
+    // outros Stats ficam vazios e não mudam nada.
+    // Um Stat (Seção 4.2). Percentuais são guardados como fração: 1,5 p.p. = 0,015; 0,4 %/u = 0,004.
+    [CreateAssetMenu(menuName = "Armageddon/Stat Definition", fileName = "Stat_")]
+    public sealed class StatDefinition : ScriptableObject
+    {
+        public const float CostGrowth = 1.15f;   // custo = baseCost × 1,15^nível
+
+        [SerializeField] private StatId _id;
+        [SerializeField] private StatTrack _track;
+        [SerializeField] private string _displayName;   // a Fase 11 troca por uma chave de Localization
+        [SerializeField] private Sprite _icon;
+        [SerializeField] private float _base;           // valor no nível 0
+        [SerializeField] private float _perLevel;       // quanto cada Upgrade soma
+        [SerializeField] private float _cap;            // 0 = sem teto
+        [SerializeField] private int _baseCost = 5;     // custo do primeiro Upgrade
+        [SerializeField] private StatFormat _format;
+
+        [Header("Casos especiais (Fase 8A)")]
+        [SerializeField] private float _firstLevelBonus;            // somado do nível 1 em diante (Reflect Shield: 0 → 15 → 23...)
+        [SerializeField] private int[] _fixedCosts = new int[0];    // preço de cada nível; vazio = fórmula 1,15^nível
+        [SerializeField] private bool _wholeNumber;                 // arredonda para baixo (cargas do Energy Shield)
+
+        public StatId Id => _id;
+        public StatTrack Track => _track;
+        public string DisplayName => _displayName;
+        public Sprite Icon => _icon;
+        public float Base => _base;
+        public float PerLevel => _perLevel;
+        public bool HasCap => _cap > 0f;
+        public float Cap => _cap;
+        public int BaseCost => _baseCost;
+        public float FirstLevelBonus => _firstLevelBonus;
+        public bool WholeNumber => _wholeNumber;
+
+        // Tabela de preços: se existe, ela manda no custo E no número máximo de níveis (o tamanho da tabela).
+        public bool HasFixedCosts => _fixedCosts != null && _fixedCosts.Length > 0;
+        public int MaxFixedLevel => HasFixedCosts ? _fixedCosts.Length : int.MaxValue;   // MaxValue = "sem limite"
+        public int FixedCost(int level) => _fixedCosts[level];
+
+        // Transforma o número em texto para o card, conforme o formato do Stat (ex.: 0,015 → "1.5%").
+        // "{value:0.#}" = formatação do C#: até 1 casa decimal, sem zeros inúteis.
+        public string Format(float value)
+        {
+            return _format switch
+            {
+                StatFormat.Percent => $"{value * 100f:0.#}%",
+                StatFormat.PerSecond => $"{value:0.##}/s",
+                StatFormat.Multiplier => $"{value:0.#}x",
+                StatFormat.Units => $"{value:0.##}u",
+                StatFormat.DegreesPerSecond => $"{value:0}°/s",
+                StatFormat.PercentPerUnit => $"{value * 100f:0.#}%/u",
+                _ => $"{value:0.#}",
+            };
+        }
+    }
+}
+```
+
+No `RunStats` (Fase 6), troque os métodos `ValueAtLevel`, `IsMaxed` e `NextCost` por estes. O resto da classe não muda:
+
+```csharp
+        // Seção 4.2: base + incremento × nível (+ o bônus do primeiro nível), limitado pelo teto, e DEPOIS
+        // modificado pelo Planet Core. Recebe o nível como parâmetro para o card poder mostrar
+        // "valor atual → valor do próximo nível".
+        public float ValueAtLevel(StatId id, int level)
+        {
+            var definition = _definitions[id];
+            float value = definition.Base + definition.PerLevel * level;
+            if (level > 0) value += definition.FirstLevelBonus;   // Reflect Shield: 0 no nível 0, 15 no nível 1
+            if (definition.HasCap) value = Mathf.Min(value, definition.Cap);
+
+            // Soma todos os "add" e multiplica todos os "multiply" que se aplicam a este Stat.
+            float add = 0f, multiply = 1f;
+            foreach (var modifier in _modifiers)
+            {
+                if (modifier.stat != id) continue;
+                add += modifier.add;
+                multiply *= modifier.multiply;
+            }
+
+            float result = (value + add) * multiply;
+            // Cargas são inteiras: o +30% de Defense do Ice Core não vira "1,3 carga" (Seção 4.2).
+            // Mathf.Floor arredonda para baixo, então 1, 2 e 3 cargas continuam 1, 2 e 3 com o +30%.
+            return definition.WholeNumber ? Mathf.Floor(result) : result;
+        }
+
+        // Chegou no máximo? Por teto (valor dos Upgrades, antes dos modificadores) ou porque a tabela de
+        // preços fixos acabou (Energy Shield: 3 níveis).
+        public bool IsMaxed(StatId id)
+        {
+            var definition = _definitions[id];
+            int level = _levels[id];
+            if (level >= definition.MaxFixedLevel) return true;
+            return definition.HasCap && definition.Base + definition.PerLevel * level >= definition.Cap;
+        }
+
+        // Custo do próximo nível: o da tabela fixa, se o Stat tiver uma; senão baseCost × 1,15^nível,
+        // arredondado para o inteiro mais próximo. No máximo, devolve 0 (ninguém vai comprar).
+        public int NextCost(StatId id)
+        {
+            var definition = _definitions[id];
+            int level = _levels[id];
+            if (definition.HasFixedCosts) return level < definition.MaxFixedLevel ? definition.FixedCost(level) : 0;
+            return Mathf.RoundToInt(definition.BaseCost * Mathf.Pow(StatDefinition.CostGrowth, level));
+        }
+```
+
+#### Passo 2 — Multishot: `SatelliteStats`, `TargetSelector`, `Satellite`
+
+No `SatelliteStats` (Fase 3), acrescente os dois campos novos e o sorteio, logo depois do `orbitSpeed`:
+
+```csharp
+        [Range(0f, 0.5f)] public float multishotChance;   // chance de um disparo virar Multishot (Fase 8A)
+        public int multishotTargets = 1;                  // alvos extras de cada Multishot
+
+        // Sorteia o Multishot de UM disparo (Seção 4.1). Mesmo jeito do crítico: número aleatório menor que a chance.
+        public bool RollMultishot() => UnityEngine.Random.value < multishotChance;
+```
+
+Substitua o `TargetSelector` (o arquivo `TargetSelector.cs` da Fase 3, com o enum `TargetPriority`) por esta versão. O `Select` faz o mesmo de antes; a regra de "alvo válido + nota" foi para um método só (`TryScore`), que o `SelectExtras` novo também usa:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/TargetSelector.cs
+using System.Collections.Generic;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: cada Satellite pode ter uma regra diferente de escolha de alvo (Target Priority).
+    // ESTRATÉGIA: um enum com as 4 regras; o Satellite guarda qual está usando.
+    // As 4 Target Priorities (Seção 4.1). Closest é a padrão; todas ficam disponíveis desde o início da run.
+    public enum TargetPriority
+    {
+        Closest,     // o mais perto do planeta
+        Weakest,     // o com menos HP atual
+        Strongest,   // o com mais HP atual
+        Farthest,    // o mais longe do planeta (sinergia com Impetus)
+    }
+
+    // POR QUE: a regra "quem é um alvo válido e qual deles é o melhor" é o coração do combate e precisa
+    // ser a mesma para todos os Satellites, no tiro normal e no Multishot.
+    // ESTRATÉGIA: classe estática com funções puras. TryScore decide se um alvo vale e dá a nota dele;
+    // Select fica com o melhor; SelectExtras repete a escolha, pulando quem já foi escolhido.
+    public static class TargetSelector
+    {
+        // Só considera alvos vivos, no Quadrant pedido e com a BORDA dentro do alcance (medido do centro do planeta).
+        // Devolve null se não houver ninguém válido.
+        // Estratégia: uma passada só pela lista, guardando o "melhor até agora" (menor score).
+        public static ITarget Select(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority)
+        {
+            ITarget best = null;
+            float bestScore = float.MaxValue;   // qualquer score real é menor que isso
+
+            // for com índice (em vez de foreach) não aloca memória numa IReadOnlyList: importante num
+            // código que roda muitas vezes por segundo.
+            for (int i = 0; i < targets.Count; i++)
+            {
+                if (!TryScore(targets[i], quadrant, range, priority, out float score)) continue;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = targets[i];
+                }
+            }
+
+            return best;
+        }
+
+        // Multishot (Seção 4.1): até "count" alvos válidos ALÉM do principal, na ordem da Target Priority,
+        // nunca dois no mesmo alvo. Se houver menos alvos válidos, "results" fica com menos itens.
+        // Estratégia: repete a escolha do Select "count" vezes, pulando o principal e quem já entrou em results.
+        // Com no máximo 4 extras, são poucas passadas pela lista, e só quando o Multishot é sorteado.
+        // "results" vem de fora (e é limpo aqui) para não criar uma lista nova a cada disparo.
+        public static void SelectExtras(IReadOnlyList<ITarget> targets, Quadrant quadrant, float range, TargetPriority priority,
+                                        ITarget main, int count, List<ITarget> results)
+        {
+            results.Clear();
+            for (int pick = 0; pick < count; pick++)
+            {
+                ITarget best = null;
+                float bestScore = float.MaxValue;
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    var target = targets[i];
+                    if (target == main || results.Contains(target)) continue;
+                    if (!TryScore(target, quadrant, range, priority, out float score)) continue;
+                    if (score < bestScore)
+                    {
+                        bestScore = score;
+                        best = target;
+                    }
+                }
+                if (best == null) return;   // acabaram os alvos válidos
+                results.Add(best);
+            }
+        }
+
+        // A regra de um alvo só: devolve false se ele não vale; senão, a nota dele em "score" (menor vence).
+        // "out float score": um segundo valor de retorno (ver SatelliteStats.RollDamage).
+        private static bool TryScore(ITarget target, Quadrant quadrant, float range, TargetPriority priority, out float score)
+        {
+            score = 0f;
+            if (!target.IsAlive) return false;
+
+            // sqrMagnitude = distância ao quadrado (mais barata, sem raiz). Serve para comparar distâncias.
+            float distanceSquared = (target.Position - WorldLayout.PlanetCenter).sqrMagnitude;
+            // Para o alcance precisamos da distância real, menos o raio (mede até a borda do alvo).
+            if (Mathf.Sqrt(distanceSquared) - target.Radius > range) return false;
+            if (Quadrants.FromPosition(target.Position) != quadrant) return false;
+
+            // Menor "score" vence: por isso Farthest e Strongest usam o valor negativo.
+            // "switch expression" (C# 8): escolhe um valor conforme o caso; "_" é o caso padrão.
+            score = priority switch
+            {
+                TargetPriority.Closest => distanceSquared,
+                TargetPriority.Farthest => -distanceSquared,
+                TargetPriority.Weakest => target.CurrentHitpoints,
+                TargetPriority.Strongest => -target.CurrentHitpoints,
+                _ => distanceSquared,
+            };
+            return true;
+        }
+    }
+}
+```
+
+No `Satellite` (Fase 3), troque o método `Tick` por estes três membros (a lista estática, o `Tick` novo e o `Shoot`):
+
+```csharp
+        // Lista reaproveitada para os alvos extras do Multishot. "static": uma só para todos os Satellites,
+        // porque eles atiram um de cada vez, dentro do mesmo Update do SatelliteOrbit.
+        private static readonly List<ITarget> ExtraTargets = new List<ITarget>();
+
+        // Chamado pelo SatelliteOrbit a cada frame. Com o cooldown zerado e ninguém válido, segura o tiro.
+        public void Tick(float deltaTime, SatelliteStats stats, IReadOnlyList<ITarget> targets, ProjectilePool projectiles)
+        {
+            if (_cooldown > 0f)
+            {
+                _cooldown -= deltaTime;
+                if (_cooldown > 0f) return;
+            }
+
+            var target = TargetSelector.Select(targets, CurrentQuadrant, stats.attackRange, _priority);
+            if (target == null)
+            {
+                _cooldown = 0f;   // pronto para atirar assim que alguém entrar no Quadrant
+                return;
+            }
+
+            Shoot(target, stats, projectiles);
+
+            // Multishot (Seção 4.1): UM sorteio por disparo. Os projéteis extras saem no mesmo instante, e
+            // cada um sorteia o próprio crítico (o Shoot chama RollDamage de novo). Um extra não sorteia outro.
+            if (stats.multishotTargets > 0 && stats.RollMultishot())
+            {
+                TargetSelector.SelectExtras(targets, CurrentQuadrant, stats.attackRange, _priority,
+                                            target, stats.multishotTargets, ExtraTargets);
+                for (int i = 0; i < ExtraTargets.Count; i++) Shoot(ExtraTargets[i], stats, projectiles);
+            }
+
+            // "+=" em vez de "=": se o cooldown passou um pouco do zero, a sobra é descontada do próximo,
+            // e a cadência média fica exata mesmo com frames irregulares.
+            _cooldown += 1f / Mathf.Max(0.01f, stats.attackSpeed);
+            Fired?.Invoke(this);
+        }
+
+        // Um projétil num alvo: a fórmula de dano da Seção 4.1, com o Impetus pela distância DESTE alvo.
+        private void Shoot(ITarget target, SatelliteStats stats, ProjectilePool projectiles)
+        {
+            float distance = Vector2.Distance(target.Position, WorldLayout.PlanetCenter);
+            float damage = stats.RollDamage(distance, out bool isCritical);
+            projectiles.Fire(transform.position, target, damage, isCritical);
+        }
+```
+
+#### Passo 3 — O Energy Shield: `EnergyShield`, `EnergyShieldView` e o `PlanetHealth`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planets/EnergyShield.cs
+using System;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // POR QUE: o Energy Shield (Seção 4.2) anula golpes INTEIROS, um por carga, e recarrega com o tempo.
+    // É uma regra diferente da defesa (que só reduz o golpe), então ganha um componente próprio.
+    // ESTRATÉGIA: fica no objeto Planet, ao lado do PlanetHealth. O PlanetHealth pergunta "você absorve
+    // este golpe?" (TryAbsorb) ANTES da fórmula de defesa. O máximo de cargas vem do Stat (o RunEconomy
+    // chama SetMaxCharges); a recarga é um relógio simples no Update. O desenho fica no EnergyShieldView,
+    // que só escuta os eventos daqui.
+    public sealed class EnergyShield : MonoBehaviour
+    {
+        [SerializeField] private float _rechargeSeconds = 12f;   // 1 carga a cada 12 s (valor inicial, Seção 4.2)
+
+        private float _timer;   // segundos acumulados para a próxima carga
+
+        public int MaxCharges { get; private set; }
+        public int Charges { get; private set; }
+
+        public event Action ChargesChanged;
+        public event Action Broke;   // a última carga acabou de ser gasta (o EnergyShieldView toca o estouro)
+
+        // Chamado pelo RunEconomy quando o Stat Energy Shield muda. A carga do nível comprado já vem cheia (Seção 4.2).
+        public void SetMaxCharges(int max)
+        {
+            max = Mathf.Max(0, max);
+            int gained = max - MaxCharges;
+            MaxCharges = max;
+            if (gained > 0) Charges += gained;
+            Charges = Mathf.Min(Charges, MaxCharges);
+            ChargesChanged?.Invoke();
+        }
+
+        // Cargas cheias e relógio zerado. O modo Invasion chama a cada planeta novo (Fase 8B).
+        public void Refill()
+        {
+            Charges = MaxCharges;
+            _timer = 0f;
+            ChargesChanged?.Invoke();
+        }
+
+        // Recarga: enquanto faltar carga, o relógio anda; a cada _rechargeSeconds, volta uma.
+        // O relógio NÃO reinicia quando o planeta toma golpe (Seção 4.2). Pausado, deltaTime é 0 e ele para sozinho.
+        private void Update()
+        {
+            if (Charges >= MaxCharges)
+            {
+                _timer = 0f;
+                return;
+            }
+
+            _timer += Time.deltaTime;
+            if (_timer < _rechargeSeconds) return;
+            _timer -= _rechargeSeconds;
+            Charges++;
+            ChargesChanged?.Invoke();
+        }
+
+        // Gasta uma carga, se houver. Padrão "Try" (ver ShardWallet.TrySpend): devolve se conseguiu.
+        public bool TryAbsorb()
+        {
+            if (Charges <= 0) return false;
+            Charges--;
+            ChargesChanged?.Invoke();
+            if (Charges == 0) Broke?.Invoke();
+            return true;
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Planets/EnergyShieldView.cs
+using System;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Planets
+{
+    // POR QUE: o jogador precisa VER quantas cargas restam (Seção 4.2), sem ler um número.
+    // ESTRATÉGIA: um SpriteRenderer + SpriteAnimator centralizados no planeta, com uma linha de frames
+    // por número de cargas (SPR_VFX_EnergyShield, Seção 6.4: 1, 2 ou 3 anéis). Só troca de linha quando o
+    // EnergyShield avisa. O estouro é uma "explosão" do ExplosionPool (tipo ShieldPop), que já sabe tocar
+    // uma vez e voltar ao pool.
+    [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator))]
+    public sealed class EnergyShieldView : MonoBehaviour
+    {
+        // Os frames de uma linha da spritesheet (o Unity não serializa Sprite[][], ver SpriteVariant).
+        [Serializable]
+        private sealed class ChargeFrames
+        {
+            public Sprite[] frames;
+        }
+
+        [SerializeField] private EnergyShield _shield;
+        [SerializeField] private ExplosionPool _explosions;
+        [SerializeField] private ChargeFrames[] _rows = new ChargeFrames[3];   // índice 0 = 1 carga
+        [SerializeField] private float _fps = 6f;
+
+        private SpriteRenderer _renderer;
+        private SpriteAnimator _animator;
+        private int _shown = -1;   // quantas cargas estão desenhadas agora (-1 = nada ainda)
+
+        // Cache dos componentes.
+        private void Awake()
+        {
+            _renderer = GetComponent<SpriteRenderer>();
+            _animator = GetComponent<SpriteAnimator>();
+        }
+
+        private void OnEnable()
+        {
+            _shield.ChargesChanged += Refresh;
+            _shield.Broke += HandleBroke;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            _shield.ChargesChanged -= Refresh;
+            _shield.Broke -= HandleBroke;
+        }
+
+        // Mostra a linha do número de cargas atual, ou esconde a bolha sem carga nenhuma.
+        private void Refresh()
+        {
+            int charges = Mathf.Min(_shield.Charges, _rows.Length);
+            if (charges == _shown) return;   // nada mudou: não reinicia a animação
+            _shown = charges;
+            _renderer.enabled = charges > 0;
+            if (charges > 0) _animator.SetFrames(_rows[charges - 1].frames, _fps, true);
+        }
+
+        // A última carga foi gasta: o anel estoura (SPR_VFX_EnergyShield_Pop) no centro do planeta.
+        private void HandleBroke()
+        {
+            _explosions.Play(ExplosionKind.ShieldPop, WorldLayout.PlanetCenter);
+        }
+    }
+}
+```
+
+No `ExplosionPool` (Fase 4), acrescente o tipo novo **no fim** do enum (pelo mesmo motivo do `StatId`):
+
+```csharp
+    public enum ExplosionKind { Small, Big, Mothership, ShieldPop }
+```
+
+No `PlanetHealth` (Fase 2), acrescente o campo do escudo junto dos outros `[SerializeField]`:
+
+```csharp
+        [SerializeField] private EnergyShield _shield;   // opcional (Fase 8A): vazio = sem Energy Shield
+```
+
+E, no `TakeDamage`, logo depois da primeira linha (`if (IsDead || raw <= 0f) return;`), acrescente:
+
+```csharp
+            // Energy Shield (Seção 4.2): uma carga anula o golpe INTEIRO, antes da fórmula de defesa.
+            if (_shield != null && _shield.TryAbsorb()) return;
+```
+
+> **Por que a pergunta fica no `PlanetHealth` e não em quem bate?** Kamikazes, Gunner Bolts e o laser chamam todos o mesmo `TakeDamage`. Com a pergunta ali, nenhum deles precisa saber que o escudo existe, e um ataque novo no futuro já respeita o escudo sem mudar nada.
+
+#### Passo 4 — O Reflect Shield: `Reflector` e `ReflectorArcView`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/Reflector.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: o Reflect Shield (Seção 4.2) é um escudo-satélite com regras próprias: órbita de 2,5 u,
+    // sentido horário, 30°/s, e um arco de 40° (o Reflect Arc) que devolve Gunner Bolts, bloqueia o laser
+    // da Mothership e fere os kamikazes. Ele NÃO é um Satellite: não atira, não conta no limite de 4 e não
+    // tem Target Priority.
+    // ESTRATÉGIA: o Reflector só sabe GEOMETRIA ("este ponto está no meu arco?", "este tiro cruzou meu arco?")
+    // e devolver tiros. Quem pergunta são os outros: o EnemyBolt, o LaserAttack e o Enemy. Para eles não
+    // precisarem de uma referência arrastada no Inspector, o Reflector ativo se publica numa propriedade
+    // estática, Current (como o TargetRegistry faz com os alvos). Com Damage = 0 (nível 0 do Stat), o
+    // Reflector se esconde e Current fica null: quem pergunta vê "não existe Reflector".
+    public sealed class Reflector : MonoBehaviour
+    {
+        [SerializeField] private float _orbitRadius = 2.5f;      // por fora da órbita dos Satellites (1,75 u)
+        [SerializeField] private float _angularSpeed = 30f;      // graus por segundo, sentido HORÁRIO
+        [SerializeField] private float _arcDegrees = 40f;        // o Reflect Arc
+        [SerializeField] private ProjectilePool _reflectedShots; // pool do tiro devolvido (azul-claro, SPR_Projectile_Reflected)
+        [SerializeField] private GameObject _visual;             // corpo + arco: some quando o Stat está no nível 0
+
+        public static Reflector Current { get; private set; }
+
+        public float Damage { get; private set; }                // Reflect Damage, absoluto (sem crítico nem Impetus)
+        public float AngleDegrees { get; private set; } = 270f;  // começa embaixo do planeta
+        public float OrbitRadius => _orbitRadius;
+        public float HalfArc => _arcDegrees * 0.5f;
+
+        // Começa desligado: o Stat começa no nível 0. O RunEconomy liga com SetDamage no Start dele.
+        private void Awake()
+        {
+            SetDamage(0f);
+            Place();
+        }
+
+        // Se o objeto sair de cena (troca de cena), deixa de ser o Current.
+        private void OnDisable()
+        {
+            if (Current == this) Current = null;
+        }
+
+        // Chamado pelo RunEconomy com o valor do Stat Reflect Shield. 0 = sem Reflector.
+        public void SetDamage(float damage)
+        {
+            Damage = Mathf.Max(0f, damage);
+            bool active = Damage > 0f;
+            if (_visual != null) _visual.SetActive(active);
+            if (active) Current = this;
+            else if (Current == this) Current = null;
+        }
+
+        // Gira no sentido horário (o ângulo DIMINUI; os Satellites giram no anti-horário, o ângulo aumenta).
+        private void Update()
+        {
+            if (Damage <= 0f) return;
+            AngleDegrees = Mathf.Repeat(AngleDegrees - _angularSpeed * Time.deltaTime, 360f);
+            Place();
+        }
+
+        // Ângulo de um ponto em volta do planeta, em graus (0 = direita, anti-horário, como em todo o jogo).
+        public static float AngleOf(Vector2 point)
+        {
+            Vector2 offset = point - WorldLayout.PlanetCenter;
+            return Mathf.Atan2(offset.y, offset.x) * Mathf.Rad2Deg;
+        }
+
+        // O ponto da órbita do Reflector num ângulo (ver Satellite.SetAngle).
+        public Vector2 PointAt(float degrees)
+        {
+            float radians = degrees * Mathf.Deg2Rad;
+            return WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * _orbitRadius;
+        }
+
+        // Este ponto está na direção do Reflect Arc? Só o ÂNGULO conta; a distância, quem pergunta testa.
+        // Mathf.DeltaAngle dá a menor diferença entre dois ângulos (de −180 a 180): 350° e 10° estão a 20°.
+        public bool Covers(Vector2 point)
+        {
+            return Mathf.Abs(Mathf.DeltaAngle(AngleOf(point), AngleDegrees)) <= HalfArc;
+        }
+
+        // Um tiro andou de "from" para "to" neste frame: ele cruzou o círculo do Reflector de FORA para
+        // DENTRO, dentro do arco? (Gunner Bolt, Seção 4.2)
+        public bool Intercepts(Vector2 from, Vector2 to)
+        {
+            float before = Vector2.Distance(from, WorldLayout.PlanetCenter);
+            float after = Vector2.Distance(to, WorldLayout.PlanetCenter);
+            return before > _orbitRadius && after <= _orbitRadius && Covers(to);
+        }
+
+        // A BORDA de um inimigo está encostando no círculo do Reflector, dentro do arco? (kamikaze, Seção 4.2)
+        public bool Touches(Vector2 position, float radius)
+        {
+            float distance = Vector2.Distance(position, WorldLayout.PlanetCenter);
+            return distance - radius <= _orbitRadius && distance + radius >= _orbitRadius && Covers(position);
+        }
+
+        // Devolve um tiro: teleguiado para quem atirou ("shooter"); se ele já morreu, para o alvo vivo mais
+        // perto; se não houver nenhum, o tiro some (Seção 4.2).
+        public void Reflect(Vector2 from, ITarget shooter)
+        {
+            var target = shooter != null && shooter.IsAlive ? shooter : Nearest(from);
+            if (target != null) _reflectedShots.Fire(from, target, Damage, false);
+        }
+
+        // O alvo vivo mais perto de um ponto (uma passada pela lista, como no TargetSelector).
+        private static ITarget Nearest(Vector2 from)
+        {
+            ITarget best = null;
+            float bestDistance = float.MaxValue;
+            var targets = TargetRegistry.Alive;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                if (!targets[i].IsAlive) continue;
+                float distance = (targets[i].Position - from).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = targets[i];
+                }
+            }
+            return best;
+        }
+
+        // Move o objeto para o ponto da órbita, preso à grade de pixels.
+        private void Place()
+        {
+            Vector2 p = PointAt(AngleDegrees);
+            transform.position = new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+        }
+
+        // Com "Enter Play Mode Options" (sem recarregar o domínio), o Current estático sobreviveria entre Plays.
+        // Mesmo mecanismo do TargetRegistry.ResetStatics.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Current = null;
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Combat/ReflectorArcView.cs
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Combat
+{
+    // POR QUE: o jogador precisa ver a REGIÃO que o Reflector cobre (o arco de 40°), e não só o corpo dele,
+    // para entender por que um tiro voltou e o outro passou.
+    // ESTRATÉGIA: como o rastro do Projectile, o arco é feito de pixels brancos (PixelSprite) tingidos de
+    // azul-claro, criados uma vez e reposicionados a cada frame ao longo do arco, presos à grade de pixels.
+    // Duas fileiras (no raio e 1 px para dentro) dão 2 px de espessura. Nenhum sprite é girado (Seção 6.2).
+    public sealed class ReflectorArcView : MonoBehaviour
+    {
+        [SerializeField] private Reflector _reflector;
+        [SerializeField] private int _pointsPerRow = 32;   // o arco tem ~28 px de comprimento: 32 pontos não deixam buracos
+        [SerializeField] private Color _color = new Color32(143, 216, 255, 255);
+        [SerializeField] private string _sortingLayer = "Satellites";
+
+        private SpriteRenderer[] _dots;
+
+        // Cria os pixels do arco uma vez só, como filhos deste objeto.
+        private void Awake()
+        {
+            _dots = new SpriteRenderer[_pointsPerRow * 2];
+            for (int i = 0; i < _dots.Length; i++)
+            {
+                var dot = new GameObject("ArcPixel").AddComponent<SpriteRenderer>();
+                dot.transform.SetParent(transform, false);
+                dot.sprite = PixelSprite.White;
+                dot.color = _color;
+                dot.sortingLayerName = _sortingLayer;
+                _dots[i] = dot;
+            }
+        }
+
+        // LateUpdate: depois de o Reflector girar neste frame.
+        private void LateUpdate()
+        {
+            const float pixel = 1f / WorldLayout.PixelsPerUnit;
+            float start = _reflector.AngleDegrees - _reflector.HalfArc;
+            float span = _reflector.HalfArc * 2f;
+            for (int row = 0; row < 2; row++)
+            {
+                float radius = _reflector.OrbitRadius - row * pixel;
+                for (int i = 0; i < _pointsPerRow; i++)
+                {
+                    // t vai de 0 a 1 ao longo do arco: o ângulo anda de "start" até "start + span".
+                    float t = i / (float)(_pointsPerRow - 1);
+                    float radians = (start + span * t) * Mathf.Deg2Rad;
+                    Vector2 p = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * radius;
+                    _dots[row * _pointsPerRow + i].transform.position =
+                        new Vector3(WorldLayout.SnapToPixel(p.x), WorldLayout.SnapToPixel(p.y), 0f);
+                }
+            }
+        }
+    }
+}
+```
+
+#### Passo 5 — O Gunner: `EnemyDefinition`, `EnemyBolt`, `BoltPool` e o `Enemy`
+
+Na `EnemyDefinition` (Fase 4), acrescente este bloco logo depois do bloco `[Header("Spawn (usados pelas Waves, Fase 5)")]` e dos 4 campos dele:
+
+```csharp
+        [Header("Ataque à distância (Gunner, Fase 8A)")]
+        [SerializeField] private float _holdDistance;          // 0 = kamikaze; > 0 = para a esta distância do centro e atira
+        [SerializeField] private float _boltInterval = 2.5f;   // segundos entre dois Gunner Bolts (Seção 4.4)
+```
+
+e, junto das outras propriedades:
+
+```csharp
+        public float HoldDistance => _holdDistance;
+        public bool IsRanged => _holdDistance > 0f;   // o Gunner; os outros são kamikaze
+        public float BoltInterval => _boltInterval;
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/EnemyBolt.cs
+using System;
+using Armageddon.Combat;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: o Gunner (Seção 4.4) ataca à distância com um projétil que pode ser anulado pelo Energy
+    // Shield e devolvido pelo Reflector. Diferente do projétil do Satellite, ele NÃO é teleguiado (vai em
+    // linha reta para o planeta) e não é alvo dos Satellites (não implementa ITarget).
+    // ESTRATÉGIA: o mesmo molde do Projectile (Fase 3): anda sozinho, recebe tudo no Launch e se devolve ao
+    // pool por uma função "release". A cada passo, pergunta ao Reflector se cruzou o arco dele; se não, e
+    // se chegou à borda do planeta, causa o dano pelo PlanetHealth (que consulta o Energy Shield).
+    public sealed class EnemyBolt : MonoBehaviour
+    {
+        [SerializeField] private float _speed = 4f;   // u/s (Seção 4.4)
+
+        private PlanetHealth _planet;
+        private ITarget _shooter;     // quem atirou: para onde o Reflector devolve o tiro
+        private float _damage;
+        private Vector2 _position;    // posição exata (o transform fica preso à grade de pixels)
+        private Action<EnemyBolt> _release;
+
+        // "Dispara" um bolt que acabou de sair do pool (faz o papel de construtor, como no Projectile).
+        public void Launch(Vector2 from, float damage, ITarget shooter, PlanetHealth planet, Action<EnemyBolt> release)
+        {
+            _position = from;
+            _damage = damage;
+            _shooter = shooter;
+            _planet = planet;
+            _release = release;
+            Place();
+        }
+
+        // Anda em linha reta para o centro; confere o Reflector e o planeta.
+        private void Update()
+        {
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado
+
+            Vector2 toCenter = WorldLayout.PlanetCenter - _position;
+            float distance = toCenter.magnitude;
+            Vector2 next = _position + toCenter / distance * Mathf.Min(_speed * deltaTime, distance);
+
+            // Cruzou o arco do Reflector neste passo? Volta como um tiro azul-claro e este bolt some (Seção 4.2).
+            var reflector = Reflector.Current;
+            if (reflector != null && reflector.Intercepts(_position, next))
+            {
+                reflector.Reflect(next, _shooter);
+                Release();
+                return;
+            }
+
+            _position = next;
+            if (Vector2.Distance(_position, WorldLayout.PlanetCenter) <= WorldLayout.PlanetRadius)
+            {
+                _planet.TakeDamage(_damage);   // dano bruto: o PlanetHealth aplica Energy Shield e defesa
+                Release();
+                return;
+            }
+            Place();
+        }
+
+        // Move o transform para a posição atual, presa à grade de pixels.
+        private void Place()
+        {
+            transform.position = new Vector3(WorldLayout.SnapToPixel(_position.x), WorldLayout.SnapToPixel(_position.y), 0f);
+        }
+
+        // Devolve ao pool uma vez só (ver Projectile.Release).
+        private void Release()
+        {
+            _shooter = null;
+            var release = _release;
+            _release = null;
+            release?.Invoke(this);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Enemies/BoltPool.cs
+using Armageddon.Combat;
+using Armageddon.Planets;
+using UnityEngine;
+using UnityEngine.Pool;
+
+namespace Armageddon.Enemies
+{
+    // POR QUE: com vários Gunners parados atirando a cada 2,5 s, criar e destruir um objeto por tiro seria o
+    // mesmo problema dos projéteis dos Satellites (ver ProjectilePool).
+    // ESTRATÉGIA: o mesmo pool do ProjectilePool, para EnemyBolt. Também guarda o PlanetHealth, para o
+    // Enemy (que pede o tiro) não precisar repassá-lo.
+    public sealed class BoltPool : MonoBehaviour
+    {
+        [SerializeField] private EnemyBolt _prefab;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private int _prewarm = 16;
+
+        private ObjectPool<EnemyBolt> _pool;
+
+        // Monta e aquece o pool (mesma estratégia do ProjectilePool).
+        private void Awake()
+        {
+            _pool = new ObjectPool<EnemyBolt>(
+                createFunc: () => Instantiate(_prefab, transform),
+                actionOnGet: b => b.gameObject.SetActive(true),
+                actionOnRelease: b => b.gameObject.SetActive(false),
+                actionOnDestroy: b => Destroy(b.gameObject),
+                collectionCheck: false,
+                defaultCapacity: _prewarm,
+                maxSize: 256);
+
+            var warm = new EnemyBolt[_prewarm];
+            for (int i = 0; i < _prewarm; i++) warm[i] = _pool.Get();
+            for (int i = 0; i < _prewarm; i++) _pool.Release(warm[i]);
+        }
+
+        // O único método público: um Gunner Bolt saindo de "from" com o dano do Gunner.
+        public void Fire(Vector2 from, float damage, ITarget shooter)
+        {
+            _pool.Get().Launch(from, damage, shooter, _planet, _pool.Release);
+        }
+    }
+}
+```
+
+No `Enemy` (Fase 4), acrescente os campos novos junto dos outros campos privados:
+
+```csharp
+        private const float KnockbackDistance = 1.5f;   // empurrão do Reflector (Seção 4.2)
+        private const float ReflectorCooldown = 1f;     // o Reflector fere o mesmo inimigo no máximo 1 vez por segundo
+
+        private BoltPool _bolts;            // Gunner: por onde sai o tiro
+        private float _speed;               // velocidade desta nave (a da definição × o multiplicador do spawn)
+        private float _boltTimer;           // Gunner: segundos até o próximo tiro
+        private float _reflectorCooldown;   // segundos até o Reflector poder ferir este inimigo de novo
+```
+
+Troque o `Spawn` por esta versão. Ela recebe o multiplicador de velocidade (usado pelo modo Invasion, Fase 8B; nas Waves é sempre 1) e o `BoltPool`:
+
+```csharp
+        // Chamado pelo EnemyPool. Os multiplicadores são a escalada por Wave (Seção 4.3) ou os Fleet Upgrades
+        // do Invasion (Fase 8B); 1 = valores da definição.
+        // Zera TODO o estado: o objeto pode estar sendo reaproveitado de um inimigo que já morreu.
+        // "internal": só código da assembly Armageddon chama (na prática, o EnemyPool).
+        internal void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier, float damageMultiplier,
+                            float speedMultiplier, PlanetHealth planet, EnemyPool pool, BoltPool bolts)
+        {
+            _definition = definition;
+            _movement = definition.Movement;
+            _planet = planet;
+            _pool = pool;
+            _bolts = bolts;
+            _radialPosition = position;
+            _hitpoints = definition.Hitpoints * hitpointsMultiplier;
+            _damage = definition.Damage * damageMultiplier;
+            _speed = definition.Speed * speedMultiplier;
+            _boltTimer = 0.5f;           // o primeiro tiro sai meio segundo depois de parar
+            _reflectorCooldown = 0f;
+            _age = 0f;
+            _alive = true;
+
+            // Variação visual sorteada no spawn (Seção 6.2). O prefab tem "Random Start Frame" marcado,
+            // para os inimigos não piscarem todos em sincronia.
+            var variant = definition.Variants[Random.Range(0, definition.Variants.Count)];
+            _animator.SetFrames(variant.frames, definition.Fps, true);
+
+            ApplyPosition();
+            TargetRegistry.Register(this);   // a partir de agora os Satellites enxergam este inimigo
+        }
+```
+
+Troque o `Update` por esta versão e acrescente o método `TouchReflector`:
+
+```csharp
+        // Anda em direção ao centro (ou, no Gunner, para e atira) e confere o planeta e o Reflector.
+        private void Update()
+        {
+            if (!_alive) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado
+
+            _age += deltaTime;
+            _reflectorCooldown -= deltaTime;
+
+            Vector2 toCenter = WorldLayout.PlanetCenter - _radialPosition;
+            float distance = toCenter.magnitude;
+
+            // Tocou o planeta (Seção 4.4): causa dano e some, sem Shards. O Gunner nunca chega aqui.
+            if (distance <= WorldLayout.PlanetRadius)
+            {
+                _planet.TakeDamage(_damage);
+                Die(EnemyExit.ReachedPlanet);
+                return;
+            }
+
+            if (_definition.IsRanged && distance <= _definition.HoldDistance)
+            {
+                // Gunner parado (Seção 4.4): não anda mais; atira um Gunner Bolt a cada BoltInterval.
+                // "+=": a sobra do relógio passa para o próximo tiro (ver Satellite.Tick).
+                _boltTimer -= deltaTime;
+                if (_boltTimer <= 0f)
+                {
+                    _boltTimer += _definition.BoltInterval;
+                    _bolts.Fire(Position, _damage, this);
+                }
+            }
+            else
+            {
+                // toCenter / distance = direção (vetor de tamanho 1). O Min impede de "passar do centro" num frame
+                // longo e, no Gunner, de passar do ponto onde ele para.
+                float step = _speed * deltaTime;
+                if (_definition.IsRanged) step = Mathf.Min(step, distance - _definition.HoldDistance);
+                _radialPosition += toCenter / distance * Mathf.Min(step, distance);
+            }
+
+            ApplyPosition();
+            if (!_definition.IsRanged) TouchReflector();
+        }
+
+        // Kamikaze encostando no Reflector (Seção 4.2): toma o Reflect Damage e, se sobreviver, é empurrado
+        // 1,5 u para fora. O cooldown impede o dano a cada frame enquanto ele atravessa o arco.
+        private void TouchReflector()
+        {
+            var reflector = Reflector.Current;
+            if (reflector == null || _reflectorCooldown > 0f || !reflector.Touches(Position, Radius)) return;
+
+            _reflectorCooldown = ReflectorCooldown;
+            TakeDamage(reflector.Damage, false);
+            if (!_alive) return;   // morreu com o reflexo: já saiu de cena pelo Die
+
+            // Empurra a posição "na linha reta" para longe do planeta. O avanço continua no próximo frame.
+            Vector2 outward = (_radialPosition - WorldLayout.PlanetCenter).normalized;
+            _radialPosition += outward * KnockbackDistance;
+            ApplyPosition();
+        }
+```
+
+No `EnemyPool` (Fase 4), acrescente o campo do pool de tiros e troque o `Spawn`:
+
+```csharp
+        [SerializeField] private BoltPool _bolts;   // Fase 8A: os tiros do Gunner
+```
+
+```csharp
+        // Um "slot de spawn" (Seção 4.3): 1 inimigo, ou um cacho de ClusterSize (Swarmer = 8) espalhado em volta do ponto.
+        // Parâmetros com "= 1f" são opcionais: as Waves não passam velocidade, e as ferramentas de teste não passam nada.
+        public void Spawn(EnemyDefinition definition, Vector2 position, float hitpointsMultiplier = 1f,
+                          float damageMultiplier = 1f, float speedMultiplier = 1f)
+        {
+            int count = Mathf.Max(1, definition.ClusterSize);
+            for (int i = 0; i < count; i++)
+            {
+                // insideUnitCircle = ponto aleatório dentro de um círculo de raio 1.
+                Vector2 p = count == 1 ? position : position + UnityEngine.Random.insideUnitCircle * definition.ClusterSpread;
+                AliveCount++;
+                _pool.Get().Spawn(definition, p, hitpointsMultiplier, damageMultiplier, speedMultiplier, _planet, this, _bolts);
+            }
+        }
+```
+
+O `Enemy.cs` precisa de `using Armageddon.Combat;` (já tem, por causa do `ITarget`) para enxergar o `Reflector`.
+
+#### Passo 6 — O laser contra o Reflector: `LaserAttack` e `Mothership`
+
+No `LaserAttack` (Fase 7), acrescente os campos:
+
+```csharp
+        private ITarget _owner;        // a Mothership: quem toma o Reflect Damage quando o laser é bloqueado
+        private bool _blocked;         // o disparo atual foi bloqueado pelo Reflector
+        private float _blockRadius;    // onde o feixe para quando bloqueado (a órbita do Reflector)
+```
+
+Troque o `Init` por:
+
+```csharp
+        // Chamado pela Mothership ao nascer: para quem vai o dano e de quem é o laser.
+        public void Init(PlanetHealth planet, ITarget owner)
+        {
+            _planet = planet;
+            _owner = owner;
+        }
+```
+
+e, no `LateUpdate`, troque o bloco do fim do aviso (`if (_state == State.Telegraph && _time >= _telegraphTime) { ... }`) por:
+
+```csharp
+            if (_state == State.Telegraph && _time >= _telegraphTime)
+            {
+                // Reflector no caminho (Seção 4.2)? O laser vai em linha reta da Mothership ao centro, então
+                // cruza a órbita do Reflector no MESMO ângulo da Mothership: basta perguntar se ele cobre esse ponto.
+                var reflector = Reflector.Current;
+                _blocked = reflector != null && reflector.Covers(transform.position);
+                if (_blocked)
+                {
+                    _blockRadius = reflector.OrbitRadius;
+                    _owner.TakeDamage(reflector.Damage, false);
+                    if (_state == State.Idle) return;   // o reflexo matou a Mothership: ela já cancelou o laser
+                }
+                else
+                {
+                    _planet.TakeDamage(_damage);   // dano bruto: o PlanetHealth aplica Energy Shield e defesa
+                }
+
+                _state = State.Beam;
+                _time = 0f;
+                _lineAnimator.SetFrames(_beamFrames, _beamFps, true);
+                _impact.gameObject.SetActive(true);
+                _impact.SetFrames(_impactFrames, _beamFps, true);
+            }
+```
+
+No `Place`, troque a linha que calcula o `end` por esta, para o feixe bloqueado parar no Reflector:
+
+```csharp
+            // Bloqueado: o feixe (e a faísca) param na órbita do Reflector, em vez da superfície do planeta.
+            float stop = _state == State.Beam && _blocked ? _blockRadius : WorldLayout.PlanetRadius;
+            Vector2 end = WorldLayout.PlanetCenter - direction * stop;
+```
+
+O `LaserAttack.cs` precisa de `using Armageddon.Combat;` no topo. Na `Mothership` (Fase 7), dentro do `Spawn`, troque `_laser.Init(planet);` por:
+
+```csharp
+            _laser.Init(planet, this);
+```
+
+#### Passo 7 — Aplicar os Stats novos: `StatApplier` e o `RunEconomy`
+
+O modo Invasion (Fase 8B) também vai precisar de "copiar os Stats para os Satellites e o planeta", com outra economia. Por isso o `ApplyAll` do `RunEconomy` sai para uma classe própria:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/StatApplier.cs
+using Armageddon.Combat;
+using Armageddon.Planets;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: "pegar os valores atuais dos Stats e empurrar para quem usa" é feito pelo RunEconomy (Last
+    // Stand) e pelo PlanetAI (Invasion, Fase 8B). Duas cópias da mesma lista de 17 Stats sairiam do passo.
+    // ESTRATÉGIA: classe estática com uma função só, que recebe os Stats e os 4 destinos.
+    public static class StatApplier
+    {
+        // Copia os valores para os Satellites (via um SatelliteStats novo, ver a nota da Fase 6), o planeta,
+        // o Energy Shield e o Reflector.
+        public static void Apply(RunStats stats, SatelliteOrbit orbit, PlanetHealth planet, EnergyShield shield, Reflector reflector)
+        {
+            orbit.SetStats(new SatelliteStats
+            {
+                damage = stats.Value(StatId.Damage),
+                attackSpeed = stats.Value(StatId.AttackSpeed),
+                criticalChance = stats.Value(StatId.CriticalChance),
+                criticalFactor = stats.Value(StatId.CriticalFactor),
+                attackRange = stats.Value(StatId.AttackRange),
+                impetus = stats.Value(StatId.Impetus),
+                orbitSpeed = stats.Value(StatId.OrbitSpeed),
+                multishotChance = stats.Value(StatId.MultishotChance),
+                multishotTargets = Mathf.RoundToInt(stats.Value(StatId.MultishotTargets)),
+            });
+            planet.SetMaxHitpoints(stats.Value(StatId.Hitpoints));
+            planet.SetRegeneration(stats.Value(StatId.Regeneration));
+            planet.SetDefense(stats.Value(StatId.DefenseAbsolute), stats.Value(StatId.DefenseRelative));
+            shield.SetMaxCharges(Mathf.RoundToInt(stats.Value(StatId.EnergyShield)));
+            reflector.SetDamage(stats.Value(StatId.ReflectShield));
+        }
+    }
+}
+```
+
+Substitua o `RunEconomy` (versão da Fase 7) por esta. Ela só acrescenta os campos **Shield** e **Reflector** e troca o `ApplyAll` pelo `StatApplier`:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
+using System.Collections.Generic;
+using Armageddon.Combat;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using UnityEngine;
+
+namespace Armageddon.Economy
+{
+    // POR QUE: RunStats, ShardWallet, UpgradeService e SatelliteShop são classes puras: alguém precisa
+    // criá-las a cada run e ligá-las ao resto do jogo (inimigos dão Shards, Wave Clear dá Shards, Stats
+    // mudam Satellites, planeta, Energy Shield e Reflector). Sem um "ligador", esses sistemas teriam que se conhecer.
+    // ESTRATÉGIA: composição — um MonoBehaviour na cena Gameplay que (1) cria as quatro classes no Awake,
+    // (2) escuta os eventos do EnemyPool, do MothershipSpawner, do WaveDirector e do RunStats, e (3) empurra
+    // os valores novos para quem usa, pelo StatApplier. A UI lê Stats/Wallet/Upgrades/Satellites pelas
+    // propriedades públicas.
+    public sealed class RunEconomy : MonoBehaviour
+    {
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private WaveBalance _waveBalance;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnergyShield _shield;             // NOVO na Fase 8A
+        [SerializeField] private Reflector _reflector;             // NOVO na Fase 8A
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private MothershipSpawner _motherships;
+        [SerializeField] private WaveDirector _waves;
+        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
+
+        public StatCatalog Catalog => _catalog;
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+        public UpgradeService Upgrades { get; private set; }
+        public SatelliteShop Satellites { get; private set; }
+
+        // Cria a economia da run. No Awake porque outros scripts (a gaveta) leem Stats/Wallet no Start deles.
+        private void Awake()
+        {
+            Stats = new RunStats(_catalog.Stats);
+            Wallet = new ShardWallet();
+            Upgrades = new UpgradeService(Stats, Wallet);
+            Satellites = new SatelliteShop(_orbit, Wallet, _satelliteCosts);
+        }
+
+        // Liga os eventos (OnEnable roda depois do Awake, então Stats já existe).
+        private void OnEnable()
+        {
+            Stats.StatChanged += HandleStatChanged;
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _motherships.MothershipKilled += HandleMothershipKilled;
+            _waves.WaveCleared += HandleWaveCleared;
+        }
+
+        private void OnDisable()
+        {
+            Stats.StatChanged -= HandleStatChanged;
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _motherships.MothershipKilled -= HandleMothershipKilled;
+            _waves.WaveCleared -= HandleWaveCleared;
+        }
+
+        // Saldo inicial e primeira aplicação dos Stats (substitui os valores provisórios do Inspector).
+        private void Start()
+        {
+            Wallet.Add(_startingShards);
+            ApplyAll();
+        }
+
+        // O Planet Core (Fase 9) chama isto no começo da run.
+        public void AddModifier(StatModifier modifier)
+        {
+            Stats.AddModifier(modifier);
+        }
+
+        // Qualquer Stat mudou (compra ou modificador): reaplica todos.
+        private void HandleStatChanged(StatId id)
+        {
+            ApplyAll();   // são só 17 números: recalcular tudo é mais simples e à prova de esquecimento
+        }
+
+        // Copia os valores atuais dos Stats para quem os usa (ver StatApplier).
+        private void ApplyAll()
+        {
+            StatApplier.Apply(Stats, _orbit, _planet, _shield, _reflector);
+        }
+
+        // Inimigo comum destruído: Shards da definição (Seção 4.4).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            AwardKill(enemy.Definition.Shards);
+        }
+
+        // Mothership destruída: 50 Shards (Seção 4.5).
+        private void HandleMothershipKilled(Mothership mothership)
+        {
+            AwardKill(mothership.Shards);
+        }
+
+        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        private void AwardKill(float baseShards)
+        {
+            Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
+        private void HandleWaveCleared(IReadOnlyList<int> paidWaves, bool beforeTimer)
+        {
+            float multiplier = 1f + Stats.Value(StatId.ResourcePerWave);
+            foreach (int wave in paidWaves) Wallet.Add(_waveBalance.ClearBonus(wave) * multiplier);
+        }
+    }
+}
+```
+
+#### Passo 8 — Os assets novos
+
+1. **Import da arte** (preset da Fase 0; **Sprite Mode** `Multiple`, **Grid By Cell Size** do tamanho da tabela da Seção 6.4): `Enemies/SPR_Enemy_Gunner` (32×32, 4 frames), `Projectiles/SPR_Projectile_GunnerBolt` e `SPR_Projectile_Reflected` (32×32, 2 frames cada), `Satellites/SPR_Reflector` (32×32, 2 frames), `VFX/SPR_VFX_EnergyShield` (**48×48**, 3 linhas × 4) e `VFX/SPR_VFX_EnergyShield_Pop` (**48×48**, 5 frames). O `UI/SPR_UI_Icons` ganhou 2 linhas (agora 8 × 5): abra o **Sprite Editor** e fatie de novo com **Grid By Cell Size** 32×32. As células antigas não mudaram de lugar.
+2. **Os 4 Stats**, em `Data/Stats/`, como na Fase 6:
+
+| Asset | Id | Track | Display Name | Base | Per Level | Cap | Base Cost | Format | Icon (célula) | Casos especiais |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `Stat_MultishotChance` | MultishotChance | Offense | Multishot | 0 | 0.02 | 0.5 | 10 | Percent | 22 | — |
+| `Stat_MultishotTargets` | MultishotTargets | Offense | Multi Targets | 1 | 1 | 4 | 25 | Number | 23 | — |
+| `Stat_EnergyShield` | EnergyShield | Defense | Shield | 0 | 1 | 3 | 0 | Number | 24 | **Fixed Costs** = `30`, `90`, `250`; **Whole Number** marcado |
+| `Stat_ReflectShield` | ReflectShield | Defense | Reflect | 0 | 8 | 0 | 15 | Number | 25 | **First Level Bonus** = `7` (nível 1 = 0 + 8 + 7 = 15) |
+
+   No `StatCatalog`, arraste os dois de Offense **depois do `Stat_OrbitSpeed`** e os dois de Defense **depois do `Stat_DefenseRelative`**: é a ordem dos cards na gaveta.
+3. **O Gunner**, em `Data/Enemies/`, como na Fase 4: `Enemy_Gunner` com **Hitpoints** `14`, **Damage** `4`, **Speed** `0.9`, **Shards** `2`, **Radius** `0.5`, **Movement** `Straight`, **Unlock Wave** `5`, **Spawn Weight** `12`, **Cluster Size** `1`, **Variants** = 1 variação com as 4 células de `SPR_Enemy_Gunner`, **Fps** `6`, **Explosion** `Small`, **Hold Distance** `4.5`, **Bolt Interval** `2.5`. Arraste o asset para a lista **Enemies** do `WaveBalance` (Fase 5): é só isso que o coloca nas Waves.
+
+#### Passo 9 — Montar na cena
+
+1. **Prefab do Gunner Bolt:** objeto vazio `EnemyBolt` com **Sprite Renderer** (**Sorting Layer** `Projectiles`), **Sprite Animator** (**Frames** = as 2 células de `SPR_Projectile_GunnerBolt`, **Fps** `8`, **Loop** marcado) e **Enemy Bolt**. Arraste para `Prefabs/Gameplay/` e apague da cena.
+2. **Prefab do tiro refletido:** duplique o prefab `Projectile` da Fase 3 (**Ctrl+D** na janela Project) com o nome `ProjectileReflected`. No **Sprite Animator** dele, troque os frames pelas 2 células de `SPR_Projectile_Reflected`; no **Projectile**, troque as 3 **Trail Colors** por tons de azul-claro (ex.: `#8FD8FF` com alfa 200, `#5AA8E0` com 140, `#3A78B0` com 90).
+3. Em `[Systems]`:
+   - `BoltPool`, com o componente `BoltPool`: **Prefab** = `EnemyBolt`; **Planet** = o `PlanetHealth`.
+   - `ReflectedShots`, com o componente `ProjectilePool`: **Prefab** = `ProjectileReflected`; **Prewarm** `8`.
+   - No `EnemyPool`, **Bolts** = `BoltPool`.
+   - No `ExplosionPool`, acrescente um item em **Explosions**: `ShieldPop`, com as 5 células de `SPR_VFX_EnergyShield_Pop` e **Fps** `12`.
+4. **O Energy Shield:** no objeto `Planet`, **Add Component → Energy Shield** (**Recharge Seconds** `12`). No `PlanetHealth`, **Shield** = esse componente. Crie um filho do `Planet` chamado `ShieldView`, na posição local (0, 0, 0), com **Sprite Renderer** (**Sorting Layer** `VFX`), **Sprite Animator** e **Energy Shield View**: **Shield** = o `EnergyShield`; **Explosions** = o `ExplosionPool`; **Rows** com 3 itens (cargas 1, 2 e 3): as 4 células de cada linha de `SPR_VFX_EnergyShield`, de cima para baixo; **Fps** `6`.
+5. **O Reflector:** em `[World]`, crie `Reflector` com o componente `Reflector` (**Reflected Shots** = `ReflectedShots`). Dentro dele, um filho `Visual` (ligue no campo **Visual**) com dois filhos:
+   - `Body`: **Sprite Renderer** (**Sorting Layer** `Satellites`) e **Sprite Animator** (as 2 células de `SPR_Reflector`, **Fps** `2`, **Loop**).
+   - `Arc`: o componente **Reflector Arc View** (**Reflector** = o `Reflector`).
+6. **No `RunEconomy`:** **Shield** = o `EnergyShield` do `Planet`; **Reflector** = o `Reflector`.
+
+#### Passo 10 — Commit
+
+`git add .` e `git commit -m "Phase 8A: multishot, energy shield, reflect shield, gunner"`.
+
+**✅ Checkpoint:**
+- A aba Offense tem 9 cards (Multishot e Multi Targets depois de Orbit Speed) e a Defense tem 6 (Shield e Reflect no fim). O card do Shield mostra `0 > 1` e custo `30`; depois de 3 compras, `MAX`. O do Reflect mostra `0 > 15`, depois `15 > 23`.
+- Com **M** (Shards de teste) e algumas compras de **Multishot**, alguns disparos soltam 2 ou mais projéteis de uma vez, sempre em inimigos diferentes do mesmo Quadrant.
+- Comprando **Shield**: a bolha aparece em volta do planeta com 1 anel. Um inimigo que bate no planeta some sem tirar HP e a bolha some, com o estouro. 12 s depois, ela volta. Com 3 níveis, 3 anéis e 3 golpes anulados.
+- Comprando **Reflect**: o Reflector (o prisma azul com o arco) aparece embaixo do planeta e gira no sentido **horário**, a 30°/s (uma volta a cada 12 s). Um kamikaze que encosta no arco toma 15 de dano e, se sobreviver, é empurrado para longe.
+- Na **Wave 5** (use as teclas da Fase 5 para avançar), aparecem Gunners: eles param a 4,5 u do centro e atiram bolinhas magenta a cada 2,5 s. Um Bolt que passa pelo arco do Reflector volta azul-claro e acerta o Gunner que atirou.
+- Na Boss Wave, um laser disparado com o Reflector no caminho para no arco e tira o Reflect Damage da Mothership (a barra de HP dela desce um pouco), e o planeta não perde HP.
+
+**Problemas comuns:**
+- **Depois de mudar o `StatId`, um Stat antigo virou outro (ex.: o card de Damage mostra Multishot):** os Stats novos foram inseridos no meio do enum. Eles precisam ficar **no fim**, como no Passo 1.
+- **O card do Energy Shield continua comprável depois do nível 3:** o **Fixed Costs** do asset está vazio, então valem a fórmula e o teto. Preencha os 3 preços.
+- **O Reflector nunca aparece:** o campo **Reflector** do `RunEconomy` está vazio (o `StatApplier` dá erro no Console) ou o **Visual** do `Reflector` não foi ligado.
+- **Os Gunners passam direto e batem no planeta:** o **Hold Distance** do `Enemy_Gunner` ficou 0.
+- **`NullReferenceException` no `Enemy.Update` quando um Gunner para:** o campo **Bolts** do `EnemyPool` está vazio.
+- **O Bolt refletido some no caminho:** o Gunner morreu antes; o tiro vai para o inimigo vivo mais perto, e some se não houver ninguém (Seção 4.2).
+
+Próxima fase: **Fase 8B — Modo Invasion**.
+
+---
+
+### Fase 8B — Modo Invasion
+
+> Objetivo desta fase: o modo **Invasion** (Seção 4.7) jogável numa cena própria. O planeta no centro é defendido por uma **IA**, com as regras de sempre (Satellites, Stats, Energy Shield, Reflector), e o jogador é a invasão: escolhe um **Spawn Sector** tocando no espaço, lança naves pela aba **Deploy** pagando **Plasma** e compra **Fleet Upgrades**. Cada planeta tem um **Siege Timer** de 120 s; derrubar o planeta dá Plasma e traz o próximo, mais forte; o timer acabar encerra a run. A escolha do modo no menu entra com a Core Select, na Fase 9; até lá, a cena `Invasion` é aberta direto no Editor.
+
+**Conceitos novos:**
+- **Reaproveitar sem copiar:** quase nada do combate é novo. O planeta, a órbita, os inimigos, os pools, o Reflector e o Energy Shield são os mesmos objetos da cena Gameplay. O que muda é **quem decide**: em vez do `WaveDirector` (que cria inimigos) e do `RunEconomy` (que recebe as compras do jogador), entram o `FleetLauncher` (o jogador cria os inimigos) e o `PlanetAI` (a IA compra os Upgrades do planeta).
+- **Uma IA de compras simples:** a IA não pensa. Ela percorre uma lista fixa de Stats (o **perfil** do Planet Core) e compra o próximo item quando cabe no saldo; se não cabe, junta Shards. É previsível de propósito: o jogador aprende a ler o perfil.
+- **O mesmo objeto, planetas diferentes:** derrubar um planeta não destrói nada. O `PlanetAI` monta o próximo Target Planet no mesmo objeto `Planet`: Stats novos, Satellites novos, HP cheio, outro sprite.
+- **Interface para telas compartilhadas:** a tela de pausa da Fase 8 chamava o `RunController`. Agora ela fala com uma **interface**, `IRunFlow` ("a run está rodando?" e "desistir"), que o `RunController` e o `SiegeController` cumprem. Assim a mesma tela serve aos dois modos.
+
+#### Passo 1 — Pequenas mudanças em classes antigas
+
+No `SceneLoader` (Fase 1), acrescente a cena nova **no fim** do enum (os nomes precisam ser iguais aos arquivos de cena):
+
+```csharp
+    public enum GameScene { Boot, MainMenu, Gameplay, Invasion }
+```
+
+No `PlanetHealth` (Fase 2), acrescente:
+
+```csharp
+        // HP cheio e "vivo" de novo. O Invasion chama a cada Target Planet novo (Fase 8B): o mesmo objeto
+        // Planet vira o próximo planeta.
+        public void RestoreFull()
+        {
+            IsDead = false;
+            Current = _maxHitpoints;
+            HealthChanged?.Invoke();
+        }
+```
+
+Na `Mothership` (Fase 7), o `Spawn` ganha um último parâmetro opcional, de onde ela começa a descer. Nas Boss Waves ela continua nascendo na borda (12 u); no Invasion, nasce a 9 u, dentro da tela. Troque a assinatura e a linha do `_distance`:
+
+```csharp
+        public void Spawn(int wave, float angleDegrees, float hitpointsMultiplier, float damageMultiplier,
+                          PlanetHealth planet, EnemyPool enemies, float startDistance = WorldLayout.SpawnRadius)
+```
+
+```csharp
+            _distance = startDistance;   // antes: WorldLayout.SpawnRadius
+```
+
+No `SpawnSectorIndicator` (Fase 5), troque o `OnEnable` e o `OnDisable` por estes e acrescente o `ShowSelection`. Com o campo **Waves** vazio, a mesma peça vira o seletor de setor do Invasion:
+
+```csharp
+        // Inscreve nos eventos do WaveDirector (e desinscreve no OnDisable). Sem WaveDirector (cena Invasion),
+        // não escuta nada: quem acende as setas é o ShowSelection.
+        private void OnEnable()
+        {
+            if (_waves == null) return;
+            _waves.WaveWarning += HandleWaveWarning;
+            _waves.WaveStarted += HandleWaveStarted;
+        }
+
+        private void OnDisable()
+        {
+            if (_waves == null) return;
+            _waves.WaveWarning -= HandleWaveWarning;
+            _waves.WaveStarted -= HandleWaveStarted;
+        }
+
+        // Modo seleção (Invasion, Seção 4.7): as 6 setas ficam na tela o tempo todo; a do setor escolhido
+        // em cor cheia, as outras a 35%. O SectorPicker chama sempre que o setor muda.
+        public void ShowSelection(int selected)
+        {
+            for (int i = 0; i < _views.Length; i++)
+            {
+                _views[i].gameObject.SetActive(true);
+                _views[i].GetComponent<SpriteRenderer>().color = i == selected ? Color.white : new Color(1f, 1f, 1f, 0.35f);
+            }
+        }
+```
+
+A interface da pausa:
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Run/IRunFlow.cs
+namespace Armageddon.Run
+{
+    // POR QUE: a tela de pausa precisa de duas coisas da run: saber se ela está rodando e mandar desistir.
+    // No Last Stand quem responde é o RunController; no Invasion, o SiegeController.
+    // ESTRATÉGIA: uma interface com só essas duas coisas. A PauseView fala com ela e não sabe qual modo é.
+    public interface IRunFlow
+    {
+        bool IsRunning { get; }
+        void GiveUp();
+    }
+}
+```
+
+No `RunController` (Fase 8), troque a linha da classe e acrescente a propriedade:
+
+```csharp
+    public sealed class RunController : MonoBehaviour, IRunFlow
+```
+
+```csharp
+        public bool IsRunning => State == RunState.Running;   // IRunFlow (a PauseView usa)
+```
+
+Na `PauseView` (Fase 8), troque o campo `_run` e acrescente o `_flow`:
+
+```csharp
+        // RunController ou SiegeController. O Inspector não mostra campos de interface; por isso o campo é
+        // um MonoBehaviour, convertido para IRunFlow no Awake.
+        [SerializeField] private MonoBehaviour _run;
+        private IRunFlow _flow;
+```
+
+No `Awake` dela, acrescente `_flow = (IRunFlow)_run;` como **primeira** linha e troque `_run.GiveUp()` por `_flow.GiveUp()`. No `LateUpdate`, troque `_run.State == RunController.RunState.Running` por `_flow.IsRunning`.
+
+> Mudar o tipo do campo de `RunController` para `MonoBehaviour` não perde a referência já ligada na cena Gameplay: o `RunController` também é um `MonoBehaviour`. Confira no Inspector da `PauseView` que o campo **Run** continua preenchido.
+
+#### Passo 2 — Os dados do modo: `AiProfile` e `InvasionBalance`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/AiProfile.cs
+using System.Collections.Generic;
+using Armageddon.Economy;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: no Invasion, cada Target Planet sorteia um Planet Core e um jeito de gastar que combina com
+    // ele (Seção 4.7): Terra equilibrado, Ice compra defesa, Magma compra ataque. Isso é dado, não código.
+    // ESTRATÉGIA: ScriptableObject com o visual do planeta, os modificadores do Core (os da Seção 5.2,
+    // como StatModifier, o mesmo tipo que o RunStats já entende) e a ordem de compra que a IA percorre em
+    // círculo. Quando a Fase 9 criar o PlanetCoreDefinition, os modificadores podem passar a vir de lá.
+    [CreateAssetMenu(menuName = "Armageddon/AI Profile", fileName = "AiProfile_")]
+    public sealed class AiProfile : ScriptableObject
+    {
+        [SerializeField] private string _displayName = "Terra Core";
+        [SerializeField] private Sprite[] _planetFrames;   // a rotação do planeta (SPR_Planet_<Core>_Classic_Rotate)
+        [SerializeField] private List<StatModifier> _modifiers = new List<StatModifier>();
+        [SerializeField] private List<StatId> _purchaseOrder = new List<StatId>();   // pode repetir um Stat
+
+        public string DisplayName => _displayName;
+        public Sprite[] PlanetFrames => _planetFrames;
+        public IReadOnlyList<StatModifier> Modifiers => _modifiers;
+        public IReadOnlyList<StatId> PurchaseOrder => _purchaseOrder;
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/InvasionBalance.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: cada nave da aba Deploy tem custo e planeta de liberação (Seção 4.7). A nave em si (HP,
+    // dano, velocidade, sprite) já está na EnemyDefinition da Fase 4: aqui só entra o que é do Invasion.
+    // ESTRATÉGIA: pacote [Serializable] editado dentro do InvasionBalance. Enemy vazio = a Mothership,
+    // que não é uma EnemyDefinition (Fase 7).
+    [Serializable]
+    public sealed class ShipOffer
+    {
+        public string displayName = "Grunt";
+        public Sprite icon;                 // o primeiro frame do sprite da nave
+        public EnemyDefinition enemy;       // vazio = Mothership
+        public int cost = 4;                // em Plasma
+        public int unlockPlanet = 1;        // a partir de qual Target Planet aparece liberada
+
+        public bool IsMothership => enemy == null;
+    }
+
+    // Os 4 Fleet Upgrades (Seção 4.7). Novos entram no fim (ver o StatId da Fase 8A).
+    public enum FleetStat { Hull, Warheads, Thrusters, PlasmaFlow }
+
+    // POR QUE: os Fleet Upgrades seguem a regra dos Stats (incremento por nível, teto, custo × 1,15^nível),
+    // mas são outra lista, comprada com Plasma e válida só no Invasion.
+    // ESTRATÉGIA: pacote [Serializable] com os números de um Fleet Upgrade e o jeito de mostrar o valor.
+    [Serializable]
+    public sealed class FleetUpgradeDefinition
+    {
+        public FleetStat stat;
+        public string displayName = "Hull";
+        public Sprite icon;
+        public float perLevel = 0.1f;       // +10% por nível; no Plasma Flow, +0,5 Plasma/s
+        public float cap;                   // 0 = sem teto (Thrusters: 0,5 = +50%)
+        public int baseCost = 15;
+        public bool isPercent = true;       // false = mostra como "/s" (Plasma Flow)
+
+        // "+30%" ou "+1.5/s", para o card.
+        public string Format(float value) => isPercent ? $"+{value * 100f:0}%" : $"+{value:0.#}/s";
+    }
+
+    // POR QUE: todos os números do Invasion (Seção 4.7) num lugar só, para balancear sem mexer em código,
+    // como o WaveBalance faz no Last Stand.
+    // ESTRATÉGIA: ScriptableObject com os números e as fórmulas pequenas (Shards da IA, Satellites, prêmio).
+    [CreateAssetMenu(menuName = "Armageddon/Invasion Balance", fileName = "InvasionBalance")]
+    public sealed class InvasionBalance : ScriptableObject
+    {
+        [Header("Cerco")]
+        [SerializeField] private float _siegeSeconds = 120f;
+        [SerializeField] private int _fortressEvery = 5;          // todo 5º planeta é uma Fortress
+        [SerializeField] private int _fortressReflectLevel = 3;
+
+        [Header("Plasma do jogador")]
+        [SerializeField] private int _startingPlasma = 20;
+        [SerializeField] private float _plasmaPerSecond = 3f;
+        [SerializeField] private float _plasmaPerHit = 1f;
+        [SerializeField] private int _rewardPerPlanetNumber = 10; // planeta n dá 10 × n (o dobro na Fortress)
+
+        [Header("Lançamento")]
+        [SerializeField] private float _deployRadius = 9f;        // as naves nascem dentro da tela
+        [SerializeField] private float _sectorMargin = 8f;        // graus de folga nas bordas do setor
+
+        [Header("IA do planeta")]
+        [SerializeField] private float _aiStartingShards = 20f;   // Shards do planeta 1
+        [SerializeField] private float _aiShardGrowth = 1.35f;    // × 1,35 a cada planeta
+        [SerializeField] private float _aiBonusInterval = 30f;    // a cada 30 s, a IA ganha 5 + n Shards
+        [SerializeField] private float _aiSpendInterval = 0.5f;   // de quanto em quanto tempo a IA tenta comprar
+
+        [Header("Listas")]
+        [SerializeField] private List<ShipOffer> _ships = new List<ShipOffer>();
+        [SerializeField] private List<FleetUpgradeDefinition> _fleetUpgrades = new List<FleetUpgradeDefinition>();
+        [SerializeField] private List<AiProfile> _profiles = new List<AiProfile>();
+
+        public float SiegeSeconds => _siegeSeconds;
+        public int StartingPlasma => _startingPlasma;
+        public float PlasmaPerSecond => _plasmaPerSecond;
+        public float PlasmaPerHit => _plasmaPerHit;
+        public float DeployRadius => _deployRadius;
+        public float SectorMargin => _sectorMargin;
+        public int FortressReflectLevel => _fortressReflectLevel;
+        public float AiBonusInterval => _aiBonusInterval;
+        public float AiSpendInterval => _aiSpendInterval;
+        public IReadOnlyList<ShipOffer> Ships => _ships;
+        public IReadOnlyList<FleetUpgradeDefinition> FleetUpgrades => _fleetUpgrades;
+        public IReadOnlyList<AiProfile> Profiles => _profiles;
+
+        public bool IsFortress(int planet) => _fortressEvery > 0 && planet % _fortressEvery == 0;
+
+        // Satellites do planeta n: min(1 + floor((n − 1) / 2), 4); a Fortress começa com 4 (Seção 4.7).
+        public int SatelliteCount(int planet) => IsFortress(planet) ? 4 : Mathf.Min(1 + (planet - 1) / 2, 4);
+
+        // Shards iniciais da IA no planeta n: 20 × 1,35^(n−1).
+        public float StartingShards(int planet) => _aiStartingShards * Mathf.Pow(_aiShardGrowth, planet - 1);
+
+        // Bônus periódico da IA no planeta n: 5 + n.
+        public float AiBonus(int planet) => 5f + planet;
+
+        // Plasma por planeta destruído: 10 × n, o dobro na Fortress.
+        public int PlanetReward(int planet) => _rewardPerPlanetNumber * planet * (IsFortress(planet) ? 2 : 1);
+    }
+}
+```
+
+> **Divisão de inteiros:** em `(planet - 1) / 2`, os dois lados são `int`, então o C# já descarta a parte decimal (3 / 2 = 1). É o `floor` da fórmula do GDD sem precisar de `Mathf.Floor`.
+
+#### Passo 3 — Os Fleet Upgrades: `FleetUpgrades`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/FleetUpgrades.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Economy;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: os Fleet Upgrades têm nível, valor e custo durante a run, como o RunStats, mas são outra
+    // lista, pagos com Plasma (Seção 4.7).
+    // ESTRATÉGIA: classe C# pura (como o RunStats), criada pelo SiegeController a cada run. A carteira de
+    // Plasma é um ShardWallet: a classe já faz o que é preciso (soma frações, gasta inteiros, avisa por evento).
+    public sealed class FleetUpgrades
+    {
+        private readonly Dictionary<FleetStat, FleetUpgradeDefinition> _definitions = new Dictionary<FleetStat, FleetUpgradeDefinition>();
+        private readonly Dictionary<FleetStat, int> _levels = new Dictionary<FleetStat, int>();
+
+        public event Action<FleetStat> Changed;
+
+        // Monta as tabelas a partir das definições do InvasionBalance, todos os níveis em 0.
+        public FleetUpgrades(IEnumerable<FleetUpgradeDefinition> definitions)
+        {
+            foreach (var definition in definitions)
+            {
+                _definitions[definition.stat] = definition;
+                _levels[definition.stat] = 0;
+            }
+        }
+
+        public FleetUpgradeDefinition Definition(FleetStat stat) => _definitions[stat];
+        public int Level(FleetStat stat) => _levels.TryGetValue(stat, out int level) ? level : 0;
+        public float Value(FleetStat stat) => ValueAtLevel(stat, Level(stat));
+
+        // Multiplicador para Hull, Warheads e Thrusters: +10% vira × 1,1.
+        public float Multiplier(FleetStat stat) => 1f + Value(stat);
+
+        // Incremento × nível, limitado pelo teto. Um Fleet Upgrade que não está na lista vale 0.
+        public float ValueAtLevel(FleetStat stat, int level)
+        {
+            if (!_definitions.TryGetValue(stat, out var definition)) return 0f;
+            float value = definition.perLevel * level;
+            return definition.cap > 0f ? Mathf.Min(value, definition.cap) : value;
+        }
+
+        // No teto quando o próximo nível não muda mais o valor.
+        public bool IsMaxed(FleetStat stat)
+        {
+            var definition = _definitions[stat];
+            return definition.cap > 0f && definition.perLevel * Level(stat) >= definition.cap - 0.0001f;
+        }
+
+        // Mesma fórmula dos Stats (Seção 4.2): baseCost × 1,15^nível.
+        public int NextCost(FleetStat stat)
+        {
+            return Mathf.RoundToInt(_definitions[stat].baseCost * Mathf.Pow(StatDefinition.CostGrowth, Level(stat)));
+        }
+
+        public bool CanPurchase(FleetStat stat, ShardWallet plasma) => !IsMaxed(stat) && plasma.Balance >= NextCost(stat);
+
+        // Compra completa ou nada (ver UpgradeService.TryPurchase).
+        public bool TryPurchase(FleetStat stat, ShardWallet plasma)
+        {
+            if (!CanPurchase(stat, plasma)) return false;
+            plasma.TrySpend(NextCost(stat));
+            _levels[stat]++;
+            Changed?.Invoke(stat);
+            return true;
+        }
+    }
+}
+```
+
+#### Passo 4 — A IA do planeta: `PlanetAI`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/PlanetAI.cs
+using System;
+using Armageddon.Combat;
+using Armageddon.Economy;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: no Invasion, quem compra os Upgrades do planeta é uma IA (Seção 4.7). Ela usa exatamente as
+    // regras do jogador no Last Stand: RunStats, Shards, os mesmos custos e o StatApplier.
+    // ESTRATÉGIA: o "RunEconomy da IA". SetupPlanet monta cada Target Planet do zero (perfil sorteado,
+    // Stats novos com os modificadores do Core, Shards iniciais, Satellites, HP cheio). Depois, a cada meio
+    // segundo, a IA tenta comprar o próximo item do perfil; se não cabe, espera juntar. Ela ganha Shards
+    // pelas naves que destrói (como o jogador ganharia) e por um bônus periódico.
+    public sealed class PlanetAI : MonoBehaviour
+    {
+        [SerializeField] private InvasionBalance _balance;
+        [SerializeField] private StatCatalog _catalog;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private EnergyShield _shield;
+        [SerializeField] private Reflector _reflector;
+        [SerializeField] private SpriteAnimator _planetAnimator;   // o sprite do planeta (troca a cada Core)
+        [SerializeField] private float _planetFps = 4f;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private FleetLauncher _launcher;
+
+        private UpgradeService _upgrades;
+        private int _orderIndex;     // posição atual na lista de compras do perfil
+        private float _spendTimer;
+        private float _bonusTimer;
+
+        public int PlanetNumber { get; private set; }
+        public AiProfile Profile { get; private set; }
+        public RunStats Stats { get; private set; }
+        public ShardWallet Wallet { get; private set; }
+
+        public event Action PlanetReady;   // um Target Planet novo acabou de ser montado (HUD e painel de leitura)
+
+        private void OnEnable()
+        {
+            _enemies.EnemyKilled += HandleEnemyKilled;
+            _launcher.MothershipDestroyed += HandleMothershipDestroyed;
+        }
+
+        private void OnDisable()
+        {
+            _enemies.EnemyKilled -= HandleEnemyKilled;
+            _launcher.MothershipDestroyed -= HandleMothershipDestroyed;
+            if (Stats != null) Stats.StatChanged -= HandleStatChanged;
+        }
+
+        // Monta o Target Planet "number" no mesmo objeto Planet (Seção 4.7). Quem chama é o SiegeController.
+        public void SetupPlanet(int number)
+        {
+            if (Stats != null) Stats.StatChanged -= HandleStatChanged;   // os Stats do planeta anterior não valem mais
+
+            PlanetNumber = number;
+            Profile = _balance.Profiles[UnityEngine.Random.Range(0, _balance.Profiles.Count)];
+            _planetAnimator.SetFrames(Profile.PlanetFrames, _planetFps, true);
+
+            Stats = new RunStats(_catalog.Stats);
+            foreach (var modifier in Profile.Modifiers) Stats.AddModifier(modifier);
+            Wallet = new ShardWallet();
+            Wallet.Add(_balance.StartingShards(number));
+            _upgrades = new UpgradeService(Stats, Wallet);
+            _orderIndex = 0;
+            _spendTimer = 0f;
+            _bonusTimer = 0f;
+
+            _orbit.SetCount(_balance.SatelliteCount(number));
+            // Fortress: Reflect Shield de graça no nível 3. IncreaseLevel é "internal": dá para chamar porque
+            // todo o jogo está na mesma assembly (Fase 0); quem está fora dela não consegue.
+            if (_balance.IsFortress(number))
+            {
+                for (int i = 0; i < _balance.FortressReflectLevel; i++) Stats.IncreaseLevel(StatId.ReflectShield);
+            }
+
+            Spend();   // os Shards iniciais são gastos na hora (Seção 4.7)
+            StatApplier.Apply(Stats, _orbit, _planet, _shield, _reflector);
+            Stats.StatChanged += HandleStatChanged;   // daqui em diante, cada compra reaplica na hora
+
+            _planet.RestoreFull();
+            _shield.Refill();
+            PlanetReady?.Invoke();
+        }
+
+        // Relógios da IA: tentar comprar a cada _aiSpendInterval; bônus de Shards a cada _aiBonusInterval.
+        private void Update()
+        {
+            if (Stats == null) return;
+            float deltaTime = Time.deltaTime;
+            if (deltaTime <= 0f) return;   // pausado
+
+            _bonusTimer += deltaTime;
+            if (_bonusTimer >= _balance.AiBonusInterval)
+            {
+                _bonusTimer -= _balance.AiBonusInterval;
+                Wallet.Add(_balance.AiBonus(PlanetNumber));
+            }
+
+            _spendTimer += deltaTime;
+            if (_spendTimer < _balance.AiSpendInterval) return;
+            _spendTimer = 0f;
+            Spend();
+        }
+
+        // Percorre a lista do perfil em círculo: pula o que está no máximo, compra o que cabe e para no
+        // primeiro item que não cabe (junta Shards para ele). O "guard" evita um laço infinito se todos os
+        // itens estiverem no máximo.
+        private void Spend()
+        {
+            var order = Profile.PurchaseOrder;
+            if (order.Count == 0) return;
+
+            for (int guard = 0; guard < order.Count * 4; guard++)
+            {
+                StatId id = order[_orderIndex % order.Count];
+                if (Stats.IsMaxed(id))
+                {
+                    _orderIndex++;
+                    continue;
+                }
+                if (!_upgrades.TryPurchase(id)) return;
+                _orderIndex++;
+            }
+        }
+
+        // Uma compra mudou um Stat: reaplica todos (ver RunEconomy.HandleStatChanged).
+        private void HandleStatChanged(StatId id)
+        {
+            StatApplier.Apply(Stats, _orbit, _planet, _shield, _reflector);
+        }
+
+        // A IA ganha Shards como o jogador ganharia no Last Stand (Seção 4.7): os da nave × (1 + Resource Bonus).
+        private void HandleEnemyKilled(Enemy enemy)
+        {
+            Wallet.Add(enemy.Definition.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+
+        private void HandleMothershipDestroyed(Mothership mothership)
+        {
+            Wallet.Add(mothership.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+        }
+    }
+}
+```
+
+#### Passo 5 — O cerco: `InvasionSummary` e `SiegeController`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/InvasionSummary.cs
+using System;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: o Results do Invasion mostra outros números que o do Last Stand (Seção 4.7).
+    // ESTRATÉGIA: pacote de dados preenchido no fim da run (ver RunSummary, Fase 8). A Fase 9 usa o
+    // planetsDestroyed para o recorde Best Planet.
+    [Serializable]
+    public sealed class InvasionSummary
+    {
+        public int planetsDestroyed;
+        public int shipsLaunched;
+        public float seconds;
+        public bool gaveUp;
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/SiegeController.cs
+using System;
+using Armageddon.Core;
+using Armageddon.Economy;
+using Armageddon.Planets;
+using Armageddon.Run;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: o Invasion tem o próprio ciclo de run (Seção 4.7): Plasma entrando, Siege Timer correndo,
+    // planeta caindo e o próximo chegando, e o fim quando o timer acaba. É o papel do RunController + o do
+    // WaveDirector no Last Stand.
+    // ESTRATÉGIA: um MonoBehaviour na cena Invasion. Cria a carteira de Plasma e os Fleet Upgrades no Awake,
+    // escuta o PlanetHealth (acerto = Plasma; morte = próximo planeta) e manda o PlanetAI montar cada planeta.
+    // Cumpre IRunFlow para a PauseView da Fase 8 funcionar aqui também.
+    public sealed class SiegeController : MonoBehaviour, IRunFlow
+    {
+        [SerializeField] private InvasionBalance _balance;
+        [SerializeField] private PlanetAI _ai;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private FleetLauncher _launcher;
+        [SerializeField] private ExplosionPool _explosions;
+
+        private bool _running;
+
+        public ShardWallet Plasma { get; private set; }
+        public FleetUpgrades Fleet { get; private set; }
+        public int PlanetNumber => _ai.PlanetNumber;
+        public bool IsFortress => _balance.IsFortress(PlanetNumber);
+        public int PlanetsDestroyed { get; private set; }
+        public float TimeRemaining { get; private set; }
+        public float ElapsedSeconds { get; private set; }
+        public bool IsRunning => _running;
+
+        public event Action<int> PlanetDestroyed;          // o número do planeta que caiu
+        public event Action<InvasionSummary> RunEnded;
+
+        // Cria a economia do jogador no Awake: a gaveta lê Plasma e Fleet no Start dela.
+        private void Awake()
+        {
+            Plasma = new ShardWallet();
+            Fleet = new FleetUpgrades(_balance.FleetUpgrades);
+        }
+
+        private void OnEnable()
+        {
+            _planet.Damaged += HandlePlanetHit;
+            _planet.Died += HandlePlanetDied;
+        }
+
+        private void OnDisable()
+        {
+            _planet.Damaged -= HandlePlanetHit;
+            _planet.Died -= HandlePlanetDied;
+        }
+
+        // Começa a run: Plasma inicial, o planeta 1 e o Siege Timer.
+        private void Start()
+        {
+            Plasma.Add(_balance.StartingPlasma);
+            _ai.SetupPlanet(1);
+            TimeRemaining = _balance.SiegeSeconds;
+            _running = true;
+        }
+
+        // Renda de Plasma e Siege Timer. Pausado, deltaTime é 0: nada anda.
+        private void Update()
+        {
+            if (!_running) return;
+            float deltaTime = Time.deltaTime;
+            ElapsedSeconds += deltaTime;
+            Plasma.Add((_balance.PlasmaPerSecond + Fleet.Value(FleetStat.PlasmaFlow)) * deltaTime);
+
+            TimeRemaining -= deltaTime;
+            if (TimeRemaining <= 0f)
+            {
+                TimeRemaining = 0f;
+                EndRun(gaveUp: false);   // o planeta resistiu: a run acaba (Seção 4.7)
+            }
+        }
+
+        // Cada golpe que passa pelo Energy Shield e acerta o planeta devolve Plasma (Seção 4.7).
+        private void HandlePlanetHit(float damage)
+        {
+            if (_running) Plasma.Add(_balance.PlasmaPerHit);
+        }
+
+        // O planeta caiu: prêmio, explosão grande e o próximo Target Planet com o timer cheio.
+        private void HandlePlanetDied()
+        {
+            if (!_running) return;
+            int number = PlanetNumber;
+            PlanetsDestroyed++;
+            Plasma.Add(_balance.PlanetReward(number));
+            _explosions.Play(ExplosionKind.Mothership, WorldLayout.PlanetCenter);
+            PlanetDestroyed?.Invoke(number);
+
+            _ai.SetupPlanet(number + 1);
+            TimeRemaining = _balance.SiegeSeconds;
+        }
+
+        // Botão "Give up" da pausa (IRunFlow). Mesmo ritual do RunController.GiveUp.
+        public void GiveUp()
+        {
+            if (!_running) return;
+            Services.Clock.Resume(PauseReason.Manual);
+            EndRun(gaveUp: true);
+        }
+
+        public void PlayAgain() => Services.Scenes.Load(GameScene.Invasion);
+        public void GoToMenu() => Services.Scenes.Load(GameScene.MainMenu);
+
+        // Congela o mundo atrás do Results e avisa as telas.
+        private void EndRun(bool gaveUp)
+        {
+            _running = false;
+            Services.Clock.Pause(PauseReason.Modal);
+            RunEnded?.Invoke(new InvasionSummary
+            {
+                planetsDestroyed = PlanetsDestroyed,
+                shipsLaunched = _launcher.ShipsLaunched,
+                seconds = ElapsedSeconds,
+                gaveUp = gaveUp,
+            });
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // Atalho de teste (InvasionDevTools): o Siege Timer vai para 1 s.
+        public void DevSkipTimer() => TimeRemaining = Mathf.Min(TimeRemaining, 1f);
+#endif
+    }
+}
+```
+
+#### Passo 6 — Lançar naves: `FleetLauncher` e `SectorPicker`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/FleetLauncher.cs
+using System;
+using System.Collections.Generic;
+using Armageddon.Enemies;
+using Armageddon.Planets;
+using Armageddon.Waves;
+using Armageddon.World;
+using UnityEngine;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: no Invasion, quem cria os inimigos é o jogador (Seção 4.7). Lançar uma nave é cobrar o Plasma,
+    // escolher o ponto no setor selecionado e criar a nave com os Fleet Upgrades.
+    // ESTRATÉGIA: o "WaveDirector do jogador". Guarda o setor escolhido e usa o mesmo EnemyPool das Waves
+    // (com os multiplicadores dos Fleet Upgrades no lugar da escalada por Wave). A Mothership é criada como
+    // no MothershipSpawner (Fase 7), mas a 9 u e com os valores da Wave 1.
+    public sealed class FleetLauncher : MonoBehaviour
+    {
+        [SerializeField] private InvasionBalance _balance;
+        [SerializeField] private SiegeController _siege;
+        [SerializeField] private EnemyPool _enemies;
+        [SerializeField] private Mothership _mothershipPrefab;
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private ExplosionPool _explosions;
+
+        private readonly List<Mothership> _motherships = new List<Mothership>();
+
+        public int SelectedSector { get; private set; }
+        public int ShipsLaunched { get; private set; }
+
+        public event Action<int> SectorChanged;
+        public event Action Launched;                          // os cards reavaliam se podem lançar
+        public event Action<Mothership> MothershipDestroyed;   // Shards da IA (PlanetAI)
+
+        // Escolhe o Spawn Sector (0 a 5). Repeat aceita qualquer número e traz para 0–5.
+        public void SelectSector(int sector)
+        {
+            SelectedSector = (int)Mathf.Repeat(sector, WaveDirector.SectorCount);
+            SectorChanged?.Invoke(SelectedSector);
+        }
+
+        public bool IsUnlocked(ShipOffer offer) => offer.unlockPlanet <= _siege.PlanetNumber;
+
+        // Pode lançar: run rodando, nave liberada, Plasma suficiente e, na Mothership, nenhuma em campo.
+        public bool CanLaunch(ShipOffer offer)
+        {
+            return _siege.IsRunning
+                && IsUnlocked(offer)
+                && _siege.Plasma.Balance >= offer.cost
+                && !(offer.IsMothership && _motherships.Count > 0);
+        }
+
+        // Lança a nave (ou o cacho, no Swarmer) no setor escolhido. Devolve se deu certo.
+        public bool TryLaunch(ShipOffer offer)
+        {
+            if (!CanLaunch(offer)) return false;
+            _siege.Plasma.TrySpend(offer.cost);
+            ShipsLaunched++;
+
+            var fleet = _siege.Fleet;
+            float hull = fleet.Multiplier(FleetStat.Hull);
+            float warheads = fleet.Multiplier(FleetStat.Warheads);
+            float sectorStart = SelectedSector * WaveDirector.SectorArc;
+
+            if (offer.IsMothership)
+            {
+                SpawnMothership(sectorStart + WaveDirector.SectorArc * 0.5f, hull, warheads);
+            }
+            else
+            {
+                // Um ponto aleatório do setor, longe das bordas dele, a 9 u do centro (dentro da tela).
+                float margin = _balance.SectorMargin;
+                float radians = (sectorStart + UnityEngine.Random.Range(margin, WaveDirector.SectorArc - margin)) * Mathf.Deg2Rad;
+                Vector2 position = WorldLayout.PlanetCenter + new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * _balance.DeployRadius;
+                _enemies.Spawn(offer.enemy, position, hull, warheads, fleet.Multiplier(FleetStat.Thrusters));
+            }
+
+            Launched?.Invoke();
+            return true;
+        }
+
+        // A Mothership do jogador: valores da Wave 1 (Seção 4.7), com Hull e Warheads. Os Thrusters não mudam
+        // a velocidade dela (a espiral é fixa, Seção 4.5).
+        private void SpawnMothership(float angleDegrees, float hull, float warheads)
+        {
+            var mothership = Instantiate(_mothershipPrefab, transform);
+            mothership.Spawn(1, angleDegrees, hull, warheads, _planet, _enemies, _balance.DeployRadius);
+            mothership.Died += HandleMothershipDied;
+            _motherships.Add(mothership);
+        }
+
+        // Mesma limpeza do MothershipSpawner.HandleDied (Fase 7).
+        private void HandleMothershipDied(Mothership mothership)
+        {
+            mothership.Died -= HandleMothershipDied;
+            _motherships.Remove(mothership);
+            _explosions.Play(ExplosionKind.Mothership, mothership.Position);
+            MothershipDestroyed?.Invoke(mothership);
+            Destroy(mothership.gameObject);
+            Launched?.Invoke();   // a Mothership pode ser lançada de novo: os cards se atualizam
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/SectorPicker.cs
+using Armageddon.Combat;
+using Armageddon.Waves;
+using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: no Invasion, o jogador escolhe o Spawn Sector tocando no espaço em volta do planeta, ou com
+    // as teclas 1 a 6 (Seção 4.7). Toques na gaveta e nos botões não podem mudar o setor.
+    // ESTRATÉGIA: lê o Input System direto (Pointer cobre mouse E toque), descarta o toque que caiu em cima
+    // da UI (EventSystem), converte a tela para o mundo e o ângulo para um setor de 60°. Também mantém as
+    // setas do SpawnSectorIndicator mostrando o setor escolhido.
+    public sealed class SectorPicker : MonoBehaviour
+    {
+        [SerializeField] private FleetLauncher _launcher;
+        [SerializeField] private SpawnSectorIndicator _arrows;
+
+        private void OnEnable() => _launcher.SectorChanged += _arrows.ShowSelection;
+        private void OnDisable() => _launcher.SectorChanged -= _arrows.ShowSelection;
+
+        // As setas aparecem já no primeiro frame, com o setor 0 escolhido.
+        private void Start()
+        {
+            _launcher.SelectSector(_launcher.SelectedSector);
+        }
+
+        private void Update()
+        {
+            if (Time.deltaTime <= 0f) return;   // pausado: a pausa não muda o setor
+
+            // Teclas 1 a 6: Key.Digit1 até Key.Digit6 são seguidas no enum, então Digit1 + i funciona.
+            var keyboard = Keyboard.current;
+            if (keyboard != null)
+            {
+                for (int i = 0; i < WaveDirector.SectorCount; i++)
+                {
+                    if (keyboard[Key.Digit1 + i].wasPressedThisFrame) _launcher.SelectSector(i);
+                }
+            }
+
+            // Pointer.current = o último ponteiro usado (mouse ou dedo). "press" é o clique ou o toque.
+            var pointer = Pointer.current;
+            if (pointer == null || !pointer.press.wasPressedThisFrame) return;
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;   // tocou na UI
+
+            var view = Camera.main;
+            if (view == null) return;
+            Vector2 world = view.ScreenToWorldPoint(pointer.position.ReadValue());
+            float degrees = Mathf.Repeat(Reflector.AngleOf(world), 360f);   // 0 = direita, anti-horário
+            _launcher.SelectSector(Mathf.FloorToInt(degrees / WaveDirector.SectorArc));
+        }
+    }
+}
+```
+
+> **Por que `Reflector.AngleOf`?** É a mesma conta de "ângulo de um ponto em volta do planeta" que o Reflector já precisava (Fase 8A). Reaproveitar evita uma segunda versão da mesma fórmula.
+
+#### Passo 7 — As telas do Invasion: `ShipCard`, `FleetCard`, `InvasionDrawer`, `InvasionHudView`, `IntelPanel`, `InvasionResultsView`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/ShipCard.cs
+using Armageddon.Invasion;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: cada nave da aba Deploy precisa de um card que mostra custo (ou o planeta que a libera) e
+    // lança a nave com um toque, sem pausar (Pilar 1).
+    // ESTRATÉGIA: o mesmo molde do StatCard (Fase 6): Bind recebe os dados, o card escuta os eventos que
+    // podem mudá-lo (saldo, planeta novo, lançamentos) e se redesenha só nessas horas.
+    public sealed class ShipCard : MonoBehaviour
+    {
+        [SerializeField] private Image _icon;
+        [SerializeField] private TMP_Text _name;
+        [SerializeField] private TMP_Text _cost;
+        [SerializeField] private Button _button;
+
+        private ShipOffer _offer;
+        private SiegeController _siege;
+        private FleetLauncher _launcher;
+
+        private void Awake()
+        {
+            _button.onClick.AddListener(() => _launcher.TryLaunch(_offer));
+        }
+
+        private void OnDestroy()
+        {
+            Unbind();
+        }
+
+        // Liga o card a uma nave. Chamado uma vez pela InvasionDrawer.
+        public void Bind(ShipOffer offer, SiegeController siege, FleetLauncher launcher)
+        {
+            Unbind();
+            _offer = offer;
+            _siege = siege;
+            _launcher = launcher;
+            _icon.sprite = offer.icon;
+            _name.text = offer.displayName;
+            _siege.Plasma.BalanceChanged += Refresh;
+            _siege.PlanetDestroyed += HandlePlanetDestroyed;
+            _launcher.Launched += Refresh;
+            Refresh();
+        }
+
+        private void Unbind()
+        {
+            if (_siege == null) return;
+            _siege.Plasma.BalanceChanged -= Refresh;
+            _siege.PlanetDestroyed -= HandlePlanetDestroyed;
+            _launcher.Launched -= Refresh;
+            _siege = null;
+        }
+
+        // Um planeta caiu: o próximo pode liberar esta nave.
+        private void HandlePlanetDestroyed(int planet) => Refresh();
+
+        // Bloqueada: mostra o planeta que libera. Liberada: o custo, e o botão aceso se der para lançar agora.
+        private void Refresh()
+        {
+            bool unlocked = _launcher.IsUnlocked(_offer);
+            _cost.text = unlocked ? _offer.cost.ToString() : $"Planet {_offer.unlockPlanet}";
+            _button.interactable = _launcher.CanLaunch(_offer);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/FleetCard.cs
+using Armageddon.Invasion;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: os Fleet Upgrades aparecem como cards, iguais aos de Stat (nível, valor atual > próximo, custo).
+    // ESTRATÉGIA: cópia do StatCard (Fase 6) apontando para os FleetUpgrades e para a carteira de Plasma.
+    public sealed class FleetCard : MonoBehaviour
+    {
+        [SerializeField] private Image _icon;
+        [SerializeField] private TMP_Text _name;
+        [SerializeField] private TMP_Text _level;
+        [SerializeField] private TMP_Text _value;
+        [SerializeField] private TMP_Text _cost;
+        [SerializeField] private Button _button;
+
+        private FleetUpgradeDefinition _definition;
+        private SiegeController _siege;
+
+        private void Awake()
+        {
+            _button.onClick.AddListener(() => _siege.Fleet.TryPurchase(_definition.stat, _siege.Plasma));
+        }
+
+        private void OnDestroy()
+        {
+            Unbind();
+        }
+
+        public void Bind(FleetUpgradeDefinition definition, SiegeController siege)
+        {
+            Unbind();
+            _definition = definition;
+            _siege = siege;
+            _icon.sprite = definition.icon;
+            _name.text = definition.displayName;
+            _siege.Fleet.Changed += HandleChanged;
+            _siege.Plasma.BalanceChanged += Refresh;
+            Refresh();
+        }
+
+        private void Unbind()
+        {
+            if (_siege == null) return;
+            _siege.Fleet.Changed -= HandleChanged;
+            _siege.Plasma.BalanceChanged -= Refresh;
+            _siege = null;
+        }
+
+        private void HandleChanged(FleetStat stat)
+        {
+            if (stat == _definition.stat) Refresh();
+        }
+
+        // Mesmo formato do StatCard: "Lv 2", "+20% > +30%", custo; no teto, "MAX".
+        private void Refresh()
+        {
+            var fleet = _siege.Fleet;
+            var stat = _definition.stat;
+            int level = fleet.Level(stat);
+            _level.text = $"Lv {level}";
+            if (fleet.IsMaxed(stat))
+            {
+                _value.text = _definition.Format(fleet.Value(stat));
+                _cost.text = "MAX";
+                _button.interactable = false;
+                return;
+            }
+            _value.text = $"{_definition.Format(fleet.Value(stat))} > {_definition.Format(fleet.ValueAtLevel(stat, level + 1))}";
+            _cost.text = fleet.NextCost(stat).ToString();
+            _button.interactable = fleet.CanPurchase(stat, _siege.Plasma);
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/InvasionDrawer.cs
+using System.Collections.Generic;
+using Armageddon.Invasion;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: a gaveta do Invasion tem duas abas, Deploy (naves) e Fleet (Fleet Upgrades), e o saldo é de
+    // Plasma (Seção 6.3). O comportamento é o da gaveta da Fase 6: abrir, fechar, deslizar a câmera.
+    // ESTRATÉGIA: os cards das duas abas são criados UMA vez, no Start, no mesmo container; trocar de aba
+    // só liga uns e desliga outros. São poucos (6 naves + 4 upgrades), então não vale reaproveitar como na Fase 6.
+    public sealed class InvasionDrawer : MonoBehaviour
+    {
+        public enum Tab { None = -1, Deploy = 0, Fleet = 1 }
+
+        [SerializeField] private SiegeController _siege;
+        [SerializeField] private FleetLauncher _launcher;
+        [SerializeField] private InvasionBalance _balance;
+        [SerializeField] private CameraRig _camera;
+        [SerializeField] private Button[] _tabButtons = new Button[2];   // na ordem Deploy, Fleet
+        [SerializeField] private TMP_Text _plasmaText;
+        [SerializeField] private GameObject _panel;
+        [SerializeField] private Transform _cardContainer;
+        [SerializeField] private ShipCard _shipCardPrefab;
+        [SerializeField] private FleetCard _fleetCardPrefab;
+
+        private readonly List<GameObject> _shipCards = new List<GameObject>();
+        private readonly List<GameObject> _fleetCards = new List<GameObject>();
+
+        public Tab OpenTab { get; private set; } = Tab.None;
+
+        private void Awake()
+        {
+            for (int i = 0; i < _tabButtons.Length; i++)
+            {
+                var tab = (Tab)i;
+                _tabButtons[i].onClick.AddListener(() => SetOpen(OpenTab == tab ? Tab.None : tab));
+            }
+        }
+
+        // Start: o SiegeController já criou Plasma e Fleet no Awake dele.
+        private void Start()
+        {
+            foreach (var offer in _balance.Ships)
+            {
+                var card = Instantiate(_shipCardPrefab, _cardContainer);
+                card.Bind(offer, _siege, _launcher);
+                _shipCards.Add(card.gameObject);
+            }
+            foreach (var upgrade in _balance.FleetUpgrades)
+            {
+                var card = Instantiate(_fleetCardPrefab, _cardContainer);
+                card.Bind(upgrade, _siege);
+                _fleetCards.Add(card.gameObject);
+            }
+
+            _siege.Plasma.BalanceChanged += RefreshPlasma;
+            RefreshPlasma();
+            SetOpen(Tab.None);
+        }
+
+        private void OnDestroy()
+        {
+            if (_siege != null && _siege.Plasma != null) _siege.Plasma.BalanceChanged -= RefreshPlasma;
+        }
+
+        // Abre uma aba (ou fecha, com Tab.None) e avisa a câmera, como a UpgradeDrawer.
+        public void SetOpen(Tab tab)
+        {
+            OpenTab = tab;
+            bool open = tab != Tab.None;
+            _panel.SetActive(open);
+            _camera.SetDrawerOpen(open);
+            foreach (var card in _shipCards) card.SetActive(tab == Tab.Deploy);
+            foreach (var card in _fleetCards) card.SetActive(tab == Tab.Fleet);
+        }
+
+        private void RefreshPlasma()
+        {
+            _plasmaText.text = _siege.Plasma.Balance.ToString();
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/InvasionHudView.cs
+using Armageddon.Core;
+using Armageddon.Invasion;
+using Armageddon.Planets;
+using Armageddon.World;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: no Invasion, a barra de HP é a do planeta INIMIGO, e em vez de "Wave 7 · 18s" o topo mostra
+    // "Planet 3 · 87s" (Seção 4.7).
+    // ESTRATÉGIA: a mesma HudView da Fase 8, lendo o SiegeController no lugar do WaveDirector. Só reescreve
+    // os textos quando o número mostrado muda.
+    public sealed class InvasionHudView : MonoBehaviour
+    {
+        [SerializeField] private PlanetHealth _planet;
+        [SerializeField] private SiegeController _siege;
+        [SerializeField] private Image _healthFill;
+        [SerializeField] private TMP_Text _healthText;
+        [SerializeField] private TMP_Text _planetText;
+        [SerializeField] private TMP_Text _timerText;
+        [SerializeField] private Button _pauseButton;
+
+        private int _shownHealth = -1;
+        private int _shownMaxHealth = -1;
+        private int _shownPlanet = -1;
+        private int _shownSeconds = -1;
+
+        private void Awake()
+        {
+            _healthFill.sprite = PixelSprite.White;
+            _healthFill.type = Image.Type.Filled;
+            _healthFill.fillMethod = Image.FillMethod.Horizontal;
+            _pauseButton.onClick.AddListener(() => Services.Clock.Pause(PauseReason.Manual));
+        }
+
+        private void LateUpdate()
+        {
+            _healthFill.fillAmount = _planet.Max > 0f ? _planet.Current / _planet.Max : 0f;
+            int health = Mathf.CeilToInt(_planet.Current);
+            int maxHealth = Mathf.CeilToInt(_planet.Max);
+            if (health != _shownHealth || maxHealth != _shownMaxHealth)
+            {
+                _shownHealth = health;
+                _shownMaxHealth = maxHealth;
+                _healthText.text = $"{health}/{maxHealth}";
+            }
+
+            if (_siege.PlanetNumber != _shownPlanet)
+            {
+                _shownPlanet = _siege.PlanetNumber;
+                _planetText.text = _siege.IsFortress ? $"Planet {_shownPlanet} · Fortress" : $"Planet {_shownPlanet}";
+            }
+
+            int seconds = Mathf.CeilToInt(_siege.TimeRemaining);
+            if (seconds != _shownSeconds)
+            {
+                _shownSeconds = seconds;
+                _timerText.text = $"{seconds}s";
+            }
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/IntelPanel.cs
+using System.Text;
+using Armageddon.Combat;
+using Armageddon.Economy;
+using Armageddon.Invasion;
+using Armageddon.Planets;
+using TMPro;
+using UnityEngine;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o desafio do Invasion é LER a defesa (Seção 4.7): quantos Satellites, se tem Multishot,
+    // Energy Shield, Reflector. Sem esse painel, a escolha de nave seria um chute.
+    // ESTRATÉGIA: um texto só, no canto de cima à direita (onde o Last Stand mostra os inimigos da Wave),
+    // remontado 4 vezes por segundo. StringBuilder monta o texto sem criar várias strings soltas.
+    public sealed class IntelPanel : MonoBehaviour
+    {
+        [SerializeField] private PlanetAI _ai;
+        [SerializeField] private SatelliteOrbit _orbit;
+        [SerializeField] private EnergyShield _shield;
+        [SerializeField] private TMP_Text _text;
+        [SerializeField] private float _interval = 0.25f;
+
+        private readonly StringBuilder _builder = new StringBuilder();
+        private float _timer;
+
+        // unscaledDeltaTime: o painel continua certo mesmo com o jogo pausado (ver ReviveOfferView).
+        private void Update()
+        {
+            _timer -= Time.unscaledDeltaTime;
+            if (_timer > 0f || _ai.Stats == null) return;
+            _timer = _interval;
+
+            var stats = _ai.Stats;
+            _builder.Clear();
+            _builder.AppendLine(_ai.Profile.DisplayName);
+            _builder.AppendLine($"Satellites {_orbit.Satellites.Count}");
+            _builder.AppendLine($"Damage {stats.Value(StatId.Damage):0} · {stats.Value(StatId.AttackSpeed):0.0}/s");
+            if (stats.Value(StatId.MultishotChance) > 0f) _builder.AppendLine($"Multishot {stats.Value(StatId.MultishotChance) * 100f:0}%");
+            if (_shield.MaxCharges > 0) _builder.AppendLine($"Shield {_shield.Charges}/{_shield.MaxCharges}");
+            if (stats.Value(StatId.ReflectShield) > 0f) _builder.AppendLine($"Reflect {stats.Value(StatId.ReflectShield):0}");
+            _builder.Append($"Shards {_ai.Wallet.Balance}");
+            _text.text = _builder.ToString();
+        }
+    }
+}
+```
+
+```csharp
+// Caminho: Assets/_Project/Scripts/UI/InvasionResultsView.cs
+using Armageddon.Invasion;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Armageddon.UI
+{
+    // POR QUE: o Results do Invasion mostra planetas destruídos, naves lançadas e o tempo (Seção 4.7).
+    // ESTRATÉGIA: a ResultsView da Fase 8, ouvindo o SiegeController.
+    public sealed class InvasionResultsView : MonoBehaviour
+    {
+        [SerializeField] private SiegeController _siege;
+        [SerializeField] private GameObject _root;
+        [SerializeField] private TMP_Text _planetsText;
+        [SerializeField] private TMP_Text _shipsText;
+        [SerializeField] private TMP_Text _timeText;
+        [SerializeField] private Button _playAgainButton;
+        [SerializeField] private Button _menuButton;
+
+        private void Awake()
+        {
+            _playAgainButton.onClick.AddListener(() => _siege.PlayAgain());
+            _menuButton.onClick.AddListener(() => _siege.GoToMenu());
+            _root.SetActive(false);
+        }
+
+        private void OnEnable() => _siege.RunEnded += Show;
+        private void OnDisable() => _siege.RunEnded -= Show;
+
+        private void Show(InvasionSummary summary)
+        {
+            int seconds = Mathf.FloorToInt(summary.seconds);
+            _planetsText.text = summary.planetsDestroyed.ToString();
+            _shipsText.text = summary.shipsLaunched.ToString();
+            _timeText.text = $"{seconds / 60}:{seconds % 60:00}";
+            _root.SetActive(true);
+        }
+    }
+}
+```
+
+#### Passo 8 — Teclas de teste: `InvasionDevTools`
+
+```csharp
+// Caminho: Assets/_Project/Scripts/Invasion/InvasionDevTools.cs
+using UnityEngine;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+using Armageddon.Planets;
+using UnityEngine.InputSystem;
+#endif
+
+namespace Armageddon.Invasion
+{
+    // POR QUE: testar a Fortress ou o fim do timer jogando de verdade leva minutos.
+    // ESTRATÉGIA: como as outras DevTools, só existe no Editor e em builds de desenvolvimento.
+    //   P = +500 Plasma; N = derruba o planeta atual; T = Siege Timer em 1 s.
+    public sealed class InvasionDevTools : MonoBehaviour
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField] private SiegeController _siege;
+        [SerializeField] private PlanetHealth _planet;
+
+        private void Update()
+        {
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.pKey.wasPressedThisFrame) _siege.Plasma.Add(500f);
+            if (keyboard.tKey.wasPressedThisFrame) _siege.DevSkipTimer();
+            if (keyboard.nKey.wasPressedThisFrame)
+            {
+                // Golpes enormes até o planeta cair. Até 4, porque as 3 primeiras podem ser gastas pelo Energy Shield.
+                int before = _siege.PlanetsDestroyed;
+                for (int i = 0; i < 4 && _siege.PlanetsDestroyed == before; i++) _planet.TakeDamage(1000000000f);
+            }
+        }
+#endif
+    }
+}
+```
+
+#### Passo 9 — Os assets do Invasion
+
+1. **Perfis da IA**, em `Assets/_Project/Data/Invasion/`, **Create → Armageddon → AI Profile**, três vezes. **Planet Frames** = as 32 células de `SPR_Planet_<Core>_Classic_Rotate`. Em **Modifiers**, cada item tem **Stat**, **Add** e **Multiply**: um modificador que só multiplica fica com **Add** `0`; um que só soma fica com **Multiply** `1` (**Multiply** `0` zera o Stat).
+
+| Asset | Display Name | Modifiers (Seção 5.2) | Purchase Order |
+|---|---|---|---|
+| `AiProfile_Terra` | Terra Core | nenhum | Damage, Hitpoints, AttackSpeed, OrbitSpeed, Regeneration, AttackRange, EnergyShield, CriticalChance, DefenseAbsolute, MultishotChance, CriticalFactor, ReflectShield, DefenseRelative, MultishotTargets |
+| `AiProfile_Ice` | Ice Core | × 1.3 em Hitpoints, Regeneration, DefenseAbsolute, DefenseRelative, EnergyShield e ReflectShield; × 0.8 em AttackSpeed; + 0.5 em AttackRange | Hitpoints, DefenseAbsolute, EnergyShield, Damage, ReflectShield, Regeneration, DefenseRelative, AttackSpeed, OrbitSpeed, Hitpoints, ReflectShield |
+| `AiProfile_Magma` | Magma Core | × 1.3 em Damage; × 0.75 em Hitpoints; − 0.5 em AttackRange; + 15 em OrbitSpeed | Damage, AttackSpeed, CriticalChance, MultishotChance, CriticalFactor, OrbitSpeed, MultishotTargets, Damage, Hitpoints, AttackRange |
+
+   > As ordens de compra são as do protótipo web. A Seção 4.7 as deixa **Em aberto**: ajuste jogando.
+
+2. **Balanceamento**, em `Data/Invasion/`, **Create → Armageddon → Invasion Balance** com o nome `InvasionBalance`. Os números do topo já vêm com os valores da Seção 4.7. Preencha as listas:
+   - **Ships** (na ordem dos cards):
+
+| Display Name | Icon | Enemy | Cost | Unlock Planet |
+|---|---|---|---|---|
+| Grunt | 1ª célula de `SPR_Enemy_Grunt` | `Enemy_Grunt` | 4 | 1 |
+| Scout | 1ª célula de `SPR_Enemy_Scout` | `Enemy_Scout` | 5 | 1 |
+| Swarmer x8 | 1ª célula de `SPR_Enemy_Swarmer` | `Enemy_Swarmer` | 8 | 2 |
+| Gunner | 1ª célula de `SPR_Enemy_Gunner` | `Enemy_Gunner` | 10 | 3 |
+| Brute | 1ª célula de `SPR_Enemy_Brute` | `Enemy_Brute` | 18 | 4 |
+| Mothership | 1ª célula de `SPR_Enemy_Mothership` | (vazio) | 120 | 6 |
+
+   - **Fleet Upgrades**:
+
+| Stat | Display Name | Icon (célula de `SPR_UI_Icons`) | Per Level | Cap | Base Cost | Is Percent |
+|---|---|---|---|---|---|---|
+| Hull | Hull | 29 | 0.1 | 0 | 15 | marcado |
+| Warheads | Warheads | 30 | 0.1 | 0 | 15 | marcado |
+| Thrusters | Thrusters | 31 | 0.05 | 0.5 | 20 | marcado |
+| PlasmaFlow | Plasma Flow | 32 | 0.5 | 0 | 20 | desmarcado |
+
+   - **Profiles**: os 3 `AiProfile`.
+
+> **O Swarmer do Invasion sempre vem em cacho de 8**, porque o `Enemy_Swarmer` tem **Cluster Size** `8` (Fase 4). O cacho de 4 das primeiras Waves é um ajuste só do protótipo web.
+
+#### Passo 10 — A cena `Invasion`
+
+1. **Duplicar a Gameplay:** salve a cena `Gameplay`. Na janela Project, selecione `Scenes/Gameplay` e aperte **Ctrl+D**; renomeie a cópia para `Invasion` (o nome precisa ser igual ao do enum `GameScene`). Em **File → Build Profiles** (ou **Build Settings**), arraste `Invasion` para a lista de cenas, depois da `Gameplay`.
+2. **Abra a `Invasion` e apague o que é do Last Stand:** em `[Systems]`, `WaveDirector`, `WaveDevTools`, `MothershipSpawner`, `MothershipDevTools`, `RunEconomy`, `EconomyDevTools`, `RunController` e `RunDevTools`; em `[World]`, o `Shockwave`; no `HUDCanvas`, `HUD`, `BossHealthBar`, `UpgradeDrawer`, `ReviveOfferView` e `ResultsView`. Fica todo o resto: o planeta (com o Energy Shield), o `SatelliteOrbit`, os pools, o `Reflector`, o fundo, a câmera e a `PauseView`.
+3. **Setas:** no `SpawnSectorIndicator`, deixe o campo **Waves** **vazio**.
+4. **Sistemas:** em `[Systems]`, crie:
+   - `PlanetAI` (componente `PlanetAI`): **Balance** = `InvasionBalance`; **Catalog** = `StatCatalog`; **Orbit**, **Planet** (o `PlanetHealth`), **Shield** (o `EnergyShield`), **Reflector**, **Enemies** (o `EnemyPool`) = os objetos da cena; **Planet Animator** = o `SpriteAnimator` do planeta; **Launcher** = o `FleetLauncher` abaixo.
+   - `SiegeController` (componente `SiegeController`): **Balance**, **Ai** = `PlanetAI`, **Planet** = o `PlanetHealth`, **Launcher** = `FleetLauncher`, **Explosions** = o `ExplosionPool`.
+   - `FleetLauncher` (componente `FleetLauncher`): **Balance**, **Siege** = `SiegeController`, **Enemies**, **Mothership Prefab** = o prefab `Mothership` da Fase 7, **Planet**, **Explosions**.
+   - `SectorPicker` (componente `SectorPicker`): **Launcher** = `FleetLauncher`; **Arrows** = o `SpawnSectorIndicator`.
+   - `InvasionDevTools`: **Siege** e **Planet**.
+5. **Pausa:** na `PauseView`, **Run** = o `SiegeController`.
+6. **HUD:** um objeto `InvasionHUD` no `HUDCanvas` com o mesmo layout do `HUD` da Fase 8 (barra de HP em cima à esquerda, textos e botão de pausa em cima à direita) e o componente `InvasionHudView`, com **Planet Text** no lugar do texto da Wave. Abaixo do botão de pausa, um `IntelPanel`: uma **Image** `SPR_UI_Panel` (Sliced) de **96 × 56** com um TMP (m5x7, 16, alinhado em cima à esquerda) dentro, e o componente `IntelPanel` (**Ai**, **Orbit**, **Shield** e **Text**).
+7. **Gaveta:** um objeto `InvasionDrawer` com o mesmo layout do `UpgradeDrawer` da Fase 6, mas com **2** abas (`TabDeploy` e `TabFleet`, ícones nas células 26 e 27 de `SPR_UI_Icons`) e o ícone de Plasma (célula 28) ao lado do `PlasmaText`. O painel tem só a Scroll View (sem o `SatellitePanel`). Componente `InvasionDrawer`: **Siege**, **Launcher**, **Balance**, **Camera** = o `CameraRig`, **Tab Buttons** (Deploy, Fleet), **Plasma Text**, **Panel**, **Card Container** = o `Content` da Scroll View, e os dois prefabs abaixo.
+8. **Prefabs dos cards:** duplique o prefab `StatCard` duas vezes na janela Project. Em `ShipCard`, remova o componente **Stat Card**, apague o texto `Level` e adicione **Ship Card** (ligue **Icon**, **Name**, **Cost** e **Button**). Em `FleetCard`, remova o **Stat Card** e adicione **Fleet Card** (todos os campos). Nos dois, troque o ícone de Shards ao lado do custo pelo de Plasma (célula 28).
+9. **Results:** um objeto `InvasionResultsView` com o layout da `ResultsView` da Fase 8: título `Invasion over`, as linhas `Planets`, `Ships` e `Time`, e os botões `Play again` e `Menu`. Componente `InvasionResultsView` com os campos ligados.
+10. **Ordem do Canvas** (de cima para baixo): `InvasionHUD`, `IntelPanel`, `InvasionDrawer`, `PauseView`, `InvasionResultsView`.
+
+#### Passo 11 — Commit
+
+`git add .` e `git commit -m "Phase 8B: invasion mode (planet AI, siege, fleet launcher)"`.
+
+**✅ Checkpoint** (abra a cena `Invasion` e aperte Play):
+- O planeta aparece com o sprite de um Core sorteado, 1 Satellite e HP cheio. O topo mostra `Planet 1 · 120s`, contando para baixo. O painel de leitura mostra o Core, `Satellites 1`, o dano e os Shards da IA, que caem logo no começo (ela gastou nas compras).
+- As 6 setas aparecem na borda, uma forte e 5 apagadas. Clicar no espaço perto de outra seta (ou apertar **1** a **6**) troca a seta forte. Clicar na gaveta **não** troca.
+- O saldo de Plasma começa em `20` e sobe 3 por segundo. Na aba **Deploy**, Grunt e Scout estão liberados; Swarmer mostra `Planet 2`. Tocar no Grunt lança uma nave no setor escolhido, a 9 u do centro, e desconta 4.
+- Uma rajada de naves no Quadrant que o Satellite acabou de deixar acerta o planeta: o HP desce e o Plasma sobe 1 por acerto. Naves destruídas aumentam os Shards da IA no painel, e de tempos em tempos ela compra algo (o dano ou os Satellites mudam no painel).
+- **N** derruba o planeta: explosão grande, Plasma `+10`, `Planet 2` com outro Core e o timer de volta a 120. No planeta 5, o topo mostra `· Fortress`, há 4 Satellites e o Reflector gira em volta.
+- Na aba **Fleet**, comprar **Hull** deixa as naves novas mais resistentes; **Plasma Flow** acelera a renda.
+- **T** (timer em 1 s) termina a run: o jogo congela e o Results mostra os planetas destruídos, as naves lançadas e o tempo. **Play again** recarrega o Invasion; **Menu** vai para o Main Menu.
+- A cena **Gameplay** continua funcionando como antes, inclusive a pausa (agora pela `IRunFlow`).
+
+**Problemas comuns:**
+- **`NullReferenceException` no `PlanetAI.SetupPlanet`:** a lista **Profiles** do `InvasionBalance` está vazia, ou um perfil está sem **Planet Frames**.
+- **Todo planeta nasce com HP 0 ou dano 0:** algum modificador de perfil ficou com **Multiply** `0`. Um modificador que só soma precisa de **Multiply** `1`.
+- **Clicar nos cards também troca o setor:** falta o `EventSystem` na cena (ele veio da Gameplay; confira se não foi apagado) ou o card não tem **Raycast Target** na Image.
+- **No celular, tocar num card troca o setor:** em algumas versões do Input System, `IsPointerOverGameObject` responde pelo toque **anterior**. Se acontecer, guarde o toque no `Update` e confira a UI no frame seguinte, ou troque a checagem por um `EventSystem.RaycastAll` na posição do toque.
+- **A pausa da Gameplay parou de funcionar:** o campo **Run** da `PauseView` ficou vazio depois da mudança de tipo. Arraste o `RunController` de novo.
+- **A Mothership do jogador nasce na borda e demora:** o `Spawn` da `Mothership` não recebeu o parâmetro `startDistance` (Passo 1).
+
+Próxima fase: **Fase 9 — Progressão entre runs**. Ela também salva o **Best Planet** junto do Best Wave e põe a escolha entre Last Stand e Invasion na Core Select (liberando o Invasion com a conquista *Holding the Line*).

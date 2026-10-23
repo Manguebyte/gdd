@@ -1,4 +1,4 @@
-# 8-Bit Armageddon — protótipo web (JavaScript)
+# Orbitfall (antes 8-Bit Armageddon) — protótipo web (JavaScript)
 
 Versão jogável em HTML/JS puro da Parte 1 do [`GDD_8-Bit_Armageddon.md`](../../GDD_8-Bit_Armageddon.md), usando a arte de [`Sprites/8-Bit-Armageddon/`](../../Sprites/8-Bit-Armageddon/) direto do lugar (sem cópias). Não precisa de build nem servidor: abra `index.html` no navegador.
 
@@ -9,6 +9,14 @@ Publicado em **https://manguebyte.github.io/gdd/prototipos/8-bit-armageddon/** a
 - Waves com Spawn Sectors (setas na borda), timer, Wave Clear, limite de 150 inimigos; Grunt, Scout, Swarmer, Brute e Mothership (espiral, laser com aviso, cachos de Swarmers).
 - 13 Stats em 3 Tracks na gaveta (x1 / x10 / Max), números de dano, críticos, Impetus, defesa absoluta/relativa.
 - Results com recorde de Wave, 3 Planet Cores e 9 Skins, 15 conquistas, Settings, pausa (inclusive automática) e save no `localStorage`. Sem moeda permanente nem Perks: toda run começa do zero (Seção 5.1 do GDD).
+
+## Novidades da versão Orbitfall
+- **Nome:** o jogo agora se chama **Orbitfall** (antes 8-Bit Armageddon). Pastas, arquivos e a chave do save continuam com o nome antigo.
+- **Modo Invasion** (GDD §4.7), escolhido na Core Select e liberado pela conquista *Holding the Line* (Wave 10). Uma IA defende o planeta com as regras do Last Stand e compra Upgrades com Shards; o jogador lança naves com Plasma pela aba **Deploy** e compra **Fleet Upgrades**. Para escolher o Spawn Sector, toque no espaço em volta do planeta (ou use as teclas `1` a `6`). O painel do canto mostra a defesa do planeta. Recorde: **Best Planet**.
+- **Stats novos:** Multishot Chance e Multishot Targets (Offense), Energy Shield (até 3 cargas, recarga de 12 s) e Reflect Shield (Defense). O Reflector é o arco azul em órbita: devolve os Gunner Bolts, bloqueia o laser e fere os kamikazes que passam por ele.
+- **Gunner** (Wave 5+): para a 4,5 u do planeta e atira Bolts magenta.
+- **Arte:** o Gunner foi gerado no PixelLab; o Gunner Bolt, o tiro refletido, o Reflector e a bolha do Energy Shield são desenhados por script (`Sprites/8-Bit-Armageddon/_tools/orbitfall_extras.py`); os ícones novos são as células 22 a 32 de `SPR_UI_Icons` (receita em `Sprites/8-Bit-Armageddon/PROMPTS.md`). Só o arco de 40° do Reflector continua desenhado por código.
+- **Atalhos:** `#play,invasion` começa no Invasion (mesmo sem a conquista), `#play,invasion,planet=5` começa na Fortress, e `rich` também dá 5000 Plasma.
 
 ## Diferenças do GDD (playtest)
 Ajustes pedidos depois de jogar, ainda não levados à Parte 1 do GDD:

@@ -1,4 +1,4 @@
-# 8-Bit Armageddon Iso — protótipo web (JavaScript)
+# Orbitfall Iso (antes 8-Bit Armageddon Iso) — protótipo web (JavaScript)
 
 Versão jogável em HTML/JS puro da Parte 1 do [`GDD_8-Bit_Armageddon_Iso.md`](../../GDD_8-Bit_Armageddon_Iso.md). Não precisa de build nem servidor: abra `index.html` no navegador.
 
@@ -15,6 +15,15 @@ Começou como cópia de [`../8-bit-armageddon/`](../8-bit-armageddon/), mas é u
 
 ## Arte
 Quase toda a arte é a do 8-Bit Armageddon, lida direto de [`Sprites/8-Bit-Armageddon/`](../../Sprites/8-Bit-Armageddon/): os discos voadores já são vistos em 3/4 e o planeta é uma esfera, então funcionam em iso sem redesenho. A única arte nova é o chão do grid, em [`Sprites/8-Bit-Armageddon-Iso/Grid/`](../../Sprites/8-Bit-Armageddon-Iso/Grid/). Os dois caminhos precisam ir para o site (`deploy-site.yml`).
+
+## Novidades da versão Orbitfall
+- **Nome:** o jogo agora se chama **Orbitfall Iso** (antes 8-Bit Armageddon Iso). Pastas, arquivos e a chave do save continuam com o nome antigo.
+- **Modo Invasion** (GDD §4.7), escolhido na Core Select e liberado pela conquista *Holding the Line* (Wave 10). Uma IA defende o planeta com as regras do Last Stand e compra Upgrades com Shards; o jogador lança naves com Plasma pela aba **Deploy** e compra **Fleet Upgrades**. Para escolher o Spawn Sector, toque no espaço em volta do planeta (ou use as teclas `1` a `6`). O painel do canto mostra a defesa do planeta. Recorde: **Best Planet**.
+- **Stats novos:** Multishot Chance e Multishot Targets (Offense), Energy Shield (até 3 cargas, recarga de 12 s) e Reflect Shield (Defense). O Reflector é o arco azul em órbita: devolve os Gunner Bolts, bloqueia o laser e fere os kamikazes que passam por ele.
+- **Gunner** (Wave 5+): para a 4,5 u do planeta e atira Bolts magenta.
+- **Arte:** o Gunner foi gerado no PixelLab; o Gunner Bolt, o tiro refletido, o Reflector e a bolha do Energy Shield são desenhados por script (`Sprites/8-Bit-Armageddon/_tools/orbitfall_extras.py`); os ícones novos são as células 22 a 32 de `SPR_UI_Icons` (receita em `Sprites/8-Bit-Armageddon/PROMPTS.md`). Só o arco de 40° do Reflector continua desenhado por código.
+- **Atalhos:** `#play,invasion` começa no Invasion (mesmo sem a conquista), `#play,invasion,planet=5` começa na Fortress, e `rich` também dá 5000 Plasma.
+- **Iso:** o toque desfaz a projeção para achar o ângulo no chão, e o Reflector é um arco desenhado no plano de voo, ordenado por profundidade como os outros objetos.
 
 ## Diferenças do GDD (playtest)
 Ajustes pedidos depois de jogar, ainda não levados à Parte 1 do GDD:

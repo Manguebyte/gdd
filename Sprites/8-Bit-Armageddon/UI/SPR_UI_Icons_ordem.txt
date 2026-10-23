@@ -20,3 +20,14 @@
 19: TrophyUnlocked
 20: TrophyLocked
 21: TrophyCollected
+22: MultishotChance
+23: MultishotTargets
+24: EnergyShield
+25: ReflectShield
+26: TabDeploy
+27: TabFleet
+28: Plasma
+29: Hull
+30: Warheads
+31: Thrusters
+32: PlasmaFlow

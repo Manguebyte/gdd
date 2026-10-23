@@ -1,6 +1,7 @@
-// 8-Bit Armageddon Iso — protótipo jogável em JavaScript puro.
-// Segue a Parte 1 do GDD (GDD_8-Bit_Armageddon_Iso.md): as regras do 8-Bit Armageddon (Satellites,
-// Quadrants, Waves, 13 Stats, Mothership, Planet Cores/Skins, conquistas, recorde de Wave, save local)
+// Orbitfall Iso (antes 8-Bit Armageddon Iso) — protótipo jogável em JavaScript puro.
+// Segue a Parte 1 do GDD (GDD_8-Bit_Armageddon_Iso.md): as regras do Orbitfall (Satellites,
+// Quadrants, Waves, 17 Stats, Mothership, Planet Cores/Skins, conquistas, recorde de Wave, save local)
+// e os dois modos (Last Stand e Invasion),
 // vistas por uma câmera isométrica. A simulação continua num plano 2D (o "chão"); só o render muda.
 // A arte é a do 8-Bit Armageddon (Sprites/8-Bit-Armageddon/), mais o chão do grid em
 // Sprites/8-Bit-Armageddon-Iso/, tudo direto do lugar, sem cópias.
@@ -25,6 +26,12 @@ const PROJECTILE_SPEED = 10;      // "Em aberto" no GDD: valor inicial do códig
 const DEG = Math.PI / 180;
 const DRAWER_STRIP_H = 22;         // faixa das abas (gaveta fechada)
 const DRAWER_OPEN_H = 60;          // gaveta aberta: faixa + uma fileira de cards compactos
+const REFLECT_R = 2.5;             // órbita do Reflector (por fora da dos Satellites)
+const REFLECT_SPEED = 30;          // °/s, sentido horário
+const REFLECT_HALF_ARC = 20;       // metade do Reflect Arc de 40°
+const SHIELD_RECHARGE = 12;        // s por carga do Energy Shield
+const SHIELD_COSTS = [30, 90, 250];   // preço fixo de cada nível (exceção à fórmula 1.15^nível)
+const BOLT_SPEED = 4;
 
 // ============================================================ dados de design
 
@@ -36,10 +43,15 @@ const STATS = [
   { id: 'attackRange',  track: 'offense', name: 'Attack Range',      base: 4,   inc: 0.15,  cap: 8,    cost:  6, icon: 4,  fmt: v => v.toFixed(2) + 'u', desc: 'Distância máxima até onde os Satellites atiram.' },
   { id: 'impetus',      track: 'offense', name: 'Impetus',           base: 0,   inc: 0.004, cap: 0.12, cost: 10, icon: 5,  fmt: v => pct(v) + '/u', desc: 'Dano extra por unidade de distância entre o Satellite e o alvo.' },
   { id: 'orbitSpeed',   track: 'offense', name: 'Orbit Speed',       base: 45,  inc: 5,     cap: 180,  cost:  6, icon: 6,  fmt: v => Math.round(v) + '°/s', desc: 'Velocidade da órbita: menos tempo com Quadrants sem cobertura.' },
+  { id: 'multiChance',  track: 'offense', name: 'Multishot Chance',  base: 0,   inc: 0.02,  cap: 0.5,  cost: 10, icon: 22, fmt: v => pct(v), desc: 'Chance de um tiro virar Multishot: o Satellite atira também em outros inimigos do Quadrant.' },
+  { id: 'multiTargets', track: 'offense', name: 'Multishot Targets', base: 1,   inc: 1,     cap: 4,    cost: 25, icon: 23, fmt: v => '+' + v + ' alvo' + (v > 1 ? 's' : ''), desc: 'Quantos alvos extras cada Multishot atinge. Sem Multishot Chance, não faz nada.' },
   { id: 'hitpoints',    track: 'defense', name: 'Hitpoints',         base: 100, inc: 25,    cap: null, cost:  5, icon: 7,  fmt: v => fmt(v), desc: 'HP máximo do planeta. A compra também cura a mesma quantidade.' },
   { id: 'regen',        track: 'defense', name: 'Regeneration',      base: 0,   inc: 0.4,   cap: null, cost:  8, icon: 8,  fmt: v => v.toFixed(1) + '/s', desc: 'HP que o planeta recupera por segundo.' },
   { id: 'defAbs',       track: 'defense', name: 'Defense (abs.)',    base: 0,   inc: 0.5,   cap: null, cost:  8, icon: 9,  fmt: v => v.toFixed(1), desc: 'Dano fixo removido de cada golpe no planeta. Forte contra muitos golpes fracos.' },
   { id: 'defRel',       track: 'defense', name: 'Defense (rel.)',    base: 0,   inc: 0.015, cap: 0.75, cost: 10, icon: 10, fmt: v => pct(v), desc: 'Porcentagem do dano removida de cada golpe no planeta. Forte contra golpes grandes.' },
+  { id: 'shield',       track: 'defense', name: 'Energy Shield',     base: 0,   inc: 1,     cap: 3,    costs: SHIELD_COSTS, icon: 24, fmt: v => v + (v === 1 ? ' carga' : ' cargas'), desc: `Cada carga anula um golpe inteiro (kamikaze, Bolt ou laser). Recarrega 1 carga a cada ${SHIELD_RECHARGE} s.` },
+  // Nível 0 = sem Reflector; nível 1 = 15 de dano; cada nível seguinte +8 (Reflect Damage, absoluto).
+  { id: 'reflect',      track: 'defense', name: 'Reflect Shield',    base: 0,   inc: 0,     cap: null, cost: 15, icon: 25, value: l => l ? 15 + 8 * (l - 1) : 0, fmt: v => v ? fmt(v) + ' dano' : 'Off', desc: 'Um escudo-satélite em órbita: devolve os tiros dos Gunners, bloqueia o laser e fere os kamikazes que passam por ele.' },
   { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost:  6, icon: 11, fmt: v => '+' + pct(v), desc: 'Shards a mais por nave destruída.' },
   { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost:  6, icon: 12, fmt: v => '+' + pct(v), desc: 'Bônus de Shards a mais ao limpar a tela (Wave Clear).' },
 ];
@@ -51,7 +63,7 @@ const TRACKS = [
   { id: 'utility',    name: 'Utility',    icon: 15 },
   { id: 'satellites', name: 'Satellites', icon: 16 },
 ];
-const ICON = { shards: 17, trophy: 19, trophyLocked: 20 };
+const ICON = { shards: 17, trophy: 19, trophyLocked: 20, plasma: 28 };
 
 
 // Satellites extras são comprados durante a run, com Shards, na aba Satellites da gaveta
@@ -70,10 +82,42 @@ const ENEMIES = {
 // speed: 20% abaixo do GDD (0,8 / 2,0 / 1,2 / 0,5), pedido do playtest: as naves estavam rápidas demais.
   grunt:   { hp: 10, dmg: 5,  speed: 0.64, shards: 1,   r: 0.5,  wave: 1, weight: 50 },
   scout:   { hp: 6,  dmg: 3,  speed: 1.6,  shards: 1,   r: 0.5,  wave: 3, weight: 25 },
+  // Gunner: para a 4,5 u do centro e atira Gunner Bolts a cada 2,5 s (velocidade 20% abaixo, como os outros).
+  gunner:  { hp: 14, dmg: 4,  speed: 0.72, shards: 2,   r: 0.5,  wave: 5, weight: 12, stopAt: 4.5, fireEvery: 2.5 },
   swarmer: { hp: 3,  dmg: 2,  speed: 0.96, shards: 0.5, r: 0.25, wave: 6, weight: 15 },
   brute:   { hp: 80, dmg: 20, speed: 0.4,  shards: 4,   r: 0.75, wave: 8, weight: 10 },
 };
 const MOTHERSHIP = { hp: 1200, laser: 25, shards: 50, r: 1.5 };
+
+// ---------- modo Invasion (Seção 4.7): valores iniciais do GDD, ajustar jogando
+const SIEGE_TIME = 120;       // s para derrubar cada Target Planet
+const DEPLOY_R = 9;           // as naves do jogador nascem dentro da tela
+const FLEET_SHIPS = [
+  { type: 'grunt',      name: 'Grunt',      cost: 4,   planet: 1, desc: 'Barato e lento. Bom para encher um Quadrant sem Satellite.' },
+  { type: 'scout',      name: 'Scout',      cost: 5,   planet: 1, desc: 'Rápido e frágil: cruza o Attack Range antes do Satellite voltar.' },
+  { type: 'swarmer',    name: 'Swarmer x8', cost: 8,   planet: 2, desc: 'Cacho de 8 naves fracas. Sofre contra Multishot e Reflector.' },
+  { type: 'gunner',     name: 'Gunner',     cost: 10,  planet: 3, desc: 'Para fora do planeta e atira Bolts. O Reflector devolve os Bolts.' },
+  { type: 'brute',      name: 'Brute',      cost: 18,  planet: 4, desc: 'Muito HP e dano alto. Gasta uma carga inteira do Energy Shield.' },
+  { type: 'mothership', name: 'Mothership', cost: 120, planet: 6, desc: 'Desce em espiral, dispara laser e solta Swarmers. Só uma em campo.' },
+];
+const FLEET_UPGRADES = [
+  { id: 'hull',      name: 'Hull',        inc: 0.10, cap: null, cost: 15, icon: 29, fmt: v => '+' + pct(v), desc: 'HP de todas as naves.' },
+  { id: 'warheads',  name: 'Warheads',    inc: 0.10, cap: null, cost: 15, icon: 30, fmt: v => '+' + pct(v), desc: 'Dano de todas as naves (contato, Bolt e laser).' },
+  { id: 'thrusters', name: 'Thrusters',   inc: 0.05, cap: 0.5,  cost: 20, icon: 31, fmt: v => '+' + pct(v), desc: 'Velocidade de todas as naves.' },
+  { id: 'flow',      name: 'Plasma Flow', inc: 0.5,  cap: null, cost: 20, icon: 32, fmt: v => '+' + v.toFixed(1) + '/s', desc: 'Renda de Plasma por segundo.' },
+];
+const FLEET = Object.fromEntries(FLEET_UPGRADES.map(f => [f.id, f]));
+const INV_TRACKS = [
+  { id: 'deploy', name: 'Deploy', icon: 26 },
+  { id: 'fleet',  name: 'Fleet',  icon: 27 },
+];
+// Perfil de compra da IA por Planet Core (a ordem exata é Em aberto no GDD): ela percorre a lista
+// em círculo e junta Shards quando o próximo item não cabe.
+const AI_PROFILES = {
+  Terra: ['damage', 'hitpoints', 'attackSpeed', 'orbitSpeed', 'regen', 'attackRange', 'shield', 'critChance', 'defAbs', 'multiChance', 'critFactor', 'reflect', 'defRel', 'multiTargets'],
+  Ice:   ['hitpoints', 'defAbs', 'shield', 'damage', 'reflect', 'regen', 'defRel', 'attackSpeed', 'orbitSpeed', 'hitpoints', 'reflect'],
+  Magma: ['damage', 'attackSpeed', 'critChance', 'multiChance', 'critFactor', 'orbitSpeed', 'multiTargets', 'damage', 'hitpoints', 'attackRange'],
+};
 
 const PRIORITIES = [
   { id: 'closest',   name: 'Closest' },
@@ -130,7 +174,7 @@ function defaultSave() {
     ach: {},                       // id -> true quando desbloqueada
     totals: { motherships: 0 },
     hints: {},
-    best: 0,
+    best: 0, bestPlanet: 0, mode: 'laststand',
     settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false },
   };
 }
@@ -166,6 +210,12 @@ const IMAGE_LIST = {
   laserBeam: 'VFX/SPR_VFX_Laser_Beam.png',
   laserImpact: 'VFX/SPR_VFX_Laser_Impact.png',
   arrows: 'UI/SPR_UI_SpawnSectorArrow.png',
+  gunner: 'Enemies/SPR_Enemy_Gunner.png',
+  bolt: 'Projectiles/SPR_Projectile_GunnerBolt.png',
+  reflected: 'Projectiles/SPR_Projectile_Reflected.png',
+  reflector: 'Satellites/SPR_Reflector.png',
+  shield: 'VFX/SPR_VFX_EnergyShield.png',
+  shieldPop: 'VFX/SPR_VFX_EnergyShield_Pop.png',
 };
 for (const c of CORES) for (const s of c.skins) IMAGE_LIST[`planet_${c.id}_${s}`] = `Planet/SPR_Planet_${c.id}_${s}_Rotate.png`;
 // Arte própria do Iso (caminho completo, fora de ART).
@@ -249,6 +299,7 @@ let clock = 0;              // tempo real (animações de UI/fundo)
 
 function newRun() {
   const r = {
+    mode: invasionUnlocked() ? save.mode : 'laststand',
     core: save.core, skin: save.skin,
     levels: Object.fromEntries(STATS.map(s => [s.id, 0])),
     shards: 10, totalShards: 0, shardFrac: 0,   // 10 Shards iniciais (o GDD diz 5): dá para 1–2 Upgrades logo no início
@@ -258,9 +309,11 @@ function newRun() {
     time: 0, kills: 0, crits: 0, mothershipsKilled: 0,
     boughtOffense: false, boughtHp: false, cleanStreak: 0,
     bossHitFree: false, planetFlash: 0, paused: false, over: false,
+    bolts: [], shieldCharges: 0, shieldT: 0, shieldFlash: 0, refAng: 270,
   };
   r.sats.push({ priority: 'closest', cd: 0 });   // toda run começa com 1 Satellite
   run = r;
+  if (r.mode === 'invasion') { startInvasion(); return; }
   r.hp = stat('hitpoints');
   prepareWave(1);
 }
@@ -280,14 +333,15 @@ function statFor(id, level) {
     if (id === 'attackRange') cAdd = -0.5;
     if (id === 'orbitSpeed') cAdd = 15;
   }
-  let v = s.base + cAdd + s.inc * level;
+  if (id === 'shield') cMult = 1;   // cargas são inteiras: o Planet Core não muda
+  let v = s.value ? s.value(level) : s.base + cAdd + s.inc * level;
   if (s.cap != null) v = Math.min(v, s.cap);
   v *= cMult;
   if (id === 'defRel') v = Math.min(v, 0.9);
   return v;
 }
 const stat = id => statFor(id, run.levels[id]);
-const upgradeCost = (id, level) => Math.round(STAT[id].cost * Math.pow(1.15, level));
+const upgradeCost = (id, level) => STAT[id].costs ? STAT[id].costs[level] : Math.round(STAT[id].cost * Math.pow(1.15, level));
 // No teto quando o próximo nível não muda mais o valor (já considera o Core).
 const atCap = (id, level) => STAT[id].cap != null && statFor(id, level + 1) <= statFor(id, level) + 1e-9;
 
@@ -313,6 +367,7 @@ function buyStat(id) {
   run.levels[id] += plan.n;
   if (STAT[id].track === 'offense') run.boughtOffense = true;
   if (id === 'hitpoints') { run.boughtHp = true; run.hp += stat('hitpoints') - oldMax; }
+  if (id === 'shield') run.shieldCharges += plan.n;   // a carga do nível comprado já vem cheia
   if (!save.hints.buy) { save.hints.buy = true; writeSave(); }
   refreshDrawer(true);
 }
@@ -383,19 +438,20 @@ function spawnEnemy(type, w, x, y) {
     dmg: e.dmg * Math.pow(1.06, w - 1), speed: e.speed, r: e.r, shards: e.shards,
     variant: type === 'grunt' ? (Math.random() * 2) | 0 : type === 'brute' ? (Math.random() * 4) | 0 : 0,
     t: Math.random() * 10, flash: 0, perp: dir + Math.PI / 2,
+    stopAt: e.stopAt, fireEvery: e.fireEvery, fireT: 0.5,
   });
 }
 // Cacho de Swarmers: 4 nas primeiras Waves deles (6–9, antes da 1ª Boss Wave), depois 8 (GDD).
 // Pedido do playtest: o cacho cheio chegava grande demais logo na estreia.
-const swarmSize = w => w < 10 ? 4 : 8;
+const swarmSize = w => w < 10 && run.mode !== 'invasion' ? 4 : 8;
 function spawnSwarm(w, x, y) {
   for (let i = 0; i < swarmSize(w); i++) spawnEnemy('swarmer', w, x + rand(-0.7, 0.7), y + rand(-0.7, 0.7));
 }
-function spawnMothership(w, sector) {
+function spawnMothership(w, sector, rad = SPAWN_R) {
   const a = (sector * 60 + 30) * DEG;
   const hp = MOTHERSHIP.hp * Math.pow(1.09, w - 1);
   run.enemies.push({
-    type: 'mothership', w, ang: a, rad: SPAWN_R, x: Math.cos(a) * SPAWN_R, y: Math.sin(a) * SPAWN_R,
+    type: 'mothership', w, ang: a, rad, x: Math.cos(a) * rad, y: Math.sin(a) * rad,
     hp, maxHp: hp, laserDmg: MOTHERSHIP.laser * Math.pow(1.06, w - 1), r: MOTHERSHIP.r, shards: MOTHERSHIP.shards,
     state: 'enter', laserT: 8, swarmT: 15, warnT: 0, beamT: 0, t: 0, flash: 0,
   });
@@ -452,8 +508,8 @@ function addShards(amount, exact) {
 function update(dt) {
   if (!run || run.paused || run.over) return;
   run.time += dt;
-  checkWaveFlow(dt);
-  processQueue();
+  if (run.mode === 'invasion') { updateSiege(dt); if (run.over) return; }
+  else { checkWaveFlow(dt); processQueue(); }
 
   const maxHp = stat('hitpoints');
   run.hp = Math.min(maxHp, run.hp + stat('regen') * dt);
@@ -464,17 +520,50 @@ function update(dt) {
     e.t += dt; e.flash = Math.max(0, e.flash - dt);
     if (e.type === 'mothership') { updateMothership(e, dt); continue; }
     const d = Math.hypot(e.bx, e.by);
-    const step = e.speed * dt;
+    const step = e.type === 'gunner' ? Math.min(e.speed * dt, Math.max(0, d - e.stopAt)) : e.speed * dt;
     if (d > 0) { e.bx -= e.bx / d * step; e.by -= e.by / d * step; }
+    if (e.type === 'gunner' && d <= e.stopAt + 1e-6) {
+      e.fireT -= dt;
+      if (e.fireT <= 0) { e.fireT = e.fireEvery; fireBolt(e); }
+    }
     if (e.type === 'scout') {
       const off = 0.5 * Math.sin(2 * Math.PI * 1.5 * e.t);
       e.x = e.bx + Math.cos(e.perp) * off; e.y = e.by + Math.sin(e.perp) * off;
     } else { e.x = e.bx; e.y = e.by; }
+    e.refCd = Math.max(0, (e.refCd || 0) - dt);
+    if (reflectContact(e) && e.dead) continue;
     if (Math.hypot(e.x, e.y) < PLANET_R) {   // kamikaze: dano e some sem dar Shards
       e.dead = true;
       damagePlanet(e.dmg);
       addFx(e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
       run.enemies.splice(i, 1);
+      if (run.over) return;
+    }
+  }
+
+  // Energy Shield: recarrega 1 carga a cada SHIELD_RECHARGE s enquanto faltar carga.
+  if (run.shieldCharges < stat('shield')) {
+    run.shieldT += dt;
+    if (run.shieldT >= SHIELD_RECHARGE) { run.shieldT -= SHIELD_RECHARGE; run.shieldCharges++; }
+  } else run.shieldT = 0;
+  run.shieldFlash = Math.max(0, run.shieldFlash - dt);
+  run.refAng = normDeg(run.refAng - REFLECT_SPEED * dt);   // horário
+
+  // Gunner Bolts: linha reta até o planeta; o Reflector devolve os que cruzam o arco dele.
+  for (let i = run.bolts.length - 1; i >= 0; i--) {
+    const b = run.bolts[i];
+    const d0 = Math.hypot(b.x, b.y);
+    b.px = b.x; b.py = b.y;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    const d1 = Math.hypot(b.x, b.y);
+    if (d0 > REFLECT_R && d1 <= REFLECT_R && inReflectArc(Math.atan2(b.y, b.x) / DEG)) {
+      run.bolts.splice(i, 1);
+      reflectBolt(b);
+      continue;
+    }
+    if (d1 < PLANET_R) {
+      run.bolts.splice(i, 1);
+      damagePlanet(b.dmg);
       if (run.over) return;
     }
   }
@@ -528,7 +617,14 @@ function updateMothership(m, dt) {
     if (m.laserT <= 0 && m.warnT <= 0 && m.beamT <= 0) { m.warnT = 1.5; m.laserT = 8; }
     if (m.warnT > 0) {
       m.warnT -= dt;
-      if (m.warnT <= 0) { m.beamT = 0.45; damagePlanet(m.laserDmg); addShake(3); }
+      if (m.warnT <= 0) {
+        m.beamT = 0.45;
+        if (inReflectArc(m.ang / DEG)) {   // bloqueado: o planeta não toma dano, a Mothership toma
+          m.blocked = true;
+          addRing(Math.cos(m.ang) * REFLECT_R, Math.sin(m.ang) * REFLECT_R, 1);
+          hitEnemy(m, stat('reflect'), false);
+        } else { m.blocked = false; damagePlanet(m.laserDmg); addShake(3); }
+      }
     }
     if (m.beamT > 0) m.beamT -= dt;
     m.swarmT -= dt;
@@ -537,35 +633,100 @@ function updateMothership(m, dt) {
   m.x = Math.cos(m.ang) * m.rad; m.y = Math.sin(m.ang) * m.rad;
 }
 
+// Nota da Target Priority: menor é melhor.
+function priorityScore(e, priority) {
+  switch (priority) {
+    case 'weakest': return e.hp;
+    case 'strongest': return -e.hp;
+    case 'farthest': return -Math.hypot(e.x, e.y);
+    default: return Math.hypot(e.x, e.y);
+  }
+}
+const isValidTarget = (e, q, range) => Math.hypot(e.x, e.y) - e.r <= range && quadOf(Math.atan2(e.y, e.x) / DEG) === q;
+
 function pickTarget(q, range, priority) {
   let best = null, bestScore = Infinity;
   for (const e of run.enemies) {
-    const d = Math.hypot(e.x, e.y);
-    if (d - e.r > range) continue;
-    if (quadOf(Math.atan2(e.y, e.x) / DEG) !== q) continue;
-    let score;
-    switch (priority) {
-      case 'weakest': score = e.hp; break;
-      case 'strongest': score = -e.hp; break;
-      case 'farthest': score = -d; break;
-      default: score = d;
-    }
+    if (!isValidTarget(e, q, range)) continue;
+    const score = priorityScore(e, priority);
     if (score < bestScore) { bestScore = score; best = e; }
   }
   return best;
 }
 
-function fire(sat, target) {
+function shoot(sat, target) {
   const crit = Math.random() < stat('critChance');
   const dist = Math.hypot(target.x, target.y);
   const dmg = stat('damage') * (1 + stat('impetus') * dist) * (crit ? stat('critFactor') : 1);
   run.projectiles.push({ x: sat.x, y: sat.y, px: sat.x, py: sat.y, target, dmg, crit, t: Math.random() });
+}
+
+// Multishot (Seção 4.1): um sorteio por disparo; os extras vão para outros inimigos válidos,
+// na ordem da Target Priority, nunca dois no mesmo alvo.
+function fire(sat, target) {
+  shoot(sat, target);
+  if (Math.random() < stat('multiChance')) {
+    const range = stat('attackRange');
+    const extras = run.enemies
+      .filter(e => e !== target && isValidTarget(e, sat.q, range))
+      .sort((a, b) => priorityScore(a, sat.priority) - priorityScore(b, sat.priority))
+      .slice(0, stat('multiTargets'));
+    for (const e of extras) shoot(sat, e);
+  }
   run.quadFlash[sat.q] = 1;
+}
+
+// ---------- Gunner Bolt e Reflect Shield (Seção 4.2)
+
+function fireBolt(g) {
+  const d = Math.hypot(g.x, g.y) || 1;
+  run.bolts.push({ x: g.x, y: g.y, px: g.x, py: g.y, vx: -g.x / d * BOLT_SPEED, vy: -g.y / d * BOLT_SPEED, dmg: g.dmg, src: g });
+}
+
+const angDiff = (a, b) => Math.abs(((a - b) % 360 + 540) % 360 - 180);
+const inReflectArc = deg => stat('reflect') > 0 && angDiff(deg, run.refAng) <= REFLECT_HALF_ARC;
+
+// Volta teleguiado para quem atirou (ou o inimigo vivo mais perto), com o Reflect Damage.
+function reflectBolt(b) {
+  let target = b.src && !b.src.dead ? b.src : null;
+  if (!target) {
+    let bd = Infinity;
+    for (const e of run.enemies) { const d = Math.hypot(e.x - b.x, e.y - b.y); if (d < bd) { bd = d; target = e; } }
+  }
+  addRing(b.x, b.y, 0.5);
+  if (target) run.projectiles.push({ x: b.x, y: b.y, px: b.x, py: b.y, target, dmg: stat('reflect'), crit: false, t: 0, refl: true });
+}
+
+// Kamikaze cuja borda cruza o círculo do Reflector dentro do arco: dano fixo e empurrão de 1,5 u.
+// Retorna true se houve contato.
+function reflectContact(e) {
+  if (e.refCd > 0 || e.type === 'gunner' || stat('reflect') <= 0) return false;
+  const d = Math.hypot(e.x, e.y);
+  if (d - e.r > REFLECT_R || d < REFLECT_R - 0.6) return false;
+  if (!inReflectArc(Math.atan2(e.y, e.x) / DEG)) return false;
+  e.refCd = 1;
+  addRing(e.x, e.y, 0.6);
+  hitEnemy(e, stat('reflect'), false);
+  if (!e.dead) {
+    const bd = Math.hypot(e.bx, e.by) || 1;
+    e.bx += e.bx / bd * 1.5; e.by += e.by / bd * 1.5;
+    e.x = e.bx; e.y = e.by;
+  }
+  return true;
 }
 
 function hitEnemy(e, dmg, crit) {
   if (e.dead) return;
   e.hp -= dmg; e.flash = 0.06;
+  if (run.mode === 'invasion') {
+    if (save.settings.dmgNumbers && run.nums.length < 80) run.nums.push({ x: e.x, y: e.y + e.r, v: dmg, crit, t: 0 });
+    if (e.hp > 0) return;
+    e.dead = true;
+    run.enemies.splice(run.enemies.indexOf(e), 1);
+    addShards(e.shards);   // Shards vão para a IA, que gasta segundo o perfil
+    addFx(e.type === 'mothership' ? 'expMother' : e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
+    return;
+  }
   if (crit) { run.crits++; if (run.crits === 500) unlockAch('criticalMass'); }
   if (dmg > 10000 && stat('impetus') > 0) unlockAch('sniper');
   if (save.settings.dmgNumbers && run.nums.length < 80) run.nums.push({ x: e.x, y: e.y + e.r, v: dmg, crit, t: 0 });
@@ -591,10 +752,21 @@ function hitEnemy(e, dmg, crit) {
 }
 
 function damagePlanet(raw) {
+  if (run.shieldCharges > 0) {   // Energy Shield: uma carga anula o golpe inteiro
+    run.shieldCharges--;
+    run.shieldFlash = 0.25;
+    if (!run.shieldCharges) addFx('shieldPop', 0, 0);
+    return;
+  }
   const dmg = Math.max(1, (raw - stat('defAbs')) * (1 - stat('defRel')));
   run.hp -= dmg;
   run.planetFlash = 0.08;
   addShake(1.5);
+  if (run.mode === 'invasion') {
+    run.plasma += 1;   // cada acerto devolve 1 Plasma
+    if (run.hp <= 0) planetDown();
+    return;
+  }
   if (run.enemies.some(e => e.type === 'mothership')) run.bossHitFree = false;
   if (run.hp <= 0) { run.hp = 0; endRun(); }
 }
@@ -603,12 +775,23 @@ const FX = {
   expSmall:  { img: 'expSmall',  cell: 32, frames: 5, fps: 15 },
   expBig:    { img: 'expBig',    cell: 32, frames: 5, fps: 15 },
   expMother: { img: 'expMother', cell: 64, frames: 6, fps: 12 },
+  shieldPop: { img: 'shieldPop', cell: 48, frames: 5, fps: 12 },
 };
+// Anel que cresce e some (reflexo, escudo estourando), desenhado por código.
+function addRing(x, y, r) { run.fx.push({ ring: true, x, y, r, t: 0, dur: 0.3 }); }
 function addFx(kind, x, y) { const f = FX[kind]; run.fx.push({ ...f, x, y, t: 0, dur: f.frames / f.fps }); }
 function addShake(v) { if (save.settings.shake) shake = Math.min(5, shake + v); }
 
 function endRun() {
   run.over = true;
+  if (run.mode === 'invasion') {
+    run.newBest = run.planetsDown > save.bestPlanet;
+    save.bestPlanet = Math.max(save.bestPlanet, run.planetsDown);
+    writeSave();
+    drawerTrack = null;
+    setTimeout(() => showScreen('results'), 900);
+    return;
+  }
   run.newBest = run.wave > save.best;
   save.best = Math.max(save.best, run.wave);
   unlockAch('firstContact');
@@ -616,6 +799,126 @@ function endRun() {
   drawerTrack = null;
   setTimeout(() => showScreen('results'), 900);
 }
+
+// ============================================================ modo Invasion (Seção 4.7)
+
+const invasionUnlocked = () => !!save.ach.holdingLine || location.hash.includes('invasion');
+const fleetValue = id => Math.min(FLEET[id].cap ?? Infinity, FLEET[id].inc * run.fleet[id]);
+const fleetCost = id => Math.round(FLEET[id].cost * Math.pow(1.15, run.fleet[id]));
+const fleetCapped = id => FLEET[id].cap != null && FLEET[id].inc * (run.fleet[id] + 1) > FLEET[id].cap + 1e-9;
+const isFortress = n => n % 5 === 0;
+
+function startInvasion() {
+  run.plasma = 20; run.planetsDown = 0; run.launched = 0; run.selSector = 0;
+  run.fleet = Object.fromEntries(FLEET_UPGRADES.map(f => [f.id, 0]));
+  setupPlanet(1);
+}
+
+// Monta o Target Planet n: Planet Core sorteado, Satellites e Shards iniciais pela fórmula,
+// gastos na hora pelo perfil. As naves que já estão voando continuam.
+function setupPlanet(n) {
+  const core = CORES[Math.floor(Math.random() * CORES.length)];
+  Object.assign(run, {
+    planet: n, core: core.id, skin: core.skins[Math.floor(Math.random() * core.skins.length)],
+    levels: Object.fromEntries(STATS.map(s => [s.id, 0])),
+    shards: Math.round(20 * Math.pow(1.35, n - 1)), shardFrac: 0,
+    siege: SIEGE_TIME, aiBonusT: 0, aiSpendT: 0, aiPtr: 0, shieldT: 0,
+  });
+  const sats = isFortress(n) ? 4 : Math.min(1 + Math.floor((n - 1) / 2), 4);
+  run.sats = Array.from({ length: sats }, () => ({ priority: 'closest', cd: 0 }));
+  if (isFortress(n)) run.levels.reflect = 3;
+  aiSpend();
+  run.hp = stat('hitpoints');
+  run.shieldCharges = stat('shield');
+}
+
+function aiSpend() {
+  const prof = AI_PROFILES[run.core];
+  for (let guard = 0; guard < 200; guard++) {
+    const id = prof[run.aiPtr % prof.length];
+    if (atCap(id, run.levels[id])) { run.aiPtr++; continue; }
+    const c = upgradeCost(id, run.levels[id]);
+    if (c > run.shards) return;   // junta Shards para o próximo item
+    const oldMax = stat('hitpoints');
+    run.shards -= c;
+    run.levels[id]++;
+    if (id === 'hitpoints' && run.hp !== undefined) run.hp += stat('hitpoints') - oldMax;
+    if (id === 'shield') run.shieldCharges++;
+    run.aiPtr++;
+  }
+}
+
+function updateSiege(dt) {
+  run.siege -= dt;
+  run.plasma += (3 + fleetValue('flow')) * dt;
+  run.aiBonusT += dt;
+  if (run.aiBonusT >= 30) { run.aiBonusT -= 30; run.shards += 5 + run.planet; }
+  run.aiSpendT -= dt;
+  if (run.aiSpendT <= 0) { run.aiSpendT = 0.5; aiSpend(); }
+  if (run.siege <= 0) { run.siege = 0; endRun(); }
+}
+
+function planetDown() {
+  const n = run.planet;
+  run.planetsDown++;
+  const reward = 10 * n * (isFortress(n) ? 2 : 1);
+  run.plasma += reward;
+  addFx('expMother', 0, 0);
+  addShake(5);
+  toast(`Planeta ${n} destruído  +${reward} Plasma`, ICON.trophy);
+  setupPlanet(n + 1);
+}
+
+function deploy(type) {
+  const ship = FLEET_SHIPS.find(f => f.type === type);
+  if (run.over || ship.planet > run.planet || ship.cost > run.plasma) return;
+  if (type === 'mothership' && run.enemies.some(e => e.type === 'mothership')) return;
+  run.plasma -= ship.cost;
+  run.launched++;
+  const sec = run.selSector;
+  const hull = 1 + fleetValue('hull'), war = 1 + fleetValue('warheads'), thr = 1 + fleetValue('thrusters');
+  const before = run.enemies.length;
+  if (type === 'mothership') spawnMothership(1, sec, DEPLOY_R);
+  else {
+    const a = (sec * 60 + 8 + Math.random() * 44) * DEG;
+    const x = Math.cos(a) * DEPLOY_R, y = Math.sin(a) * DEPLOY_R;
+    if (type === 'swarmer') spawnSwarm(1, x, y); else spawnEnemy(type, 1, x, y);
+  }
+  // Fleet Upgrades valem para as naves novas.
+  for (let i = before; i < run.enemies.length; i++) {
+    const e = run.enemies[i];
+    e.hp *= hull; e.maxHp *= hull;
+    if (e.type === 'mothership') e.laserDmg *= war; else { e.dmg *= war; e.speed *= thr; }
+  }
+  refreshDrawer(true);
+}
+
+function buyFleet(id) {
+  if (fleetCapped(id)) return;
+  const c = fleetCost(id);
+  if (c > run.plasma) return;
+  run.plasma -= c;
+  run.fleet[id]++;
+  refreshDrawer(true);
+}
+
+// Toque no espaço (fora da gaveta e dos botões) escolhe o Spawn Sector pelo ângulo em volta do planeta.
+let lastOrigin = { ox: 0, oy: 0 };
+function pickSector(clientX, clientY) {
+  const r = ui.getBoundingClientRect();
+  const x = (clientX - r.left) / P, y = (clientY - r.top) / P;
+  const u = (x - lastOrigin.ox) / ISO_K, v = -(y - lastOrigin.oy) * 2 / ISO_K;   // u = x − y, v = x + y no chão
+  const deg = normDeg(Math.atan2((v - u) / 2, (u + v) / 2) / DEG);
+  run.selSector = Math.floor(deg / 60) % 6;
+}
+ui.addEventListener('pointerdown', e => {
+  if (screen !== 'game' || !run || run.mode !== 'invasion' || run.paused) return;
+  if (e.target.closest('button, #drawer, .screen')) return;   // botões, gaveta e telas por cima não escolhem setor
+  pickSector(e.clientX, e.clientY);
+});
+window.addEventListener('keydown', e => {
+  if (screen === 'game' && run && run.mode === 'invasion' && e.key >= '1' && e.key <= '6') run.selSector = +e.key - 1;
+});
 
 // ============================================================ conquistas
 
@@ -725,6 +1028,8 @@ function render(dt) {
   items.push({ k: 'planet', p: W(0, 0) });
   if (!run.over) for (const s of run.sats) if (s.x !== undefined) items.push({ k: 'sat', o: s, p: W(s.x, s.y) });
   for (const p of run.projectiles) items.push({ k: 'proj', o: p, p: W(p.x, p.y) });
+  for (const b of run.bolts) items.push({ k: 'bolt', o: b, p: W(b.x, b.y) });
+  if (!run.over && stat('reflect') > 0) items.push({ k: 'refl', p: W(Math.cos(run.refAng * DEG) * REFLECT_R, Math.sin(run.refAng * DEG) * REFLECT_R) });
   items.sort((a, b) => a.p[1] - b.p[1]);
 
   for (const it of items) {
@@ -734,6 +1039,7 @@ function render(dt) {
       let img, col = 0, row = 0, cell = 32;
       switch (e.type) {
         case 'grunt': img = IMG.grunt; col = Math.floor(e.t * 6) % 4; row = e.variant; break;
+        case 'gunner': img = IMG.gunner; col = Math.floor(e.t * 6) % 4; break;
         case 'scout': img = IMG.scout; col = Math.floor(e.t * 12) % 4; break;
         case 'swarmer': img = IMG.swarmer; col = Math.floor(e.t * 4) % 2; break;
         case 'brute': img = IMG.brute; col = e.variant; break;
@@ -742,6 +1048,21 @@ function render(dt) {
       if (!img) continue;
       const src = e.flash > 0 && !save.settings.reduceFlashes ? whiteOf(img) : img;
       ctx.drawImage(src, col * cell, row * cell, cell, cell, x - cell / 2, y - cell / 2, cell, cell);
+    } else if (it.k === 'refl') {
+      // Reflector: arco de 40° na órbita de 2,5 u, no plano de voo (a matriz leva o chão para a tela)
+      const a = run.refAng;
+      ctx.setTransform(ISO_K, -ISO_K / 2, -ISO_K, -ISO_K / 2, ox, oy);
+      ctx.strokeStyle = '#8fd8ff'; ctx.lineWidth = 0.16;
+      ctx.beginPath(); ctx.arc(0, 0, REFLECT_R, (a - REFLECT_HALF_ARC) * DEG, (a + REFLECT_HALF_ARC) * DEG); ctx.stroke();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (IMG.reflector) ctx.drawImage(IMG.reflector, (Math.floor(clock * 2) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
+    } else if (it.k === 'bolt') {
+      // Gunner Bolt: projétil inimigo magenta com rastro
+      const b = it.o, [bx, by] = W(b.px, b.py);
+      const dx = x - bx, dy = y - by, d = Math.hypot(dx, dy) || 1;
+      ctx.fillStyle = 'rgba(255,90,210,0.5)';
+      for (let k = 1; k <= 3; k++) ctx.fillRect(Math.round(x - dx / d * k * 1.5), Math.round(y - dy / d * k * 1.5), 1, 1);
+      if (IMG.bolt) ctx.drawImage(IMG.bolt, (Math.floor(clock * 8) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
     } else if (it.k === 'planet') {
       // Planeta girando (32 frames a 4 fps)
       const pImg = IMG[`planet_${run.core}_${run.skin}`];
@@ -749,6 +1070,11 @@ function render(dt) {
       const f = Math.floor(run.time * 4) % 32;
       const src = run.planetFlash > 0 && !save.settings.reduceFlashes ? whiteOf(pImg) : pImg;
       ctx.drawImage(src, f * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
+      // Energy Shield: a bolha (uma linha da spritesheet por número de cargas)
+      if (run.shieldCharges > 0 && !run.over && IMG.shield) {
+        const src = run.shieldFlash > 0 && !save.settings.reduceFlashes ? whiteOf(IMG.shield) : IMG.shield;
+        ctx.drawImage(src, (Math.floor(clock * 6) % 4) * 48, (Math.min(3, run.shieldCharges) - 1) * 48, 48, 48, x - 24, y - 24, 48, 48);
+      }
     } else if (it.k === 'sat') {
       // Satellites (orientação fixa, luz piscando a 2 fps)
       if (IMG.satellite) ctx.drawImage(IMG.satellite, (Math.floor(clock * 2) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
@@ -756,9 +1082,10 @@ function render(dt) {
       // Projéteis + rastro curto, na direção do movimento já projetada na tela
       const p = it.o, [px, py] = W(p.px, p.py);
       const dx = x - px, dy = y - py, d = Math.hypot(dx, dy) || 1;
-      ctx.fillStyle = 'rgba(255,170,60,0.55)';
+      ctx.fillStyle = p.refl ? 'rgba(143,216,255,0.6)' : 'rgba(255,170,60,0.55)';
       for (let k = 1; k <= 3; k++) ctx.fillRect(Math.round(x - dx / d * k * 1.2), Math.round(y - dy / d * k * 1.2), 1, 1);
-      if (IMG.projectile) ctx.drawImage(IMG.projectile, (Math.floor(p.t * 8) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
+      if (p.refl) { if (IMG.reflected) ctx.drawImage(IMG.reflected, (Math.floor(p.t * 8) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32); }
+      else if (IMG.projectile) ctx.drawImage(IMG.projectile, (Math.floor(p.t * 8) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
     }
   }
 
@@ -768,8 +1095,10 @@ function render(dt) {
     if (m.type !== 'mothership' || (m.warnT <= 0 && m.beamT <= 0)) continue;
     const [mx, my] = W(m.x, m.y);
     const ang = Math.atan2(py0 - my, px0 - mx);
-    const len = Math.max(0, Math.hypot(px0 - mx, py0 - my) - 14);   // para na borda do sprite do planeta
     const warn = m.warnT > 0;
+    // Para na borda do sprite do planeta, ou no Reflector quando ele bloqueou o laser.
+    const [rx, ry] = W(Math.cos(m.ang) * REFLECT_R, Math.sin(m.ang) * REFLECT_R);
+    const len = !warn && m.blocked ? Math.hypot(rx - mx, ry - my) : Math.max(0, Math.hypot(px0 - mx, py0 - my) - 14);
     const img = warn ? IMG.laserWarn : IMG.laserBeam;
     const frame = warn ? Math.floor(clock * 6) % 2 : Math.floor(clock * 12) % 4;
     if (!img) continue;
@@ -785,6 +1114,12 @@ function render(dt) {
 
   // Explosões
   for (const f of run.fx) {
+    if (f.ring) {
+      const [x, y] = W(f.x, f.y), k = f.t / f.dur;
+      ctx.strokeStyle = `rgba(190,230,255,${1 - k})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x + 0.5, y + 0.5, Math.max(1, f.r * ISO_K * (0.4 + k)), 0, Math.PI * 2); ctx.stroke();
+      continue;
+    }
     const img = IMG[f.img]; if (!img) continue;
     const [x, y] = W(f.x, f.y);
     const fr = Math.min(f.frames - 1, Math.floor(f.t * f.fps));
@@ -808,9 +1143,11 @@ function render(dt) {
 
   // Setas dos Spawn Sectors na borda da tela. A direção do setor no chão é projetada na tela, e a seta
   // usada é a das 6 pré-desenhadas (30°, 90°… na tela) mais próxima dela: nada é girado.
-  if (run.warn > 0 && IMG.arrows && !run.over) {
+  lastOrigin = { ox, oy };
+  const invasion = run.mode === 'invasion';
+  if ((run.warn > 0 || invasion) && IMG.arrows && !run.over) {
     const top = 24, bottom = (drawerTrack ? DRAWER_OPEN_H : DRAWER_STRIP_H) + 12, side = 12;
-    for (const s of run.warnSectors) {
+    for (const s of invasion ? [0, 1, 2, 3, 4, 5] : run.warnSectors) {
       const a = (s * 60 + 30) * DEG;
       let dx = Math.cos(a) - Math.sin(a), dy = (Math.cos(a) + Math.sin(a)) / 2;   // na tela, y para cima
       const len = Math.hypot(dx, dy); dx /= len; dy /= len;
@@ -820,8 +1157,10 @@ function render(dt) {
       const ty = dy > 0 ? (VH - bottom - oy) / dy : dy < 0 ? (top - oy) / dy : Infinity;
       const t = Math.min(tx, ty);
       const x = Math.round(ox + dx * t), y = Math.round(oy + dy * t);
-      const lit = Math.floor(clock * 4) % 2;
+      const lit = invasion ? (s === run.selSector ? Math.floor(clock * 4) % 2 : 1) : Math.floor(clock * 4) % 2;
+      ctx.globalAlpha = invasion && s !== run.selSector ? 0.35 : 1;
       ctx.drawImage(IMG.arrows, lit * 32, row * 32, 32, 32, x - 16, y - 16, 32, 32);
+      ctx.globalAlpha = 1;
     }
   }
 }
@@ -857,11 +1196,11 @@ const SCREENS = {
     run = null;
     const s = el(`<div class="screen" style="background:rgba(10,8,30,.35)">
       <div style="height:6px"></div>
-      <div class="title">8-Bit Armageddon Iso</div>
-      <div class="subtitle" style="margin-top:4px">Defenda o planeta. Caia. Bata o recorde.</div>
+      <div class="title">Orbitfall Iso</div>
+      <div class="subtitle" style="margin-top:4px">Defenda o planeta. Ou derrube um.</div>
       <div class="row" style="margin-top:6px">
         ${planetHtml(save.core, save.skin)}
-        <span class="subtitle">Recorde: Wave ${save.best}</span>
+        <span class="subtitle">Recorde: Wave ${save.best}${save.bestPlanet ? ` · ${save.bestPlanet} planetas` : ''}</span>
       </div>
       <div class="menu-buttons">
         <button class="btn play" data-go="cores">Jogar</button>
@@ -877,6 +1216,31 @@ const SCREENS = {
   cores() {
     const s = el(`<div class="screen"></div>`);
     s.appendChild(topbar('Core Select'));
+    // Modo: Last Stand ou Invasion (este liberado pela conquista Holding the Line).
+    const unlockedInv = invasionUnlocked();
+    if (!unlockedInv) save.mode = 'laststand';
+    const modes = el(`<div class="row" style="margin-bottom:4px">
+      <button class="btn" data-mode="laststand">${save.mode === 'laststand' ? '&gt; ' : ''}Last Stand</button>
+      <button class="btn" data-mode="invasion"${unlockedInv ? '' : ' disabled'}>${save.mode === 'invasion' ? '&gt; ' : ''}Invasion${unlockedInv ? '' : ' (Wave 10)'}</button>
+    </div>`);
+    modes.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
+      if (b.dataset.mode === 'invasion' && !unlockedInv) return;
+      save.mode = b.dataset.mode; writeSave(); showScreen('cores');
+    });
+    s.appendChild(modes);
+    if (save.mode === 'invasion') {
+      s.appendChild(el(`<div class="panel" style="max-width:240px;padding:6px;display:flex;flex-direction:column;gap:3px">
+        <span class="h" style="margin:0">Invasion</span>
+        <span>Agora você é a invasão. Toque perto da borda para escolher o Spawn Sector e lance naves pela aba Deploy.</span>
+        <span class="subtitle">Derrube o planeta antes do Siege Timer (${SIEGE_TIME} s). Ache o Quadrant sem Satellite.</span>
+        <span class="subtitle">Recorde: ${save.bestPlanet} planetas</span>
+      </div>`));
+      const go = el(`<button class="btn" style="margin-top:8px;width:120px">Começar invasão</button>`);
+      go.onclick = () => { newRun(); showScreen('game'); };
+      s.appendChild(go);
+      ui.appendChild(s);
+      return;
+    }
     const wrap = el(`<div class="cores"></div>`);
     for (const c of CORES) {
       const unlocked = save.cores.includes(c.id);
@@ -975,7 +1339,7 @@ const SCREENS = {
 
     const d = el(`<div id="drawer">
       <div class="drawer-strip">
-        <span class="money shards">${iconHtml(ICON.shards)}<span class="sh">0</span></span><span class="spacer"></span>
+        <span class="money shards">${iconHtml(run.mode === 'invasion' ? ICON.plasma : ICON.shards)}<span class="sh">0</span></span><span class="spacer"></span>
       </div>
       <div class="drawer-body hidden">
         <div class="qty"><button class="btn"></button></div>
@@ -986,7 +1350,7 @@ const SCREENS = {
       </div>
     </div>`);
     const strip = $('.drawer-strip', d);
-    for (const t of TRACKS) {
+    for (const t of run.mode === 'invasion' ? INV_TRACKS : TRACKS) {
       const b = el(`<button class="btn tab" data-track="${t.id}">${iconHtml(t.icon)}<span class="lbl">${t.name}</span></button>`);
       b.onclick = () => { drawerTrack = drawerTrack === t.id ? null : t.id; buildDrawer(); };
       strip.appendChild(b);
@@ -1020,6 +1384,26 @@ const SCREENS = {
   results() {
     const r = run;
     const mins = Math.floor(r.time / 60), secs = Math.floor(r.time % 60);
+    if (r.mode === 'invasion') {
+      const s = el(`<div class="screen"><div class="dialog panel">
+        <span class="h">Invasão encerrada</span>
+        ${planetHtml(r.core, r.skin)}
+        <div class="stats">
+          <span>Planetas destruídos</span><span>${r.planetsDown}</span>
+          <span>Naves lançadas</span><span>${fmt(r.launched)}</span>
+          <span>Tempo</span><span>${mins}:${String(secs).padStart(2, '0')}</span>
+        </div>
+        <span class="${r.newBest ? 'badge' : 'subtitle'}">${r.newBest ? 'Novo recorde!' : `Recorde: ${save.bestPlanet} planetas`}</span>
+        <div class="row" style="margin-top:4px">
+          <button class="btn" data-again>Jogar de novo</button>
+          <button class="btn" data-menu>Menu</button>
+        </div>
+      </div></div>`);
+      $('[data-again]', s).onclick = () => { newRun(); showScreen('game'); };
+      $('[data-menu]', s).onclick = () => showScreen('menu');
+      ui.appendChild(s);
+      return;
+    }
     const s = el(`<div class="screen"><div class="dialog panel">
       <span class="h">Planeta destruído</span>
       ${planetHtml(r.core, r.skin)}
@@ -1084,12 +1468,42 @@ function buildDrawer() {
   hud.drawer.style.height = open ? DRAWER_OPEN_H + 'px' : '';
   hideTip();
   hud.drawer.querySelectorAll('.tab').forEach(t => t.classList.toggle('open', t.dataset.track === drawerTrack));
-  $('.qty', hud.drawer).classList.toggle('hidden', drawerTrack === 'satellites');
+  $('.qty', hud.drawer).classList.toggle('hidden', drawerTrack === 'satellites' || run.mode === 'invasion');
   hud.cards.innerHTML = '';
   hud.cards.scrollLeft = 0;
   hud.cardEls = [];
   requestAnimationFrame(updateArrows);   // depois do layout dos cards novos
   if (!open) return;
+  if (drawerTrack === 'deploy') {
+    for (const f of FLEET_SHIPS) {
+      const card = el(`<div class="card">
+        <span class="row"><canvas width="16" height="16" class="ship"></canvas><span class="name">${f.name}</span></span>
+        <span class="row"><span class="vals"></span><span class="spacer"></span><span class="money cost"></span></span>
+      </div>`);
+      const img = IMG[f.type], cell = f.type === 'mothership' ? 64 : 32;
+      if (img) { const g = $('canvas', card).getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(img, 0, 0, cell, cell, 0, 0, 16, 16); }
+      card.dataset.ship = f.type;
+      attachTip(card, () => deploy(f.type));
+      hud.cards.appendChild(card);
+      hud.cardEls.push(card);
+    }
+    refreshDrawer(true);
+    return;
+  }
+  if (drawerTrack === 'fleet') {
+    for (const f of FLEET_UPGRADES) {
+      const card = el(`<div class="card">
+        <span class="row">${iconHtml(f.icon)}<span class="name">${f.name}</span><span class="spacer"></span><span class="lvl">Nv <span class="lv"></span></span></span>
+        <span class="row"><span class="vals"></span><span class="spacer"></span><span class="money cost"></span></span>
+      </div>`);
+      card.dataset.fleet = f.id;
+      attachTip(card, () => buyFleet(f.id));
+      hud.cards.appendChild(card);
+      hud.cardEls.push(card);
+    }
+    refreshDrawer(true);
+    return;
+  }
   if (drawerTrack === 'satellites') {
     run.sats.forEach((s, i) => {
       const row = el(`<div class="sat-row framed"><span class="row">${iconHtml(16)}<span class="name">Satellite ${i + 1}</span></span></div>`);
@@ -1152,7 +1566,15 @@ function showTip(card) {
   if (!hud || !hud.tip || !card.isConnected) return;
   let name, desc, next = '';
   if (card.dataset.sat) { name = `Satellite ${run.sats.length + 1}`; desc = SATELLITE_DESC; }
-  else {
+  else if (card.dataset.ship) {
+    const f = FLEET_SHIPS.find(x => x.type === card.dataset.ship);
+    name = f.name; desc = f.desc;
+    next = f.planet > run.planet ? `Libera no planeta ${f.planet}` : `Custo: ${f.cost} Plasma`;
+  } else if (card.dataset.fleet) {
+    const f = FLEET[card.dataset.fleet], lvl = run.fleet[f.id];
+    name = f.name; desc = f.desc;
+    next = fleetCapped(f.id) ? 'Nível máximo' : `Nv ${lvl + 1}: ${f.fmt(f.inc * (lvl + 1))}`;
+  } else {
     const s = STAT[card.dataset.stat], lvl = run.levels[s.id];
     name = s.name; desc = s.desc;
     next = atCap(s.id, lvl) ? 'Nível máximo' : `Nv ${lvl + 1}: ${s.fmt(statFor(s.id, lvl + 1))}`;
@@ -1196,6 +1618,24 @@ function updateFoes() {
   }
 }
 
+// Invasion: o painel do canto mostra a defesa do Target Planet, para o jogador ler onde atacar.
+function updateIntel() {
+  const rows = [
+    CORES.find(c => c.id === run.core).name,
+    `Satellites ${run.sats.length}`,
+    `Damage ${fmt(stat('damage'))} · ${stat('attackSpeed').toFixed(1)}/s`,
+    stat('multiChance') > 0 ? `Multishot ${pct(stat('multiChance'))}` : '',
+    stat('shield') > 0 ? `Shield ${run.shieldCharges}/${stat('shield')}` : '',
+    stat('reflect') > 0 ? `Reflect ${fmt(stat('reflect'))}` : '',
+    `Shards ${fmt(run.shards)}`,
+  ].filter(Boolean);
+  const key = rows.join('|');
+  if (key === hud.foesKey) return;
+  hud.foesKey = key;
+  hud.foes.classList.remove('hidden');
+  hud.foes.innerHTML = rows.map(r => `<div class="foe">${r}</div>`).join('');
+}
+
 function updateArrows() {
   if (!hud || !hud.cards) return;
   const c = hud.cards, max = c.scrollWidth - c.clientWidth;
@@ -1208,9 +1648,33 @@ function refreshDrawer(force) {
   if (!hud || !run) return;
   if (!force && clock - lastRefresh < 0.1) return;
   lastRefresh = clock;
-  hud.shards.textContent = fmt(run.shards);
+  const inv = run.mode === 'invasion';
+  hud.shards.textContent = fmt(inv ? Math.floor(run.plasma) : run.shards);
   if (force && hud.tipCard) showTip(hud.tipCard);
   for (const c of hud.cardEls || []) {
+    if (c.dataset.ship) {
+      const f = FLEET_SHIPS.find(x => x.type === c.dataset.ship), locked = f.planet > run.planet;
+      $('.vals', c).innerHTML = locked ? `<span class="subtitle">Planeta ${f.planet}</span>` : '';
+      $('.cost', c).innerHTML = locked ? '' : `${iconHtml(ICON.plasma)}${f.cost}`;
+      const can = !locked && f.cost <= run.plasma;
+      c.classList.toggle('poor', !can); c.classList.toggle('can', can);
+      continue;
+    }
+    if (c.dataset.fleet) {
+      const id = c.dataset.fleet, f = FLEET[id], lvl = run.fleet[id];
+      $('.lv', c).textContent = lvl;
+      const cur = f.fmt(f.inc * lvl);
+      if (fleetCapped(id)) {
+        $('.vals', c).innerHTML = cur; $('.cost', c).innerHTML = '<span class="subtitle">Máx</span>';
+        c.classList.add('poor'); c.classList.remove('can');
+        continue;
+      }
+      const cost = fleetCost(id);
+      $('.vals', c).innerHTML = `${cur} &gt; <em>${f.fmt(f.inc * (lvl + 1))}</em>`;
+      $('.cost', c).innerHTML = `${iconHtml(ICON.plasma)}${fmt(cost)}`;
+      c.classList.toggle('poor', cost > run.plasma); c.classList.toggle('can', cost <= run.plasma);
+      continue;
+    }
     if (c.dataset.sat) {
       const cost = satelliteCost();
       $('.cost', c).innerHTML = `${iconHtml(ICON.shards)}${fmt(cost)}`;
@@ -1242,6 +1706,15 @@ function updateHud() {
   hud.hpFill.style.width = (100 * run.hp / max) + '%';
   hud.hpFill.style.background = run.hp / max < 0.3 ? '#e04848' : '#5cc45c';
   hud.hpText.textContent = `${fmt(Math.ceil(run.hp))}/${fmt(max)}`;
+  if (run.mode === 'invasion') {
+    hud.wave.textContent = `Planeta ${run.planet}${isFortress(run.planet) ? ' · Fortress' : ''}`;
+    hud.timer.textContent = `· ${Math.ceil(run.siege)}s`;
+    hud.boss.classList.add('hidden');
+    updateIntel();
+    refreshDrawer(false);
+    hud.hint.classList.add('hidden');
+    return;
+  }
   if (run.warn > 0 && run.wave === 0) { hud.wave.textContent = 'Prepare-se'; hud.timer.textContent = ''; }
   else {
     hud.wave.textContent = `Wave ${run.wave}${isBoss(run.wave) ? ' · Boss' : ''}`;
@@ -1285,9 +1758,12 @@ loadImages().then(() => {
   showScreen('menu');
   // Atalhos de desenvolvimento: index.html#play começa uma run; #play,offense já abre a gaveta.
   const dev = location.hash.slice(1).split(',');
+  if (dev.includes('invasion')) save.mode = 'invasion';   // #play,invasion começa no Invasion
   if (dev.includes('play')) { newRun(); showScreen('game'); }
   for (const t of TRACKS) if (dev.includes(t.id)) { drawerTrack = t.id; buildDrawer(); }
-  if (dev.includes('rich') && run) run.shards = 5000;
+  if (dev.includes('rich') && run) { run.shards = 5000; run.plasma = 5000; }
+  const planetAt = dev.find(d => d.startsWith('planet='));   // #play,invasion,planet=5 começa na Fortress
+  if (planetAt && run && run.mode === 'invasion') setupPlanet(+planetAt.slice(7));
   if (dev.includes('sats') && run) { save.hints.buy = true; while (run.sats.length < MAX_SATELLITES) { run.shards += satelliteCost(); buySatellite(); } }   // #play,sats: 4 Satellites
   const startAt = dev.find(d => d.startsWith('wave='));   // #play,wave=10 começa na Boss Wave
   if (startAt && run) prepareWave(+startAt.slice(5));

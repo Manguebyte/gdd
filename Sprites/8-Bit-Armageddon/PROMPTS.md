@@ -125,3 +125,35 @@ soft shading 3-4 tones, highlight at top-left. Crisp 1px black outline. Game ass
 - **Ícones:** `create_1_direction_object` com `size: 16` e `item_descriptions` (um texto por ícone, cada um repetido 2× para ter alternativas), 20 gerações para os 42 pedidos. Os escolhidos ficam em `UI/SPR_UI_Icons.png`, em células de 32×32; a ordem das células está em `UI/SPR_UI_Icons_ordem.txt`.
   - Correções por script: Attack Range recolorido para laranja; Satellites com os painéis azuis trocados por cinza; Orbit Speed desenhado à mão (a IA gerou uma bolha sem significado).
   - Os 64 candidatos estão em `UI/_candidatos_descartados/`.
+
+## Orbitfall (Gunner, Reflector, Energy Shield e ícones novos)
+
+### SPR_Enemy_Gunner (4 frames, células de 32×32)
+
+- Ferramenta: `create_image_pro`, **16×16**, seed 17, guia de estilo = o Grunt (frame 1, recortado em 16×16) com `style_copy` = paleta, contorno, detalhe e sombreamento.
+- Prompt:
+
+```
+Tiny alien gunship enemy sprite, about 14x14 pixels centered in a 16x16 canvas, round flying saucer
+seen from slightly above (3/4 view) like the reference, but heavier and armored, with a short thick
+cannon turret mounted on top of the dome and a glowing magenta energy core in the cannon. Cool lavender
+and purple palette, magenta glow, no blue. Classic colorful pixel art, soft shading 3-4 tones,
+highlight at top-left. Crisp 1px black outline. Game asset, transparent background.
+```
+
+- Escolhido: o candidato **6** (torre com lente magenta, corpo mais escuro que o Grunt). Os 64 candidatos estão em `Enemies/_candidatos_descartados/gunner/`.
+- Pós-processamento (`_tools/gunner.py`): 4 frames em que os pixels magenta (a lente) pulsam de brilho (apagado, médio, aceso, médio). O desenho de 16×16 fica centralizado na célula de 32×32. O sprite nunca gira: a direção do tiro não aparece no desenho, só no Bolt.
+
+### SPR_Projectile_GunnerBolt, SPR_Projectile_Reflected, SPR_Reflector, SPR_VFX_EnergyShield(_Pop)
+
+- **Sem IA** (regra prática: sprites de até ~12 px saem melhor à mão): `_tools/orbitfall_extras.py <pasta>`.
+  - Bolt: bolinha de 4 px magenta, 2 frames (o aceso tem um halo). Tiro refletido: a mesma bolinha em azul-claro.
+  - Reflector: prisma azul-claro de 12×10 px numa moldura cinza (a família do Satellite), 2 frames de luz.
+  - Energy Shield: células de 48×48, 3 linhas (1, 2 e 3 cargas) × 4 frames. Um anel de 1 px por carga (raios de 19, 21 e 23 px, por fora do planeta de 32 px) e um trecho claro que dá a volta. O estouro tem 5 frames: o anel cresce, vira tracejado e some.
+
+### Ícones novos (células 22 a 32 de SPR_UI_Icons)
+
+- Mesmo processo dos ícones originais: `create_1_direction_object` 16×16 com `item_descriptions` (cada ícone pedido 2×), e como guia de estilo três ícones do próprio jogo (Damage, Defense absolute, Attack Range). Os 64 candidatos estão em `UI/_candidatos_descartados/orbitfall_icons/`.
+- Escolhidos (índice do candidato → célula): 1 → 22 Multishot Chance (raio laranja que se divide), 3 → 23 Multishot Targets (mira laranja com alvos), 4 → 24 Energy Shield (bolha azul), 6 → 25 Reflect Shield (espelho azul devolvendo uma seta), 8 → 26 aba Deploy (disco teal com seta), 10 → 27 aba Fleet (três discos teal), 12 → 28 Plasma (orbe teal), 14 → 29 Hull (placa teal), 16 → 30 Warheads (míssil teal), 18 → 31 Thrusters (bocal com chama), 20 → 32 Plasma Flow (orbe teal com seta).
+- **Cor do Invasion:** os ícones do Invasion são verde-azulados (teal), para não se confundirem com Offense (laranja), Defense (azul), Utility (verde), Satellites (cinza) nem com os inimigos (lavanda/magenta).
+- A spritesheet passou de 8×3 para 8×5 células; as células antigas não mudaram de lugar.

@@ -43,15 +43,15 @@ export const GAMES = [
   {
     source: 'GDD_8-Bit_Armageddon.md',
     slug: '8-bit-armageddon',
-    label: '8-Bit Armageddon',
+    label: 'Orbitfall',
     description: 'Roguelike de defesa automática de planeta.',
     guideStart: /^## 10\. /,
   },
   {
     source: 'GDD_8-Bit_Armageddon_Iso.md',
     slug: '8-bit-armageddon-iso',
-    label: '8-Bit Armageddon Iso',
-    description: 'As regras do 8-Bit Armageddon com câmera isométrica, como jogo separado.',
+    label: 'Orbitfall Iso',
+    description: 'As regras do Orbitfall com câmera isométrica, como jogo separado.',
     guideStart: /^## 10\. /,
   },
   {
