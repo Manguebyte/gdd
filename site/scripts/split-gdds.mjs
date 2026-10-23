@@ -106,6 +106,13 @@ export const GAMES = [
     gddOnly: true,
   },
   {
+    source: 'OldKnightAndTheWitch.md',
+    slug: 'old-knight-and-the-witch',
+    label: 'Old Knight and the Witch',
+    description: 'O motor do Guerreiro da Masmorra (app) com uma dupla que troca de lugar na luta: o velho cavaleiro lento e pesado e a bruxa rápida que joga com deck e mana, em HD-2D.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     source: 'CraftDice.md',
     slug: 'craft-dice',
     label: 'Craft Dice',
