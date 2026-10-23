@@ -178,6 +178,9 @@ html, body {
 .wave-info { position: absolute; left: 0; right: 0; top: 4px; text-align: center; text-shadow: 1px 1px 0 #000; pointer-events: none; }
 .wave-info .t { color: var(--dim); }
 .pause-btn { position: absolute; right: 4px; top: 3px; min-height: 16px; padding: 2px 5px 3px; }
+/* Zoom do mundo, à esquerda da pausa */
+.zoom-btns { position: absolute; right: 28px; top: 3px; display: flex; gap: 2px; }
+.zoom-btns .btn { min-height: 16px; min-width: 15px; padding: 2px 4px 3px; justify-content: center; }
 .boss-bar { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; }
 .boss-bar .bar { width: 120px; height: 5px; }
 .boss-bar .bar > i { background: #c74dff; }

@@ -395,6 +395,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 - **Card acessível:** quando o jogador tem Shards para comprar, o card pulsa de leve.
 - **Quantidade por compra:** seletor ×1 / ×10 / Max.
 - **Câmera:** com a gaveta aberta, a visão desliza para o planeta ficar inteiro no centro da área livre (o mundo sobe; a câmera desce). O jogo nunca pausa.
+- **Zoom:** botões **−** e **+** ao lado do botão de pausa aproximam e afastam a visão do mundo em 5 níveis (0,5×, 0,75×, 1×, 1,5× e 2×), centrados no planeta. Só o mundo muda de tamanho: HUD, gaveta, setas dos Spawn Sectors e números de dano ficam iguais. O nível escolhido fica salvo. No PC, a roda do mouse e as teclas + e − fazem o mesmo. **Definido:** os níveis são arredondados para manter a escala inteira de pixels (pixel perfect), então numa tela pequena alguns níveis podem ficar um pouco diferentes. **Em aberto:** pinça (dois dedos) no celular; em qual fase o guia Unity cobre o zoom (ainda não cobre).
 - **No Invasion:** a gaveta tem as abas **Deploy** (um card por nave, com o custo em Plasma) e **Fleet** (os Fleet Upgrades), e o saldo é de Plasma. **Definido:** Deploy, Fleet, o Plasma e os Fleet Upgrades usam **verde-azulado (teal)**, a cor do jogador no Invasion: não é vermelho nem lavanda/magenta, e não se confunde com as abas do Last Stand.
 - **Aba Satellites:** uma linha por Satellite em órbita, com um seletor da Target Priority (as 4 prioridades), e um botão para comprar o próximo Satellite com o preço em Shards (Seção 4.2). O botão some quando a órbita já tem 4.
 

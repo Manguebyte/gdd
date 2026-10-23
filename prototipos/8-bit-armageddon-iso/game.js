@@ -176,7 +176,7 @@ function defaultSave() {
     totals: { motherships: 0 },
     hints: {},
     best: 0, bestPlanet: 0, mode: 'laststand',
-    settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false },
+    settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false, zoom: 1 },
   };
 }
 let save = defaultSave();
@@ -256,6 +256,7 @@ const ctx = canvas.getContext('2d');
 const ui = $('#ui');
 const stage = $('#stage');
 let P = 1, VW = REF_W, VH = REF_H;   // escala inteira e tamanho da vista em pixels de jogo
+let S = 1;                           // pixels físicos do canvas por pixel de jogo (P × dpr, inteiro)
 let bgTiles = [], bgStars = [], gridTiles = [];
 
 function resize() {
@@ -267,7 +268,9 @@ function resize() {
   P = Math.max(1, Math.floor(raw * dpr)) / dpr;
   if (dpr === 1) P = Math.max(1, P);
   VW = Math.ceil(w / P); VH = Math.ceil(h / P);   // proporção diferente de 16:9 mostra mais espaço
-  canvas.width = VW; canvas.height = VH;
+  // O canvas fica na resolução física (não em pixels de jogo) para o zoom do mundo continuar nítido.
+  S = Math.round(P * dpr);
+  canvas.width = VW * S; canvas.height = VH * S;
   canvas.style.width = VW * P + 'px'; canvas.style.height = VH * P + 'px';
   ui.style.width = VW + 'px'; ui.style.height = VH + 'px';
   ui.style.transform = `scale(${P})`;
@@ -285,7 +288,54 @@ window.addEventListener('resize', () => {
   resize();
   // Só reajusta a altura da gaveta: reconstruir os cards perderia a posição da rolagem.
   if (hud && drawerTrack) hud.drawer.style.height = DRAWER_OPEN_H + 'px';
-  if (hud) updateArrows();
+  if (hud) { updateArrows(); updateZoomBtns(); }
+});
+
+// ============================================================ zoom do mundo
+
+// Zoom do mundo: botões − e + ao lado da pausa, roda do mouse e teclas + e −. O canvas tem a resolução
+// física da tela (S pixels por pixel de jogo), então cada nível é arredondado para S × zoom inteiro: o
+// zoom continua pixel perfect. Fundo, setas dos setores, números de dano e HUD não mudam de tamanho.
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2];
+let view = { k: 1, x: 0, y: 0 };   // transformação base atual: pixel de jogo (ou do mundo) → pixel do canvas
+function zoomLevels() {
+  const out = [];
+  for (const z of ZOOMS) { const e = Math.max(1, Math.round(S * z)) / S; if (!out.includes(e)) out.push(e); }
+  return out;
+}
+function zoomNow() {   // o nível válido mais perto do salvo (a escala muda quando a janela muda)
+  const lv = zoomLevels(), z = save.settings.zoom || 1;
+  return lv.reduce((b, e) => Math.abs(e - z) < Math.abs(b - z) ? e : b, lv[0]);
+}
+function stepZoom(dir) {
+  const lv = zoomLevels(), i = lv.indexOf(zoomNow()), j = clamp(i + dir, 0, lv.length - 1);
+  if (j === i) return;
+  save.settings.zoom = lv[j]; writeSave(); updateZoomBtns();
+}
+function updateZoomBtns() {
+  if (!hud || !hud.zoomIn) return;
+  const lv = zoomLevels(), z = zoomNow();
+  hud.zoomIn.classList.toggle('disabled', z >= lv[lv.length - 1]);
+  hud.zoomOut.classList.toggle('disabled', z <= lv[0]);
+}
+// Matriz composta com a base atual: tf(1, 0, 0, 1, 0, 0) volta para a base.
+function tf(a, b, c, d, e, f) { ctx.setTransform(view.k * a, view.k * b, view.k * c, view.k * d, view.k * e + view.x, view.k * f + view.y); }
+function screenView() { view = { k: S, x: 0, y: 0 }; tf(1, 0, 0, 1, 0, 0); }
+// O zoom é em volta do planeta (ox, oy): um ponto p da tela vai para o + (p − o) × z.
+function worldView(ox, oy, z) { view = { k: S * z, x: Math.round(S * ox * (1 - z)), y: Math.round(S * oy * (1 - z)) }; tf(1, 0, 0, 1, 0, 0); }
+let wheelT = 0;
+ui.addEventListener('wheel', e => {
+  if (screen !== 'game' || !run || e.target.closest('#drawer, .screen')) return;
+  e.preventDefault();
+  const now = performance.now();
+  if (now - wheelT < 150) return;   // trackpad manda dezenas de eventos por gesto
+  wheelT = now;
+  stepZoom(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  if (screen !== 'game' || !run || run.paused) return;
+  if (e.key === '+' || e.key === '=') stepZoom(1);
+  else if (e.key === '-') stepZoom(-1);
 });
 
 // ============================================================ estado da run
@@ -964,7 +1014,7 @@ function render(dt) {
   const W = (x, y) => [Math.round(ox + (x - y) * ISO_K), Math.round(oy - (x + y) * ISO_K / 2)];
   const F = (x, y) => { const p = W(x, y); p[1] += FLOOR_DROP; return p; };
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  screenView();
   ctx.globalAlpha = 1;
 
   // Fundo: tiles 32x32 sorteados + estrelas piscando
@@ -980,6 +1030,11 @@ function render(dt) {
     ctx.drawImage(IMG.twinkle, f * 32, 0, 32, 32, Math.round(s.x) - 16, Math.round(s.y) - 16, 32, 32);
   }
 
+  // Daqui até os números de dano, tudo é mundo e segue o zoom (nos menus, sem zoom).
+  const z = run ? zoomNow() : 1;
+  worldView(ox, oy, z);
+  // Pedaço do mundo que aparece na tela com este zoom (para pular os tiles de fora).
+  const vx0 = ox - (ox + 32) / z, vx1 = ox + (VW - ox + 32) / z, vy0 = oy - (oy + 32) / z, vy1 = oy + (VH - oy + 32) / z;
   // Grid isométrico (só visual): de trás para frente, com as bordas sumindo no espaço.
   const n = GRID_CELLS;
   for (let sum = 2 * n - 2; sum >= -2 * n; sum--) {
@@ -988,7 +1043,7 @@ function render(dt) {
       if (j < -n || j >= n) continue;
       const ring = Math.max(Math.abs(i + 0.5), Math.abs(j + 0.5));
       const [x, y] = F((i + 0.5) * GRID_CELL, (j + 0.5) * GRID_CELL);
-      if (x < -32 || x > VW + 32 || y < -32 || y > VH + 32) continue;
+      if (x < vx0 || x > vx1 || y < vy0 || y > vy1) continue;
       ctx.globalAlpha = GRID_ALPHA * (ring < n - 3 ? 1 : Math.max(0.15, (n - ring) / 3.5));
       if (IMG.grid) ctx.drawImage(IMG.grid, gridTiles[(i + n) * 2 * n + (j + n)] * 32, 0, 32, 32, x - 16, y - GRID_TILE_TOP, 32, 32);
     }
@@ -1007,13 +1062,13 @@ function render(dt) {
     const R = stat('attackRange');
     const occupied = new Set(run.sats.map(s => s.q));
     // A matriz leva coordenadas do chão direto para a tela: o arco em volta de (0,0) vira elipse.
-    ctx.setTransform(ISO_K, -ISO_K / 2, -ISO_K, -ISO_K / 2, ox, oy + FLOOR_DROP);
+    tf(ISO_K, -ISO_K / 2, -ISO_K, -ISO_K / 2, ox, oy + FLOOR_DROP);
     for (const q of occupied) {
       const flash = save.settings.reduceFlashes ? run.quadFlash[q] * 0.3 : run.quadFlash[q];
       ctx.fillStyle = `rgba(255,150,60,${0.14 + 0.1 * flash})`;
       ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, R, q * Math.PI / 2, (q + 1) * Math.PI / 2); ctx.closePath(); ctx.fill();
     }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    tf(1, 0, 0, 1, 0, 0);
   }
 
   // Sombras no chão: mostram onde cada coisa está no plano, e portanto em qual Quadrant.
@@ -1052,10 +1107,10 @@ function render(dt) {
     } else if (it.k === 'refl') {
       // Reflector: arco de 40° na órbita de 2,5 u, no plano de voo (a matriz leva o chão para a tela)
       const a = run.refAng;
-      ctx.setTransform(ISO_K, -ISO_K / 2, -ISO_K, -ISO_K / 2, ox, oy);
+      tf(ISO_K, -ISO_K / 2, -ISO_K, -ISO_K / 2, ox, oy);
       ctx.strokeStyle = '#8fd8ff'; ctx.lineWidth = 0.16;
       ctx.beginPath(); ctx.arc(0, 0, REFLECT_R, (a - REFLECT_HALF_ARC) * DEG, (a + REFLECT_HALF_ARC) * DEG); ctx.stroke();
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      tf(1, 0, 0, 1, 0, 0);
       if (IMG.reflector) ctx.drawImage(IMG.reflector, (Math.floor(clock * 2) % 2) * 32, 0, 32, 32, x - 16, y - 16, 32, 32);
     } else if (it.k === 'bolt') {
       // Gunner Bolt: projétil inimigo magenta com rastro
@@ -1127,12 +1182,14 @@ function render(dt) {
     ctx.drawImage(img, fr * f.cell, 0, f.cell, f.cell, x - f.cell / 2, y - f.cell / 2, f.cell, f.cell);
   }
 
-  // Números de dano
+  // Números de dano: de volta à tela (o texto não muda de tamanho), na posição com zoom.
+  screenView();
+  const Z = (x, y) => { const [a, b] = W(x, y); return [Math.round(ox + (a - ox) * z), Math.round(oy + (b - oy) * z)]; };
   if (save.settings.dmgNumbers) {
     ctx.font = '16px m5x7';
     ctx.textAlign = 'center';
     for (const d of run.nums) {
-      const [x, y] = W(d.x, d.y);
+      const [x, y] = Z(d.x, d.y);
       const yy = Math.round(y - 8 - d.t * 14);
       ctx.globalAlpha = d.t > 0.45 ? 1 - (d.t - 0.45) / 0.25 : 1;
       const txt = fmt(d.v) + (d.crit ? '!' : '');
@@ -1333,6 +1390,7 @@ const SCREENS = {
     const h = el(`<div id="hud">
       <div class="hpbar">${iconHtml(STAT.hitpoints.icon)}<div class="bar"><i></i><b></b></div></div>
       <div class="wave-info"><span class="w"></span> <span class="t"></span></div>
+      <div class="zoom-btns"><button class="btn zoom-out">-</button><button class="btn zoom-in">+</button></div>
       <button class="btn pause-btn">II</button>
       <div class="foes hidden"></div>
       <div class="boss-bar hidden"><span>Mothership</span><div class="bar"><i></i></div></div>
@@ -1342,6 +1400,9 @@ const SCREENS = {
     hud.wave = $('.wave-info .w', h); hud.timer = $('.wave-info .t', h);
     hud.boss = $('.boss-bar', h); hud.bossFill = $('.boss-bar i', h);
     $('.pause-btn', h).onclick = () => pause(true);
+    hud.zoomIn = $('.zoom-in', h); hud.zoomOut = $('.zoom-out', h);
+    hud.zoomIn.onclick = () => stepZoom(1); hud.zoomOut.onclick = () => stepZoom(-1);
+    updateZoomBtns();
     hud.foes = $('.foes', h); hud.foesKey = '';
 
     const d = el(`<div id="drawer">

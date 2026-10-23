@@ -166,7 +166,7 @@ function defaultSave() {
     totals: { motherships: 0 },
     hints: {},
     best: 0, bestPlanet: 0, mode: 'laststand',
-    settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false },
+    settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false, zoom: 1 },
   };
 }
 let save = defaultSave();
@@ -244,6 +244,7 @@ const ctx = canvas.getContext('2d');
 const ui = $('#ui');
 const stage = $('#stage');
 let P = 1, VW = REF_W, VH = REF_H;   // escala inteira e tamanho da vista em pixels de jogo
+let S = 1;                           // pixels físicos do canvas por pixel de jogo (P × dpr, inteiro)
 let bgTiles = [], bgStars = [];
 
 function resize() {
@@ -255,7 +256,9 @@ function resize() {
   P = Math.max(1, Math.floor(raw * dpr)) / dpr;
   if (dpr === 1) P = Math.max(1, P);
   VW = Math.ceil(w / P); VH = Math.ceil(h / P);   // proporção diferente de 16:9 mostra mais espaço
-  canvas.width = VW; canvas.height = VH;
+  // O canvas fica na resolução física (não em pixels de jogo) para o zoom do mundo continuar nítido.
+  S = Math.round(P * dpr);
+  canvas.width = VW * S; canvas.height = VH * S;
   canvas.style.width = VW * P + 'px'; canvas.style.height = VH * P + 'px';
   ui.style.width = VW + 'px'; ui.style.height = VH + 'px';
   ui.style.transform = `scale(${P})`;
@@ -269,7 +272,54 @@ window.addEventListener('resize', () => {
   resize();
   // Só reajusta a altura da gaveta: reconstruir os cards perderia a posição da rolagem.
   if (hud && drawerTrack) hud.drawer.style.height = DRAWER_OPEN_H + 'px';
-  if (hud) updateArrows();
+  if (hud) { updateArrows(); updateZoomBtns(); }
+});
+
+// ============================================================ zoom do mundo
+
+// Zoom do mundo: botões − e + ao lado da pausa, roda do mouse e teclas + e −. O canvas tem a resolução
+// física da tela (S pixels por pixel de jogo), então cada nível é arredondado para S × zoom inteiro: o
+// zoom continua pixel perfect. Fundo, setas dos setores, números de dano e HUD não mudam de tamanho.
+const ZOOMS = [0.5, 0.75, 1, 1.5, 2];
+let view = { k: 1, x: 0, y: 0 };   // transformação base atual: pixel de jogo (ou do mundo) → pixel do canvas
+function zoomLevels() {
+  const out = [];
+  for (const z of ZOOMS) { const e = Math.max(1, Math.round(S * z)) / S; if (!out.includes(e)) out.push(e); }
+  return out;
+}
+function zoomNow() {   // o nível válido mais perto do salvo (a escala muda quando a janela muda)
+  const lv = zoomLevels(), z = save.settings.zoom || 1;
+  return lv.reduce((b, e) => Math.abs(e - z) < Math.abs(b - z) ? e : b, lv[0]);
+}
+function stepZoom(dir) {
+  const lv = zoomLevels(), i = lv.indexOf(zoomNow()), j = clamp(i + dir, 0, lv.length - 1);
+  if (j === i) return;
+  save.settings.zoom = lv[j]; writeSave(); updateZoomBtns();
+}
+function updateZoomBtns() {
+  if (!hud || !hud.zoomIn) return;
+  const lv = zoomLevels(), z = zoomNow();
+  hud.zoomIn.classList.toggle('disabled', z >= lv[lv.length - 1]);
+  hud.zoomOut.classList.toggle('disabled', z <= lv[0]);
+}
+// Matriz composta com a base atual: tf(1, 0, 0, 1, 0, 0) volta para a base.
+function tf(a, b, c, d, e, f) { ctx.setTransform(view.k * a, view.k * b, view.k * c, view.k * d, view.k * e + view.x, view.k * f + view.y); }
+function screenView() { view = { k: S, x: 0, y: 0 }; tf(1, 0, 0, 1, 0, 0); }
+// O zoom é em volta do planeta (ox, oy): um ponto p da tela vai para o + (p − o) × z.
+function worldView(ox, oy, z) { view = { k: S * z, x: Math.round(S * ox * (1 - z)), y: Math.round(S * oy * (1 - z)) }; tf(1, 0, 0, 1, 0, 0); }
+let wheelT = 0;
+ui.addEventListener('wheel', e => {
+  if (screen !== 'game' || !run || e.target.closest('#drawer, .screen')) return;
+  e.preventDefault();
+  const now = performance.now();
+  if (now - wheelT < 150) return;   // trackpad manda dezenas de eventos por gesto
+  wheelT = now;
+  stepZoom(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
+window.addEventListener('keydown', e => {
+  if (screen !== 'game' || !run || run.paused) return;
+  if (e.key === '+' || e.key === '=') stepZoom(1);
+  else if (e.key === '-') stepZoom(-1);
 });
 
 // ============================================================ estado da run
@@ -934,7 +984,7 @@ function render(dt) {
   const ox = cx + sx, oy = Math.round(camY) + sy;
   const W = (x, y) => [Math.round(ox + x * PPU), Math.round(oy - y * PPU)];   // mundo (y pra cima) → tela
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  screenView();
   ctx.globalAlpha = 1;
 
   // Fundo: tiles 32x32 sorteados + estrelas piscando
@@ -955,6 +1005,10 @@ function render(dt) {
   ctx.fillStyle = 'rgba(200,200,255,0.18)';
   for (let x = 0; x < VW; x += 3) ctx.fillRect(x, oy, 1, 1);
   for (let y = 0; y < VH; y += 3) ctx.fillRect(ox, y, 1, 1);
+  // Daqui até os números de dano, tudo é mundo e segue o zoom. Os eixos acima passam pelo
+  // planeta e cruzam a tela inteira, então não mudam com o zoom.
+  const z = zoomNow();
+  worldView(ox, oy, z);
   if (save.settings.quadrants && !run.over) {
     const R = stat('attackRange') * PPU;
     const occupied = new Set(run.sats.map(s => s.q));
@@ -1067,12 +1121,14 @@ function render(dt) {
     ctx.drawImage(img, fr * f.cell, 0, f.cell, f.cell, x - f.cell / 2, y - f.cell / 2, f.cell, f.cell);
   }
 
-  // Números de dano
+  // Números de dano: de volta à tela (o texto não muda de tamanho), na posição com zoom.
+  screenView();
+  const Z = (x, y) => { const [a, b] = W(x, y); return [Math.round(ox + (a - ox) * z), Math.round(oy + (b - oy) * z)]; };
   if (save.settings.dmgNumbers) {
     ctx.font = '16px m5x7';
     ctx.textAlign = 'center';
     for (const d of run.nums) {
-      const [x, y] = W(d.x, d.y);
+      const [x, y] = Z(d.x, d.y);
       const yy = Math.round(y - 4 - d.t * 14);
       ctx.globalAlpha = d.t > 0.45 ? 1 - (d.t - 0.45) / 0.25 : 1;
       const txt = fmt(d.v) + (d.crit ? '!' : '');
@@ -1267,6 +1323,7 @@ const SCREENS = {
     const h = el(`<div id="hud">
       <div class="hpbar">${iconHtml(STAT.hitpoints.icon)}<div class="bar"><i></i><b></b></div></div>
       <div class="wave-info"><span class="w"></span> <span class="t"></span></div>
+      <div class="zoom-btns"><button class="btn zoom-out">-</button><button class="btn zoom-in">+</button></div>
       <button class="btn pause-btn">II</button>
       <div class="foes hidden"></div>
       <div class="boss-bar hidden"><span>Mothership</span><div class="bar"><i></i></div></div>
@@ -1276,6 +1333,9 @@ const SCREENS = {
     hud.wave = $('.wave-info .w', h); hud.timer = $('.wave-info .t', h);
     hud.boss = $('.boss-bar', h); hud.bossFill = $('.boss-bar i', h);
     $('.pause-btn', h).onclick = () => pause(true);
+    hud.zoomIn = $('.zoom-in', h); hud.zoomOut = $('.zoom-out', h);
+    hud.zoomIn.onclick = () => stepZoom(1); hud.zoomOut.onclick = () => stepZoom(-1);
+    updateZoomBtns();
     hud.foes = $('.foes', h); hud.foesKey = '';
 
     const d = el(`<div id="drawer">
