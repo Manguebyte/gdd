@@ -9,7 +9,7 @@ Versão jogável em HTML/JS puro da Parte 1 do [`GDD_Protocolo_Ectoplasma.md`](.
   - **Imóvel:** tem 3 etapas, rua → térreo → porão. Você só passa para a etapa seguinte pela porta da casa ou pela escada, depois que a etapa atual estiver limpa.
 - **Regra entre etapas (§6.6):**
   - Vida, tanque e mochila passam de uma etapa para a outra, e a loja só abre fora do imóvel.
-  - Depois de limpar uma etapa, **Esc evacua guardando todo o plasma**.
+  - Depois de limpar uma etapa, **Esc abre a pausa; solicitar e confirmar evacuação guarda todo o plasma**.
   - Sair ou morrer no meio de uma etapa perde metade da mochila.
   - Etapa limpa fica salva: na próxima entrada no imóvel, você começa na primeira etapa pendente, com a vida cheia.
 - **Cenas:**
@@ -44,6 +44,26 @@ Versão jogável em HTML/JS puro da Parte 1 do [`GDD_Protocolo_Ectoplasma.md`](.
 - **Aviso antes do ataque:** o Poltergeist faz o móvel tremer, subir e brilhar em roxo por 0,6 s antes de arremessar; sem móvel por perto, um objeto gira sobre ele. O Residual incha e brilha por 0,45 s antes de cuspir ectoplasma.
 - **Retorno de dano:** cada golpe empurra o operador para longe da origem, treme a tela, acende uma borda vermelha e dá 0,5 s de invencibilidade (o operador pisca). O contato com o Residual virou golpe com empurrão (6 de dano) em vez de dano contínuo; na prática ele tira cerca de metade da vida por segundo que tirava antes.
 - **Sons sintetizados** no navegador, sem arquivos: ronco do aspirador que sobe de tom conforme o fantasma esvazia, captura, golpe, aviso, arremesso, batida, cuspe, armadilha, porta e etapa limpa. **M** liga e desliga. O áudio está "Em aberto" no GDD; estes sons são do protótipo.
+
+## Acabamento — primeiro pacote (2026-10-24)
+
+- **Identidade LimpaCorp:** abertura composta com os sprites do jogo, central com os setores sempre nomeados, ordens de serviço numeradas, catálogo de equipamento e recibo de extração. A compra confirma a melhoria instalada e toca um sinal curto.
+- **Pausa segura:** Esc abre a pausa; perder foco ou ocultar a aba também pausa. Vida, tanque, inimigos e o prazo do relatório ficam congelados. A evacuação exige confirmação com o valor exato a depositar e a perder. A regra econômica permanece igual.
+- **Arquivo [J]:** memórias e bilhetes podem ser relidos na central e durante a pausa, com filtros e rolagem por teclado. Novos registros guardam a origem; registros do save anterior continuam disponíveis, mesmo sem origem catalogada. O bilhete de Iracema também pode ser relido.
+- **Informação em campo:** objetivo persistente, identificação da etapa na chegada e aviso de memória separado dos avisos operacionais. O arquivo pausa a missão para leitura segura.
+- **Casa da Rua das Acácias, 12:** placa da família Souza, janela e retratos no térreo, identificação e tubulação no porão, iluminação ambiente e tapete integrado à área de estar. São ajustes decorativos; obstáculos, posições dos inimigos e regras de combate não mudaram. A iluminação ganha calor após a limpeza.
+- **Encerramento:** removida a nota de desenvolvimento sobre o final alternativo. Recomeçar pede confirmação antes de apagar o progresso.
+- **Compatibilidade:** a chave `ectoplasma-save-v2` foi preservada. O som ligado/desligado também é lembrado neste navegador.
+
+Este pacote ainda não inclui fachadas exclusivas para os 12 imóveis, trilha/ambiência completa, novas animações de personagem ou novas plantas. A casa de referência recebeu os primeiros ajustes de composição; a produção de arte por bairro continua como próximo trabalho.
+
+### Verificação
+
+`node --check prototipos/protocolo-ectoplasma/game.js`
+
+`node prototipos/protocolo-ectoplasma/smoke-test.cjs` (requer Playwright e Chromium disponíveis; use `NODE_PATH` se o pacote não estiver no projeto).
+
+A suíte usa um servidor local temporário e um perfil isolado, sem tocar no save do jogador. Verifica menus, limites de layout, captura, pausa, foco, cancelamento/confirmação de evacuação, pagamento único do contrato, arquivo, compra, som e compatibilidade com save anterior. Opcionalmente, defina `ECTO_SCREENSHOTS` com uma pasta de saída para capturas; `.qa/` está ignorada pelo Git. A avaliação sonora qualitativa continua manual.
 
 ## Escolhas do protótipo
 - O GDD pede o botão direito para sugar; aqui qualquer botão do mouse suga, para funcionar em touchpad.

@@ -19,10 +19,10 @@ if (DEV.has('reset')) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} 
 const UPG = {
   suck:    { name: 'Velocidade de sucção', desc: '+30% de plasma sugado por segundo', max: 5 },
   tank:    { name: 'Tanque da mochila',    desc: '+30 de energia de sucção',          max: 5 },
-  range:   { name: 'Alcance de mira',      desc: '+18 px de alcance do feixe',        max: 5 },
+  range:   { name: 'Alcance de mira',      desc: 'Feixe mais longo · +20% do alcance inicial', max: 5 },
   resist:  { name: 'Resistência',          desc: '−12% de dano dos contra-ataques',    max: 4 },
   traps:   { name: 'Armadilhas',           desc: '+1 armadilha em campo, +30% de força', max: 3 },
-  lamp:    { name: 'Lanterna',             desc: '+22 px de luz no escuro',            max: 3 },
+  lamp:    { name: 'Lanterna',             desc: 'Facho ampliado · +35% do raio inicial', max: 3 },
   decoder: { name: 'Decodificador de memórias', desc: 'lê a memória de cada fantasma antes de sugar', max: 1 },
 };
 const PRICES = [40, 90, 160, 250, 360];
@@ -115,11 +115,12 @@ const WALK_FRAMES = 8;                            // caminhada do operador (Pixe
 // M liga e desliga. O navegador só libera o áudio depois do primeiro clique ou tecla (SFX.unlock).
 const SFX = (() => {
   let ac = null, master = null, noiseBuf = null, hum = null, muted = false;
+  try { muted = localStorage.getItem('ectoplasma-muted') === 'true'; } catch (e) {}
   function audio() {
     if (!ac) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
-      ac = new AC(); master = ac.createGain(); master.gain.value = 0.45; master.connect(ac.destination);
+      ac = new AC(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.45; master.connect(ac.destination);
       noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     }
@@ -155,7 +156,15 @@ const SFX = (() => {
   }
   return {
     unlock() { audio(); },
-    toggleMute() { muted = !muted; if (hum) { hum.go.gain.value = 0; hum.gn.gain.value = 0; } return muted; },
+    isMuted() { return muted; },
+    toggleMute() {
+      muted = !muted;
+      if (master) master.gain.value = muted ? 0 : 0.45;
+      if (hum) { hum.go.gain.value = 0; hum.gn.gain.value = 0; }
+      try { localStorage.setItem('ectoplasma-muted', String(muted)); } catch (e) {}
+      return muted;
+    },
+    purchase() { [440, 660, 880].forEach((f, i) => tone('sine', f, f, 0.14, 0.10, i * 0.07)); },
     // on: sugando; pull: 0..1 do plasma já tirado do alvo; hit: o feixe está pegando um fantasma.
     hum(on, pull = 0, hit = false) {
       if (!ac) return;
@@ -225,7 +234,7 @@ const INTERIORS = ['sala', 'cozinha', 'quarto'];
 const S = loadSave();
 function loadSave() {
   const fresh = { plasma: 0, up: { suck: 0, tank: 0, range: 0, resist: 0, traps: 0, lamp: 0, decoder: 0 }, traps: { auto: 1, sup: 0 },
-    prog: {}, clean: {}, mem: [], notes: [], intro: false, note: false };
+    prog: {}, clean: {}, mem: [], notes: [], records: [], intro: false, note: false };
   try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); if (s) return { ...fresh, ...s, up: { ...fresh.up, ...s.up }, traps: { ...fresh.traps, ...s.traps } }; } catch (e) {}
   return fresh;
 }
@@ -287,6 +296,10 @@ const dctx = darkCv.getContext('2d');
 let scene = 'map';               // map · mission · screen
 let M = null;                    // etapa em andamento (e a entrada no imóvel que a contém)
 let hoverBairro = null;
+let screenBack = null;
+let paused = false;
+let noticeTime = 0;
+const IRACEMA = 'Minha mãe ainda estava naquela casa. Vocês não tinham o direito. — Iracema';
 const keys = new Set();
 const mouse = { x: 0, y: 0, down: false };
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -298,18 +311,104 @@ function toast(html, ms = 3200) {
   const t = $('toast'); t.innerHTML = html; t.classList.remove('hidden');
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), ms);
 }
-function showScreen(html) { const s = $('screen'); s.innerHTML = html; s.classList.remove('hidden'); scene = 'screen'; }
-function hideScreen() { $('screen').classList.add('hidden'); }
+const escapeHtml = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const brand = label => `<div class="terminal-head"><span class="brand-mark">LC<span>+</span></span><span>LIMPACORP <small>DIVISÃO ESPECTRAL</small></span><span class="terminal-label">${label}</span></div>`;
+const orderNo = im => String(BAIRROS.flatMap(b => b.imoveis).indexOf(im) + 1).padStart(3, '0');
+
+function resetInput() { mouse.down = false; keys.clear(); SFX.hum(false); }
+function showScreen(html, type = '', back = null) {
+  resetInput(); screenBack = back;
+  clearTimeout(toast.t); $('toast').classList.add('hidden');
+  const s = $('screen'); s.className = type; s.innerHTML = brand('OPERADOR / 0451') + html;
+  scene = 'screen';
+  for (const id of ['hud', 'dispatch', 'objective', 'arrival', 'memoryNotice']) $(id).classList.add('hidden');
+  s.focus({ preventScroll: true });
+}
+function hideScreen() { $('screen').classList.add('hidden'); $('hud').classList.remove('hidden'); screenBack = null; }
+
+function resumeMission() {
+  if (!M || !paused) return;
+  paused = false; resetInput(); hideScreen(); scene = 'mission';
+  $('objective').classList.remove('hidden');
+  last = performance.now();
+}
+
+function openPause(reason = '') {
+  if (!M || (scene !== 'mission' && !paused)) return;
+  paused = true;
+  showScreen(`<div class="eyebrow">ORDEM DE SERVIÇO / ${orderNo(M.im)}</div>
+    <h1>Operação suspensa</h1><p class="subtitle">${M.im.name} · ${ETAPA_NAMES[M.etapa]}</p>
+    <div class="pause-status"><span>INTEGRIDADE <b>${Math.ceil(M.op.hp)}%</b></span><span>EM CUSTÓDIA <b>◆ ${M.bag}</b></span></div>
+    <p class="pause-reason">${reason || 'O tempo está parado. Seu equipamento e sua carga estão seguros.'}</p>
+    <div class="row"><button class="btn go" id="resume">Retomar operação [Esc]</button><button class="btn" id="archive">Arquivo [J]</button></div>
+    <div class="row"><button class="btn" id="controls">Controles</button><button class="btn" id="audio">Som: ${SFX.isMuted() ? 'desligado' : 'ligado'}</button>
+    <button class="btn danger" id="evacuate" ${M.over ? 'disabled' : ''}>Solicitar evacuação</button></div>
+    <small>${M.over ? 'Extração concluída. Retome para receber o relatório.' : M.cleared ? 'Etapa limpa: evacuação com toda a carga.' : 'Etapa em andamento: evacuar perde metade da carga.'}</small>`, 'pause-screen', resumeMission);
+  $('resume').onclick = resumeMission;
+  $('archive').onclick = () => openArchive(openPause);
+  $('controls').onclick = () => openControls(openPause);
+  $('audio').onclick = () => { SFX.toggleMute(); openPause(); };
+  $('evacuate').onclick = confirmEvacuation;
+}
+
+function confirmEvacuation() {
+  if (!M || M.over || !paused) return;
+  const kept = M.cleared ? M.bag : Math.floor(M.bag / 2);
+  showScreen(`<div class="eyebrow">EXTRAÇÃO DO OPERADOR</div><h1>${M.cleared ? 'Carga protegida' : 'Interromper o serviço?'}</h1>
+    <p>${M.cleared ? 'A etapa foi concluída. Todo o plasma será depositado.' : 'A etapa atual continuará pendente. O resgate recupera metade do plasma da mochila.'}</p>
+    <div class="receipt"><div>Depósito confirmado <b>◆ ${kept}</b></div><div>Perda de carga <strong class="loss">◆ ${M.bag - kept}</strong></div></div>
+    <small>As etapas já limpas continuam salvas.</small><div class="row"><button class="btn go" id="cancel">Continuar no imóvel</button>
+    <button class="btn danger" id="confirmEvac">Confirmar evacuação</button></div>`, 'pause-screen', openPause);
+  $('cancel').onclick = resumeMission;
+  $('confirmEvac').onclick = () => { resumeMission(); leave('evac'); };
+}
+
+function openControls(back) {
+  showScreen(`<div class="eyebrow">MANUAL DO OPERADOR</div><h1>Procedimento de campo</h1>
+    <div class="controls-list"><div><kbd>W A S D / SETAS</kbd><span>Movimentar o operador</span></div>
+    <div><kbd>MOUSE SEGURADO</kbd><span>Mirar no fantasma e sugar. Parado, a sucção rende o dobro.</span></div>
+    <div><kbd>Q / E</kbd><span>Instalar armadilha autônoma / de suporte perto da mira</span></div>
+    <div><kbd>ESC / J / M</kbd><span>Pausar / consultar arquivo / ligar ou desligar o som</span></div></div>
+    <p class="subtitle">O tanque recarrega ao soltar o feixe. Após limpar uma etapa, avance pela saída ou evacue com toda a carga.</p>
+    <button class="btn go" id="back">Voltar</button>`, 'controls-screen', back);
+  $('back').onclick = () => back();
+}
+
+function remember(text, kind, place) {
+  const list = kind === 'memory' ? S.mem : S.notes;
+  if (!list.includes(text)) list.push(text);
+  if (!S.records.some(r => r.text === text)) S.records.push({ text, kind, place: place || M?.im.name || 'Arquivo municipal' });
+  save();
+  const n = $('memoryNotice');
+  n.innerHTML = `<span class="eyebrow">${kind === 'memory' ? 'ECO RECUPERADO' : 'DOCUMENTO RECOLHIDO'}</span><span>${escapeHtml(text)}</span><small>Guardado no arquivo · [J] para ler em segurança</small>`;
+  n.classList.remove('hidden'); noticeTime = 5;
+}
+
+function openArchive(back, filter = 'all') {
+  const records = [
+    ...S.mem.map(text => ({ text, kind: 'memory' })), ...S.notes.map(text => ({ text, kind: 'note' })),
+    ...(S.note ? [{ text: IRACEMA, kind: 'note', place: 'Portão da Vila Operária' }] : []),
+  ].filter((r, i, all) => all.findIndex(x => x.text === r.text) === i)
+    .map(r => ({ ...r, ...S.records.find(x => x.text === r.text) }))
+    .filter(r => filter === 'all' || r.kind === filter);
+  showScreen(`<div class="eyebrow">REGISTROS RETIDOS / ACESSO DO OPERADOR</div><h1>O que ficou nas casas</h1>
+    <div class="archive-tabs">${[['all', 'Todos'], ['memory', 'Memórias'], ['note', 'Documentos']].map(([id, label]) => `<button class="btn ${id === filter ? 'go' : ''}" data-filter="${id}" aria-pressed="${id === filter}">${label}</button>`).join('')}</div>
+    <div class="archive-list" tabindex="0" aria-label="Registros coletados">${records.length ? records.map((r, i) => `<article><span class="record-number">${String(i + 1).padStart(2, '0')}</span><div><small>${r.kind === 'memory' ? 'ECO ESPECTRAL' : 'DOCUMENTO'} / ${escapeHtml(r.place || 'Registro anterior · origem não catalogada')}</small><p>${escapeHtml(r.text)}</p></div></article>`).join('') : '<div class="empty-archive"><h2>Nenhum registro por aqui.</h2><p>Recolha bilhetes e capture ecos nos imóveis. Tudo o que encontrar ficará guardado neste arquivo.</p></div>'}</div>
+    <div class="screen-footer"><small>${records.length} ${records.length === 1 ? 'registro' : 'registros'} · armazenamento local</small><button class="btn go" id="back">Voltar [Esc]</button></div>`, 'archive-screen', back);
+  document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => openArchive(back, b.dataset.filter));
+  $('back').onclick = () => back();
+}
 
 // ============================================================ mapa da cidade (§6.1, §6.6, §8)
 
 function goMap() {
-  hideScreen(); M = null; scene = 'map';
+  paused = false; resetInput(); hideScreen(); M = null; scene = 'map';
+  for (const id of ['objective', 'arrival', 'memoryNotice']) $(id).classList.add('hidden');
   mapHud();
   // Ato 2 (§3.2): depois do primeiro bairro aparece a primeira pista forte de que os fantasmas eram gente.
   if (bairroDone(BAIRROS[0]) && !S.note) {
     S.note = true; save();
-    toast('Bilhete preso no portão da Vila: <i>"Minha mãe ainda estava naquela casa. Vocês não tinham o direito. — Iracema"</i>', 7000);
+    remember(IRACEMA, 'note', 'Portão da Vila Operária');
   }
 }
 
@@ -317,9 +416,15 @@ function mapHud() {
   $('hud').innerHTML = `<div><div class="lbl">LimpaCorp Espectral · operador nº 0451</div><div class="plasma">◆ ${S.plasma} de plasma</div></div>
     <div><div class="lbl">Cidade limpa</div>${imoveisClean()}/${imoveisTotal} imóveis</div>
     <div><div class="lbl">Memórias</div>${S.mem.length + S.notes.length}</div><div class="grow"></div>
-    <button class="btn neon" id="shopBtn">Loja da empresa [U]</button>
-    <div class="hint">Clique num bairro para ver os imóveis.</div>`;
+    <button class="btn" id="archiveBtn">Arquivo [J]</button><button class="btn neon" id="shopBtn">Equipamento [U]</button>`;
   $('shopBtn').onclick = () => openShop(goMap);
+  $('archiveBtn').onclick = () => openArchive(goMap);
+  const dispatch = $('dispatch'); dispatch.classList.remove('hidden');
+  dispatch.innerHTML = `${brand('CENTRAL')}<div class="eyebrow">PROGRAMA DE REVALORIZAÇÃO URBANA</div><h1>A cidade espera<br>pelo seu trabalho.</h1>
+    <p>Selecione um setor para consultar as ordens de serviço.</p>
+    <nav>${BAIRROS.map((b, i) => `<button data-bairro="${i}" ${!bairroOpen(b) ? 'disabled' : ''}><span class="sector-number">0${i + 1}</span><span>${b.name}<small>${bairroDone(b) ? 'SERVIÇO CONCLUÍDO' : !bairroOpen(b) ? 'AGUARDANDO SETOR ANTERIOR' : `${b.imoveis.filter(im => S.clean[im.id]).length}/3 IMÓVEIS CONCLUÍDOS`}</small></span><span class="sector-arrow">${bairroDone(b) ? '✓' : '→'}</span></button>`).join('')}</nav>
+    <footer>SEU BAIRRO DE VOLTA AO MERCADO.<span>LC / CONEXÃO LOCAL ATIVA</span></footer>`;
+  document.querySelectorAll('[data-bairro]').forEach(btn => btn.onclick = () => openBairro(BAIRROS[+btn.dataset.bairro]));
 }
 
 function bairroAt(x, y) { return BAIRROS.find(b => hyp(b.mx - x, b.my - y) < 34); }
@@ -361,25 +466,25 @@ function drawMap(now) {
 // ============================================================ bairro: lista de imóveis (§6.6)
 
 function openBairro(b) {
-  M = null;
+  M = null; paused = false;
   const cards = b.imoveis.map(im => {
     const done = S.prog[im.id] || 0, clean = S.clean[im.id], risk = riskOf(im);
     const pips = ETAPA_NAMES.map((n, k) => `<span class="${k < done ? 'ok' : ''}" title="${n}">${k < done ? '■' : '□'}</span>`).join('');
     const ghosts = [...new Set(im.etapas.flat())];
     return `<div class="card${clean ? ' clean' : ''}">
-      <img class="house" src="${ART}buildings/casa_contaminada.png" alt="">
+      <div class="card-code">OS / ${orderNo(im)} <span>${clean ? 'CONCLUÍDA' : im.boss ? 'RESIDUAL' : 'EXTRAÇÃO'}</span></div>
+      <div class="house-frame"><img class="house" src="${ART}buildings/casa_contaminada.png" alt="">${clean ? '<span class="stamp">LIBERADO</span>' : ''}</div>
       <h3>${im.name}</h3>
       <div>Ameaça <span class="threat">${'☠'.repeat(im.threat)}${'·'.repeat(5 - im.threat)}</span>${im.boss ? ' · <b style="color:var(--pink)">chefe</b>' : ''}</div>
       <div class="row cast">${ghosts.map(g => `<img src="${ART + GHOSTS[g].img}.png" title="${GHOSTS[g].name}" alt="">`).join('')}</div>
-      <div class="pips">Etapas ${pips}</div>
+      <div class="pips" aria-label="${done} de 3 etapas limpas">${pips} <span>${done}/3 etapas</span></div>
       ${clean ? '<div class="risk-0">Limpo · imóvel valorizado</div>' :
         `<div>Equipamento: <span class="risk-${risk}">${RISK[risk]}</span></div>
          <button class="btn go" data-im="${im.id}">${done ? `Continuar: ${ETAPA_NAMES[done]}` : 'Entrar'}</button>`}
     </div>`;
   }).join('');
-  showScreen(`<h1>${b.name}</h1><p>${b.theme}</p><div class="imoveis">${cards}</div>
-    <small>Vida e tanque não se recuperam entre as etapas. Etapa limpa não volta a contaminar.</small>
-    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn" id="back">Mapa da cidade</button></div>`);
+  showScreen(`<div class="eyebrow">ORDENS DE SERVIÇO / SETOR 0${BAIRROS.indexOf(b) + 1}</div><h1>${b.name}</h1><p class="subtitle">${b.theme}</p><div class="imoveis">${cards}</div>
+    <div class="screen-footer"><small>A carga e o equipamento seguem com você entre as etapas.</small><div class="row"><button class="btn neon" id="shop">Equipamento</button> <button class="btn" id="back">Central [Esc]</button></div></div>`, 'district-screen', goMap);
   document.querySelectorAll('[data-im]').forEach(btn => btn.onclick = () => startImovel(b, b.imoveis.find(i => i.id === btn.dataset.im)));
   $('shop').onclick = () => openShop(() => openBairro(b));
   $('back').onclick = goMap;
@@ -387,43 +492,45 @@ function openBairro(b) {
 
 // ============================================================ loja (§6.4, §6.3, §8)
 
-function openShop(back) {
+function openShop(back, feedback = '') {
   const ups = Object.entries(UPG).map(([id, u]) => {
     const lvl = S.up[id], maxed = lvl >= u.max, price = maxed ? 0 : upgPrice(id, lvl);
-    return `<button data-up="${id}" ${maxed || S.plasma < price ? 'disabled' : ''}>${u.name} <em>${maxed ? 'máx.' : '◆ ' + price}</em>
+    return `<button data-up="${id}" class="${feedback === id ? 'installed' : ''}" ${maxed || S.plasma < price ? 'disabled' : ''}>${u.name} <em>${maxed ? 'máx.' : '◆ ' + price}</em>
       <span>${u.desc} · <i class="pips">${'■'.repeat(lvl)}${'□'.repeat(u.max - lvl)}</i></span></button>`;
   }).join('');
   const traps = Object.entries(TRAPS).map(([id, t]) =>
     `<button data-trap="${id}" ${S.plasma < t.price ? 'disabled' : ''}>${t.name} (tem ${S.traps[id]}) <em>◆ ${t.price}</em><span>[${t.key}] ${t.desc}</span></button>`).join('');
-  showScreen(`<h1>Loja da empresa</h1><h2>◆ ${S.plasma} de plasma</h2>
+  showScreen(`<div class="eyebrow">ALMOXARIFADO / MELHORIAS AUTORIZADAS</div><div class="shop-heading"><h1>Ferramentas do ofício</h1><span class="balance">SALDO DISPONÍVEL <b>◆ ${S.plasma}</b></span></div>
     <div class="shop">${ups}${traps}</div>
-    <small>Armadilhas são gastas ao serem colocadas. Em campo cabem ${stat.slots()} de uma vez.</small>
-    <button class="btn go" id="back">Voltar</button>`);
+    <div class="screen-footer"><small role="status">${feedback ? `✓ ${UPG[feedback]?.name || TRAPS[feedback]?.name} · ${UPG[feedback] ? 'melhoria instalada' : 'adicionada ao inventário'}.` : `Armadilhas consumíveis · ${stat.slots()} posições disponíveis em campo.`}</small>
+    <button class="btn go" id="back">Voltar [Esc]</button></div>`, 'shop-screen', back);
   document.querySelectorAll('[data-up]').forEach(b => b.onclick = () => {
-    const id = b.dataset.up; S.plasma -= upgPrice(id, S.up[id]); S.up[id]++; save(); openShop(back);
+    const id = b.dataset.up; S.plasma -= upgPrice(id, S.up[id]); S.up[id]++; save(); SFX.purchase(); openShop(back, id);
   });
   document.querySelectorAll('[data-trap]').forEach(b => b.onclick = () => {
-    const id = b.dataset.trap; S.plasma -= TRAPS[id].price; S.traps[id]++; save(); openShop(back);
+    const id = b.dataset.trap; S.plasma -= TRAPS[id].price; S.traps[id]++; save(); SFX.purchase(); openShop(back, id);
   });
-  $('back').onclick = back;
+  $('back').onclick = () => back();
 }
 
 // ============================================================ imóvel e etapas (§6.6)
 
 // Uma entrada no imóvel: vida, tanque e mochila passam de uma etapa para a outra; começa na 1ª etapa ainda suja.
 function startImovel(b, im, etapa) {
-  hideScreen();
+  paused = false; resetInput(); hideScreen(); $('dispatch').classList.add('hidden');
   const mul = threatMul(im.threat);
-  M = { bairro: b, im, mul, dmg: dmgMul(im.threat), bag: 0, etapa: etapa ?? (S.prog[im.id] || 0),
+  M = { bairro: b, im, mul, dmg: dmgMul(im.threat), bag: 0, etapa: etapa ?? Math.min(2, S.prog[im.id] || 0),
     op: { x: 240, y: 240, hp: 100, dir: 6, hurt: -9, moving: false, walk: 0, kx: 0, ky: 0 }, tank: stat.tankMax(), overheat: false };
   enterEtapa();
 }
 
 function enterEtapa() {
+  clearTimeout(toast.t); $('toast').classList.add('hidden');
   const im = M.im, k = M.etapa, b = M.bairro;
   const kind = k === 0 ? 'rua' : k === 1 ? INTERIORS[b.imoveis.indexOf(im) % INTERIORS.length] : 'porao';
   Object.assign(M, { kind, t: 0, traps: [], shots: [], parts: [], ghosts: [], dying: [], over: false, cleared: false, beam: null, note: null,
-    shake: 0, shakeMag: 0, hitstop: 0, red: 0 });
+    shake: 0, shakeMag: 0, hitstop: 0, red: 0, finishIn: null, arrival: 3, clearBlend: 0 });
+  resetInput();
   Object.assign(M.op, { kx: 0, ky: 0, hurt: -9 });
   if (k > 0) SFX.door();
   const room = ROOMS[kind];
@@ -431,6 +538,10 @@ function enterEtapa() {
   const flip = !room && b.imoveis.indexOf(im) % 2 === 1;
   M.props = room ? room.props.map(([name, x, y]) => ({ name, x, y, ...PROPS[name] }))
     : STREET.map(([name, x, y]) => ({ name, x: flip ? W - x : x, y, ...PROPS[name] }));
+  if (im.id === 'acacias' && kind === 'sala') {
+    // O tapete une a área de estar sem alterar móveis sólidos ou caminhos.
+    Object.assign(M.props.find(p => p.name === 'tapete'), { x: 122, y: 148, scale: 1.45 });
+  }
   M.dark = room && room.dark ? room.dark : (b.dark && k === 1 ? 0.8 : 0);
   M.exit = k === 2 ? null : room ? { x: room.exit[0] - 20, y: room.exit[1] - 14, w: 40, h: 28 } : { x: 226, y: 96, w: 34, h: 16 };
   if (room && room.exit) M.props.push({ name: 'escada_descida', x: room.exit[0], y: room.exit[1], flat: true });
@@ -444,7 +555,11 @@ function enterEtapa() {
   [M.op.x, M.op.y] = room ? room.start : [240, 246];
   scene = 'mission';
   buildMissionHud();
-  toast(`<b>${im.name}</b> · Etapa ${k + 1}/3: ${ETAPA_NAMES[k]}${k === 0 ? ' · segure o botão do mouse sobre um fantasma para sugar' : ''}${M.dark ? ' · está escuro: fique perto da luz' : ''}`, 3600);
+  missionHud();
+  $('arrival').innerHTML = `<span class="eyebrow">LIMPACORP / OS ${orderNo(im)} / ${b.name}</span><strong>${im.name}</strong><span>0${k + 1} — ${ETAPA_NAMES[k]} <i>Extração autorizada</i></span>`;
+  $('arrival').classList.remove('hidden');
+  $('objective').classList.remove('hidden');
+  $('memoryNotice').classList.add('hidden'); noticeTime = 0;
 }
 
 function noteFor(im) {
@@ -503,7 +618,22 @@ function wallHit(x1, y1, x2, y2) {
 }
 
 function updateMission(dt) {
+  if (scene !== 'mission' || paused) return;
   const op = M.op;
+  M.arrival = Math.max(0, M.arrival - dt);
+  M.clearBlend = Math.min(1, M.clearBlend + (M.cleared ? dt * 0.7 : 0));
+  $('arrival').classList.toggle('hidden', M.arrival === 0);
+  // O relatório usa tempo de simulação: pausa e perda de foco também param sua contagem.
+  if (M.finishIn !== null) {
+    M.t += dt; M.finishIn -= dt;
+    M.shake = Math.max(0, M.shake - dt);
+    for (const d of M.dying) d.t += dt;
+    M.dying = M.dying.filter(d => d.t < CAPTURE_TIME);
+    for (const p of M.parts) p.life -= dt;
+    M.parts = M.parts.filter(p => p.life > 0);
+    if (M.finishIn <= 0) finishImovel();
+    return;
+  }
   M.shake = Math.max(0, M.shake - dt); M.red = Math.max(0, M.red - dt);
   // Pausa de impacto: congela o jogo por alguns centésimos na captura e no golpe, para eles "pesarem".
   if (M.hitstop > 0) { M.hitstop -= dt; missionHud(); return; }
@@ -572,12 +702,13 @@ function updateMission(dt) {
     if (g) { g.p -= 6 * stat.trapPow() * dt; g.lastHit = M.t; if (g.p <= 0) capture(g); }
   }
 
-  for (const g of [...M.ghosts]) updateGhost(g, dt);
+  for (const g of [...M.ghosts]) { updateGhost(g, dt); if (scene !== 'mission') return; }
 
   for (const s of M.shots) {
     s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; s.rot += dt * 8;
     if (hyp(s.x - op.x, s.y - (op.y - 16)) < 13) { s.life = 0; hurt(s.dmg, s.x - s.vx, s.y - s.vy); burst(s.x, s.y, '#ff9a4a', 8); if (s.kind !== 'blob') SFX.smash(); }
     else if (M.kind !== 'rua' && M.walls.some(r => s.x > r.x && s.x < r.x + r.w && s.y > r.y - 22 && s.y < r.y + r.h)) { s.life = 0; burst(s.x, s.y, '#c77dff', 8); SFX.smash(); }
+    if (scene !== 'mission') return;
   }
   M.shots = M.shots.filter(s => s.life > 0 && s.x > -20 && s.x < W + 20 && s.y > -20 && s.y < H + 20);
   const nzz = nozzle();
@@ -592,8 +723,7 @@ function updateMission(dt) {
 
   // Bilhete do térreo.
   if (M.note && hyp(M.note.x - op.x, M.note.y - op.y) < 16) {
-    S.notes.push(M.note.text); save();
-    toast(`Bilhete: <i>${M.note.text}</i>`, 6000);
+    remember(M.note.text, 'note');
     M.note = null;
   }
 
@@ -601,9 +731,11 @@ function updateMission(dt) {
   if (!M.ghosts.length && !M.cleared) {
     M.cleared = true;
     SFX.clear();
-    S.prog[M.im.id] = M.etapa + 1; save();
-    if (M.etapa === 2) { M.over = true; setTimeout(() => finishImovel(), 1200); }
-    else toast(`Etapa limpa! ${M.etapa === 0 ? 'Entre pela porta da casa' : 'Desça pela escada'} para seguir, ou <b>Esc</b> para evacuar com todo o plasma.`, 6000);
+    if (M.etapa === 2) { M.over = true; M.finishIn = 1.2; SFX.hum(false); }
+    else {
+      S.prog[M.im.id] = M.etapa + 1; save();
+      toast(`Etapa liberada · ${M.etapa === 0 ? 'Entre pela porta da casa' : 'Desça pela escada'} ou abra a pausa para evacuar com toda a carga.`, 5000);
+    }
   }
   if (M.cleared && M.exit && !M.over && inRect(op.x, op.y, M.exit)) { M.etapa++; enterEtapa(); return; }
   missionHud();
@@ -701,8 +833,8 @@ function capture(g) {
   burst(g.x, g.y - g.size * 0.45, '#8cff4a', g.boss ? 60 : 22);
   M.hitstop = g.boss ? 0.18 : 0.06; shake(g.boss ? 0.6 : 0.12, g.boss ? 5 : 2);
   SFX.capture(g.boss);
-  if (!S.mem.includes(g.memory)) { S.mem.push(g.memory); save(); }
-  toast(`${g.name} sugado · <b>+◆ ${gain}</b><br><i>${g.memory}</i>`, 3600);
+  remember(g.memory, 'memory');
+  toast(`${g.name} capturado · <b>+◆ ${gain}</b> em custódia`, 2200);
 }
 
 function burst(x, y, color, n) {
@@ -721,18 +853,19 @@ function placeTrap(type) {
 
 // Imóvel 100% limpo: bônus do contrato; bairro inteiro limpo valoriza no mapa e libera o próximo (§6.6).
 function finishImovel() {
-  if (scene !== 'mission') return;
+  if (scene !== 'mission' || S.clean[M.im.id]) return;
+  M.finishIn = null;
   SFX.hum(false);
   const { im, bairro: b } = M;
   const bonus = CONTRACT * im.threat;
-  S.plasma += M.bag + bonus; S.clean[im.id] = true; save();
+  S.plasma += M.bag + bonus; S.clean[im.id] = true; S.prog[im.id] = 3; save();
   if (BAIRROS.every(bairroDone)) return ending();
   const nextB = BAIRROS[BAIRROS.indexOf(b) + 1];
   const bairroMsg = bairroDone(b) ? `<p><b>${b.name} valorizado!</b>${nextB ? ` ${nextB.name} liberado no mapa.` : ''}</p>` : '';
-  showScreen(`<h1>Imóvel 100% limpo</h1><h2>${im.name}</h2>
-    <p>Plasma extraído: <b>◆ ${M.bag}</b> · bônus do contrato: <b>◆ ${bonus}</b></p>${bairroMsg}
-    <p>A cidade agradece. O metro quadrado da rua subiu ${8 * im.threat}%.</p>
-    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="bairro">${bairroDone(b) ? 'Mapa' : b.name}</button></div>`);
+  showScreen(`<div class="eyebrow">RELATÓRIO DE EXTRAÇÃO / OS ${orderNo(im)}</div><h1>Serviço concluído.</h1><p class="subtitle">${im.name}</p>
+    <div class="receipt"><span class="stamp">LIBERADO</span><div>Plasma extraído <b>◆ ${M.bag}</b></div><div>Adicional de contrato <b>◆ ${bonus}</b></div><div class="receipt-total">Depositado na conta <b>◆ ${M.bag + bonus}</b></div></div>${bairroMsg}
+    <p class="corporate-quote">A cidade agradece. O metro quadrado da rua subiu ${8 * im.threat}%.</p>
+    <div class="row"><button class="btn neon" id="shop">Melhorar equipamento</button> <button class="btn go" id="bairro">${bairroDone(b) ? 'Voltar à central' : 'Próxima ordem de serviço'}</button></div>`, 'report-screen');
   $('shop').onclick = () => openShop(() => openBairro(b));
   $('bairro').onclick = () => bairroDone(b) ? goMap() : openBairro(b);
 }
@@ -750,9 +883,9 @@ function leave(why) {
   const title = full ? 'Evacuação segura' : why === 'dead' ? 'Resgatado' : 'Abandonou o imóvel';
   const text = full ? `Você saiu entre as etapas e guardou todo o plasma: <b>◆ ${kept}</b>.`
     : `${why === 'dead' ? 'O operador foi retirado pela equipe de resgate.' : 'Você saiu no meio da etapa.'} Metade do plasma da mochila se perdeu: ficou <b>◆ ${kept}</b>. A etapa ${ETAPA_NAMES[M.etapa].toLowerCase()} volta a contaminar.`;
-  showScreen(`<h1 style="color:${full ? 'var(--ecto)' : 'var(--hp)'}">${title}</h1><h2>${im.name}</h2><p>${text}</p>
+  showScreen(`<div class="eyebrow">RELATÓRIO DE RESGATE / OS ${orderNo(im)}</div><h1 style="color:${full ? 'var(--ecto)' : 'var(--hp)'}">${title}</h1><h2>${im.name}</h2><p>${text}</p>
     <p>Etapas limpas: ${done}/3. Na próxima entrada você começa ${done < 3 ? 'no ' + ETAPA_NAMES[done].toLowerCase() : ''}, com vida cheia.</p>
-    <div class="row"><button class="btn neon" id="shop">Loja</button> <button class="btn go" id="bairro">${b.name}</button></div>`);
+    <div class="row"><button class="btn neon" id="shop">Equipamento</button> <button class="btn go" id="bairro">${b.name}</button></div>`, 'report-screen');
   $('shop').onclick = () => openShop(() => openBairro(b));
   $('bairro').onclick = () => openBairro(b);
 }
@@ -767,10 +900,15 @@ function ending() {
     <button class="btn" id="next">Continuar</button>`);
   $('next').onclick = () => {
     showScreen(`<h2>Fim</h2><p>Os imóveis foram valorizados. As ruas estão vazias.<br>Ninguém mais chama ninguém para jantar.</p>
-      <small>O final alternativo da §3.2 (comunicar em vez de sugar) ainda está em aberto.</small>
-      <div class="row"><button class="btn go" id="map">Ver a cidade</button> <button class="btn" id="again">Recomeçar do zero</button></div>`);
+      <div class="ending-line">LIMPACORP ESPECTRAL<br><span>O futuro não deixa vestígios.</span></div>
+      <div class="row"><button class="btn go" id="map">Ver a cidade</button><button class="btn" id="archive">Guardar as vozes</button> <button class="btn" id="again">Novo turno</button></div>`, 'ending-screen');
     $('map').onclick = goMap;
-    $('again').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} location.hash = ''; location.reload(); };
+    $('archive').onclick = () => openArchive(ending);
+    $('again').onclick = () => {
+      showScreen(`<div class="eyebrow">NOVO TURNO</div><h1>Recomeçar a história?</h1><p>O progresso, o equipamento e os registros desta cidade serão apagados.</p><div class="row"><button class="btn go" id="cancel">Manter meu arquivo</button><button class="btn danger" id="resetSave">Apagar e recomeçar</button></div>`, 'pause-screen', ending);
+      $('cancel').onclick = ending;
+      $('resetSave').onclick = () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} location.hash = ''; location.reload(); };
+    };
   };
 }
 
@@ -783,8 +921,8 @@ function buildMissionHud() {
     <div><div class="lbl">Mochila</div><span class="plasma" id="bag"></span></div>
     <div><div class="lbl">Etapa ${M.etapa + 1}/3</div>${ETAPA_NAMES[M.etapa]} · <span id="left"></span></div>
     <div class="traps">${Object.entries(TRAPS).map(([id, t]) => `<div title="${t.name}: ${t.desc}"><img src="${ART + t.img}.png" alt=""><kbd>${t.key}</kbd>×<span id="tr-${id}"></span></div>`).join('')}</div>
-    <div class="grow"></div><button class="btn" id="quit">Sair [Esc]</button>`;
-  $('quit').onclick = () => leave('evac');
+    <div class="grow"></div><button class="btn" id="quit">Pausa [Esc]</button>`;
+  $('quit').onclick = () => openPause();
 }
 
 function missionHud() {
@@ -795,9 +933,9 @@ function missionHud() {
   $('tkTxt').textContent = Math.round(M.tank);
   $('heat').textContent = M.overheat ? ' · recarregando' : '';
   $('bag').textContent = '◆ ' + M.bag;
-  $('left').textContent = M.cleared ? 'limpa!' : '👻 ' + M.ghosts.length;
-  $('quit').textContent = M.cleared ? 'Evacuar com tudo [Esc]' : 'Sair [Esc]';
-  $('quit').classList.toggle('go', M.cleared);
+  $('left').textContent = M.cleared ? 'liberada' : M.ghosts.length + ' ecos';
+  const objective = `<span class="objective-step">0${M.etapa + 1} / 03</span><div><small>OS ${orderNo(M.im)} · ${M.bairro.name}</small><strong>${M.cleared ? M.etapa === 2 ? 'Extração concluída. Emitindo relatório…' : M.etapa === 0 ? 'Área liberada. Entre pela porta.' : 'Área liberada. Desça pela escada.' : 'Localize e capture as presenças.'}</strong></div><span class="field-hint">${M.cleared ? 'ESC · opções de extração' : 'WASD · mover / mouse · sugar / J · arquivo'}</span>`;
+  if ($('objective').innerHTML !== objective) $('objective').innerHTML = objective;
   for (const id in TRAPS) $('tr-' + id).textContent = S.traps[id];
 }
 
@@ -817,6 +955,7 @@ function drawMission(now) {
     for (let x = 0; x < W; x += 128) ctx.drawImage(IMG['interior/' + room.wall], x, -2);
     ctx.fillStyle = '#120f1a'; ctx.fillRect(0, 0, 6, H); ctx.fillRect(W - 6, 0, 6, H); ctx.fillRect(0, H - 3, W, 3);
   }
+  if (M.im.id === 'acacias') drawAcaciasDetails();
   for (const p of M.puddles) ctx.drawImage(IMG['props/poca_ecto'], p.x - 32, p.y - 20, 64, 40);
 
   // Contaminação: névoa verde/roxa que some conforme o plasma da etapa é sugado.
@@ -828,6 +967,7 @@ function drawMission(now) {
     g.addColorStop(0, `rgba(120,255,80,${0.09 * left})`); g.addColorStop(1, 'rgba(120,255,80,0)');
     ctx.fillStyle = g; ctx.fillRect(fx - 90, fy - 90, 180, 180);
   }
+  if (M.im.id === 'acacias') drawHouseLight();
 
   // Objetos planos no chão (tapete, gosma, escada, bilhete) antes de tudo.
   for (const p of M.props) if (p.flat) drawProp(p);
@@ -872,7 +1012,8 @@ function drawMission(now) {
 
   if (M.beam) {
     const nz = nozzle(); beam(nz.x, nz.y, M.beam.x, M.beam.y, now, M.beam.hit ? 1 : 0.45);
-    if (M.beam.blocked) burst(M.beam.x, M.beam.y, '#8cff4a', 1);
+    // Desenho sem alterar a simulação: a cena permanece congelada durante a pausa.
+    if (M.beam.blocked) { ctx.fillStyle = '#8cff4a'; ctx.fillRect(M.beam.x - 1, M.beam.y - 1, 3, 3); }
   }
   if (mouse.down && !M.overheat) {
     ctx.strokeStyle = 'rgba(140,255,74,.18)'; ctx.beginPath(); ctx.arc(op.x, op.y - 18, stat.range(), 0, 7); ctx.stroke();
@@ -904,6 +1045,64 @@ function drawMission(now) {
   }
 }
 
+// Detalhes decorativos da casa de referência: não participam da colisão nem da mira.
+function drawAcaciasDetails() {
+  ctx.save();
+  if (M.kind === 'rua') {
+    ctx.fillStyle = '#262c30'; ctx.fillRect(294, 65, 30, 18);
+    ctx.strokeStyle = '#c6b980'; ctx.strokeRect(295, 66, 28, 16);
+    ctx.font = '7px monospace'; ctx.textAlign = 'center'; ctx.fillStyle = '#e5d8aa'; ctx.fillText('12', 309, 74);
+    ctx.font = '4px monospace'; ctx.fillText('SOUZA', 309, 80);
+    // Soleira e caminho gasto, assentados sobre o piso existente.
+    ctx.fillStyle = '#938974'; ctx.fillRect(226, 109, 34, 3);
+    ctx.fillStyle = 'rgba(207,189,143,.12)';
+    for (let i = 0; i < 4; i++) ctx.fillRect(230 + (i % 2) * 2, 116 + i * 7, 24, 4);
+  } else if (M.kind === 'sala') {
+    // Janela e retratos na parede do fundo, acima dos móveis.
+    ctx.fillStyle = '#392c2d'; ctx.fillRect(159, 14, 48, 39);
+    ctx.fillStyle = '#171e2a'; ctx.fillRect(163, 17, 40, 32);
+    ctx.fillStyle = M.cleared ? '#8c9b83' : '#40515b'; ctx.fillRect(165, 19, 36, 27);
+    ctx.fillStyle = '#796854'; ctx.fillRect(181, 17, 3, 32); ctx.fillRect(163, 31, 40, 3); ctx.fillRect(158, 50, 51, 4);
+    ctx.fillStyle = '#65535c'; ctx.fillRect(155, 12, 8, 41); ctx.fillRect(203, 12, 8, 41);
+    for (const [x, y] of [[64, 23], [88, 17], [115, 24]]) {
+      ctx.fillStyle = '#987849'; ctx.fillRect(x, y, 17, 21);
+      ctx.fillStyle = '#242b30'; ctx.fillRect(x + 2, y + 2, 13, 17);
+      ctx.fillStyle = '#b9a080'; ctx.fillRect(x + 6, y + 5, 5, 5);
+      ctx.fillStyle = '#78676c'; ctx.fillRect(x + 4, y + 11, 9, 6);
+    }
+    // Luz da janela revela discretamente o chão, preservando a leitura do combate.
+    ctx.fillStyle = 'rgba(207,193,143,.055)'; ctx.beginPath(); ctx.moveTo(164, 55); ctx.lineTo(204, 55); ctx.lineTo(278, 234); ctx.lineTo(198, 234); ctx.fill();
+    ctx.fillStyle = '#736350'; ctx.fillRect(18, 69, 268, 2);
+  } else if (M.kind === 'porao') {
+    ctx.strokeStyle = '#535255'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(12, 46); ctx.lineTo(282, 46); ctx.lineTo(282, 65); ctx.stroke();
+    ctx.strokeStyle = '#8b7e6b'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(12, 44); ctx.lineTo(284, 44); ctx.stroke();
+    ctx.fillStyle = '#29272c'; ctx.fillRect(211, 20, 27, 20);
+    ctx.fillStyle = '#9a8b68'; ctx.fillRect(213, 22, 23, 16);
+    ctx.fillStyle = '#443a32'; ctx.font = '5px monospace'; ctx.fillText('SOUZA', 215, 29); ctx.fillText('1987', 215, 35);
+  }
+  // Marcas de uso apenas nas bordas; posições determinísticas, sem ruído por quadro.
+  ctx.fillStyle = 'rgba(16,15,22,.20)';
+  for (let i = 0; i < 22; i++) {
+    const x = 10 + (i * 37) % 460, y = i % 2 ? 259 - (i % 4) * 3 : 73 + (i % 3) * 4;
+    ctx.fillRect(x, y, 3 + i % 6, 1);
+  }
+  ctx.restore();
+}
+
+function drawHouseLight() {
+  ctx.save();
+  const lights = M.kind === 'rua' ? [[242, 100, 60]] : M.kind === 'sala' ? [[34, 100, 75], [280, 232, 65], [183, 58, 95]] : [[56, 94, 45]];
+  for (const [x, y, r] of lights) {
+    const light = ctx.createRadialGradient(x, y, 1, x, y, r);
+    light.addColorStop(0, `rgba(255,202,119,${0.07 + M.clearBlend * 0.13})`);
+    light.addColorStop(1, 'rgba(255,202,119,0)');
+    ctx.fillStyle = light; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  ctx.restore();
+}
+
 function drawProp(p) {
   const im = IMG['props/' + p.name];
   if (!im || !im.width) return;
@@ -915,7 +1114,8 @@ function drawProp(p) {
     dx = Math.round(rnd(-1, 1) * (1 + k)); dy = -Math.round(LIFT * k);
     ctx.filter = `drop-shadow(0 0 2px #c77dff) brightness(${1 + 0.4 * k})`;
   }
-  ctx.drawImage(im, Math.round(p.x - im.width / 2) + dx, Math.round(p.flat ? p.y - im.height / 2 : p.y - im.height + 4) + dy);
+  const scale = p.flat ? p.scale || 1 : 1;
+  ctx.drawImage(im, Math.round(p.x - im.width * scale / 2) + dx, Math.round(p.flat ? p.y - im.height * scale / 2 : p.y - im.height + 4) + dy, im.width * scale, im.height * scale);
   ctx.filter = 'none';
 }
 
@@ -1056,17 +1256,39 @@ cv.addEventListener('pointerdown', ev => {
   if (scene === 'mission') mouse.down = true;   // §6.2 usa o botão direito; o esquerdo também suga (touchpad)
 });
 addEventListener('pointerup', () => { mouse.down = false; });
-addEventListener('blur', () => { mouse.down = false; keys.clear(); });
+addEventListener('blur', () => { resetInput(); if (scene === 'mission') openPause('Pausa automática: a janela perdeu o foco. Retome quando estiver pronto.'); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && scene === 'mission') openPause('Pausa automática: você saiu da janela do jogo.');
+});
 addEventListener('keydown', ev => {
   const k = ev.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'escape'].includes(k) && scene === 'mission') ev.preventDefault();
+  // Mantém a navegação por teclado dentro do terminal aberto.
+  if (k === 'tab' && scene === 'screen') {
+    const focusable = [...$('screen').querySelectorAll('button:not(:disabled), [tabindex="0"]')];
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (first && (ev.shiftKey && (document.activeElement === first || document.activeElement === $('screen')))) { ev.preventDefault(); last.focus(); }
+    else if (first && !ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+    return;
+  }
   keys.add(k);
+  if (ev.repeat) return;
   SFX.unlock();
-  if (k === 'm') toast(SFX.toggleMute() ? 'Som desligado [M]' : 'Som ligado [M]', 1200);
+  if (k === 'm') {
+    const muted = SFX.toggleMute();
+    toast(muted ? 'Som desligado [M]' : 'Som ligado [M]', 1200);
+    if ($('audio')) $('audio').textContent = `Som: ${muted ? 'desligado' : 'ligado'}`;
+  }
   if (scene === 'mission') {
     if (k === 'q') placeTrap('auto');
     if (k === 'e') placeTrap('sup');
-    if (k === 'escape') leave('evac');
-  } else if (scene === 'map' && k === 'u') openShop(goMap);
+    if (k === 'escape') openPause();
+    if (k === 'j') { openPause(); openArchive(openPause); }
+  } else if (scene === 'map') {
+    if (k === 'u') openShop(goMap);
+    if (k === 'j') openArchive(goMap);
+  } else if (k === 'escape' && screenBack) { ev.preventDefault(); screenBack(); }
+  else if (k === 'j' && paused && $('screen').classList.contains('pause-screen')) openArchive(openPause);
 });
 addEventListener('keyup', ev => keys.delete(ev.key.toLowerCase()));
 
@@ -1075,9 +1297,12 @@ addEventListener('keyup', ev => keys.delete(ev.key.toLowerCase()));
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (scene === 'mission' && M) { updateMission(dt); if (M && scene === 'mission') drawMission(now); }
-  else if (M && scene === 'screen') drawMission(now);
-  else drawMap(now);
+  if (scene === 'mission' && M) { updateMission(dt); if (M && scene === 'mission') drawMission(M.t * 1000); }
+  else if (!M) drawMap(now);
+  if (scene !== 'screen' && noticeTime > 0) {
+    noticeTime = Math.max(0, noticeTime - dt);
+    if (noticeTime === 0) $('memoryNotice').classList.add('hidden');
+  }
   requestAnimationFrame(frame);
 }
 
@@ -1092,13 +1317,14 @@ fit();
 
 // Gancho do Ato 1 (§3.2): tom corporativo e leve.
 function intro() {
-  showScreen(`<h1>Protocolo Ectoplasma</h1>
-    <div class="cast"><img src="${ART}chars/operador/south.png" width="96" alt=""><img src="${ART}ghosts/errante.png" width="96" alt=""><img src="${ART}ghosts/poltergeist.png" width="96" alt=""></div>
-    <div class="memo">MEMORANDO — LimpaCorp Espectral<br><br>Bem-vindo(a), operador(a) nº 0451! A cidade tem <b>4 bairros contaminados</b>. Comece pela Vila Operária:
-    entre em cada imóvel, limpe a rua, o térreo e o porão, e <b>sugue o plasma</b> de cada presença. Lembre-se: fantasma não é gente. É estoque.</div>
-    <small>WASD move · segure o botão do mouse sobre o fantasma para sugar (parado rende o dobro) · Q/E armadilhas · Esc sai · M som</small>
-    <button class="btn go" id="start">Bater o ponto</button>`);
+  showScreen(`<div class="title-copy"><div class="eyebrow">SEU PRÓXIMO TURNO COMEÇA AGORA</div><h1>PROTOCOLO<br><span>ECTOPLASMA</span></h1>
+    <p>Uma cidade para limpar.<br>Algumas coisas para esquecer.</p>
+    <div class="title-rule"></div><p class="title-memo">Operador 0451, apresente-se à Vila Operária.<br>Capture as presenças. Entregue o plasma.<br>A valorização da cidade começa com você.</p>
+    <div class="row"><button class="btn go" id="start">Bater o ponto →</button><button class="btn" id="controls">Manual do operador</button></div>
+    <small>WASD + mouse · Esc pausa · progresso salvo neste navegador</small></div>
+    <div class="title-scene"><span class="title-coordinate">SETOR 01 / VILA OPERÁRIA</span><img class="title-house" src="${ART}buildings/casa_contaminada.png" alt="Casa tomada por ectoplasma"><img class="title-ghost" src="${ART}ghosts/errante.png" alt=""><img class="title-operator" src="${ART}chars/operador/north-east.png" alt="Operador da LimpaCorp"><span class="title-slogan">FANTASMA NÃO É GENTE.<br><b>É ESTOQUE.</b></span></div>`, 'title-screen');
   $('start').onclick = () => { S.intro = true; save(); goMap(); };
+  $('controls').onclick = () => openControls(intro);
 }
 
 loadImages().then(() => {

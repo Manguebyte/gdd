@@ -12,9 +12,13 @@
 <div id="app">
   <canvas id="view" width="960" height="540"></canvas>
   <div id="hud"></div>
+  <aside id="dispatch" class="hidden" aria-label="Central de operações"></aside>
+  <div id="objective" class="hidden"></div>
+  <div id="arrival" class="hidden" aria-live="polite"></div>
+  <div id="memoryNotice" class="hidden" aria-live="polite"></div>
   <div id="panel" class="hidden"></div>
-  <div id="toast" class="hidden"></div>
-  <div id="screen" class="hidden"></div>
+  <div id="toast" class="hidden" role="status"></div>
+  <div id="screen" class="hidden" role="dialog" aria-modal="true" aria-label="Terminal LimpaCorp" tabindex="-1"></div>
 </div>
 <script src="game.js"></script>
 </body>

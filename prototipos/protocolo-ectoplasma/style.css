@@ -66,3 +66,144 @@ b { font-weight: 400; color: var(--ecto); }
 .card .pips span { color: var(--dim); } .card .pips span.ok { color: var(--ecto); }
 .card .btn { font-size: 19px; padding: 2px 10px; }
 .row { display: flex; gap: 8px; align-items: center; justify-content: center; }
+
+/* Terminal LimpaCorp: cores de equipamento, papel de arquivo e sinalização de campo. */
+:root { --bg: #101c20; --ink: #e5ece5; --dim: #a5b7b3; --ecto: #c5ed91; --ecto2: #83c5a5; --neon: #8bcac5; --line: #3a5354; --gold: #ddc48d; }
+body { background: #080e11; }
+button:focus-visible, [tabindex]:focus-visible { outline: 2px solid #f4db9e; outline-offset: 4px; }
+#screen:focus { outline: none; }
+.btn { font: 13px Arial, sans-serif; font-weight: 700; letter-spacing: .2px; border: 1px solid #496362; border-radius: 2px; background: #182b2d; padding: 11px 17px; box-shadow: 0 2px 0 #060e10; min-height: 37px; }
+.btn.go { color: #172a22; background: #c5ed91; border-color: #c5ed91; }
+.btn.neon { background: #213c3e; color: #bcdfd8; border-color: #729997; }
+.btn.danger { color: #edb6a3; border-color: #76554d; background: #302628; }
+.btn:not(:disabled):hover { background: #314b45; color: #fff; border-color: #c5ed91; }
+.btn.go:not(:disabled):hover { background: #dbf7b7; color: #172a22; }
+.eyebrow { font: 10px Arial, sans-serif; font-weight: 700; letter-spacing: 2px; color: var(--neon); }
+.terminal-head { display: flex; width: 100%; align-items: center; gap: 10px; color: #d2dfd8; font: bold 13px Arial, sans-serif; letter-spacing: 1.5px; text-align: left; }
+.brand-mark { display: grid; place-content: center; position: relative; width: 35px; height: 35px; background: #c5ed91; color: #19352b; font: bold 18px Arial, sans-serif; letter-spacing: -2px; flex-shrink: 0; }
+.brand-mark > span { position: absolute; right: 2px; top: 0; font-size: 11px; }
+.terminal-head > span > small { display: block; font: 8px Arial, sans-serif !important; letter-spacing: 1.7px; margin-top: 4px; color: #99aeaa !important; }
+.terminal-label { margin-left: auto; font-size: 9px; color: #93a7a5; letter-spacing: 1px; }
+#screen { padding: 70px 42px 22px; gap: 10px; background: linear-gradient(115deg, #112125f7, #0b161cf5), repeating-linear-gradient(0deg, transparent 0 3px, #ffffff05 3px 4px); overflow: hidden; }
+#screen > .terminal-head { position: absolute; left: 30px; right: 30px; top: 19px; width: auto; border-bottom: 1px solid #3a535466; padding-bottom: 12px; }
+#screen h1 { font-family: Arial, sans-serif; font-weight: 750; font-size: 34px; letter-spacing: -1px; line-height: 1.05; color: #e5ece5; text-shadow: none; }
+#screen h2 { font: bold 18px Arial, sans-serif; color: #c2d7ca; }
+#screen p { font: 16px/1.5 Arial, sans-serif; max-width: 710px; }
+#screen p.subtitle { font: 13px/1.5 Arial, sans-serif; color: #a9bdb6; }
+#screen small { font: 11px/1.5 Arial, sans-serif; color: #a8bab3; }
+#screen .screen-footer { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: auto; gap: 12px; text-align: left; }
+#screen .memo { padding: 18px 24px; font: 15px/1.5 Arial, sans-serif; background: #dfdfca; color: #293a34; border-left: 4px solid #a2bb8b; box-shadow: 5px 5px 0 #050e11; }
+#screen .memo b { color: #3e6540; }
+#screen .corporate-quote { font: italic 13px/1.5 Georgia, serif; color: #b9c0ab; }
+#toast { z-index: 5; bottom: 65px; max-width: 620px; border: 1px solid #597569; border-left: 3px solid #c5ed91; border-radius: 2px; padding: 9px 16px; background: #122220f5; font: 13px/1.4 Arial, sans-serif; color: #e2ebd9; pointer-events: none; box-shadow: 0 6px 24px #0006; }
+
+/* Abertura composta com os sprites do próprio jogo. */
+#screen.title-screen { align-items: flex-start; text-align: left; padding: 90px 44px 28px; background: radial-gradient(ellipse at 75% 50%, #2c4344c9, #101e24fa 65%), url('../../Sprites/ProtocoloEctoplasma/map/mapa_cidade.png') center / cover; }
+.title-copy { width: 58%; z-index: 1; }
+#screen.title-screen h1 { margin: 18px 0 17px; font-family: 'Silkscreen', monospace; font-size: 38px; font-weight: 400; letter-spacing: -1.5px; line-height: 1.08; }
+#screen.title-screen h1 span { color: #c5ed91; }
+#screen.title-screen p { font: 19px/1.4 Georgia, serif; color: #d2d7c5; }
+.title-rule { height: 1px; width: 50px; background: #a8bb8e; margin: 22px 0 15px; }
+#screen.title-screen p.title-memo { font: 12px/1.7 Arial, sans-serif; color: #a5bab5; }
+.title-copy .row { justify-content: flex-start; margin: 21px 0 14px; }
+.title-scene { position: absolute; right: 28px; top: 93px; width: 350px; height: 408px; border: 1px solid #8eb5a22e; background: linear-gradient(0deg, #101c22 0%, transparent 75%); }
+.title-scene img { position: absolute; image-rendering: pixelated; }
+.title-house { width: 320px; height: 320px; left: 15px; top: 0; filter: drop-shadow(0 0 25px #a4e78c26); }
+.title-operator { width: 96px; height: 96px; left: 35px; bottom: 48px; }
+.title-ghost { width: 85px; height: 85px; right: 30px; bottom: 85px; animation: ghost-drift 4s ease-in-out infinite; }
+.title-coordinate { position: absolute; z-index: 1; top: 12px; left: 13px; color: #acbeb3; font: 9px Arial, sans-serif; letter-spacing: 1.5px; background: #102024e8; padding: 5px 7px; }
+.title-slogan { position: absolute; bottom: 15px; right: 15px; text-align: right; font: 10px/1.8 Arial, sans-serif; letter-spacing: 1px; color: #9dafa6; }
+@keyframes ghost-drift { 50% { transform: translateY(-8px); opacity: .65; } }
+
+/* Central: navegação por teclado e nomes permanentes, além dos pontos do mapa. */
+#dispatch { position: absolute; top: 77px; left: 24px; width: 356px; bottom: 21px; padding: 22px; background: #102024ed; border: 1px solid #45605a; box-shadow: 8px 8px 0 #06121666; display: flex; flex-direction: column; }
+#dispatch .terminal-head { margin-bottom: 23px; }
+#dispatch .eyebrow { font-size: 8px; letter-spacing: 1.5px; }
+#dispatch h1 { font: bold 25px/1.12 Arial, sans-serif; margin: 10px 0; letter-spacing: -.6px; }
+#dispatch p { font: 11px/1.5 Arial, sans-serif; color: #acbdb4; margin: 0 0 16px; }
+#dispatch nav { display: grid; gap: 5px; }
+#dispatch nav button { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border: 1px solid #3b544e; background: #233934aa; text-align: left; font: bold 12px Arial, sans-serif; }
+#dispatch nav button:not(:disabled):hover { border-color: #c5ed91; background: #314a41; }
+#dispatch nav small { display: block; margin-top: 4px; color: #a6b9ab; font: 7px Arial, sans-serif; letter-spacing: .7px; }
+.sector-number { font: 20px 'VT323', monospace; color: #c5ed91; }
+.sector-arrow { margin-left: auto; color: #c5ed91; }
+#dispatch footer { margin-top: auto; padding-top: 12px; color: #b7c6b6; font: 8px/1.5 Arial, sans-serif; letter-spacing: 1px; }
+#dispatch footer span { display: block; margin-top: 3px; color: #718b80; font-size: 7px; }
+
+/* Contratos e equipamento. */
+.imoveis { width: 100%; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 4px; }
+.card { position: relative; border: 1px solid #3e5752; border-radius: 2px; background: #1a2d2b; font: 11px Arial, sans-serif; gap: 7px; padding: 12px 15px; align-items: stretch; }
+.card-code { display: flex; justify-content: space-between; font: 9px Arial, sans-serif; letter-spacing: 1px; color: #b1c4b6; }
+.card-code span { color: #8da894; font-size: 8px; }
+.house-frame { height: 70px; background: radial-gradient(ellipse, #53775b33, transparent 70%); position: relative; }
+.card .house { width: 84px; height: 84px; margin-top: -7px; }
+.card h3 { font: bold 14px/1.2 Arial, sans-serif; min-height: 34px; justify-content: center; }
+.card .cast { height: 28px; justify-content: center; }
+.card .cast img { width: 29px; height: 29px; }
+.card .pips { font-size: 12px; }
+.card .pips span:last-child { font: 10px Arial, sans-serif; margin-left: 6px; }
+.card .btn { font: bold 12px Arial, sans-serif; margin-top: 3px; padding: 8px; }
+.card.clean { background: #22362b; border-color: #8aab78; }
+.card.clean .house { filter: saturate(.25) brightness(1.3); }
+.stamp { display: inline-block; font: bold 13px Arial, sans-serif; letter-spacing: 2px; color: #b3d696; border: 2px solid #a9ca8d; padding: 7px 10px; transform: rotate(-8deg); }
+.house-frame .stamp { position: absolute; right: 1px; top: 21px; font-size: 9px; padding: 5px; background: #1a2d2bdd; }
+.shop-heading { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 2px 0 9px; }
+.balance { text-align: right; font: 9px Arial, sans-serif; color: #b5c5b8; letter-spacing: 1px; }
+.balance b { display: block; margin-top: 5px; font: 25px 'VT323', monospace; }
+.shop { width: 100%; grid-template-columns: repeat(2, 1fr); gap: 8px 14px; }
+.shop button { min-height: 50px; border: 1px solid #3c5850; border-radius: 2px; padding: 7px 12px; font: bold 12px Arial, sans-serif; background: #1b302b; }
+.shop button:disabled { opacity: .7; }
+.shop button span { font: 10px/1.25 Arial, sans-serif; margin-top: 4px; color: #afc2b7; }
+.shop button em { font: 17px 'VT323', monospace; }
+.shop button.installed { border-color: #c5ed91; background: #344b35; }
+.shop .pips { float: right; font-style: normal; font-size: 10px; }
+
+/* HUD e comandos preservam espaço para o cenário. */
+#hud { height: 61px; background: linear-gradient(#0b171bf5 85%, #0b171b00); border-top: 2px solid #567e67; gap: 14px; padding: 10px 14px 12px; font-size: 21px; }
+#hud .bar { width: 140px; height: 13px; border: 1px solid #40514b; }
+#hud .lbl { font: 8px Arial, sans-serif; letter-spacing: 1px; margin-bottom: 5px; color: #b2c1b5; }
+#hud .bar span { font: 10px/11px Arial, sans-serif; }
+#hud .traps { gap: 7px; }
+#hud .traps div { border: 1px solid #435950; height: 34px; }
+#hud .traps img { width: 28px; height: 28px; }
+#hud .btn { padding: 8px 10px; min-height: 32px; font-size: 11px; }
+#objective { position: absolute; bottom: 0; left: 0; right: 0; height: 45px; background: linear-gradient(transparent, #0a1419ee 20%); display: flex; align-items: center; gap: 12px; padding: 8px 16px; pointer-events: none; }
+.objective-step { font: 22px 'VT323', monospace; color: #c5ed91; border-right: 1px solid #667968; padding-right: 12px; }
+#objective small { display: block; font: 8px Arial, sans-serif; color: #a5bbae; letter-spacing: 1px; }
+#objective strong { display: block; margin-top: 3px; font: 11px Arial, sans-serif; color: #e0e9d6; }
+.field-hint { margin-left: auto; font: 9px Arial, sans-serif; color: #adc1b2; }
+#arrival { position: absolute; left: 16px; top: 76px; max-width: 445px; background: #10231feb; border-left: 3px solid #c5ed91; padding: 14px 20px; pointer-events: none; box-shadow: 0 5px 20px #0004; }
+#arrival strong { display: block; margin: 7px 0 10px; font: bold 21px Arial, sans-serif; color: #edf1df; }
+#arrival > span:last-child { font: 12px Arial, sans-serif; color: #d3e1c4; }
+#arrival i { margin-left: 22px; font: 9px Arial, sans-serif; text-transform: uppercase; color: #a6bea9; }
+#memoryNotice { position: absolute; top: 76px; right: 14px; width: 280px; padding: 12px 15px; border: 1px solid #8c809c; border-left: 3px solid #c3acd8; background: #222433ed; pointer-events: none; }
+#memoryNotice .eyebrow { color: #c8b8d7; font-size: 8px; letter-spacing: 1.5px; }
+#memoryNotice > span:nth-child(2) { display: block; font: italic 14px/1.4 Georgia, serif; color: #e6e0e8; margin: 6px 0; }
+#memoryNotice small { font: 9px Arial, sans-serif; color: #b7b2c0; }
+
+/* Pausa, arquivo e recibos. */
+#screen.pause-screen { background: #0a161be8; }
+.pause-status { display: flex; gap: 45px; border-block: 1px solid #476256; padding: 18px 30px; margin: 12px 0; font: 10px Arial, sans-serif; letter-spacing: 1px; }
+.pause-status b { display: block; margin-top: 8px; font: 30px 'VT323', monospace; letter-spacing: 0; }
+#screen p.pause-reason { font: 12px Arial, sans-serif; margin-bottom: 16px; color: #b8c6b9; }
+.receipt { background: #dddcca; color: #273d32; padding: 24px 28px; width: 510px; position: relative; border-top: 4px solid #99b681; box-shadow: 5px 5px 0 #050e11; margin: 9px 0; }
+.receipt > div { display: flex; justify-content: space-between; font: 13px Arial, sans-serif; padding: 8px 0; }
+.receipt b { font: bold 17px Arial, sans-serif; color: #305338; }
+.receipt .receipt-total { border-top: 1px dashed #78917a; margin-top: 8px; padding-top: 17px; font-weight: bold; }
+.receipt > .stamp { position: absolute; right: -36px; top: -15px; background: #2c4b38; }
+.loss { color: #9a4539; }
+.controls-list { width: 700px; margin: 10px 0; text-align: left; }
+.controls-list > div { display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #354e46; padding: 14px 0; }
+.controls-list kbd { min-width: 165px; font: 11px monospace; color: #c5ed91; }
+.controls-list span { font: 12px/1.5 Arial, sans-serif; color: #c7d3c8; }
+#screen.archive-screen { align-items: stretch; }
+.archive-tabs { display: flex; justify-content: center; gap: 8px; margin: 6px 0; }
+.archive-list { flex: 1; min-height: 0; overflow-y: auto; border-block: 1px solid #486055; text-align: left; scrollbar-color: #718d76 #132821; }
+.archive-list article { display: flex; align-items: flex-start; gap: 18px; border-bottom: 1px solid #32473f; padding: 16px 20px; background: #20342b99; }
+.record-number { font: 24px 'VT323', monospace; color: #829680; }
+#screen .archive-list small { font-size: 9px; color: #b5c3ad; }
+#screen .archive-list p { font: 17px/1.5 Georgia, serif; color: #e5e5d0; margin-top: 6px; }
+.empty-archive { padding: 35px 30px; text-align: center; }
+.ending-line { font: bold 13px/1.8 Arial, sans-serif; color: #809c90; letter-spacing: 3px; margin: 35px 0; }
+.ending-line span { font: italic 19px Georgia, serif; letter-spacing: 0; color: #b9c0ad; }
+@media (prefers-reduced-motion: reduce) { .title-ghost { animation: none; } }
