@@ -52,7 +52,7 @@ const STATS = [
   { id: 'shield',       track: 'defense', name: 'Energy Shield',     base: 0,   inc: 1,     cap: 3,    costs: SHIELD_COSTS, icon: 24, fmt: v => v + (v === 1 ? ' carga' : ' cargas'), desc: `Cada carga anula um golpe inteiro (kamikaze, Bolt ou laser). Recarrega 1 carga a cada ${SHIELD_RECHARGE} s.` },
   // Nível 0 = sem Reflector; nível 1 = 15 de dano; cada nível seguinte +8 (Reflect Damage, absoluto).
   { id: 'reflect',      track: 'defense', name: 'Reflect Shield',    base: 0,   inc: 0,     cap: null, cost: 15, icon: 25, value: l => l ? 15 + 8 * (l - 1) : 0, fmt: v => v ? fmt(v) + ' dano' : 'Off', desc: 'Um escudo-satélite em órbita: devolve os tiros dos Gunners, bloqueia o laser e fere os kamikazes que passam por ele.' },
-  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: null, cost:  6, icon: 11, fmt: v => '+' + pct(v), desc: 'Shards a mais por nave destruída.' },
+  { id: 'resBonus',     track: 'utility', name: 'Resource Bonus',    base: 0,   inc: 0.05,  cap: 1,    cost:  6, icon: 11, fmt: v => pct(v), desc: 'Chance de uma nave destruída pagar o dobro de Shards.' },
   { id: 'resWave',      track: 'utility', name: 'Resource per Wave', base: 0,   inc: 0.10,  cap: null, cost:  6, icon: 12, fmt: v => '+' + pct(v), desc: 'Bônus de Shards a mais ao limpar a tela (Wave Clear).' },
 ];
 const STAT = Object.fromEntries(STATS.map(s => [s.id, s]));
@@ -99,7 +99,7 @@ const FLEET_SHIPS = [
   { type: 'swarmer',    name: 'Swarmer x8', cost: 8,   planet: 2, desc: 'Cacho de 8 naves fracas. Sofre contra Multishot e Reflector.' },
   { type: 'gunner',     name: 'Gunner',     cost: 10,  planet: 3, desc: 'Para fora do planeta e atira Bolts. O Reflector devolve os Bolts.' },
   { type: 'brute',      name: 'Brute',      cost: 18,  planet: 4, desc: 'Muito HP e dano alto. Gasta uma carga inteira do Energy Shield.' },
-  { type: 'mothership', name: 'Mothership', cost: 120, planet: 6, desc: 'Desce em espiral, dispara laser e solta Swarmers. Só uma em campo.' },
+  { type: 'mothership', name: 'Mothership', cost: 120, planet: 6, desc: 'Desce em espiral, dispara laser e solta naves: Grunts e Scouts primeiro, depois Swarmers. Só uma em campo.' },
 ];
 const FLEET_UPGRADES = [
   { id: 'hull',      name: 'Hull',        inc: 0.10, cap: null, cost: 15, icon: 29, fmt: v => '+' + pct(v), desc: 'HP de todas as naves.' },
@@ -353,7 +353,7 @@ function newRun() {
     mode: invasionUnlocked() ? save.mode : 'laststand',
     core: save.core, skin: save.skin,
     levels: Object.fromEntries(STATS.map(s => [s.id, 0])),
-    shards: 10, totalShards: 0, shardFrac: 0,   // 10 Shards iniciais (o GDD diz 5): dá para 1–2 Upgrades logo no início
+    shards: 15, totalShards: 0, shardFrac: 0,   // 15 Shards iniciais (Seção 4.2): dá para 2 Upgrades logo no início
     wave: 0, waveTimer: 0, warn: 0, warnWave: 0, warnSectors: [], waveTypes: [],
     queue: [], unpaid: [], enemies: [], projectiles: [], fx: [], nums: [],
     satAngle: 45, sats: [], quadFlash: [0, 0, 0, 0],
@@ -455,7 +455,7 @@ function startWave(w) {
   run.unpaid.push(w);
   const sectors = run.warnSectors;
   if (isBoss(w)) {
-    run.waveTypes = ['mothership', 'swarmer'];   // os Swarmers vêm da Mothership
+    run.waveTypes = ['mothership', ...new Set(MOTHER_OPENING), 'swarmer'];   // as naves vêm da Mothership
     run.queue.push({ at: run.time, w, type: 'mothership', sector: sectors[0] });
     run.bossHitFree = true;
   } else {
@@ -498,13 +498,23 @@ const swarmSize = w => w < 10 && run.mode !== 'invasion' ? 4 : 8;
 function spawnSwarm(w, x, y) {
   for (let i = 0; i < swarmSize(w); i++) spawnEnemy('swarmer', w, x + rand(-0.7, 0.7), y + rand(-0.7, 0.7));
 }
+// Lançamentos da Mothership, um a cada 15 s (Seção 4.5): primeiro naves simples, que dão Shards
+// ao jogador para ele se fortalecer durante a luta, e só depois os cachos de Swarmers.
+const MOTHER_OPENING = ['grunt', 'grunt', 'scout', 'scout'];
+const MOTHER_OPENING_COUNT = 4;   // naves por lançamento de abertura
+const motherLaunchSize = m => MOTHER_OPENING[m.launches] ? MOTHER_OPENING_COUNT : swarmSize(m.w);
+function motherLaunch(m) {
+  const type = MOTHER_OPENING[m.launches++];
+  if (!type) { spawnSwarm(m.w, m.x, m.y); return; }
+  for (let i = 0; i < MOTHER_OPENING_COUNT; i++) spawnEnemy(type, m.w, m.x + rand(-0.7, 0.7), m.y + rand(-0.7, 0.7));
+}
 function spawnMothership(w, sector, rad = SPAWN_R) {
   const a = (sector * 60 + 30) * DEG;
   const hp = MOTHERSHIP.hp * Math.pow(1.09, w - 1);
   run.enemies.push({
     type: 'mothership', w, ang: a, rad, x: Math.cos(a) * rad, y: Math.sin(a) * rad,
     hp, maxHp: hp, laserDmg: MOTHERSHIP.laser * Math.pow(1.06, w - 1), r: MOTHERSHIP.r, shards: MOTHERSHIP.shards,
-    state: 'enter', laserT: 8, swarmT: 15, warnT: 0, beamT: 0, t: 0, flash: 0,
+    state: 'enter', laserT: 8, swarmT: 15, launches: 0, warnT: 0, beamT: 0, t: 0, flash: 0,
   });
 }
 
@@ -547,9 +557,16 @@ function checkWaveFlow(dt) {
   }
 }
 
+// Resource Bonus (Seção 4.4): chance de a kill pagar o dobro, com um "x2" sobre a nave.
+function payKill(e, exact) {
+  const double = Math.random() < stat('resBonus');
+  addShards(e.shards * (double ? 2 : 1), exact);
+  if (double && run.nums.length < 80) run.nums.push({ x: e.x, y: e.y + e.r, label: 'x2', t: 0 });
+}
+
 function addShards(amount, exact) {
   if (exact) { const v = Math.round(amount); run.shards += v; run.totalShards += v; return; }
-  run.shardFrac += amount * (1 + stat('resBonus'));
+  run.shardFrac += amount;
   const whole = Math.floor(run.shardFrac);
   if (whole > 0) { run.shardFrac -= whole; run.shards += whole; run.totalShards += whole; }
 }
@@ -679,7 +696,7 @@ function updateMothership(m, dt) {
     }
     if (m.beamT > 0) m.beamT -= dt;
     m.swarmT -= dt;
-    if (m.swarmT <= 0 && aliveCount() + swarmSize(m.w) <= MAX_ENEMIES) { m.swarmT = 15; spawnSwarm(m.w, m.x, m.y); }
+    if (m.swarmT <= 0 && aliveCount() + motherLaunchSize(m) <= MAX_ENEMIES) { m.swarmT = 15; motherLaunch(m); }
   }
   m.x = Math.cos(m.ang) * m.rad; m.y = Math.sin(m.ang) * m.rad;
 }
@@ -774,7 +791,7 @@ function hitEnemy(e, dmg, crit) {
     if (e.hp > 0) return;
     e.dead = true;
     run.enemies.splice(run.enemies.indexOf(e), 1);
-    addShards(e.shards);   // Shards vão para a IA, que gasta segundo o perfil
+    payKill(e);   // Shards vão para a IA, que gasta segundo o perfil
     addFx(e.type === 'mothership' ? 'expMother' : e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
     return;
   }
@@ -786,7 +803,7 @@ function hitEnemy(e, dmg, crit) {
   run.enemies.splice(run.enemies.indexOf(e), 1);
   run.kills++;
   if (e.type === 'mothership') {
-    addShards(e.shards * (1 + stat('resBonus')), true);
+    payKill(e, true);
     addFx('expMother', e.x, e.y);
     addShake(4);
     run.mothershipsKilled++;
@@ -796,7 +813,7 @@ function hitEnemy(e, dmg, crit) {
     if (run.bossHitFree) unlockAch('untouchable');
     writeSave();
   } else {
-    addShards(e.shards);
+    payKill(e);
     addFx(e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
   }
   if (run.core === 'Magma' && run.kills === 1000) unlockAch('eruption');
@@ -1185,16 +1202,16 @@ function render(dt) {
   // Números de dano: de volta à tela (o texto não muda de tamanho), na posição com zoom.
   screenView();
   const Z = (x, y) => { const [a, b] = W(x, y); return [Math.round(ox + (a - ox) * z), Math.round(oy + (b - oy) * z)]; };
-  if (save.settings.dmgNumbers) {
+  if (run.nums.length) {   // os números de dano só entram com a opção ligada; o "x2" sempre
     ctx.font = '16px m5x7';
     ctx.textAlign = 'center';
     for (const d of run.nums) {
       const [x, y] = Z(d.x, d.y);
       const yy = Math.round(y - 8 - d.t * 14);
       ctx.globalAlpha = d.t > 0.45 ? 1 - (d.t - 0.45) / 0.25 : 1;
-      const txt = fmt(d.v) + (d.crit ? '!' : '');
+      const txt = d.label || fmt(d.v) + (d.crit ? '!' : '');
       ctx.fillStyle = '#000'; ctx.fillText(txt, x + 1, yy + 1);
-      ctx.fillStyle = d.crit ? '#ffd25a' : '#ffffff'; ctx.fillText(txt, x, yy);
+      ctx.fillStyle = d.label ? '#7dffb2' : d.crit ? '#ffd25a' : '#ffffff'; ctx.fillText(txt, x, yy);
     }
     ctx.globalAlpha = 1;
   }

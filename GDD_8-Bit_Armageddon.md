@@ -88,7 +88,7 @@ O crítico é sorteado a cada disparo com probabilidade Critical Chance.
 
 Os Stats são organizados em três **Tracks**, que são as três abas da gaveta de upgrades. Cada Upgrade compra um nível de um Stat, válido até o fim da run.
 
-**Definido:** toda run começa com **5 Shards** (valor inicial), o suficiente para o primeiro Upgrade de Damage ou de Hitpoints logo no início.
+**Definido:** toda run começa com **15 Shards** (valor inicial), o suficiente para 2 Upgrades logo no início (por exemplo, Damage e Hitpoints) ou para o 2º Satellite (10).
 
 **Definido:** custo do próximo nível = `baseCost × 1.15^nível`, com nível começando em 0, arredondado para o inteiro mais próximo. O valor de um Stat = `base + incremento × nível`, limitado pelo teto (quando houver), e depois modificado pelo Planet Core.
 
@@ -145,7 +145,7 @@ Ao comprar um nível de Hitpoints, o HP atual sobe na mesma quantidade (o jogado
 #### 💰 Utility
 | Stat | Efeito | Base | Por nível | Teto | baseCost |
 |---|---|---|---|---|---|
-| **Resource Bonus** | Shards extras por inimigo destruído | 0% | +5 p.p. | — | 6 |
+| **Resource Bonus** | Chance de um inimigo destruído pagar o **dobro** de Shards | 0% | +5 p.p. | 100% | 6 |
 | **Resource per Wave** | Bônus extra no Wave Clear | 0% | +10 p.p. | — | 6 |
 
 Utility é a Track "de investimento": não ataca nem defende, mas acelera o acesso às outras duas.
@@ -197,7 +197,7 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
 | **Swarmer** | 3 | 2 | 1,2 u/s | 1 a cada 2 | 6 | Nasce em cachos de 8, espalhados |
 | **Brute** | 80 | 20 | 0,5 u/s | 4 | 8 | Linha reta, lento |
 
-Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarmer) são acumuladas e pagas quando somam 1.
+**Definido:** o Resource Bonus é uma **chance** por kill: com ela, o inimigo destruído paga o dobro dos seus Shards, e um "x2" verde sobe de cima dele (como os números de dano, mas sempre visível). Na média rende o mesmo que um bônus fixo de +5% por nível, mas o jogador vê o bônus acontecendo; um +5% fixo sobre naves de 1 Shard ficava invisível. Vale também para a Mothership, e não vale para o Wave Clear (esse é o Resource per Wave). Frações (Swarmer, mesmo em dobro) são acumuladas e pagas quando somam 1.
 
 **Definido: Gunner.**
 - Raio 0,5 u. Avança em linha reta até **4,5 u** do centro, onde a borda dele fica exatamente no Attack Range base (4,5 − 0,5 = 4 u), e para ali.
@@ -212,7 +212,8 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 - A Mothership **não é kamikaze**. Ela nasce na borda (12 u), no Spawn Sector indicado pelo aviso da Boss Wave, e desce em linha reta a **1,5 u/s** até **7 u** do centro. Durante a entrada ela já pode ser atingida (se estiver no alcance), mas só começa a atacar quando chega aos 7 u.
 - **Espiral:** dali em diante ela gira devagar (10°/s, uma volta a cada 36 s) e **se aproxima em espiral**, perdendo **1,5 u de raio por volta**, de forma contínua, até uma **órbita mínima de 3,5 u**, onde continua girando e atacando. Com a regra de alcance pela borda (Seção 4.1), o Attack Range base (4 u) a alcança depois de cerca de 1 volta; quem comprou Range a alcança antes.
 - **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta. O laser conta como 1 hit para o Energy Shield e pode ser bloqueado pelo Reflector (Seção 4.2).
-- **Swarmers:** a cada 15 s, solta um cacho de 8 Swarmers.
+- **Lançamentos:** a cada 15 s, solta naves. Os 4 primeiros lançamentos são de naves simples, que dão Shards ao jogador para ele se fortalecer durante a luta: 4 Grunts, 4 Grunts, 4 Scouts, 4 Scouts. Do 5º em diante (depois de 1 minuto em órbita), cada lançamento é um cacho de 8 Swarmers. As naves lançadas escalam com a Wave da Mothership (Seção 4.3).
+- **Em aberto:** a ordem e o tamanho dos lançamentos de abertura são valores iniciais, a ajustar jogando.
 - **Barra de HP** no topo da tela enquanto ela estiver viva.
 - Se o timer de 60 s acabar com a Mothership viva, ela **continua em campo** junto com as Waves seguintes até ser destruída.
 
@@ -259,7 +260,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 | **Brute** | 18 | 4 |
 | **Mothership** | 120 (no máximo 1 em campo) | 6 |
 
-- A Mothership do jogador segue a Seção 4.5 (entrada, espiral, laser a cada 8 s, cacho de Swarmers a cada 15 s), com HP e dano da Wave 1.
+- A Mothership do jogador segue a Seção 4.5 (entrada, espiral, laser a cada 8 s, lançamentos a cada 15 s: Grunts e Scouts primeiro, depois Swarmers), com HP e dano da Wave 1.
 
 **Definido: Fleet Upgrades.** Comprados com Plasma na aba **Fleet**, valem até o fim da run (passam de um planeta para o outro). O custo segue a fórmula da Seção 4.2.
 
@@ -282,7 +283,7 @@ Shards por kill são multiplicados por `(1 + Resource Bonus)`. Frações (Swarme
 ### 5.1 Sem moeda permanente
 
 **Definido:**
-- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 5 Shards e as 4 Target Priorities disponíveis.
+- Não existe moeda permanente (Stardust) nem árvore de Perks. Toda run começa igual: valores base dos Stats (Seção 4.2, modificados só pelo Planet Core), 1 Satellite, 15 Shards e as 4 Target Priorities disponíveis.
 - Tudo o que fortalece o planeta é comprado **dentro da run**, com Shards, pela gaveta: os 17 Stats (Seção 4.2) e os Satellites extras. Cada atributo que antes era um Perk "Starting X" (Damage, Attack Speed, Critical Chance, Attack Range, Orbit Speed, Hitpoints, Regeneration, Defense, Resource Bonus) já é um Stat da gaveta.
 - O que fica salvo entre runs: os **Planet Cores** e **Skins** liberados, as **conquistas** e os recordes: **Best Wave** no Last Stand (a maior Wave alcançada) e **Best Planet** no Invasion (Seção 4.7), os dois mostrados no Main Menu e no Results.
 - Consequência de design: a variedade entre runs vem do Planet Core escolhido e da estratégia de Upgrades, não de um ponto de partida que cresce. Sem Perks, nenhuma run começa mais forte que a primeira. **Em aberto:** se o começo da run (Seções 4.2 e 4.3) precisa de ajuste por causa disso (ajustar via Analytics).
@@ -4739,11 +4740,11 @@ using UnityEngine;
 
 namespace Armageddon.Economy
 {
-    // POR QUE: os Shards chegam em frações (Swarmer vale 0,5; Resource Bonus multiplica), mas o jogador
+    // POR QUE: os Shards chegam em frações (Swarmer vale 0,5), mas o jogador
     // vê e gasta Shards inteiros. Alguém precisa acumular as frações sem perder nada.
     // ESTRATÉGIA: classe C# pura com o saldo inteiro (Balance) e um "resto" fracionário guardado à parte.
     // Avisa por evento (BalanceChanged) para a UI não precisar conferir o saldo a cada frame.
-    // Saldo de Shards da run. Frações (Swarmer vale 0,5; Resource Bonus multiplica) são acumuladas
+    // Saldo de Shards da run. Frações (Swarmer vale 0,5) são acumuladas
     // e viram Shards inteiros quando somam 1 (Seção 4.4).
     public sealed class ShardWallet
     {
@@ -4904,7 +4905,7 @@ namespace Armageddon.Economy
         [SerializeField] private PlanetHealth _planet;
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int _startingShards = 15;   // saldo no início de toda run (Seção 4.2)
         [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
@@ -4975,10 +4976,13 @@ namespace Armageddon.Economy
             _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
         }
 
-        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        // Shards por kill. O Resource Bonus é a chance de a kill pagar o dobro (Seção 4.4).
+        // UnityEngine.Random.value = número aleatório entre 0 e 1.
         private void HandleEnemyKilled(Enemy enemy)
         {
-            Wallet.Add(enemy.Definition.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+            float shards = enemy.Definition.Shards;
+            bool doubled = UnityEngine.Random.value < Stats.Value(StatId.ResourceBonus);
+            Wallet.Add(doubled ? shards * 2f : shards);
         }
 
         // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
@@ -5431,7 +5435,7 @@ Em `Assets/_Project/Data/Stats/`, **Create → Armageddon → Stat Definition**,
 | `Stat_Regeneration` | Regeneration | Defense | Regen | 0 | 0.4 | 0 | 8 | PerSecond | 8 |
 | `Stat_DefenseAbsolute` | DefenseAbsolute | Defense | Defense | 0 | 0.5 | 0 | 8 | Number | 9 |
 | `Stat_DefenseRelative` | DefenseRelative | Defense | Defense % | 0 | 0.015 | 0.75 | 10 | Percent | 10 |
-| `Stat_ResourceBonus` | ResourceBonus | Utility | Shard Bonus | 0 | 0.05 | 0 | 6 | Percent | 11 |
+| `Stat_ResourceBonus` | ResourceBonus | Utility | Double Shards | 0 | 0.05 | 1 | 6 | Percent | 11 |
 | `Stat_ResourcePerWave` | ResourcePerWave | Utility | Wave Bonus | 0 | 0.1 | 0 | 6 | Percent | 12 |
 
 Depois, **Create → Armageddon → Stat Catalog** em `Data/Stats/`, com o nome `StatCatalog`, e arraste os 13 assets **nesta ordem** para a lista **Stats**: é a ordem dos cards na gaveta.
@@ -5474,7 +5478,7 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 `git add .` e `git commit -m "Phase 6: stats, shards, upgrades, upgrade drawer"`.
 
 **✅ Checkpoint:**
-- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `5`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
+- Play: a faixa da gaveta aparece embaixo com as 4 abas e o saldo `15`. Cada Grunt destruído soma 1; um Wave Clear da Wave 1 soma 6 (5 + 1).
 - Dois Swarmers destruídos somam **1** Shard (0,5 cada, acumulado).
 - Tocar em **Offense** abre a gaveta com 7 cards (Damage, Attack Speed…), e o mundo desliza para o planeta ficar no centro da área livre. Tocar de novo em Offense fecha a gaveta.
 - O card de Damage mostra `Lv 0`, `10 > 13` e custo `5`. Cards que o saldo não paga ficam desabilitados e se habilitam sozinhos quando o saldo chega ao custo.
@@ -5482,7 +5486,7 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - Comprar **Range** faz o preenchimento do Quadrant **crescer** na hora. **Orbit Speed** faz o Satellite girar mais rápido.
 - Comprar **Hitpoints** com o planeta ferido (**F6** algumas vezes): o máximo **e** o HP atual sobem 25.
 - **Crit Chance** chega a `MAX` quando atinge 80% e deixa de ser comprável.
-- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 10 Shards`, desabilitado até o saldo chegar a 10. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
+- Aba **Satellites**: uma linha `Satellite 1: Closest` e o botão `+ Satellite 2: 10 Shards`, já habilitado (o saldo inicial de 15 paga), e desabilitado quando o saldo fica abaixo de 10. Tocando na linha, ela alterna Closest → Weakest → Strongest → Farthest → Closest.
 - Com **M**, compre o Satellite 2: o saldo cai 10, o segundo Satellite aparece do lado oposto da órbita, surge a linha `Satellite 2: Closest` e o botão passa a `+ Satellite 3: 50 Shards`. Depois do 4º, o botão some. As teclas **2**–**4** da Fase 3 também mudam o número de Satellites (sem cobrar), e o botão acompanha.
 - O jogo **nunca pausa** ao abrir a gaveta ou comprar.
 - Em `1920x1080`, a UI tem o mesmo tamanho de pixel que o mundo (6×). Em `1280x720`, os dois ficam em 4×.
@@ -5497,13 +5501,13 @@ Todos os tamanhos e posições abaixo estão em **pixels da tela de referência 
 - **O botão de comprar Satellite fica sempre desabilitado ou sem texto:** o **Economy** do `SatellitePanel` está vazio, ou o **Buy Text** aponta para outro texto.
 - **O valor aparece com vírgula ou com ponto dependendo do computador:** é a cultura do sistema operacional. A Fase 11 (Localization) fixa a formatação por idioma.
 
-Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, cachos de Swarmers e a barra de HP.
+Próxima fase: **Fase 7 — Mothership**. Ela coloca o boss das Waves múltiplas de 10: órbita, laser telegrafado, lançamentos de naves (Grunts e Scouts, depois Swarmers) e a barra de HP.
 
 ---
 
 ### Fase 7 — Mothership
 
-> Objetivo desta fase: toda Wave múltipla de 10 traz a **Mothership** (Seção 4.5). Ela entra pelo setor do aviso, desce em espiral em volta do planeta, telegrafa e dispara o laser a cada 8 s, solta cachos de Swarmers a cada 15 s, tem uma barra de HP no topo da tela e, ao morrer, explode e paga 50 Shards. Se o timer da Boss Wave acabar com ela viva, ela continua em campo junto com as Waves seguintes.
+> Objetivo desta fase: toda Wave múltipla de 10 traz a **Mothership** (Seção 4.5). Ela entra pelo setor do aviso, desce em espiral em volta do planeta, telegrafa e dispara o laser a cada 8 s, solta naves a cada 15 s (Grunts e Scouts primeiro, depois cachos de Swarmers), tem uma barra de HP no topo da tela e, ao morrer, explode e paga 50 Shards. Se o timer da Boss Wave acabar com ela viva, ela continua em campo junto com as Waves seguintes.
 
 **Conceitos novos:**
 - **Movimento em duas etapas:** primeiro a **entrada** (linha reta da borda até 7 u) e depois a **espiral** (o ângulo cresce 10°/s e o raio diminui 1,5 u a cada 360°). A espiral é só "órbita com raio encolhendo": `raio -= 1,5 × (10 / 360) × dt`, limitado a 3,5 u.
@@ -5662,14 +5666,14 @@ using UnityEngine;
 namespace Armageddon.Enemies
 {
     // POR QUE: o boss se comporta de um jeito bem diferente dos inimigos comuns: não é kamikaze, entra e
-    // fica orbitando em espiral, ataca à distância (laser) e invoca Swarmers. Forçar isso no Enemy o
+    // fica orbitando em espiral, ataca à distância (laser) e lança naves. Forçar isso no Enemy o
     // encheria de "if boss".
     // ESTRATÉGIA: uma classe própria que também implementa ITarget (os Satellites atiram nela sem código
     // novo). O movimento usa coordenadas polares (ângulo + distância ao centro), que deixam a espiral
     // trivial. O laser fica num componente à parte (LaserAttack). Não é pooled: aparece uma vez a cada
     // 10 Waves, então Instantiate/Destroy (feitos pelo MothershipSpawner) não pesam.
     // O boss das Boss Waves (Seção 4.5). Entra em linha reta até 7 u, desce em espiral até 3,5 u,
-    // e ataca com o laser e com cachos de Swarmers. Implementa ITarget: os Satellites atiram nela sem código novo.
+    // e ataca com o laser e lançando naves (Grunts e Scouts, depois Swarmers). Implementa ITarget: os Satellites atiram nela sem código novo.
     [RequireComponent(typeof(SpriteRenderer), typeof(SpriteAnimator), typeof(LaserAttack))]
     public sealed class Mothership : MonoBehaviour, ITarget
     {
@@ -5688,12 +5692,19 @@ namespace Armageddon.Enemies
 
         [Header("Ataques")]
         [SerializeField] private float _laserInterval = 8f;
-        [SerializeField] private float _swarmerInterval = 15f;
+        [SerializeField] private float _launchInterval = 15f;
+        // POR QUE: se ela soltasse Swarmers (0,5 Shard cada) desde o início, o jogador quase não ganharia
+        // Shards para se fortalecer durante a luta. Os primeiros lançamentos são naves simples, que pagam mais.
+        // ESTRATÉGIA: uma lista de abertura no Inspector (Grunt, Grunt, Scout, Scout); quando ela acaba,
+        // todo lançamento é um cacho de Swarmers.
+        [SerializeField] private EnemyDefinition[] _openingLaunches;   // um tipo por lançamento de abertura
+        [SerializeField] private int _openingCount = 4;                 // naves por lançamento de abertura
+        [SerializeField] private float _openingSpread = 0.7f;           // u: espalha as naves em volta dela
         [SerializeField] private EnemyDefinition _swarmer;
 
         private LaserAttack _laser;
-        private EnemyPool _enemies;           // para soltar os Swarmers pelo mesmo caminho dos inimigos comuns
-        private float _hitpointsMultiplier;   // guardados para escalar os Swarmers que ela solta
+        private EnemyPool _enemies;           // para soltar as naves pelo mesmo caminho dos inimigos comuns
+        private float _hitpointsMultiplier;   // guardados para escalar as naves que ela solta
         private float _damageMultiplier;
         private float _laserDamage;
         private float _angle;          // graus, 0 = direita, anti-horário (como a órbita dos Satellites)
@@ -5701,7 +5712,8 @@ namespace Armageddon.Enemies
         private bool _inOrbit;         // false = ainda na entrada em linha reta
         private bool _alive;
         private float _laserTimer;
-        private float _swarmerTimer;
+        private float _launchTimer;
+        private int _launches;         // quantos lançamentos já fez (escolhe abertura ou Swarmers)
 
         public Vector2 Position { get; private set; }
         public float Radius => _radius;
@@ -5735,6 +5747,7 @@ namespace Armageddon.Enemies
             _laserDamage = _baseLaserDamage * damageMultiplier;
             _inOrbit = false;
             _alive = true;
+            _launches = 0;
             _laser.Init(planet);
             ApplyPosition();
             TargetRegistry.Register(this);
@@ -5755,7 +5768,7 @@ namespace Armageddon.Enemies
                 {
                     _inOrbit = true;
                     _laserTimer = 0f;
-                    _swarmerTimer = 0f;
+                    _launchTimer = 0f;
                 }
             }
             else
@@ -5770,7 +5783,7 @@ namespace Armageddon.Enemies
             ApplyPosition();
         }
 
-        // Dois cronômetros independentes: laser a cada 8 s (se o anterior terminou) e Swarmers a cada 15 s.
+        // Dois cronômetros independentes: laser a cada 8 s (se o anterior terminou) e um lançamento a cada 15 s.
         private void UpdateAttacks(float deltaTime)
         {
             _laserTimer += deltaTime;
@@ -5780,13 +5793,33 @@ namespace Armageddon.Enemies
                 _laser.Begin(_laserDamage);
             }
 
-            _swarmerTimer += deltaTime;
-            if (_swarmerTimer >= _swarmerInterval)
+            _launchTimer += deltaTime;
+            if (_launchTimer >= _launchInterval)
             {
-                _swarmerTimer = 0f;
-                // Os Swarmers da Mothership escalam com a Wave dela (Seção 4.3).
+                _launchTimer = 0f;
+                Launch();
+            }
+        }
+
+        // Um lançamento (Seção 4.5): enquanto houver abertura, _openingCount naves do tipo da vez, espalhadas
+        // em volta dela; depois, um cacho de Swarmers (o próprio EnemyPool espalha o cacho).
+        // As naves lançadas escalam com a Wave da Mothership (Seção 4.3).
+        private void Launch()
+        {
+            if (_launches < _openingLaunches.Length)
+            {
+                EnemyDefinition definition = _openingLaunches[_launches];
+                for (int i = 0; i < _openingCount; i++)
+                {
+                    Vector2 p = Position + UnityEngine.Random.insideUnitCircle * _openingSpread;
+                    _enemies.Spawn(definition, p, _hitpointsMultiplier, _damageMultiplier);
+                }
+            }
+            else
+            {
                 _enemies.Spawn(_swarmer, Position, _hitpointsMultiplier, _damageMultiplier);
             }
+            _launches++;
         }
 
         // Cumpre ITarget.TakeDamage. Ao morrer: cancela o laser, sai do registro e avisa (o spawner explode e destrói).
@@ -5948,7 +5981,7 @@ namespace Armageddon.UI
 
 #### Passo 5 — Shards da Mothership: atualize o `RunEconomy`
 
-A Mothership paga 50 Shards (Seção 4.5), também multiplicados por `(1 + Resource Bonus)` (Seção 4.4). Substitua o `RunEconomy` da Fase 6 por esta versão. Ela só acrescenta o campo **Motherships** e o `HandleMothershipKilled`:
+A Mothership paga 50 Shards (Seção 4.5), também com a chance de dobro do Resource Bonus (Seção 4.4). Substitua o `RunEconomy` da Fase 6 por esta versão. Ela só acrescenta o campo **Motherships** e o `HandleMothershipKilled`:
 
 ```csharp
 // Caminho: Assets/_Project/Scripts/Economy/RunEconomy.cs
@@ -5965,7 +5998,7 @@ namespace Armageddon.Economy
     // O QUE MUDOU nesta versão (Fase 7):
     //  - campo novo _motherships, e inscrição no evento MothershipKilled;
     //  - HandleMothershipKilled paga os 50 Shards do boss;
-    //  - a regra "Shards × (1 + Resource Bonus)" foi movida para AwardKill, usada pelos dois tipos de kill.
+    //  - a regra "chance de Shards em dobro do Resource Bonus" foi movida para AwardKill, usada pelos dois tipos de kill.
     //    POR QUE: com dois lugares pagando kills, a fórmula ficaria duplicada; num método só, uma mudança
     //    futura na fórmula vale para ambos.
     // Cria os Stats, a carteira e a loja da run; transforma kills e Wave Clears em Shards;
@@ -5979,7 +6012,7 @@ namespace Armageddon.Economy
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private MothershipSpawner _motherships;   // NOVO na Fase 7
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int _startingShards = 15;   // saldo no início de toda run (Seção 4.2)
         [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
@@ -6052,7 +6085,7 @@ namespace Armageddon.Economy
             _planet.SetDefense(Stats.Value(StatId.DefenseAbsolute), Stats.Value(StatId.DefenseRelative));
         }
 
-        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        // Shards por kill (Seção 4.4).
         private void HandleEnemyKilled(Enemy enemy)
         {
             AwardKill(enemy.Definition.Shards);
@@ -6067,7 +6100,9 @@ namespace Armageddon.Economy
         // NOVO: a fórmula de Shards por kill, num lugar só.
         private void AwardKill(float baseShards)
         {
-            Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
+            // UnityEngine.Random.value = número aleatório entre 0 e 1.
+            bool doubled = UnityEngine.Random.value < Stats.Value(StatId.ResourceBonus);
+            Wallet.Add(doubled ? baseShards * 2f : baseShards);
         }
 
         // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
@@ -6139,7 +6174,7 @@ namespace Armageddon.Enemies
    - **Sprite Renderer:** célula 0 de `Art/Enemies/SPR_Enemy_Mothership`; **Sorting Layer** `Enemies`.
    - **Sprite Animator:** as 5 células; **Fps** `5`; **Loop** marcado (Seção 6.4).
    - **Laser Attack:** **Warning Frames** = as 2 células de `SPR_VFX_Laser_Warning`; **Beam Frames** = as 4 de `SPR_VFX_Laser_Beam`; **Impact Frames** = as 4 de `SPR_VFX_Laser_Impact`.
-   - **Mothership:** **Swarmer** = `Enemy_Swarmer`. O resto já vem com os valores da Seção 4.5.
+   - **Mothership:** **Opening Launches** com 4 itens, nesta ordem: `Enemy_Grunt`, `Enemy_Grunt`, `Enemy_Scout`, `Enemy_Scout`; **Swarmer** = `Enemy_Swarmer`. O resto já vem com os valores da Seção 4.5.
 
    Arraste para `Prefabs/Gameplay/` e apague da cena.
 3. **Explosão da Mothership:** no `ExplosionPool` (Fase 4), acrescente um 3º item em **Explosions**: `Mothership`, com as 6 células de `Art/VFX/SPR_VFX_Explosion_Mothership` e **Fps** `12`.
@@ -6162,10 +6197,10 @@ namespace Armageddon.Enemies
 - **X** cria uma Mothership na borda. Ela desce em linha reta, e a barra magenta aparece no topo da tela. Chegando a 7 u, começa a girar devagar no sentido anti-horário, **cada volta um pouco mais perto**, até parar de se aproximar num círculo de 3,5 u.
 - Com o alcance base (4 u), os Satellites só começam a atingi-la depois de cerca de uma volta. Com o **Range** comprado, antes. A barra de HP desce a cada acerto.
 - A cada 8 s aparece uma linha vermelha tracejada piscando entre ela e o planeta, que **acompanha o movimento**. Depois de 1,5 s, vira um feixe com núcleo branco e um brilho na borda do planeta, e o HP do planeta cai 25 (na Wave 1; **F6** mostra o valor). Com **Defense %** comprada, o dano cai.
-- A cada 15 s, um cacho de 8 Swarmers sai de onde ela está e avança para o planeta.
+- A cada 15 s, ela solta naves de onde está: 4 Grunts, 4 Grunts, 4 Scouts e 4 Scouts nos 4 primeiros lançamentos, e um cacho de 8 Swarmers em cada lançamento depois disso.
 - Destruída, ela solta a explosão grande, a barra some, o saldo sobe 50 Shards e o Console mostra `[Boss] Mothership da Wave … destruída`.
 - Com **N** até a Wave 10, a Mothership nasce sozinha **do lado da seta do aviso**. Se o timer de 60 s acabar com ela viva, a Wave 11 começa com ela ainda em campo, e o Wave Clear só acontece depois que ela e todos os outros morrerem, pagando as Waves acumuladas juntas.
-- **Esc** congela a espiral, o laser (inclusive no meio do aviso) e o timer dos Swarmers.
+- **Esc** congela a espiral, o laser (inclusive no meio do aviso) e o timer dos lançamentos.
 
 **Problemas comuns:**
 - **O laser aparece como um único tile esticado ou borrado:** o **Mesh Type** do tile não está em `Full Rect` (item 1 do Passo 7).
@@ -6174,6 +6209,8 @@ namespace Armageddon.Enemies
 - **A Wave nunca termina depois que a Mothership morre:** o `MothershipSpawner` não chamou `AddExternalAlive(-1)`, e o Console costuma mostrar um erro no `HandleDied`. Confira também se ele é o único a criar Motherships (não arraste o prefab direto na cena).
 - **`NullReferenceException` no `RunEconomy` ao dar Play:** o campo novo **Motherships** está vazio.
 - **Os Swarmers da Mothership não aparecem:** o campo **Swarmer** do prefab está vazio.
+- **Ela já começa soltando Swarmers:** a lista **Opening Launches** do prefab está vazia.
+- **`NullReferenceException` no primeiro lançamento:** um item da lista **Opening Launches** está vazio.
 
 Próxima fase: **Fase 8 — Run: Revive, pausa e Results**. Ela junta tudo num ciclo de run completo: começar, pausar com a tela de pausa, morrer, oferecer o Revive e mostrar o Results.
 
@@ -6918,7 +6955,7 @@ namespace Armageddon.Run
 - **L** de novo na mesma run: **não** há segunda oferta, vai direto para o Results.
 - Numa run nova (**Play again**): **L** e deixar a contagem chegar a 0 leva ao Results. Com **O** ligado (anúncio falha), **Watch ad** também leva ao Results. Com **I** ligado (sem anúncio), a oferta nem aparece.
 - O Results mostra a Wave alcançada, os inimigos destruídos, o tempo (`m:ss`) e os Shards ganhos (incluindo os gastos). O Console repete o resumo (`[Run] Fim: …`).
-- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 5, sem pausa presa. **Menu** vai para o Main Menu.
+- **Play again** recomeça a run do zero: HP cheio, Wave 1, saldo 15, sem pausa presa. **Menu** vai para o Main Menu.
 - Com a oferta de Revive na tela, **Esc** não abre a pausa por cima.
 
 **Problemas comuns:**
@@ -8052,7 +8089,7 @@ namespace Armageddon.Economy
         [SerializeField] private EnemyPool _enemies;
         [SerializeField] private MothershipSpawner _motherships;
         [SerializeField] private WaveDirector _waves;
-        [SerializeField] private int _startingShards = 5;   // saldo no início de toda run (Seção 4.2)
+        [SerializeField] private int _startingShards = 15;   // saldo no início de toda run (Seção 4.2)
         [SerializeField] private int[] _satelliteCosts = { 10, 50, 100 };   // 2º, 3º e 4º Satellite (Seção 4.2)
 
         public StatCatalog Catalog => _catalog;
@@ -8124,10 +8161,12 @@ namespace Armageddon.Economy
             AwardKill(mothership.Shards);
         }
 
-        // Shards por kill × (1 + Resource Bonus) (Seção 4.4).
+        // Shards por kill. O Resource Bonus é a chance de a kill pagar o dobro (Seção 4.4).
         private void AwardKill(float baseShards)
         {
-            Wallet.Add(baseShards * (1f + Stats.Value(StatId.ResourceBonus)));
+            // UnityEngine.Random.value = número aleatório entre 0 e 1.
+            bool doubled = UnityEngine.Random.value < Stats.Value(StatId.ResourceBonus);
+            Wallet.Add(doubled ? baseShards * 2f : baseShards);
         }
 
         // Bônus de Wave Clear por Wave paga: (5 + w) × (1 + Resource per Wave) (Seção 4.3).
@@ -8663,15 +8702,23 @@ namespace Armageddon.Invasion
             StatApplier.Apply(Stats, _orbit, _planet, _shield, _reflector);
         }
 
-        // A IA ganha Shards como o jogador ganharia no Last Stand (Seção 4.7): os da nave × (1 + Resource Bonus).
+        // A IA ganha Shards como o jogador ganharia no Last Stand (Seção 4.7): os da nave, com a chance
+        // de dobro do Resource Bonus.
         private void HandleEnemyKilled(Enemy enemy)
         {
-            Wallet.Add(enemy.Definition.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+            AwardKill(enemy.Definition.Shards);
         }
 
         private void HandleMothershipDestroyed(Mothership mothership)
         {
-            Wallet.Add(mothership.Shards * (1f + Stats.Value(StatId.ResourceBonus)));
+            AwardKill(mothership.Shards);
+        }
+
+        // Mesma regra do RunEconomy: o Resource Bonus é a chance de a kill pagar o dobro (Seção 4.4).
+        private void AwardKill(float baseShards)
+        {
+            bool doubled = UnityEngine.Random.value < Stats.Value(StatId.ResourceBonus);
+            Wallet.Add(doubled ? baseShards * 2f : baseShards);
         }
     }
 }

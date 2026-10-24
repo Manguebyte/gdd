@@ -6,7 +6,7 @@ Publicado em **https://manguebyte.github.io/gdd/prototipos/8-bit-armageddon/** a
 
 ## O que tem
 - Planeta girando (9 Skins), 1–4 Satellites em órbita (os extras comprados com Shards na aba Satellites), Quadrants com preenchimento até o Attack Range, Target Priority por Satellite.
-- Waves com Spawn Sectors (setas na borda), timer, Wave Clear, limite de 150 inimigos; Grunt, Scout, Swarmer, Brute e Mothership (espiral, laser com aviso, cachos de Swarmers).
+- Waves com Spawn Sectors (setas na borda), timer, Wave Clear, limite de 150 inimigos; Grunt, Scout, Swarmer, Brute e Mothership (espiral, laser com aviso, lança Grunts e Scouts e depois cachos de Swarmers).
 - 13 Stats em 3 Tracks na gaveta (x1 / x10 / Max), números de dano, críticos, Impetus, defesa absoluta/relativa.
 - Results com recorde de Wave, 3 Planet Cores e 9 Skins, 15 conquistas, Settings, pausa (inclusive automática) e save no `localStorage`. Sem moeda permanente nem Perks: toda run começa do zero (Seção 5.1 do GDD).
 
@@ -21,7 +21,6 @@ Publicado em **https://manguebyte.github.io/gdd/prototipos/8-bit-armageddon/** a
 
 ## Diferenças do GDD (playtest)
 Ajustes pedidos depois de jogar, ainda não levados à Parte 1 do GDD:
-- A run começa com **10 Shards** (GDD: 5).
 - Cada Wave dura **60 s** (Boss Wave: **120 s**), e os inimigos nascem ao longo de 40 s (GDD: 30 s / 60 s, nascendo em 20 s).
 - Grunt, Scout, Swarmer e Brute são **20% mais lentos** (0,64 / 1,6 / 0,96 / 0,4 u/s). A velocidade da Mothership não mudou.
 - O laser da Mothership causa **30% menos** dano: 17,5 de base (GDD: 25), ainda multiplicado pela escalada de dano da Wave. Na Wave 10, ~30 por disparo em vez de ~42.
