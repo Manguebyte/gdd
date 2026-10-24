@@ -32,6 +32,15 @@ Pixel art do protótipo `prototipos/old-knight-and-the-witch/`. O jogo lê as ti
 | `inquisitor` | Grande Inquisidor | crimson and gold robes, mitre, golden staff with a burning cross |
 | `slime` / `slimeking` | Gosma e Gosma Rainha | green forest slime; giant king slime with a crown of twigs and mushrooms |
 
+## Interface (`ui/` e `cartas/`)
+Ids em `_tools/ui.json`. Para baixar de novo, rode `_tools/baixar_ui.py`.
+- **Ícones** (`ui/icons/`, 32×32): `create_image_pro_flash`, um por ícone. O estilo vem de uma célula da folha de teste, e depois da moeda.
+  - A folha 4×4 de 128 px saiu com outros desenhos no lugar dos pedidos. Sete células dela viraram ícones: caveira, caveira em chamas, grimório, cristal, elmo, armas cruzadas e sigilo.
+- **Ilustrações das cartas** (`cartas/`, 48×48): `create_image_pro_flash` com uma carta do Iso Cards como referência de estilo (`chamas.png`). Depois disso, a primeira carta gerada serviu de referência para as outras.
+- **Molduras** (`ui/panel.png`, `button.png` e `button-red.png`): `create_ui_asset`.
+  - Os botões vieram com a palavra "Button" desenhada no meio, e o script refaz o miolo repetindo uma faixa limpa da madeira.
+  - O vermelho veio dentro de um kit maior e é recortado.
+
 ## Em aberto
 - **Espada do Cavaleiro:** a espada saiu longa e inteira; o "meio quebrada" do GDD não apareceu. Uma nova geração (modo v3 ou pro) pode resolver.
 - **Animações dos heróis:** só existem parado, corrida e golpe. Faltam guarda, pulo e esquiva (hoje o jogo usa a corrida e a pose parada no lugar).

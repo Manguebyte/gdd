@@ -302,6 +302,13 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
   - **Bruxa:** adolescente ruiva, capa cinza; a varinha solta faíscas.
 - **Animações — proposta:** os dois com idle, corrida, ataque, guarda (parry), pulo, esquiva lateral, abaixar, dano e queda. O Cavaleiro tem um ataque mais demorado, para "vender" o peso. A Bruxa tem um aceno de varinha curto e um lançamento em área (a varinha erguida com um círculo de luz).
 - **Câmera — Definido (herdada do app 3D):** atrás e acima de quem está em campo, que aparece de costas; os monstros vêm do fundo e aparecem de frente. **Proposta:** o personagem da reserva aparece pequeno, atrás e a um lado, esmaecido, e na troca os dois correm cruzando de lugar.
+- **Interface — Definido:** todos os elementos de interface seguem um padrão único, feito do zero para o tema da caça às bruxas.
+  - **Materiais:** painéis de madeira escura com cantoneiras de ferro, botões de madeira com latão e o botão principal em couro vermelho.
+  - **Ícones:** todos são pixel art do PixelLab; **nenhum emoji** aparece no jogo.
+  - **Proposta (do protótipo):** a fonte Pixelify Sans, a mesma do Iso Cards.
+- **Cartas da Bruxa — Definido:** no estilo das cartas do Iso Cards (`IsoCards.md`).
+  - Cada carta tem uma ilustração em pixel art que ocupa a janela de cima, uma moldura na cor do tipo, uma gema com o custo de mana no canto e uma placa clara com o nome.
+  - **Proposta:** as cores da moldura são vermelho para fogo e dano direto, preto para arcano, azul para gelo e vento, verde para cura, branco para luz e cinza para o resto.
 - **Em aberto:** a paleta; o tamanho em pixels dos sprites (o app usa quadros de 192 px); a arte dos biomas (o 3D do app reaproveita texturas do V2 3D).
 
 ## 11. Interface e Controles
@@ -311,7 +318,12 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
   - **Painel da dupla** no canto de baixo: retrato e HP dos dois, com destaque em quem está em campo. A barra de Fúria só aparece com o Cavaleiro em campo, e as **gemas de mana** só com a Bruxa.
   - **Mão da Bruxa** na base da tela, no lugar do menu de comandos: até 4 a 6 cartas em leque, com o custo de mana no canto. Tocar uma carta a seleciona e mostra o efeito; segurar 0,5 s a joga no alvo atual. Ao lado ficam os botões **Encerrar**, **Trocar**, **Poção** e **Fugir**.
   - **Acampamento:** abas com o Cavaleiro e a Bruxa para comprar atributos e abrir a árvore de cada um, e uma tela de **Deck**.
-- **Em aberto:** se segurar 0,5 s é rápido o bastante para o ritmo "rápido" da Bruxa, ou se tocar duas vezes na carta é melhor. **O protótipo usa dois toques:** o 1º mostra o efeito no log, o 2º lança.
+- **Definido:** a batalha tem uma interface **mais limpa** que a do app. O que o protótipo já faz:
+  - Sem as setas de mira: o alvo se escolhe tocando ou deslizando sobre o inimigo.
+  - O nome do inimigo aparece só no alvo atual, e o herói mostra só a vida.
+  - A mana da Bruxa aparece em cristais.
+  - Encerrar, Poção e Trocar são botões redondos só com ícone.
+- **Em aberto:** se segurar 0,5 s é rápido o bastante para o ritmo "rápido" da Bruxa, ou se tocar duas vezes na carta é melhor. **O protótipo usa dois toques:** o 1º levanta a carta e mostra o efeito numa plaquinha acima da mão, e o 2º a lança.
 
 ## 12. Áudio
 

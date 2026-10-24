@@ -1,0 +1,106 @@
+{
+ "_doc": "Ids PixelLab da interface. cards/icons: job ids do create_image_pro_flash (download em /mcp/images/<job>/download). sheet: folha 4x4 de 128 px de onde saem os ícones recortados (sheetCells: célula [coluna, linha] de 32 px). panels: ids do create_ui_asset; os botões vêm com o texto Button desenhado e o script refaz o miolo.",
+ "cards": {
+  "spark": "609feeaf-3189-4b83-8901-9f2ba815fb0d",
+  "embers": "63a8e17e-cfba-42c1-8ab8-43d5d4b6486d",
+  "veil": "ef5f8c4a-596a-4fea-bb47-fadf42969fea",
+  "snap": "4ce47f05-8c30-49f4-a309-0d9f92f24586",
+  "chain": "423f3609-8fd2-4668-96b4-c6536ee8f67f",
+  "blizzard": "8b74088a-10ab-42a5-a882-c732c3c8a90b",
+  "blast": "b5c58d10-26f9-4c6c-b61d-b8ffb7e6d3ec",
+  "lance": "c65063cb-f032-4347-8a5f-86ed8c3cea1d",
+  "tea": "30094a8e-415d-4227-8998-42b0f768072f",
+  "blessing": "20d7a11c-267d-46d8-b140-48992c75f034",
+  "haste": "2e0a9b9b-a570-4547-ba0e-fa92bc9f3e21",
+  "memory": "904ee634-60d6-4504-9f89-313c8985b5a3",
+  "swapstep": "cfd0e049-3594-41aa-8eed-54b97ae62337"
+ },
+ "icons": {
+  "coin": "5bd3fcc4-3fee-4e58-8b17-b36d5f4a71a7",
+  "torch": "62076922-d2e1-4cd5-a9f1-be650327d588",
+  "soul": "9d128030-f168-48c9-a3f6-3ae1671b1db8",
+  "pouch": "b059a43e-72f9-4fc5-bbfc-9cd57cc25132",
+  "sparkle": "0be0f022-2323-4a3a-b1e7-b5ddd28ea537",
+  "chest": "32497312-023f-4bc5-bc02-af83aed498c9",
+  "scroll": "7d92e445-5698-4eeb-bb5f-be501e856e01",
+  "castle": "abd1d11a-ec5d-4019-a9f1-b6f20703147f",
+  "map": "3ed3860f-5ed6-4097-80fc-5df23ecb8275",
+  "lock": "9cb8291f-b562-46fb-b504-1c849b824e5b",
+  "mana": "3df04f71-7095-48e3-bf7e-83941c6f2374",
+  "hourglass": "11b288a6-6f7c-4312-89b9-5bbfb3e4ba67",
+  "potion": "328ed1b2-6f63-4d2d-bdf1-25bab4b85d8b",
+  "adrenaline": "fced4864-a59b-44ad-a28a-142240e4340c",
+  "swap": "067e3a9b-a362-4dec-ae05-1f794ad950af",
+  "bolt": "c05b510e-5b39-40b2-882f-45543cd657ca",
+  "crown": "60710bcd-aed5-4c09-b826-6fd3601fad4e",
+  "shield": "fdd8cd8b-5e6d-436e-b550-ccfc53efbc4e",
+  "trophy": "03fb9e97-0877-433a-91be-8dc3eefcc843",
+  "bomb": "860c20e3-af38-4351-a8a1-4292a15f3847",
+  "stone": "72b370cb-3cf2-45bd-a9ff-65a5641ded13",
+  "stars": "d2ee25a7-350d-4221-ad99-306e640e0013",
+  "heart": "97591bbe-d99d-490a-a559-5d7b2f2479c4",
+  "burst": "eba7bf90-244a-4a1e-836f-1131f0664622",
+  "arrow": "5ec3437d-6535-4c44-bc47-60c9c621038d",
+  "horn": "96e7b8e1-7bf5-4db1-9c12-78349855f4c6",
+  "dagger": "7450af84-7348-43c7-8eb0-cd11e125fb66",
+  "tree": "5659c289-c958-4c68-96dc-c217297965c1"
+ },
+ "sheet": "3f6b6c30-d850-4fb9-95e1-7874f5ad8ce9",
+ "sheetCells": {
+  "firskull": [
+   3,
+   0
+  ],
+  "grimoire": [
+   3,
+   1
+  ],
+  "skull": [
+   1,
+   2
+  ],
+  "crystal": [
+   1,
+   3
+  ],
+  "helmet": [
+   2,
+   3
+  ],
+  "crossed": [
+   3,
+   3
+  ],
+  "sigil": [
+   0,
+   3
+  ]
+ },
+ "panels": {
+  "panel": {
+   "id": "e2d562f1-eeb9-43ff-aa85-be573cad6337"
+  },
+  "button": {
+   "id": "c7cfa3f2-3667-41dd-a35a-890873fc1a47",
+   "clean": [
+    13,
+    23,
+    24
+   ]
+  },
+  "button-red": {
+   "id": "bb75dea4-d3ed-4d00-921e-416bfce9758f",
+   "region": [
+    0,
+    0,
+    150,
+    120
+   ],
+   "clean": [
+    13,
+    23,
+    24
+   ]
+  }
+ }
+}

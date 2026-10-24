@@ -1,0 +1,154 @@
+/* ================================================================
+   Old Knight and the Witch — skin própria (carregada depois do CSS do app)
+   Paleta: madeira escura, ferro, latão e brasa (caça às bruxas); fonte Pixelify
+   Sans, a mesma do Iso Cards. Molduras e ícones PixelLab em Sprites/OldKnightWitch/ui/.
+   ================================================================ */
+:root{
+  --bg:#110d0b;
+  --panel:#1e1712;
+  --panel-2:#2a2018;
+  --border:#5c4630;
+  --ink:#f0e4c8;
+  --ink-dim:#a8957a;
+  --accent:#e8813a;
+  --accent-deep:#a8461d;
+  --gold:#e9b44c;
+  --hp:#7fc35a;
+  --danger:#e0533d;
+  --sans:"Pixelify Sans", ui-sans-serif, system-ui, sans-serif;
+}
+body{background:var(--bg)}
+#app{background:radial-gradient(ellipse 130% 55% at 50% -12%, #3a1d12 0%, transparent 60%), var(--bg)}
+h1{color:var(--gold);text-shadow:0 2px 0 #000, 0 0 12px rgba(232,129,58,.35);letter-spacing:.02em}
+h1 em{color:var(--ink)}
+
+/* ---------- ícones no lugar dos emojis (okw-ui.js) ---------- */
+img.emo{width:1.25em;height:1.25em;image-rendering:pixelated;vertical-align:-.28em;margin:0 .06em}
+img.emo.flip{transform:scaleX(-1)}
+.campSide button img.emo{width:28px;height:28px;vertical-align:0}
+#enter img.emo{width:24px;height:24px}
+.tnode .tico img.emo{width:30px;height:30px}
+.uprow .ico img.emo{width:26px;height:26px}
+/* atributos do acampamento: ícones próprios no lugar das tiras de espadas/armaduras do app */
+#swordIco,#armorIco,#shieldIco{background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
+#swordIco{background-image:url('../../Sprites/OldKnightWitch/ui/icons/crossed.png')!important}
+#armorIco{background-image:url('../../Sprites/OldKnightWitch/ui/icons/heart.png')!important}
+#shieldIco{background-image:url('../../Sprites/OldKnightWitch/ui/icons/shield.png')!important}
+
+/* ---------- molduras: madeira e ferro (painel), madeira e latão (botões) ---------- */
+.skinned .card{background:rgba(17,13,11,.86)}
+.skinned .upbtn,.skinned .shopbtn,.skinned #ovBack{color:var(--ink);text-shadow:0 1px 0 #000}
+.skinned .upbtn small,.skinned .shopbtn small{color:var(--gold)}
+.skinned #enter{color:#fff3d6;text-shadow:0 2px 0 #3a0d06}
+/* menu do Cavaleiro e especiais: botão de madeira, texto claro */
+.skinned #cmds button,.skinned #specBar #cBack,.skinned .specPage button,.skinned #quickAtk{color:var(--ink);text-shadow:0 1px 0 #000}
+.skinned #cmds button:not(:disabled):active,.skinned .specPage button:not(:disabled):active{color:var(--gold)}
+.skinned #cmds .num,.skinned #specBar .num{color:var(--gold)}
+#cmds .cur{display:none}
+/* menu do Cavaleiro mais estreito: não cobre o personagem */
+#cmds button,.skinned #cmds button{font-size:12px;padding:3px 6px;border-width:8px}
+#cmdMain,#cmdPot{gap:3px}
+#cmds button img.emo,#cmds button .icn-s{width:16px;height:16px}
+.skinned #cRun{color:var(--ink);text-shadow:0 1px 0 #000}
+.skinned #cRun .num{color:var(--gold)}
+#herocard .hname{font-size:16px;line-height:1.1;text-align:center;padding:0 30px}
+.skinned #ovAd,.skinned #ovNG{background:none;border-radius:0;border:10px solid transparent;
+  border-image:var(--ui-btn-red) var(--ui-btn-slice) fill stretch;image-rendering:pixelated;color:#fff3d6;text-shadow:0 1px 0 #000}
+.heroArr,.specArrow{background:rgba(30,23,18,.85);border:2px solid #120c08;box-shadow:inset 0 0 0 1px var(--border)}
+
+/* ---------- batalha mais limpa ---------- */
+#arrL,#arrR,#swipehint{display:none!important}          /* mira: toque ou deslize no inimigo */
+#turnbar .label{display:none}
+.skinned #logwin{
+  background:linear-gradient(90deg,transparent,rgba(17,13,11,.82) 18%,rgba(17,13,11,.82) 82%,transparent);
+  border:none;border-image:none;padding:3px 14px;min-height:0;
+  font-size:13px;line-height:22px;text-align:center;color:var(--ink);
+}
+#logwin b{color:var(--gold)}
+#wavechip{
+  font-size:11px;letter-spacing:.06em;color:var(--ink);
+  background:rgba(17,13,11,.82);border:2px solid #120c08;border-radius:0;
+  box-shadow:inset 0 0 0 1px var(--border);padding:2px 10px;
+}
+#field{border:2px solid #120c08;border-radius:4px;box-shadow:inset 0 0 0 1px var(--border)}
+.tchip{border-radius:3px;background:#120c08;border-color:var(--border)}
+.tchip.act{border-color:var(--gold);box-shadow:0 0 10px rgba(233,180,76,.5)}
+#bossName{color:var(--gold)}
+#bossTrack{border-radius:0;border-color:#5c4630;box-shadow:0 0 0 2px #120c08}
+#bossFill{border-radius:0;background:linear-gradient(180deg,#f08a6a,#b8321f 55%,#7a1a10)}
+#cRun .num{color:var(--gold)}
+
+/* tutorial, nome do golpe e "pular": mesma moldura de madeira e ferro dos painéis */
+.skinned #tutbox,.skinned #movename{
+  background:rgba(17,13,11,.94);border-radius:0;border:14px solid transparent;
+  border-image:var(--ui-paper) var(--ui-paper-slice) fill stretch;image-rendering:pixelated;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+}
+.skinned #tutbox{padding:4px 8px}
+.skinned #movename{padding:0 8px;color:var(--gold)}
+#tutbox b,#tutbox .tap{color:var(--gold)}
+#tutSkip{border-radius:0;background:rgba(17,13,11,.85);border:2px solid #120c08;box-shadow:inset 0 0 0 1px var(--border);color:var(--ink-dim)}
+
+/* ---------- Bruxa: mão em leque (cartas do Iso Cards) ---------- */
+#hand{bottom:2px;gap:0;padding:0 4px}
+.hcard{
+  pointer-events:auto;position:relative;flex:none;width:64px;margin:0 -3px;
+  transform:translateY(var(--dy,0)) rotate(var(--rot,0));transform-origin:50% 130%;
+  transition:transform .15s ease, filter .15s;filter:drop-shadow(0 4px 5px rgba(0,0,0,.65));
+  touch-action:none;user-select:none;cursor:pointer;
+}
+.hcard canvas{display:block;width:64px;height:auto;image-rendering:pixelated}
+.hcard.selected{transform:translateY(-26px) rotate(0) scale(1.2);z-index:3;filter:drop-shadow(0 0 7px rgba(233,180,76,.95))}
+.hcard.off canvas{filter:grayscale(.75) brightness(.55)}
+.hcard.nope{animation:cardnope .3s ease}
+/* o que a carta tocada faz: plaquinha de pergaminho acima da mão */
+#cardTip{
+  position:absolute;left:50%;bottom:122px;translate:-50% 0;z-index:8;
+  width:max-content;max-width:62%;padding:5px 9px;text-align:center;
+  background:#ead7aa;color:#2a1a05;font-size:12px;line-height:1.3;
+  border:2px solid #120c08;box-shadow:inset 0 0 0 1px #b8955f, 0 4px 10px rgba(0,0,0,.5);pointer-events:none;
+}
+#cardTip b{color:#5a1d0c}
+#cardTip em{display:block;font-style:normal;font-size:10px;color:#6a4a20;margin-top:2px}
+#cardTip em.no{color:#9b1c1c}
+/* mana (cristais) e montes, à esquerda, acima da mão */
+#manaBox{
+  position:absolute;left:6px;bottom:112px;z-index:7;display:flex;flex-direction:column;gap:2px;
+  padding:4px 6px;background:rgba(17,13,11,.82);border:2px solid #120c08;box-shadow:inset 0 0 0 1px var(--border);
+}
+#manaPips{display:flex;gap:1px;background:none;border:none;padding:0}
+#manaPips img.pip{width:18px;height:18px;image-rendering:pixelated}
+#manaPips img.pip.empty{opacity:.22;filter:grayscale(1)}
+#pileInfo{display:flex;gap:8px;font-size:11px;color:var(--ink-dim)}
+#pileInfo img.emo{width:14px;height:14px}
+/* Encerrar / Poção / Trocar: botões redondos de madeira e latão, em coluna à direita */
+#magoBar{left:auto;right:6px;bottom:112px;flex-direction:column;align-items:center;gap:6px;padding:0;max-width:none}
+#magoBar .ibtn,.skinned #magoBar .ibtn{
+  width:54px;height:54px;padding:0;border-radius:50%;border:none;border-image:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;
+  background:radial-gradient(circle at 50% 38%,#4a3524,#24180f 70%);
+  box-shadow:0 0 0 2px #120c08, inset 0 0 0 2px #b8893a, inset 0 0 0 3px #120c08, 0 4px 8px rgba(0,0,0,.6);
+  color:var(--ink);font-size:9px;font-weight:600;line-height:1;overflow:hidden;
+}
+#magoBar .ibtn img.emo{width:26px;height:26px;margin:0}
+#magoBar .ibtn small{font-size:8px;color:var(--ink-dim);margin-top:1px}
+#magoBar .ibtn .num{position:absolute;top:5px;right:6px;margin:0;font-size:9px;color:var(--gold)}
+#magoBar .ibtn:disabled{opacity:.4}
+.skinned #magoBar button.hold::after,#magoBar button.hold::after{
+  background:linear-gradient(0deg,rgba(233,180,76,.45),rgba(233,180,76,.15));transform:scaleY(0);transform-origin:bottom;
+}
+#magoBar button.hold.holding::after{transform:scaleY(1);transition:transform .9s linear}
+
+/* ---------- Deck e recompensa: grade de cartas ---------- */
+.deckGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px 8px}
+.deckCell{display:flex;flex-direction:column;align-items:center;gap:4px;position:relative;text-align:center}
+.deckCell canvas{width:84px;height:auto;image-rendering:pixelated;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6))}
+.deckN{position:absolute;top:-4px;right:4px;z-index:1;background:#120c08;color:var(--gold);font-size:12px;padding:1px 5px;border:1px solid var(--border)}
+.deckCell .desc{font-size:10px;color:var(--ink-dim);line-height:1.25;min-height:2.5em}
+.deckCell .upbtn{min-width:0;width:100%;font-size:11px;padding:4px 6px}
+.pickRow{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+.pickCard{flex:1;min-width:0;background:none;border:none;padding:2px;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--ink)}
+.pickCard canvas{width:84px;height:auto;image-rendering:pixelated;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));transition:transform .12s}
+.pickCard:hover canvas,.pickCard:focus-visible canvas{transform:translateY(-4px)}
+.pickCard small{font-size:10px;color:var(--ink-dim);line-height:1.25}
+#cardPick > .upbtn{display:block;width:100%}

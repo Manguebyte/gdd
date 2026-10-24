@@ -6,8 +6,7 @@
 <!--ARTIFACT-A-->
 <title>Old Knight and the Witch</title>
 <meta name="theme-color" content="#0f1117">
-<link rel="icon" type="image/png" sizes="32x32" href="../../Sprites/GuerreiroDaMasmorraApp/assets/icons/icon-32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="../../Sprites/GuerreiroDaMasmorraApp/assets/icons/icon-16.png">
+<link rel="icon" type="image/png" href="../../Sprites/OldKnightWitch/ui/icons/sigil.png">
 <link rel="apple-touch-icon" sizes="180x180" href="../../Sprites/GuerreiroDaMasmorraApp/assets/icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -729,6 +728,11 @@
   #manaPips small{display:block;font-size:10px;color:var(--ink-dim)}
   #cardPick .upbtn{display:block;width:100%;margin:4px 0;text-align:left}
 </style>
+<!-- 🧙 interface própria do Old Knight and the Witch (arte PixelLab, fonte do Iso Cards) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="okw-ui.css">
 <!--/ARTIFACT-A-->
 </head>
 <body>
@@ -746,7 +750,7 @@
       <img class="icn" data-ico="icoTorch" alt="tochas"> <span class="num" id="torchN">20</span><span style="font-size:14px;color:var(--ink-dim)">/5</span>
       <span id="torchTimer"></span>
       <span style="color:var(--border)">·</span>
-      <img class="icn" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="souls"> <span class="num" id="soulN">0</span>
+      <img class="icn" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="souls"> <span class="num" id="soulN">0</span>
     </div>
 
     <div id="campWrap">
@@ -820,7 +824,7 @@
           <div class="label">Tocha — <span class="num" id="nTocha">0</span>/5</div>
           <div class="desc">A chave da masmorra: 1 por entrada. Recarrega sozinha a cada 10 min; compre para recarregar na hora</div>
         </div>
-        <button class="shopbtn" data-buy="tocha">Comprar<small><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="Soul"> 1</small></button>
+        <button class="shopbtn" data-buy="tocha">Comprar<small><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="Soul"> 1</small></button>
       </div>
       <div class="uprow">
         <div class="ico">🗺️</div>
@@ -828,7 +832,7 @@
           <div class="label">Mapa — <span class="num" id="nMapa">0</span></div>
           <div class="desc">Permite Fugir da masmorra levando todo o ouro coletado (consome 1)</div>
         </div>
-        <button class="shopbtn" data-buy="mapa">Comprar<small><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="Soul"> 1</small></button>
+        <button class="shopbtn" data-buy="mapa">Comprar<small><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="Soul"> 1</small></button>
       </div>
     </div>
     <div class="card">
@@ -932,11 +936,11 @@
           <button id="cAtk"><span class="cur">▶</span><img class="icn-s" data-ico="icoSword" alt="" style="margin-right:4px">Atacar</button>
           <button id="cSpec"><span class="cur">▶</span><img class="icn-s" data-ico="icoSpark" alt="" style="margin-right:4px">Ataque especial</button>
           <button id="cSwap" class="hidden"><span class="cur">▶</span>🔁 Trocar</button>
-          <button id="cPot"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/potion-heal.png" alt="" style="margin-right:4px">Poção</button>
+          <button id="cPot"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/potion.png" alt="" style="margin-right:4px">Poção</button>
         </div>
         <div id="cmdPot" class="hidden">
-          <button id="cPotHeal"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/potion-heal.png" alt="" style="margin-right:4px">Curar <span class="num" id="potN">×3</span></button>
-          <button id="cPotAdren"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/potion-adrenaline.png" alt="" style="margin-right:4px">Adrenalina <span class="num" id="adrenN">×3</span></button>
+          <button id="cPotHeal"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/potion.png" alt="" style="margin-right:4px">Curar <span class="num" id="potN">×3</span></button>
+          <button id="cPotAdren"><span class="cur">▶</span><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/adrenaline.png" alt="" style="margin-right:4px">Adrenalina <span class="num" id="adrenN">×3</span></button>
           <button id="cPotBack"><span class="cur">▶</span>↩ Voltar</button>
         </div>
       </div>
@@ -965,11 +969,13 @@
 
       <!-- 🃏 Mago Arcanista: menu de batalha + mão de cartas -->
       <div id="magoBar" class="hidden">
-        <span id="manaPips"></span>
-        <button id="cMagoAtk" class="hold">⏭ Encerrar</button>
-        <button id="cMagoCast" class="hold">🧪 Poção<span class="num" id="magoCastN"></span></button>
-        <button id="cMagoDestroy" class="hold hidden">🔁 Trocar</button>
+        <button id="cMagoAtk" class="hold ibtn" aria-label="Encerrar a vez">⏭<small>Encerrar</small></button>
+        <button id="cMagoCast" class="hold ibtn" aria-label="Poção">🧪<span class="num" id="magoCastN"></span><small>Poção</small></button>
+        <button id="cMagoDestroy" class="hold ibtn hidden" aria-label="Trocar">🔁<small>Trocar</small></button>
       </div>
+      <!-- 🧙 mana e montes da Bruxa, à esquerda da mão; dica da carta tocada acima dela -->
+      <div id="manaBox" class="hidden"><span id="manaPips"></span><small id="pileInfo"></small></div>
+      <div id="cardTip" class="hidden"></div>
       <div id="hand" class="hidden"></div>
     </div>
 
@@ -999,7 +1005,7 @@
       <div id="ovTitle">VITÓRIA!</div>
       <div id="ovMsg"></div>
       <button id="ovAd" class="hidden">🎬 Dobrar o prêmio</button>
-      <button id="ovSoul" class="hidden"><img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="" style="margin-right:4px">Usar Soul</button>
+      <button id="ovSoul" class="hidden"><img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="" style="margin-right:4px">Usar Soul</button>
       <button id="ovNG" class="hidden">👑 Iniciar NG+1</button>
       <button id="ovBack">Voltar ao acampamento</button>
     </div>
@@ -1016,6 +1022,7 @@
   </div>
 </div>
 <script src="../../Sprites/OldKnightWitch/units.js"></script>
+<script src="okw-ui.js"></script>
 <script>
 'use strict';
 /* ================================================================
@@ -1265,12 +1272,27 @@ const UIA = {
   scrollIron:'../../Sprites/GuerreiroDaMasmorraApp/assets/icons/ui/scroll-iron.png',  // pergaminho c/ cantoneiras — menus densos
   ribbonIron:'../../Sprites/GuerreiroDaMasmorraApp/assets/icons/ui/ribbon.png',       // fita de título (ferro, ouro e panos)
 };
+/* 🧙 Old Knight and the Witch: ícones e molduras próprios (PixelLab, Sprites/OldKnightWitch/ui/)
+   no lugar dos do app. Os nomes das chaves ficam, então o resto do código não muda. */
+const OKW_UI_DIR = '../../Sprites/OldKnightWitch/ui/', OKW_ICO = OKW_UI_DIR + 'icons/';
+Object.assign(UIA, {
+  icoCoin: OKW_ICO + 'coin.png', icoSword: OKW_ICO + 'crossed.png', icoShield: OKW_ICO + 'shield.png',
+  icoSoundOn: OKW_ICO + 'horn.png', icoSoundOff: OKW_ICO + 'horn.png', icoMeat: OKW_ICO + 'heart.png',
+  icoTorch: OKW_ICO + 'torch.png', icoShop: OKW_ICO + 'pouch.png', icoChest: OKW_ICO + 'chest.png',
+  icoGem: OKW_ICO + 'crystal.png', icoStone: OKW_ICO + 'stone.png', icoVital: OKW_ICO + 'potion.png',
+  icoEcho: OKW_ICO + 'dagger.png', icoPierce: OKW_ICO + 'mana.png', icoSkull: OKW_ICO + 'skull.png',
+  icoSpark: OKW_ICO + 'sparkle.png', icoBolt: OKW_ICO + 'bolt.png', icoOrb: OKW_ICO + 'sigil.png',
+  gemBlue: OKW_ICO + 'crystal.png', gemRed: OKW_ICO + 'crystal.png',
+  paperDark: OKW_UI_DIR + 'panel.png', scrollIron: OKW_UI_DIR + 'button.png',
+  btnIron: OKW_UI_DIR + 'button.png', btnIronRed: OKW_UI_DIR + 'button-red.png',
+});
+delete UIA.ribbonIron; delete UIA.ribbons; delete UIA.avaHero;   // títulos e avatar ficam no CSS novo
 const UIIMG = {};
 const uiPromise = Promise.allSettled(Object.entries(UIA).map(([k, f]) => new Promise((res, rej) => {
   const img = new Image();
   img.onload = () => { UIIMG[k] = img; res(); };
   img.onerror = () => rej(k);
-  img.src = (window.EMBED && window.EMBED['ui.' + k]) || (f.startsWith('../../Sprites/GuerreiroDaMasmorraApp/assets/') ? f : UIBASE + f);
+  img.src = (window.EMBED && window.EMBED['ui.' + k]) || (f.startsWith('../../') ? f : UIBASE + f);
 })));
 
 /* geometria dos 9-slices (os sheets têm os pedaços espaçados na grade) */
@@ -1383,11 +1405,11 @@ function drawSegBar(x, y, w, h, val, cap, color, flash){
     const R = document.documentElement.style;
     if (UIIMG.paperDark){                            // moldura nova: contígua, slice próprio
       R.setProperty('--ui-paper', 'url(' + UIIMG.paperDark.src + ')');
-      R.setProperty('--ui-paper-slice', '60');
+      R.setProperty('--ui-paper-slice', '34');   // 🧙 painel de madeira e ferro (232×228)
     } else if (UIIMG.paper) R.setProperty('--ui-paper', nineURL(UIIMG.paper, NINE.paper));
     if (UIIMG.scrollIron){                           // pergaminho novo: contíguo, slice próprio
       R.setProperty('--ui-scroll', 'url(' + UIIMG.scrollIron.src + ')');
-      R.setProperty('--ui-scroll-slice', '30');
+      R.setProperty('--ui-scroll-slice', '14');  // 🧙 botão de madeira (104×43)
     } else if (UIIMG.scroll) R.setProperty('--ui-scroll', nineURL(UIIMG.scroll, NINE.paper));
     /* Os assets novos SEMPRE ganham; os do Tiny Swords só entram como reserva.
        A ordem importa: antes, as linhas do Tiny Swords vinham depois e
@@ -1399,7 +1421,7 @@ function drawSegBar(x, y, w, h, val, cap, color, flash){
 
     if (UIIMG.btnIron){                              // botões novos: contíguos, slice próprio
       R.setProperty('--ui-btn-blue', 'url(' + UIIMG.btnIron.src + ')');
-      R.setProperty('--ui-btn-slice', '24');
+      R.setProperty('--ui-btn-slice', '14');     // 🧙 botões de madeira e vermelho (104×43)
     } else if (UIIMG.btnBlue) R.setProperty('--ui-btn-blue', nineURL(UIIMG.btnBlue, NINE.btn));
 
     if (UIIMG.btnIronRed) R.setProperty('--ui-btn-red', 'url(' + UIIMG.btnIronRed.src + ')');
@@ -3318,7 +3340,7 @@ function drawActor(a, t, mode){
     ctx.font = '600 10px ' + getComputedStyle(document.body).fontFamily;
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.fillStyle = a.dead ? '#f87171' : '#c9cde4';
-    ctx.fillText(a.dead ? a.name + ' · CAÍDO' : a.name + ' ' + a.hp + '/' + a.maxhp + ' · reserva', a.x, by - 3);
+    ctx.fillText(a.dead ? 'CAÍDO' : 'reserva ' + a.hp + '/' + a.maxhp, a.x, by - 3);   // 🧙 curto: não corta na borda
     if (!a.dead){
       const pct = Math.max(0, a.hp / a.maxhp);
       ctx.fillStyle = 'rgba(10,12,20,.85)'; ctx.fillRect(bx-1, by-1, bw+2, 6);
@@ -3332,8 +3354,9 @@ function drawActor(a, t, mode){
   if (miniBar){
     ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily;
     ctx.fillStyle = a.dead ? '#f87171' : '#c9cde4';
-    ctx.fillText(a.dead ? 'K.O.' : (a === player ? a.name + ' ' + hp + '/' + S.maxhp + ' ' +
-      (heroClass === 'bruxa' ? '💧' + mana + '/' + witchStats().max : '⚡' + fury + '/5') : a.name), a.x, by - 4);
+    /* 🧙 tela limpa: o herói mostra só a vida; inimigo só tem nome quando é o alvo */
+    const isTgt = targetable() && enemies[targetIdx] === a;
+    ctx.fillText(a.dead ? 'K.O.' : (a === player ? hp + '/' + S.maxhp : isTgt ? a.name : ''), a.x, by - 4);
     if (!a.dead){
       const pct = Math.max(0, (a === player ? hp/S.maxhp : a.hp/a.maxhp));
       ctx.fillStyle = 'rgba(10,12,20,.85)'; ctx.fillRect(bx-1, by-1, bw+2, 7);
@@ -3808,7 +3831,7 @@ $('#questsBack').addEventListener('click', () => {
 function renderShop(){
   regenTorches();
   $('#shopGold').innerHTML = icoS('icoCoin','🪙') + ' ' + S.gold + ' · ' + icoS('icoTorch','🔥') + ' ' + S.tochas + '/' + TORCH_MAX +
-    ' · <img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="Souls"> ' + S.souls;
+    ' · <img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="Souls"> ' + S.souls;
   renderGems();
   renderMenu();                                      // mantém contadores/botões em dia
 }
@@ -4460,10 +4483,10 @@ function renderHUD(){
   $('#adrenN').textContent = '×' + adrenaline;
   $('#mapN').textContent = '×' + S.mapas;
   const bnome = (BIOMES[battleBiome] || BIOMES.castelo).nome;
+  /* 🧙 chip enxuto: lugar · onda · ouro */
   $('#wavechip').textContent = TUT
-    ? '🌲 FLORESTA PROIBIDA · ONDA ' + wave + '/3'
-    : (duel ? '⚔ DUELO' : 'MASMORRA NV. ' + S.dgLv + ngTag()) + ' · ' + bnome + ' · ONDA ' + wave + '/3' +
-      (wave === 3 ? ' · BOSS' : '') + ' · 🪙 ' + S.gold;
+    ? '🌲 Floresta · onda ' + wave + '/3'
+    : (duel ? '⚔ Duelo' : 'Nv.' + S.dgLv + ngTag() + ' ' + bnome) + ' · onda ' + wave + '/3' + ' · 🪙 ' + S.gold;
 }
 /* multiplicador do golpe especial conforme os pontos de fúria (0–5) */
 function specialInfo(){
@@ -4554,7 +4577,7 @@ function setCmds(on){
   $('#cPotAdren').disabled = !on || adrenaline <= 0 || fury >= 5;
   $('#cSwap').classList.toggle('hidden', party.length < 2);   // 🧙 só com a dupla formada
   $('#cSwap').disabled = !on || !partnerAlive();
-  $('#cSwap').innerHTML = '<span class="cur">▶</span>🔁 Trocar' + (party.length > 1 ? ': ' + HEROES[party[1 - active].id].nome : '');
+  $('#cSwap').innerHTML = '<span class="cur">▶</span>🔁 Trocar';
   const sp = specialInfo();
   $('#furyM').textContent = !hasSkill('fury') ? '🔒 Hab.5' : sp ? sp.tag : '(⚡1+)';
   $('#comboM').textContent = !hasSkill('combo') ? '🔒 Hab.10'
@@ -6536,7 +6559,7 @@ function victory(){
   const soulsWon = perfect ? 2 : 1;
   S.souls += soulsWon;
   questAdd('souls', soulsWon);
-  scrollMsg += '<br><img class="icn" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt=""> O chefe deixou ' +
+  scrollMsg += '<br><img class="icn" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt=""> O chefe deixou ' +
                (soulsWon > 1 ? '<b>' + soulsWon + ' Souls</b>' : 'uma <b>Soul</b>') + '! ' +
                'Se você cair em batalha, use-a para continuar de onde parou. (Total: <b>' + S.souls + '</b>)<br>';
   if (S.dgLv >= DUNGEON_CAP) return gameComplete(bonus, scrollMsg);   // 👑 masmorra 33: fim do ciclo
@@ -6625,14 +6648,14 @@ function defeat(){
       ? 'A queda custou metade do ouro desta masmorra: <b>-' + lost + ' 🪙</b>. Restam <b>🪙 ' + S.gold + '</b> no total.<br>'
       : 'Você não havia coletado ouro nesta masmorra.<br>') +
     (S.souls > 0
-      ? 'Você tem <b>' + S.souls + '</b> <img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="Soul"> — use uma para se reerguer <b>de onde parou</b>!'
-      : 'Fortaleça-se e tente de novo!<br><span style="font-size:12px;color:var(--ink-dim)">Dica: chefes derrotados deixam <img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="Souls"> Souls, que revivem você de onde parou.</span>', null, 'defeat'));
+      ? 'Você tem <b>' + S.souls + '</b> <img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="Soul"> — use uma para se reerguer <b>de onde parou</b>!'
+      : 'Fortaleça-se e tente de novo!<br><span style="font-size:12px;color:var(--ink-dim)">Dica: chefes derrotados deixam <img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="Souls"> Souls, que revivem você de onde parou.</span>', null, 'defeat'));
   if (S.souls > 0) offerSoulRevive();
 }
 /* 💠 SOUL: revive o herói na mesma onda, com os inimigos como estavam */
 function offerSoulRevive(){
   const b = $('#ovSoul');
-  b.innerHTML = '<img class="icn-s" src="../../Sprites/GuerreiroDaMasmorraApp/assets/soul.png" alt="" style="margin-right:4px">Usar 1 Soul e continuar da onda ' + wave + ' (restam ' + S.souls + ')';
+  b.innerHTML = '<img class="icn-s" src="../../Sprites/OldKnightWitch/ui/icons/soul.png" alt="" style="margin-right:4px">Usar 1 Soul e continuar da onda ' + wave + ' (restam ' + S.souls + ')';
   b.disabled = false;
   b.classList.remove('hidden');
   b.onclick = () => {
@@ -6912,6 +6935,7 @@ const CARDS = {
   memory:   { nome:'Lembrança',        ico:'📖', custo:1, alvo:'nada',     compra:2, desc:'Compra 2 cartas' },
   swapstep: { nome:'Passo Trocado',    ico:'🔁', custo:0, alvo:'nada',     efeito:'troca', desc:'Troca com o parceiro, que age na hora' },
 };
+window.CARDS = CARDS;                              // okw-ui.js desenha as cartas a partir daqui
 const STARTER_DECK = ['spark', 'spark', 'spark', 'spark', 'embers', 'embers', 'embers', 'veil', 'veil', 'snap'];
 const REWARD_POOL = ['chain', 'blizzard', 'blast', 'lance', 'tea', 'blessing', 'haste', 'memory', 'swapstep'];
 const DECK_MIN = 8, DECK_MAX = 20;
@@ -6956,35 +6980,45 @@ function witchCanPlay(id){
   return true;
 }
 /* --- mão na tela --- */
-function handEl(i){ return document.querySelector('#hand .card[data-i="' + i + '"]'); }
+function handEl(i){ return document.querySelector('#hand .hcard[data-i="' + i + '"]'); }
 function bumpCard(i){
   const el = handEl(i); if (!el) return;
   el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope');
   SFX.play('block');
 }
+/* mão em leque, cartas no estilo do Iso Cards (okw-ui.js): a tocada sobe e a faixa de
+   cima mostra o que ela faz; tocar de novo lança */
 function renderHand(){
   const box = $('#hand');
   box.innerHTML = '';
+  const n = hand.length;
   hand.forEach((id, i) => {
-    const c = CARDS[id];
     const el = document.createElement('div');
-    const cor = c.efeito === 'cura' || c.efeito === 'veu' ? 'verde' : c.efeito === 'troca' || c.alvo === 'nada' ? 'preto' : 'roxo';
-    el.className = 'card' + (selected === i ? ' selected' : '') + (witchCanPlay(id) ? '' : ' off');
-    el.dataset.i = i; el.dataset.cor = cor;
-    el.innerHTML = '<span class="cd-el">💧' + c.custo + '</span>' +
-      '<span class="cd-ico">' + c.ico + '</span>' +
-      '<span class="cd-nome">' + c.nome + '</span>' +
-      '<span class="cd-dano">' + (c.alvo === 'todos' ? 'TODOS' : c.alvo === 'salto' ? (c.golpes || 1) + '×' : c.alvo === 'um' ? '1 ALVO' : '') + '</span>';
+    const off = i - (n - 1) / 2;
+    el.className = 'hcard' + (selected === i ? ' selected' : '') + (witchCanPlay(id) ? '' : ' off');
+    el.dataset.i = i;
+    el.style.setProperty('--rot', (off * 5) + 'deg');
+    el.style.setProperty('--dy', (Math.abs(off) * Math.abs(off) * 3) + 'px');
+    el.appendChild(OKW_UI.card(id));
     el.addEventListener('click', e => { e.stopPropagation(); witchTap(i); });
     box.appendChild(el);
   });
+  const tip = $('#cardTip');
+  if (selected !== null && hand[selected]){
+    const c = CARDS[hand[selected]];
+    tip.innerHTML = '<b>' + c.nome + '</b> · ' + OKW_UI.kindOf(c) + '<br>' + c.desc +
+      (witchCanPlay(hand[selected]) ? '<em>toque de novo para lançar</em>' : '<em class="no">sem mana para esta</em>');
+    tip.classList.remove('hidden');
+  } else tip.classList.add('hidden');
   updateMagoBar();
 }
 function updateMagoBar(){
   const st = witchStats();
-  $('#manaPips').innerHTML = '💧'.repeat(mana) + '<span style="opacity:.25">' + '💧'.repeat(Math.max(0, st.max - mana)) + '</span>' +
-    ' <small>monte ' + (witchDeck ? witchDeck.draw.length : 0) + ' · descarte ' + (witchDeck ? witchDeck.disc.length : 0) + '</small>';
-  $('#magoCastN').textContent = ' ×' + potions;
+  $('#manaPips').innerHTML = Array.from({ length: st.max }, (_, k) =>
+    '<img class="pip' + (k < mana ? '' : ' empty') + '" src="' + OKW_ICO + 'mana.png" alt="">').join('');
+  $('#pileInfo').innerHTML = '<span title="monte">' + OKW_UI.icon('grimoire') + (witchDeck ? witchDeck.draw.length : 0) + '</span>' +
+    '<span title="descarte">' + OKW_UI.icon('scroll') + (witchDeck ? witchDeck.disc.length : 0) + '</span>';
+  $('#magoCastN').textContent = '×' + potions;
   $('#cMagoCast').disabled = potions <= 0 || hp >= S.maxhp;
   $('#cMagoDestroy').classList.toggle('hidden', party.length < 2);
   $('#cMagoDestroy').disabled = !partnerAlive();
@@ -6993,10 +7027,7 @@ function updateMagoBar(){
 function witchTap(i){
   if (phase !== 'mago_mao') return;
   if (selected === i) return void witchPlay(i);
-  selected = i;
-  const c = CARDS[hand[i]];
-  log(c.ico + ' <b>' + c.nome + '</b> (' + c.custo + ' de mana): ' + c.desc +
-      (witchCanPlay(hand[i]) ? ' — toque de novo para lançar.' : ' — <b>sem mana</b> para esta.'));
+  selected = i;                                      // a faixa #cardTip mostra o que a carta faz
   renderHand();
 }
 /* dano de carta num monstro: magia (ignora DEF); escudo arcano cai 1 por acerto */
@@ -7089,6 +7120,7 @@ function magoResumeHand(){
   renderHand();
   $('#hand').classList.remove('hidden');
   $('#magoBar').classList.remove('hidden');
+  $('#manaBox').classList.remove('hidden');
   setTurn('player');
 }
 /* começo da vaga da Bruxa: +mana e compra até a mão encher */
@@ -7102,6 +7134,7 @@ function witchBeginTurn(){
 }
 function magoHideHand(){
   $('#hand').classList.add('hidden'); $('#magoBar').classList.add('hidden');
+  $('#manaBox').classList.add('hidden'); $('#cardTip').classList.add('hidden');
   if (phase !== 'player'){ $('#arrL').classList.add('hidden'); $('#arrR').classList.add('hidden'); }
 }
 /* ⏭ Encerrar: passa a vez */
@@ -7121,9 +7154,9 @@ function offerCardReward(){
   const box = document.createElement('div');
   box.id = 'cardPick';
   box.innerHTML = '<div class="label" style="margin:8px 0 4px">🃏 Uma carta nova para a Bruxa (deck: ' + S.deck.length + '/' + DECK_MAX + ')</div>' +
-    S.cardChoices.map(id => '<button class="upbtn" data-card="' + id + '">' + CARDS[id].ico + ' ' + CARDS[id].nome +
-      '<small>💧' + CARDS[id].custo + ' · ' + CARDS[id].desc + '</small></button>').join('') +
+    '<div class="pickRow">' + S.cardChoices.map(id => '<button class="pickCard" data-card="' + id + '"><small>' + CARDS[id].desc + '</small></button>').join('') + '</div>' +
     '<button class="upbtn" data-card="">Pular</button>';
+  box.querySelectorAll('.pickCard').forEach(b => b.prepend(OKW_UI.card(b.dataset.card)));
   box.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     const id = b.dataset.card;
     if (id && S.deck.length < DECK_MAX) S.deck.push(id);
@@ -7142,10 +7175,12 @@ function renderDeck(){
   $('#deckInfo').innerHTML = S.deck.length + ' cartas (mín. ' + DECK_MIN + ', máx. ' + DECK_MAX + ') · remover custa ' +
     icoS('icoCoin', '🪙') + ' ' + removeCost() + ' (você tem ' + S.gold + ')' +
     '<br>Cartas novas vêm da escolha depois de cada masmorra vencida.';
-  $('#deckList').innerHTML = Object.entries(counts).map(([id, n]) =>
-    '<div class="uprow"><div class="ico">' + CARDS[id].ico + '</div><div class="info"><div class="label">' +
-    CARDS[id].nome + ' ×' + n + ' · 💧' + CARDS[id].custo + '</div><div class="desc">' + CARDS[id].desc + '</div></div>' +
-    '<button class="upbtn" data-rm="' + id + '"' + (pode && S.gold >= removeCost() ? '' : ' disabled') + '>Remover 1</button></div>').join('');
+  /* grade de cartas (estilo Iso Cards) com a quantidade e o botão de remover embaixo */
+  $('#deckList').innerHTML = '<div class="deckGrid">' + Object.entries(counts).map(([id, n]) =>
+    '<div class="deckCell" data-card="' + id + '"><span class="deckN">×' + n + '</span>' +
+    '<div class="desc">' + CARDS[id].desc + '</div>' +
+    '<button class="upbtn" data-rm="' + id + '"' + (pode && S.gold >= removeCost() ? '' : ' disabled') + '>Remover 1</button></div>').join('') + '</div>';
+  $('#deckList').querySelectorAll('.deckCell').forEach(d => d.prepend(OKW_UI.card(d.dataset.card)));
   $('#deckList').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
     const c = removeCost();
     if (S.deck.length <= DECK_MIN || S.gold < c) return;
