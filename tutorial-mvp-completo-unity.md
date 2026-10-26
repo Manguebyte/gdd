@@ -1,4 +1,7 @@
 # Tutorial Unity — Implementação Completa do MVP
+
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 ### Projeto: Mercador & Legião | Nível: Iniciante
 
 Este documento continua o tutorial do mapa e fecha **todo o loop do MVP**: Heróis → Quests → Combate → Loot → Crafting → Loja. A ordem dos passos importa — construímos de dentro pra fora (dados → lógica pura → gerenciadores → UI), pra você sempre conseguir testar cada pedaço isoladamente antes de conectar o resto.
@@ -492,3 +495,7 @@ Um `GameManager` central (singleton) deve segurar a referência única de `GameS
 - [ ] Fechar e abrir o jogo depois de cada passo acima, confirmando que o `SaveSystem` manteve tudo.
 
 Se todos os itens dessa checklist passarem, o loop core inteiro do MVP está funcional — o resto é polimento de UI e conteúdo (mais heróis, itens, regiões).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do tutorial neste dia.

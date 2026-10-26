@@ -1,5 +1,7 @@
 # GDD — Iso Cards (título provisório)
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 Atualizado em 21/10/2026 · Abe
 
 ## Visão geral
@@ -244,3 +246,7 @@ Cada Cidade vende esferas da cor do seu bioma, mais baratas, e das cores dos bio
 - [ ] As esferas e itens também melhoram cartas existentes, ou só criam cartas novas?
 - [ ] Nome do jogo, cenário e história.
 - [ ] Plataforma alvo.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.

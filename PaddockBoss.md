@@ -1,5 +1,7 @@
 # GDD — Paddock Boss
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem. Nome provisório.
 > Valores marcados como **valor inicial** são o ponto de partida do balanceamento, não decisões fechadas.
 
@@ -261,6 +263,10 @@ Lista consolidada, para revisão rápida:
 15. Áudio.
 16. Save no meio da corrida; save na nuvem.
 17. O guia Unity (Parte 2) ainda está na versão anterior: 3 etapas, 4 áreas, sem disputa de posição e sem o ritmo Poupar. As regras novas da §3, §4, §5 e §8 só existem no protótipo web.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

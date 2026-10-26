@@ -1,5 +1,7 @@
 # GDD — Craft Dice
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem. Os números de balanceamento (HP, dano, preços, custo dos feitiços) ainda não foram decididos: os valores da tabela §13 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 
 ## Índice
@@ -255,6 +257,10 @@
 - Tema visual das áreas depois da primeira, e áudio (§10).
 - Interação com a bonfire, HUD da exploração, duração da rolagem dos dados (§11).
 - Momento do save e o risco de fechar o jogo no meio da batalha (§12).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

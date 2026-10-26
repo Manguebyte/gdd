@@ -1,5 +1,7 @@
 # GDD — Sea Hauler
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial: o conceito está fechado nas linhas gerais (tower defense em que a "torre" é um navio da Marinha britânica fugindo de piratas até o porto), mas os números de balanceamento ainda não foram decididos. Os valores da tabela §17 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 >
 > **De onde vem este jogo.** **Definido:** o Sea Hauler é um **jogo separado**, derivado do [Space Hauler](SpaceHauler.md) (que por sua vez veio do [Fury Hauler](FuryHauler.md)): troca a nave de carga no espaço por um **navio da Coroa britânica** no mar, com piratas no rastro. Ele tem GDD, glossário ([`contexts/sea-hauler/CONTEXT.md`](contexts/sea-hauler/CONTEXT.md)), protótipo e save próprios. Os documentos evoluem sozinhos: uma mudança num jogo não vale para o outro.
@@ -366,6 +368,10 @@ Portinholas de cada classe (m, a partir do centro do navio; todas com arco de 18
 - Paleta e direções dos sprites (§13).
 - Layout do HUD e indicador de inimigos fora da tela (§14).
 - Áudio (§15).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

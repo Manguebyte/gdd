@@ -119,6 +119,7 @@ button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.2
   #hud { left: 28px; top: 4px; }
   .stats { font-size: 17px; gap: 0 9px; padding: 2px 10px; }
   .stat img { width: 22px; height: 22px; }
+  #s-page .bio { display: none; }
   .quests { font-size: 14px; max-width: 250px; }
   .quests i { font-size: 18px; }
   .tools { flex-direction: column; }

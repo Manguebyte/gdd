@@ -1,4 +1,7 @@
 # GDD — "PROTOCOLO ECTOPLASMA" (título provisório)
+
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 *Documento de Design de Jogo v0.1*
 
 ---
@@ -167,6 +170,10 @@ Para um protótipo jogável rápido:
 4. 1 tipo de armadilha (autônoma simples).
 5. Upgrade único: velocidade de sucção (para validar o loop de progressão).
 6. Sem narrativa completa — só o gancho inicial e um teaser do final.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

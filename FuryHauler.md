@@ -1,5 +1,7 @@
 # GDD — Fury Hauler
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial: o conceito está fechado nas linhas gerais (tower defense em que a "torre" é um caminhão de guerra que anda sozinho de A até B), mas os números de balanceamento ainda não foram decididos. Os valores da tabela §15 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 
 ## Índice
@@ -255,6 +257,10 @@
 - Estilo de arte, ferramenta e paleta (§11).
 - Layout do HUD (§12).
 - Áudio (§13).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

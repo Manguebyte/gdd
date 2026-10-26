@@ -1,4 +1,7 @@
 # GDD — Orbitfall Iso
+
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
 **Plataformas:** Web (site próprio + itch.io), navegador de desktop, com mouse
@@ -561,6 +564,10 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 - Versão para celular (Android), com controles de toque.
 - **Em aberto:** dar papel de jogo ao grid (por exemplo, posicionar coisas em casas do grid). Hoje o grid é só visual (Seção 6.1); isso mudaria o pilar 1 (combate automático com decisão só de Upgrade), por isso fica como ideia, não como plano.
 - Eventos semanais e modos alternativos (ex.: desafio diário com seed fixa).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

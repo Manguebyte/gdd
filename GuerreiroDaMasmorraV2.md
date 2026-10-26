@@ -1,5 +1,7 @@
 # GDD — Guerreiro da Masmorra v2
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Escrito a partir do jogo publicado no repositório [abraaovilanova/guerreiro-da-masmorra-v2](https://github.com/abraaovilanova/guerreiro-da-masmorra-v2) (web em `index.html` único + Android via Capacitor), que é a referência de comportamento. A Parte 1 descreve o que o código faz hoje, incluindo os sistemas já escritos mas desligados.
 > A v2 é a evolução do jogo descrito em [`GuerreiroDaMasmorra.md`](GuerreiroDaMasmorra.md): o mesmo combate de reações, mas **todo o poder de ataque vem de dados**, comprados e melhorados com **sangue**, a moeda única. Este documento é completo por si só e não é um diff do outro; a §2.1 lista o que mudou, para quem já conhece a versão anterior.
 > Onde o `GDD.md` do repositório da v2 ficou desatualizado em relação ao código, este documento segue o **código** e registra a diferença na §17. Números marcados como **valor inicial** são o balanceamento atual, não decisões fechadas.
@@ -442,3 +444,7 @@ Tutorial guiado na primeira entrada, contra um Boneco de Treino (60 HP, ATK 5), 
 6. **Identidade de Caçadora, Lanceiro e Monge** e **quando religar** mapa-múndi, recrutamento e troca de herói (herdado da versão anterior).
 7. **Diferenças do `GDD.md` da v2 para o código**, resolvidas aqui a favor do código: o `GDD.md` ainda descreve Ataque comprável, Fúria 0–5, Tochas de 40 ouro com teto 20 e especiais pagos com Fúria. Confirmar que o código é a intenção.
 8. **Guia Unity da v2:** escrever um guia próprio ou estender o do `GuerreiroDaMasmorra.md` com os dados.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.

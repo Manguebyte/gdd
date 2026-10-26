@@ -1,5 +1,7 @@
 # GDD — Guerreiro da Masmorra
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Escrito a partir do jogo publicado ([abraaovilanova/guerreiro-da-masmorra](https://github.com/abraaovilanova/guerreiro-da-masmorra): web em `index.html` único + Android via Capacitor), que é a referência de comportamento. A Parte 1 descreve o que o código faz hoje (incluindo os sistemas já escritos mas desligados) e a Parte 2 ensina a reconstruir o jogo em Unity.
 > Onde o `GDD.md` do próprio repositório ficou desatualizado em relação ao código, este documento segue o **código** e registra a diferença na §17. Números marcados como **valor inicial** são o balanceamento atual, não decisões fechadas.
 
@@ -397,6 +399,10 @@ Liberadas por pergaminho (§9); depois, compradas no Nv.1 e evoluídas até o Nv
    - Mapa comprado com Soul.
    Confirmar que o código é a intenção.
 7. **No port Unity:** provedor de anúncios (Unity LevelPlay ou Google Mobile Ads), provedor de login para a nuvem e se o corredor em perspectiva entra no MVP do port ou fica para depois do layout lateral.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

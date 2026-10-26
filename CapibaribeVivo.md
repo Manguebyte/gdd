@@ -1,5 +1,7 @@
 # GDD — Capibaribe Vivo
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial, a refinar conforme prototipagem e conversa com educadores.
 >
 > "Capibaribe Vivo" é o nome provisório. Os números marcados como **proposta** são pontos de partida para o primeiro protótipo, não decisões. Os fatos sobre o rio, os bairros e a fauna estão marcados **(a validar)** quando ainda precisam ser conferidos com pesquisa ou com um(a) educador(a) antes de irem para o jogo: como o jogo é educativo, um fato errado é um defeito.
@@ -268,6 +270,10 @@ Fatos de partida **(a validar)**:
 - **Sala de aula:** guia do professor, legendas, fonte ajustável (§17).
 - **Save:** navegador limpo e computador compartilhado na escola; contas de turma (§18).
 - **Números de proposta:** velocidade do barco, raio do puçá, porão de 8, pontos (1/2/1/15), teto de 60%, intervalo das fontes, duração dos trechos.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD neste dia.
 
 ---
 

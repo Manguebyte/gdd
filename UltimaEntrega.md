@@ -1,5 +1,7 @@
 # Última Entrega — GDD (título provisório)
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 Oct 4, 2026 · @Abraão Alves Vila NOVA
 
 ## Visão geral
@@ -247,6 +249,10 @@ O visual contrapõe o cinza sujo da superfície ao luxo frio dos bunkers, e a lo
 - Sem HUD fixo. Pedidos e créditos aparecem num relógio de pulso que o jogador consulta com um botão.
 - Diário de entregas no hub: registro de cada entrega, que fica rabiscado e ilegível com a loucura alta.
 - Opções de acessibilidade: medidor numérico de loucura, redução de tremor de tela e de efeitos de distorção, legenda para sons de monstros.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ## Unity: setup e arquitetura
 

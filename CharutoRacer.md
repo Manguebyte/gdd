@@ -1,5 +1,7 @@
 # GDD — Charuto Racer
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem. Os números de balanceamento (velocidades, consumo, preços, prêmios, pontos) ainda não foram decididos: os valores das tabelas da Parte 1 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 
 ## Índice
@@ -292,6 +294,10 @@
 - Toda a direção de áudio (§11).
 - Slots de save, recorde de volta (§12).
 - Tela dividida para 2 jogadores (§13).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

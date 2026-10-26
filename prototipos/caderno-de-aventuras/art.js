@@ -63,17 +63,19 @@
     ln(r, o, 42, 88, 40, 97, C.INK, 3); ln(r, o, 58, 88, 60, 97, C.INK, 3);
     return o;
   };
-  M.lobo = r => {
+  // Lobo de pelo cinza; o do gelo e o cão infernal são o mesmo desenho em outras cores.
+  function wolf(r, fur, eye) {
     const o = [];
     pl(r, o, [[20, 58], [8, 50], [4, 38], [14, 46], [22, 52]], true, C.INK, 2.4);
-    blob(r, o, 46, 62, 28, 15, C.INK, C.GRAY);
-    shape(r, o, [[66, 40], [90, 54], [96, 58], [88, 64], [70, 64], [64, 52]], C.INK, C.GRAY);
-    shape(r, o, [[68, 42], [70, 26], [78, 40]], C.INK, C.GRAY, 2.2);
-    dot(r, o, 78, 50, 2.4, C.RED);
+    blob(r, o, 46, 62, 28, 15, C.INK, fur);
+    shape(r, o, [[66, 40], [90, 54], [96, 58], [88, 64], [70, 64], [64, 52]], C.INK, fur);
+    shape(r, o, [[68, 42], [70, 26], [78, 40]], C.INK, fur, 2.2);
+    dot(r, o, 78, 50, 2.4, eye);
     dot(r, o, 95, 58, 2, C.INK);
     for (const x of [28, 38, 56, 64]) ln(r, o, x, 72, x + (x > 50 ? 2 : -2), 94, C.INK, 3);
     return o;
-  };
+  }
+  M.lobo = r => wolf(r, C.GRAY, C.RED);
   M.esqueleto = r => {
     const o = [];
     ov(r, o, 50, 22, 14, 14, C.INK, 2.6);
@@ -161,16 +163,251 @@
     ln(r, o, 36, 86, 32, 98, C.INK, 4.4); ln(r, o, 64, 86, 68, 98, C.INK, 4.4);
     return o;
   };
-  M.golem = r => {
+  // Golem de pedra cinza; o de magma é o mesmo bloco escuro com rachaduras de lava.
+  function golem(r, stone, eye, crack) {
     const o = [];
-    shape(r, o, [[24, 36], [76, 36], [78, 76], [22, 76]], C.INK, C.GRAY, 2.8, 3.4);
-    shape(r, o, [[36, 10], [64, 10], [64, 34], [36, 34]], C.INK, C.GRAY, 2.8, 3.4);
-    eyes(r, o, 44, 56, 22, 3, C.ORANGE);
-    shape(r, o, [[6, 38], [22, 38], [22, 72], [6, 72]], C.INK, C.GRAY, 2.6, 3.4);
-    shape(r, o, [[78, 38], [94, 38], [94, 72], [78, 72]], C.INK, C.GRAY, 2.6, 3.4);
-    shape(r, o, [[28, 76], [44, 76], [44, 98], [28, 98]], C.INK, C.GRAY, 2.6, 3.4);
-    shape(r, o, [[56, 76], [72, 76], [72, 98], [56, 98]], C.INK, C.GRAY, 2.6, 3.4);
-    pl(r, o, [[40, 42], [48, 54], [44, 62], [52, 70]], false, C.INK, 1.8);
+    shape(r, o, [[24, 36], [76, 36], [78, 76], [22, 76]], C.INK, stone, 2.8, 3.4);
+    shape(r, o, [[36, 10], [64, 10], [64, 34], [36, 34]], C.INK, stone, 2.8, 3.4);
+    eyes(r, o, 44, 56, 22, 3, eye);
+    shape(r, o, [[6, 38], [22, 38], [22, 72], [6, 72]], C.INK, stone, 2.6, 3.4);
+    shape(r, o, [[78, 38], [94, 38], [94, 72], [78, 72]], C.INK, stone, 2.6, 3.4);
+    shape(r, o, [[28, 76], [44, 76], [44, 98], [28, 98]], C.INK, stone, 2.6, 3.4);
+    shape(r, o, [[56, 76], [72, 76], [72, 98], [56, 98]], C.INK, stone, 2.6, 3.4);
+    pl(r, o, [[40, 42], [48, 54], [44, 62], [52, 70]], false, crack, crack === C.INK ? 1.8 : 3);
+    return o;
+  }
+  M.golem = r => golem(r, C.GRAY, C.ORANGE, C.INK);
+
+  // ----- Deserto -----
+  M.escorpiao = r => {
+    const o = [];
+    for (let k = 0; k < 3; k++) {
+      ln(r, o, 38 + k * 10, 74, 30 + k * 10, 92, C.INK, 2.4);
+      ln(r, o, 42 + k * 10, 74, 48 + k * 10, 92, C.INK, 2.4);
+    }
+    // Rabo em gomos subindo pelas costas, com o ferrão vermelho na ponta.
+    pl(r, o, [[30, 70], [16, 58], [14, 38], [26, 24], [42, 22]], false, C.INK, 4);
+    for (const [x, y] of [[16, 58], [14, 40], [26, 26]]) blob(r, o, x, y, 7, 6, C.INK, C.OCHRE, 2.2);
+    shape(r, o, [[40, 18], [54, 24], [42, 30]], C.INK, C.RED, 2.2);
+    blob(r, o, 48, 70, 26, 12, C.INK, C.OCHRE);
+    for (const x of [38, 48, 58]) ln(r, o, x, 60, x, 80, C.BROWN, 1.6);
+    blob(r, o, 76, 66, 9, 8, C.INK, C.OCHRE);
+    eyes(r, o, 76, 82, 62, 2);
+    // Pinças.
+    ln(r, o, 80, 70, 90, 56, C.INK, 3);
+    shape(r, o, [[90, 56], [84, 42], [92, 46], [96, 38], [98, 52]], C.INK, C.OCHRE, 2.2);
+    return o;
+  };
+  M.cobra = r => {
+    const o = [];
+    blob(r, o, 46, 86, 32, 10, C.INK, C.GREEN);
+    pl(r, o, [[22, 84], [34, 80], [54, 82], [68, 86]], false, C.LGREEN, 2);
+    shape(r, o, [[54, 82], [58, 62], [56, 46], [66, 46], [70, 64], [66, 84]], C.INK, C.GREEN);
+    // Capuz aberto de naja, com o desenho em cima.
+    shape(r, o, [[46, 40], [56, 18], [72, 16], [86, 38], [76, 52], [56, 52]], C.INK, C.LGREEN);
+    pl(r, o, [[56, 36], [62, 42], [68, 36], [74, 42]], false, C.INK, 2);
+    blob(r, o, 64, 22, 10, 8, C.INK, C.GREEN);
+    eyes(r, o, 60, 68, 20, 2, C.YELLOW);
+    pl(r, o, [[66, 28], [70, 36], [74, 33]], false, C.RED, 1.8);
+    pl(r, o, [[70, 36], [72, 40]], false, C.RED, 1.8);
+    return o;
+  };
+  M.mumia = r => {
+    const o = [], band = '#efdcae';
+    shape(r, o, [[36, 40], [64, 40], [66, 86], [34, 86]], C.INK, band);
+    blob(r, o, 50, 26, 13, 14, C.INK, band);
+    for (const y of [48, 58, 68, 78]) pl(r, o, [[36, y], [50, y + 4], [64, y - 2]], false, C.OCHRE, 1.8);
+    for (const y of [18, 32]) pl(r, o, [[38, y], [62, y + 3]], false, C.OCHRE, 1.8);
+    dot(r, o, 45, 25, 2.6, C.RED);
+    ln(r, o, 52, 24, 58, 25, C.INK, 2);
+    // Braços esticados para a frente e uma faixa solta.
+    ln(r, o, 64, 46, 92, 46, C.INK, 4); ln(r, o, 64, 54, 90, 56, C.INK, 4);
+    pl(r, o, [[34, 70], [22, 78], [26, 90]], false, C.OCHRE, 2.2);
+    ln(r, o, 42, 86, 40, 98, C.INK, 3.4); ln(r, o, 58, 86, 60, 98, C.INK, 3.4);
+    return o;
+  };
+  M.verme = r => {
+    const o = [];
+    shape(r, o, [[4, 98], [18, 84], [50, 80], [82, 84], [98, 98]], C.OCHRE, C.YELLOW, 2.4, 4);
+    for (const [x, y, rr] of [[38, 76, 15], [34, 60, 14], [40, 44, 13]]) blob(r, o, x, y, rr, rr * 0.8, C.INK, C.PINK);
+    // Boca redonda cheia de dentes.
+    blob(r, o, 56, 28, 15, 14, C.INK, C.PINK);
+    ov(r, o, 58, 28, 9, 8, C.INK, 2.4);
+    fillE(r, o, 58, 28, 9, 8, C.RED, 2.4, 0.4, 0.9);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      ln(r, o, 58 + Math.cos(a) * 10, 28 + Math.sin(a) * 9, 58 + Math.cos(a) * 6, 28 + Math.sin(a) * 5, C.INK, 1.6);
+    }
+    return o;
+  };
+
+  // ----- Montanhas Geladas -----
+  M.lobo_gelo = r => {
+    const o = wolf(r, C.LBLUE, C.BLUE);
+    for (const [x, y] of [[20, 50], [44, 52], [60, 58]]) pl(r, o, [[x, y], [x + 4, y - 4], [x + 8, y]], false, C.BLUE, 1.6);
+    return o;
+  };
+  M.boneco_neve = r => {
+    const o = [];
+    ov(r, o, 50, 80, 23, 18, C.LBLUE, 2.8);
+    ov(r, o, 50, 50, 16, 14, C.LBLUE, 2.8);
+    ov(r, o, 50, 28, 12, 11, C.LBLUE, 2.8);
+    // Cartola, olhos de carvão com sobrancelha brava e nariz de cenoura.
+    shape(r, o, [[41, 19], [59, 19], [57, 5], [43, 5]], C.INK, C.INK, 2.4, 3);
+    ln(r, o, 35, 19, 65, 19, C.INK, 3);
+    eyes(r, o, 45, 55, 27, 2.2);
+    ln(r, o, 40, 21, 47, 24, C.INK, 2); ln(r, o, 60, 21, 53, 24, C.INK, 2);
+    shape(r, o, [[50, 30], [64, 33], [50, 34]], C.ORANGE, C.ORANGE, 2, 2.4);
+    for (const y of [44, 52, 60]) dot(r, o, 50, y, 1.8, C.INK);
+    ln(r, o, 35, 48, 12, 34, C.BROWN, 3); ln(r, o, 18, 38, 12, 44, C.BROWN, 2.4);
+    ln(r, o, 65, 48, 88, 36, C.BROWN, 3); ln(r, o, 82, 40, 88, 46, C.BROWN, 2.4);
+    return o;
+  };
+  M.yeti = r => {
+    const o = [];
+    blob(r, o, 50, 64, 30, 28, C.BLUE, C.LBLUE, 3);
+    blob(r, o, 50, 28, 17, 15, C.BLUE, C.LBLUE, 3);
+    blob(r, o, 50, 31, 10, 8, C.INK, C.GRAY, 2.2);
+    eyes(r, o, 46, 54, 29, 1.8);
+    pl(r, o, [[45, 35], [47, 39], [49, 35]], false, C.INK, 1.6); pl(r, o, [[51, 35], [53, 39], [55, 35]], false, C.INK, 1.6);
+    // Braços compridos e pelo em zigue-zague.
+    pl(r, o, [[22, 50], [8, 70], [12, 88]], false, C.BLUE, 5);
+    pl(r, o, [[78, 50], [92, 70], [88, 88]], false, C.BLUE, 5);
+    for (const [x, y] of [[36, 56], [56, 52], [44, 72], [62, 70]]) pl(r, o, [[x, y], [x + 3, y + 4], [x + 6, y]], false, C.BLUE, 1.6);
+    ln(r, o, 38, 90, 34, 99, C.BLUE, 5); ln(r, o, 62, 90, 66, 99, C.BLUE, 5);
+    return o;
+  };
+  M.espirito_gelo = r => {
+    const o = [];
+    const body = [[50, 10], [68, 22], [72, 52], [82, 88], [66, 78], [58, 94], [48, 80], [36, 92], [30, 64], [32, 24]];
+    shape(r, o, body, C.BLUE, C.LBLUE, 2.6, 4);
+    eyes(r, o, 43, 57, 34, 3.4, C.BLUE);
+    ov(r, o, 50, 46, 4, 5, C.INK, 2);
+    // Cristais de gelo girando em volta.
+    for (const [x, y] of [[12, 40], [88, 34], [16, 72], [90, 64]])
+      shape(r, o, [[x, y - 8], [x + 5, y], [x, y + 8], [x - 5, y]], C.BLUE, C.LBLUE, 2, 2.6);
+    return o;
+  };
+
+  // ----- Pântano Sombrio -----
+  M.zumbi = r => {
+    const o = [];
+    shape(r, o, [[34, 44], [64, 44], [68, 84], [32, 84]], C.INK, C.BLUE);
+    pl(r, o, [[34, 76], [40, 84], [46, 76], [52, 84], [58, 76], [64, 84]], false, C.INK, 2);
+    blob(r, o, 50, 28, 14, 15, C.INK, C.OLIVE);
+    dot(r, o, 44, 26, 2.6, C.YELLOW);
+    ln(r, o, 52, 23, 58, 29, C.INK, 2); ln(r, o, 58, 23, 52, 29, C.INK, 2);
+    pl(r, o, [[43, 36], [48, 34], [52, 37], [57, 35]], false, C.INK, 1.8);
+    // Braços para a frente, um mais caído.
+    ln(r, o, 64, 50, 92, 48, C.OLIVE, 4.4); ln(r, o, 62, 58, 88, 64, C.OLIVE, 4.4);
+    ln(r, o, 42, 84, 38, 98, C.INK, 3.4); ln(r, o, 58, 84, 64, 98, C.INK, 3.4);
+    return o;
+  };
+  M.sapo = r => {
+    const o = [];
+    shape(r, o, [[14, 92], [8, 80], [24, 74], [28, 90]], C.INK, C.GREEN, 2.4);
+    shape(r, o, [[86, 92], [92, 80], [76, 74], [72, 90]], C.INK, C.GREEN, 2.4);
+    blob(r, o, 50, 68, 34, 24, C.INK, C.GREEN, 2.8);
+    blob(r, o, 50, 76, 20, 13, C.INK, C.LGREEN, 2);
+    // Olhos em cima da cabeça e a língua esticada.
+    blob(r, o, 34, 44, 9, 9, C.INK, C.LGREEN); blob(r, o, 64, 44, 9, 9, C.INK, C.LGREEN);
+    eyes(r, o, 35, 65, 44, 3);
+    pl(r, o, [[24, 60], [50, 66], [78, 58]], false, C.INK, 2.4);
+    pl(r, o, [[72, 62], [84, 66], [94, 60]], false, C.PINK, 3);
+    dot(r, o, 95, 59, 3, C.PINK);
+    return o;
+  };
+  M.fantasma = r => {
+    const o = [];
+    const body = [[50, 8], [70, 16], [78, 40], [80, 88], [70, 80], [62, 92], [52, 80], [42, 92], [32, 80], [22, 88], [22, 40], [30, 16]];
+    shape(r, o, body, C.GRAY, C.LBLUE, 2.6, 5.2);
+    blob(r, o, 41, 36, 5, 7, C.INK, C.INK, 2, 1.6);
+    blob(r, o, 59, 36, 5, 7, C.INK, C.INK, 2, 1.6);
+    ov(r, o, 50, 56, 6, 8, C.INK, 2.4);
+    pl(r, o, [[22, 52], [8, 44], [6, 54]], false, C.GRAY, 2.4);
+    pl(r, o, [[78, 52], [92, 42], [96, 52]], false, C.GRAY, 2.4);
+    return o;
+  };
+  M.ceifador = r => {
+    const o = [];
+    // Foice primeiro, para o manto passar na frente do cabo.
+    ln(r, o, 82, 96, 76, 8, C.BROWN, 3.4);
+    shape(r, o, [[76, 8], [50, 4], [30, 16], [52, 12], [76, 18]], C.INK, C.GRAY, 2.4, 2.6);
+    shape(r, o, [[48, 10], [66, 24], [74, 94], [22, 94], [30, 24]], C.INK, C.INK, 2.6, 3.4);
+    blob(r, o, 48, 32, 10, 11, C.INK, C.PAPER, 2.2);
+    eyes(r, o, 44, 52, 30, 2.4, C.RED);
+    pl(r, o, [[44, 38], [48, 40], [52, 38]], false, C.INK, 1.6);
+    ln(r, o, 64, 50, 78, 50, C.INK, 3);
+    return o;
+  };
+
+  // ----- Vulcão -----
+  // Labareda pequena (cx, by = meio da base), usada em vários bichos de fogo.
+  function flame(r, o, cx, by, s = 1) {
+    const P = (x, y) => [cx + x * s, by + y * s];
+    shape(r, o, [P(0, -22), P(7, -10), P(6, -2), P(0, 0), P(-6, -2), P(-7, -10), P(-2, -8)], C.RED, C.ORANGE, 2 * s, 2.4);
+    fill(r, o, [P(0, -11), P(3, -5), P(0, -2), P(-3, -5)], C.YELLOW, 1.8, 0.3, 0.95);
+  }
+  M.salamandra = r => {
+    const o = [];
+    pl(r, o, [[22, 72], [8, 66], [6, 54], [14, 48]], false, C.RED, 4);
+    blob(r, o, 44, 70, 26, 11, C.INK, C.ORANGE);
+    blob(r, o, 76, 62, 12, 9, C.INK, C.ORANGE);
+    dot(r, o, 80, 58, 2.2, C.YELLOW);
+    pl(r, o, [[84, 66], [90, 66]], false, C.INK, 2);
+    for (const x of [28, 40, 52, 62]) ln(r, o, x, 78, x + (x > 45 ? 4 : -4), 90, C.INK, 3);
+    for (const x of [30, 44, 58]) flame(r, o, x, 62, 0.7);
+    return o;
+  };
+  M.diabrete = r => {
+    const o = [];
+    shape(r, o, [[36, 50], [14, 32], [20, 52], [10, 60], [34, 62]], C.INK, C.PURPLE, 2.2);
+    shape(r, o, [[64, 50], [86, 32], [80, 52], [90, 60], [66, 62]], C.INK, C.PURPLE, 2.2);
+    pl(r, o, [[42, 78], [30, 90], [20, 86], [14, 92]], false, C.RED, 2.6);
+    shape(r, o, [[14, 92], [8, 88], [14, 84]], C.RED, C.RED, 2, 2);
+    blob(r, o, 50, 66, 16, 18, C.INK, C.RED);
+    blob(r, o, 50, 38, 13, 12, C.INK, C.RED);
+    shape(r, o, [[40, 30], [34, 18], [44, 26]], C.INK, C.INK, 2, 2.4);
+    shape(r, o, [[60, 30], [66, 18], [56, 26]], C.INK, C.INK, 2, 2.4);
+    eyes(r, o, 45, 55, 36, 2.2, C.YELLOW);
+    pl(r, o, [[44, 44], [50, 47], [56, 44]], false, C.INK, 1.8);
+    // Tridente.
+    ln(r, o, 66, 64, 84, 96, C.BROWN, 2.6);
+    pl(r, o, [[58, 56], [62, 50], [66, 64], [74, 54], [76, 62]], false, C.GRAY, 2.6);
+    ln(r, o, 42, 84, 40, 96, C.INK, 3); ln(r, o, 58, 84, 60, 96, C.INK, 3);
+    return o;
+  };
+  M.cao_infernal = r => {
+    const o = wolf(r, C.RED, C.YELLOW);
+    flame(r, o, 74, 30, 0.8); flame(r, o, 10, 44, 0.7); flame(r, o, 40, 50, 0.6);
+    return o;
+  };
+  M.elemental = r => {
+    const o = [];
+    const body = [[50, 4], [64, 24], [62, 38], [76, 30], [78, 58], [68, 92], [32, 92], [22, 58], [24, 30], [38, 38], [36, 22]];
+    shape(r, o, body, C.RED, C.ORANGE, 2.8, 3);
+    fill(r, o, [[50, 40], [62, 60], [58, 86], [42, 86], [38, 60]], C.YELLOW, 2.4, 0.3, 0.9);
+    eyes(r, o, 43, 57, 46, 3.2);
+    pl(r, o, [[42, 58], [50, 62], [58, 58]], false, C.INK, 2);
+    flame(r, o, 14, 60, 0.8); flame(r, o, 86, 60, 0.8);
+    return o;
+  };
+  M.golem_magma = r => {
+    const o = golem(r, C.BROWN, C.YELLOW, C.ORANGE);
+    pl(r, o, [[60, 40], [56, 50], [64, 58]], false, C.ORANGE, 3);
+    for (const [x, y] of [[14, 74], [86, 74]]) dot(r, o, x, y + 6, 2.4, C.ORANGE);
+    return o;
+  };
+  M.fenix = r => {
+    const o = [];
+    shape(r, o, [[46, 50], [6, 18], [16, 40], [2, 46], [36, 64]], C.RED, C.ORANGE, 2.4, 3);
+    shape(r, o, [[56, 50], [94, 14], [86, 38], [98, 42], [66, 64]], C.RED, C.ORANGE, 2.4, 3);
+    for (const x of [40, 50, 60]) flame(r, o, x, 98, 0.9);
+    blob(r, o, 51, 62, 13, 18, C.INK, C.RED);
+    blob(r, o, 56, 34, 9, 9, C.INK, C.RED);
+    shape(r, o, [[64, 32], [74, 36], [64, 38]], C.INK, C.YELLOW, 2, 2.4);
+    dot(r, o, 58, 32, 1.8, C.YELLOW);
+    flame(r, o, 54, 26, 0.6);
     return o;
   };
   M.dragao = r => {
@@ -193,6 +430,10 @@
   const HEAD = {
     slime: [50, 38], rato: [78, 48], goblin: [50, 16], lobo: [76, 40], esqueleto: [50, 8], aranha: [50, 34],
     orc: [50, 12], bruxa: [52, 6], ogro: [50, 18], cavaleiro: [50, 8], troll: [50, 17], golem: [50, 10],
+    escorpiao: [76, 58], cobra: [64, 14], mumia: [50, 12], verme: [56, 14],
+    lobo_gelo: [76, 40], boneco_neve: [50, 4], yeti: [50, 13], espirito_gelo: [50, 10],
+    zumbi: [50, 13], sapo: [49, 36], fantasma: [50, 8], ceifador: [48, 10],
+    salamandra: [76, 53], diabrete: [50, 20], cao_infernal: [76, 30], elemental: [50, 6], golem_magma: [50, 10], fenix: [56, 18],
   };
   function crown(r, o, cx, by, s = 1) {
     const p = [[-12, 0], [-13, -10], [-6, -4], [0, -14], [6, -4], [13, -10], [12, 0]].map(([x, y]) => [cx + x * s, by + y * s]);
@@ -426,35 +667,82 @@
     const t = ter(tx, ty);
     const rx = (a, b) => a + r() * (b - a);
 
+    // Bioma da página (masmorras não têm: só parede e chão).
+    const bio = world.biome || 'campos';
+    const pencil = (color, w = 1.8, alpha = 0.9) => ({ color, w, kind: 'pencil', alpha, j: 0.6 });
     if (t === Wd.AGUA) {
+      // Água (azul), água escura do pântano (oliva) ou lava do vulcão (laranja).
+      const lava = bio === 'vulcao', dark = bio === 'pantano';
+      const lc = lava ? C.ORANGE : dark ? C.OLIVE : C.LBLUE, wc = lava ? C.RED : dark ? C.INK : C.BLUE;
       for (let k = 0; k < 9; k++) {
         const y = y0 + 4 + k * 7 + (r() - 0.5) * 1.5;
-        o.push(S.line(r, x0 - 1, y, x0 + T + 1, y + (r() - 0.5) * 2, { color: C.LBLUE, w: 1.6, kind: 'pencil', alpha: 0.55, j: 1 }));
+        o.push(S.line(r, x0 - 1, y, x0 + T + 1, y + (r() - 0.5) * 2, { color: lc, w: 1.6, kind: 'pencil', alpha: lava ? 0.75 : 0.55, j: 1 }));
       }
       if (r() < 0.35) {
         const wx = rx(x0 + 10, x0 + 40), wy = rx(y0 + 14, y0 + 50);
-        pl(r, o, [[wx, wy], [wx + 4, wy - 3], [wx + 8, wy], [wx + 12, wy - 3], [wx + 16, wy]], false, C.BLUE, 1.8);
+        pl(r, o, [[wx, wy], [wx + 4, wy - 3], [wx + 8, wy], [wx + 12, wy - 3], [wx + 16, wy]], false, wc, 1.8);
+      }
+      if (lava && r() < 0.4) dot(r, o, rx(x0 + 12, x0 + T - 12), rx(y0 + 12, y0 + T - 12), 2.6, C.YELLOW);
+      if (bio === 'neve' && r() < 0.3) {
+        const fx = rx(x0 + 12, x0 + T - 24), fy = rx(y0 + 14, y0 + T - 16);
+        pl(r, o, [[fx, fy], [fx + 10, fy - 4], [fx + 16, fy + 2], [fx + 8, fy + 7]], true, C.BLUE, 1.8);
       }
     } else {
-      // Costa: caneta azul nas bordas que dão para a água. Os vértices tremem
-      // pelo hash do próprio vértice, então as bordas vizinhas se emendam.
+      // Costa: caneta nas bordas que dão para a água (ou lava). Os vértices
+      // tremem pelo hash do próprio vértice, então as bordas vizinhas se emendam.
+      const coast = bio === 'vulcao' ? C.RED : bio === 'pantano' ? C.OLIVE : C.BLUE;
       const vj = (vx, vy) => [vx * T + (S.hash(world.seed, vx, vy, 1) / 4294967296 - 0.5) * 9, vy * T + (S.hash(world.seed, vx, vy, 2) / 4294967296 - 0.5) * 9];
       const edges = [[0, -1, tx, ty, tx + 1, ty], [0, 1, tx, ty + 1, tx + 1, ty + 1], [-1, 0, tx, ty, tx, ty + 1], [1, 0, tx + 1, ty, tx + 1, ty + 1]];
       for (const [dx, dy, ax, ay, bx, by] of edges) {
         if (ter(tx + dx, ty + dy) !== Wd.AGUA) continue;
-        o.push(S.poly(r, [vj(ax, ay), vj(bx, by)], false, { color: C.BLUE, w: 2.4, j: 4, step: 5 }));
+        o.push(S.poly(r, [vj(ax, ay), vj(bx, by)], false, { color: coast, w: 2.4, j: 4, step: 5 }));
       }
     }
 
     const obj = world.obj.get(ty * world.W + tx);
     const busy = obj && obj.type !== 'monstro' && obj.type !== 'bau';
     if (t === Wd.AREIA) {
-      for (let k = 0; k < 9; k++) { const x = rx(x0 + 6, x0 + T - 6), y = rx(y0 + 6, y0 + T - 6); ln(r, o, x, y, x + 1.6, y + 0.8, C.OCHRE, 2.2); }
+      // Praia e areia (ocre), gelo (rachaduras azuis), lama (marrom) ou cinzas (cinza).
+      if (bio === 'neve') {
+        for (let k = 0; k < 3; k++) {
+          const x = rx(x0 + 8, x0 + T - 20), y = rx(y0 + 8, y0 + T - 8);
+          o.push(S.poly(r, [[x, y], [x + 6, y + 3], [x + 10, y - 1], [x + 16, y + 2]], false, pencil(C.LBLUE, 1.6)));
+        }
+      } else {
+        const col = bio === 'pantano' ? C.BROWN : bio === 'vulcao' ? C.GRAY : C.OCHRE;
+        for (let k = 0; k < 9; k++) { const x = rx(x0 + 6, x0 + T - 6), y = rx(y0 + 6, y0 + T - 6); ln(r, o, x, y, x + 1.6, y + 0.8, col, 2.2); }
+      }
     } else if (t === Wd.CAMPO && !busy) {
-      const n = r() < 0.55 ? 1 + (r() < 0.4 ? 1 : 0) : 0;
-      for (let k = 0; k < n; k++) {
-        const x = rx(x0 + 12, x0 + T - 12), y = rx(y0 + 16, y0 + T - 8);
-        for (const d of [-5, 0, 5]) o.push(S.line(r, x, y, x + d, y - 7 - (d ? 0 : 2), { color: C.GREEN, w: 1.8, kind: 'pencil', alpha: 0.9, j: 0.6 }));
+      if (bio === 'deserto') {
+        // Dunas: um ou dois arcos de lápis ocre.
+        const n = r() < 0.7 ? 1 + (r() < 0.4 ? 1 : 0) : 0;
+        for (let k = 0; k < n; k++) {
+          const x = rx(x0 + 6, x0 + T - 30), y = rx(y0 + 18, y0 + T - 8);
+          o.push(S.poly(r, [[x, y], [x + 8, y - 5], [x + 16, y - 6], [x + 24, y - 2]], false, pencil(C.OCHRE, 2)));
+        }
+      } else if (bio === 'neve') {
+        // Neve: o branco do papel, com floquinhos de vez em quando.
+        if (r() < 0.45) {
+          const x = rx(x0 + 14, x0 + T - 14), y = rx(y0 + 14, y0 + T - 14);
+          for (const [a, b] of [[-4, 0], [-2, -3.5], [2, -3.5]]) o.push(S.line(r, x + a, y + b, x - a, y - b, pencil(C.LBLUE, 1.6)));
+        }
+      } else if (bio === 'vulcao') {
+        // Rocha: rachaduras marrons, às vezes com brasa (laranja).
+        const x = rx(x0 + 8, x0 + T - 30), y = rx(y0 + 12, y0 + T - 12);
+        o.push(S.poly(r, [[x, y], [x + 7, y + 4], [x + 12, y - 2], [x + 20, y + 3]], false, pencil(r() < 0.3 ? C.ORANGE : C.BROWN, 1.8)));
+      } else {
+        // Capim (verde) nos Campos; terra morta (marrom) no Pântano, com túmulos.
+        const grass = bio === 'pantano' ? C.BROWN : C.GREEN;
+        const n = r() < 0.55 ? 1 + (r() < 0.4 ? 1 : 0) : 0;
+        for (let k = 0; k < n; k++) {
+          const x = rx(x0 + 12, x0 + T - 12), y = rx(y0 + 16, y0 + T - 8);
+          for (const d of [-5, 0, 5]) o.push(S.line(r, x, y, x + d, y - 7 - (d ? 0 : 2), { color: grass, w: 1.8, kind: 'pencil', alpha: 0.9, j: 0.6 }));
+        }
+        if (bio === 'pantano' && r() < 0.2) {
+          const gx = rx(x0 + 16, x0 + T - 16), gy = rx(y0 + 30, y0 + T - 8);
+          shape(r, o, [[gx - 8, gy], [gx - 8, gy - 14], [gx - 4, gy - 19], [gx + 4, gy - 19], [gx + 8, gy - 14], [gx + 8, gy]], C.INK, C.GRAY, 2, 3);
+          ln(r, o, gx, gy - 15, gx, gy - 6, C.INK, 1.6); ln(r, o, gx - 3, gy - 12, gx + 3, gy - 12, C.INK, 1.6);
+        }
       }
     } else if (t === Wd.MATA) {
       const trees = [];
@@ -462,19 +750,61 @@
       for (let k = 0; k < n; k++) trees.push([rx(x0 + 14, x0 + T - 14), rx(y0 + 12, y0 + T - 20), rx(9, 12)]);
       trees.sort((a, b) => a[1] - b[1]);
       for (const [cx, cy, rr] of trees) {
-        ln(r, o, cx, cy + rr - 2, cx + (r() - 0.5) * 2, cy + rr + 8, C.BROWN, 2.4);
-        ov(r, o, cx, cy, rr, rr * 0.92, C.GREEN, 2.2);
-        fillE(r, o, cx, cy, rr, rr * 0.92, C.LGREEN, 3.4, 0.9, 0.7);
+        if (bio === 'deserto') {
+          // Cacto com dois bracinhos.
+          const body = [[cx - 4, cy + rr + 8], [cx - 4, cy - rr + 2], [cx, cy - rr - 2], [cx + 4, cy - rr + 2], [cx + 4, cy + rr + 8]];
+          shape(r, o, body, C.GREEN, C.LGREEN, 2, 2.6);
+          pl(r, o, [[cx - 4, cy + 2], [cx - 9, cy + 2], [cx - 9, cy - 6]], false, C.GREEN, 2);
+          pl(r, o, [[cx + 4, cy + 6], [cx + 9, cy + 6], [cx + 9, cy - 2]], false, C.GREEN, 2);
+        } else if (bio === 'neve') {
+          // Pinheiro com a ponta nevada.
+          const tri = [[cx - rr, cy + rr], [cx, cy - rr - 4], [cx + rr, cy + rr]];
+          ln(r, o, cx, cy + rr - 2, cx, cy + rr + 8, C.BROWN, 2.4);
+          shape(r, o, tri, C.GREEN, C.GREEN, 2.2, 3.4);
+          pl(r, o, [[cx - rr * 0.45, cy - rr * 0.1], [cx, cy - rr - 4], [cx + rr * 0.45, cy - rr * 0.1]], false, C.LBLUE, 2.6);
+        } else if (bio === 'pantano' || bio === 'vulcao') {
+          // Árvore morta (marrom, com musgo) ou queimada (preta, com brasa).
+          const wood = bio === 'pantano' ? C.BROWN : C.INK;
+          ln(r, o, cx, cy + rr + 8, cx, cy - rr + 2, wood, 3);
+          pl(r, o, [[cx, cy], [cx - 8, cy - 6], [cx - 11, cy - 12]], false, wood, 2.2);
+          pl(r, o, [[cx, cy - 4], [cx + 8, cy - 9], [cx + 10, cy - 15]], false, wood, 2.2);
+          if (bio === 'pantano') ln(r, o, cx - 8, cy - 6, cx - 8, cy + 2, C.OLIVE, 1.8);
+          else if (r() < 0.5) dot(r, o, cx + 9, cy - 13, 1.8, C.ORANGE);
+        } else {
+          ln(r, o, cx, cy + rr - 2, cx + (r() - 0.5) * 2, cy + rr + 8, C.BROWN, 2.4);
+          ov(r, o, cx, cy, rr, rr * 0.92, C.GREEN, 2.2);
+          fillE(r, o, cx, cy, rr, rr * 0.92, C.LGREEN, 3.4, 0.9, 0.7);
+        }
       }
     } else if (t === Wd.PANTANO) {
-      for (let k = 0; k < 5; k++) {
-        const x = rx(x0 + 6, x0 + T - 22), y = rx(y0 + 10, y0 + T - 6);
-        o.push(S.line(r, x, y, x + rx(10, 18), y + (r() - 0.5) * 2, { color: C.OLIVE, w: k < 2 ? 2.2 : 1.6, kind: k < 2 ? 'pen' : 'pencil', alpha: 0.8 }));
-      }
-      if (!busy) for (let k = 0; k < 2; k++) {
-        const x = rx(x0 + 12, x0 + T - 12), y = rx(y0 + 26, y0 + T - 8);
-        ln(r, o, x, y, x + 1, y - 16, C.OLIVE, 1.8);
-        ov(r, o, x + 1, y - 18, 2, 4.5, C.BROWN, 2.2);
+      if (bio === 'deserto') {
+        // Areia movediça: um redemoinho.
+        const cx = x0 + T / 2 + (r() - 0.5) * 10, cy = y0 + T / 2 + (r() - 0.5) * 10, sp = [];
+        for (let k = 0; k <= 16; k++) { const a = k * 0.75, rr = 2 + k * 1.2; sp.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.7]); }
+        o.push(S.poly(r, sp, false, pencil(C.BROWN, 1.8)));
+      } else if (bio === 'neve') {
+        // Neve funda: montes de neve em arco.
+        for (let k = 0; k < 3; k++) {
+          const x = rx(x0 + 4, x0 + T - 26), y = rx(y0 + 14, y0 + T - 6);
+          o.push(S.poly(r, [[x, y], [x + 6, y - 6], [x + 14, y - 7], [x + 22, y - 1]], false, pencil(C.LBLUE, 2.2)));
+        }
+      } else if (bio === 'vulcao') {
+        // Fumarola: fumaça cinza saindo de uma rachadura em brasa.
+        const x = rx(x0 + 18, x0 + T - 18), y = rx(y0 + T - 18, y0 + T - 8);
+        ln(r, o, x - 8, y, x + 8, y + 1, C.ORANGE, 2.2);
+        o.push(S.poly(r, [[x, y - 2], [x - 5, y - 10], [x + 3, y - 18], [x - 4, y - 26], [x + 2, y - 34]], false, pencil(C.GRAY, 2.2, 0.8)));
+      } else {
+        // Pântano dos Campos e brejo do Pântano Sombrio (este com bolhas).
+        for (let k = 0; k < 5; k++) {
+          const x = rx(x0 + 6, x0 + T - 22), y = rx(y0 + 10, y0 + T - 6);
+          o.push(S.line(r, x, y, x + rx(10, 18), y + (r() - 0.5) * 2, { color: C.OLIVE, w: k < 2 ? 2.2 : 1.6, kind: k < 2 ? 'pen' : 'pencil', alpha: 0.8 }));
+        }
+        if (!busy) for (let k = 0; k < 2; k++) {
+          const x = rx(x0 + 12, x0 + T - 12), y = rx(y0 + 26, y0 + T - 8);
+          ln(r, o, x, y, x + 1, y - 16, C.OLIVE, 1.8);
+          ov(r, o, x + 1, y - 18, 2, 4.5, C.BROWN, 2.2);
+        }
+        if (bio === 'pantano') for (let k = 0; k < 2; k++) ov(r, o, rx(x0 + 10, x0 + T - 10), rx(y0 + 10, y0 + T - 10), 2.6, 2.4, C.PURPLE, 1.6);
       }
     } else if (t === Wd.PAREDE) {
       // Parede de masmorra: só a que encosta no chão é desenhada (pedra
@@ -489,13 +819,28 @@
     } else if (t === Wd.CHAO) {
       for (let k = 0; k < 3; k++) { const x = rx(x0 + 8, x0 + T - 8), y = rx(y0 + 8, y0 + T - 8); ln(r, o, x, y, x + 1.4, y + 0.6, C.GRAY, 1.8); }
     } else if (t === Wd.MONTANHA) {
+      // Cor do contorno, da sombra e do "chapéu" de cada bioma.
+      const [edge, shade, cap] = {
+        deserto: [C.BROWN, C.ORANGE, C.OCHRE], neve: [C.BLUE, C.LBLUE, C.BLUE],
+        pantano: [C.INK, C.PURPLE, C.INK], vulcao: [C.BROWN, C.INK, C.RED],
+      }[bio] || [C.BROWN, C.GRAY, C.INK];
       const n = r() < 0.5 ? 2 : 1;
       for (let k = 0; k < n; k++) {
         const cx = n === 1 ? x0 + T / 2 + (r() - 0.5) * 8 : x0 + 18 + k * 28, by = y0 + T - 8 - k * 4;
         const hw = n === 1 ? rx(24, 28) : rx(16, 19), py = by - rx(34, 46);
-        pl(r, o, [[cx - hw, by], [cx, py], [cx + hw, by]], false, C.BROWN, 2.6);
-        fill(r, o, [[cx, py + 3], [cx + hw - 2, by - 1], [cx + 2, by - 1]], C.GRAY, 3.4, -0.9, 0.7);
-        pl(r, o, [[cx - hw * 0.28, py + (by - py) * 0.28], [cx - hw * 0.1, py + (by - py) * 0.36], [cx + hw * 0.08, py + (by - py) * 0.26], [cx + hw * 0.28, py + (by - py) * 0.32]], false, C.INK, 1.8);
+        if (bio === 'deserto') {
+          // Rochedo de topo chato, com listras.
+          const top = py + 10;
+          pl(r, o, [[cx - hw, by], [cx - hw * 0.6, top], [cx + hw * 0.6, top], [cx + hw, by]], false, edge, 2.6);
+          fill(r, o, [[cx - hw * 0.6, top + 2], [cx + hw * 0.6, top + 2], [cx + hw - 2, by - 1], [cx - hw + 2, by - 1]], shade, 4, -0.9, 0.55);
+          ln(r, o, cx - hw * 0.75, top + (by - top) * 0.45, cx + hw * 0.75, top + (by - top) * 0.45, cap, 1.8);
+          continue;
+        }
+        pl(r, o, [[cx - hw, by], [cx, py], [cx + hw, by]], false, edge, 2.6);
+        fill(r, o, [[cx, py + 3], [cx + hw - 2, by - 1], [cx + 2, by - 1]], shade, 3.4, -0.9, 0.7);
+        pl(r, o, [[cx - hw * 0.28, py + (by - py) * 0.28], [cx - hw * 0.1, py + (by - py) * 0.36], [cx + hw * 0.08, py + (by - py) * 0.26], [cx + hw * 0.28, py + (by - py) * 0.32]], false, cap, bio === 'vulcao' ? 2.4 : 1.8);
+        // No vulcão, uma língua de lava descendo da cratera.
+        if (bio === 'vulcao') pl(r, o, [[cx, py + 4], [cx - 3, py + (by - py) * 0.5], [cx + 1, by - 6]], false, C.ORANGE, 2.2);
       }
     }
 
@@ -521,6 +866,20 @@
       pl(r, o, hole, true, C.INK, 2.4); fill(r, o, hole, C.INK, 2, 0.5, 0.9);
       o.push(S.text('Covil do Dragão', cx, y0 - 2, 19, C.RED));
       if (state.won) cross(r, o, x0, y0, T);
+    } else if (obj.type === 'passagem' || obj.type === 'volta') {
+      // Canto da folha dobrado com uma seta: por aqui o mestre vira a página
+      // (para a frente na passagem, para trás na volta).
+      const fwd = obj.type === 'passagem', cy = y0 + T / 2 + 6;
+      const sheet = [[x0 + 8, y0 + 14], [x0 + T - 22, y0 + 14], [x0 + T - 8, y0 + 28], [x0 + T - 8, y0 + T - 6], [x0 + 8, y0 + T - 6]];
+      shape(r, o, sheet, C.INK, '#efdcae', 2.4, 4.4);
+      pl(r, o, [[x0 + T - 22, y0 + 14], [x0 + T - 22, y0 + 28], [x0 + T - 8, y0 + 28]], true, C.INK, 2);
+      const col = fwd ? C.RED : C.GREEN, a = fwd ? 1 : -1;
+      ln(r, o, cx - 14 * a, cy, cx + 14 * a, cy, col, 3.4);
+      pl(r, o, [[cx + 6 * a, cy - 8], [cx + 14 * a, cy], [cx + 6 * a, cy + 8]], false, col, 3.4);
+      // A volta fica encostada na primeira fogueira, então o nome vai embaixo
+      // para não cobrir o nome do acampamento.
+      const nome = World.BIOMAS[obj.to].nome;
+      o.push(S.text(fwd ? nome + ' →' : '← ' + nome, cx, fwd ? y0 + 4 : y0 + T + 12, 16, col));
     } else if (obj.type === 'monstro') {
       for (const s of S.xform(A.monster(obj.kind), 0.5, x0 + 7, y0 + 8)) o.push(s);
       if (state.dead.has(i)) cross(r, o, x0, y0, T);

@@ -1,5 +1,7 @@
 # GDD — Evil Enemy Defense
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Escrito a partir do protótipo web jogável ([abraaovilanova/evil-enemy-defense](https://github.com/abraaovilanova/evil-enemy-defense), Vite + TypeScript + Canvas), que é a referência de comportamento: a Parte 1 descreve o que o protótipo faz hoje e a Parte 2 ensina a reconstruí-lo em Unity.
 > O glossário do protótipo (`CONTEXT.md`) e as decisões de arquitetura (`docs/adr/0001` a `0004`) foram incorporados aqui. Os números marcados como **valor inicial** são o balanceamento atual, validado pelos testes automáticos do protótipo, não decisões fechadas.
 
@@ -274,6 +276,10 @@ Resumo dos ADRs do protótipo, que valem também para o port:
 5. **Áudio** (§12).
 6. **Projéteis visíveis:** hoje o dano é instantâneo e só o piscar indica quem apanhou.
 7. **Linhas dos sheets dos cavaleiros:** o protótipo supõe o layout padrão do pack (linha 0 parado, 1 andando, 2 atacando) e oferece o inspetor de sprites para conferir.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

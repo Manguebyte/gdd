@@ -1,5 +1,7 @@
 # GDD — Space Hauler
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial: o conceito está fechado nas linhas gerais (tower defense em que a "torre" é uma nave de carga que voa sozinha de um planeta a outro), mas os números de balanceamento ainda não foram decididos. Os valores da tabela §16 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 >
 > **De onde vem este jogo.** **Definido:** o Space Hauler é um **jogo separado**, derivado do [Fury Hauler](FuryHauler.md): troca o caminhão de guerra no deserto por uma nave de carga no espaço. Ele tem GDD, glossário ([`contexts/space-hauler/CONTEXT.md`](contexts/space-hauler/CONTEXT.md)), protótipo e save próprios. Os dois documentos evoluem sozinhos: uma mudança num jogo não vale para o outro.
@@ -326,6 +328,10 @@
 - Layout do HUD e indicador de inimigos fora da tela (§13).
 - Áudio (§14).
 - A especiaria (§1).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

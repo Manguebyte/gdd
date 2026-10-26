@@ -1,5 +1,7 @@
 # Game Design Document (GDD)
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > **Status:** Rascunho vivo — este documento deve ser atualizado conforme decisões forem tomadas durante o desenvolvimento.
 > **Título:** Requiem of Blessings
 > **Plataforma:** Mobile (Android — lançamento inicial; iOS a considerar depois, se o jogo validar)
@@ -526,6 +528,10 @@ Esse conjunto já sugere que as missões cobrem **categorias diferentes de objet
 - [x] Horário de reset das missões diárias — decidido (meia-noite local, com timestamp de servidor)
 - [x] Progresso de missão conta entre expedições diferentes no mesmo dia? — decidido (sim, acumula o dia inteiro)
 - [x] Nome final do jogo — decidido ("Requiem of Blessings")
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

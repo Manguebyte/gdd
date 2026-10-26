@@ -1,5 +1,7 @@
 # Caça às Bruxas — GDD inicial
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 Oct 5, 2026 · @Abraão Alves Vila NOVA
 
 ## Visão geral
@@ -168,3 +170,7 @@ Cada caçador especializado responde a uma escola de magia, para que a Suspeita 
 - [ ] Quantas faixas de Suspeita e o que exatamente muda em cada uma?
 - [ ] Qual é o golpe crítico após quebrar a postura do inimigo?
 - [ ] Nome definitivo do jogo.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.

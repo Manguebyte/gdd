@@ -125,6 +125,8 @@ def gerar_html(v2: Path):
     if n < 40:                                       # a v2 tinha ~60 quando este script foi escrito
         sys.exit(f'Só {n} caminhos de arte encontrados; a v2 mudou a forma de carregar a arte?')
     html = re.sub(padrao, PREFIX, html)
+    # versão do jogo num canto da tela (prototipos/versao.js, igual em todo protótipo)
+    html = trocar(html, '</body>', '<script src="../versao.js"></script>\n</body>', 1, 'fim do body')
 
     PROTO.mkdir(parents=True, exist_ok=True)
     (PROTO / 'index.html').write_text(html, encoding='utf-8', newline='\n')

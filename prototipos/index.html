@@ -32,6 +32,7 @@
   .tag { position: absolute; left: 10px; top: 10px; background: rgba(0,0,0,.65); border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
   .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .body h3 { margin: 0; font-size: 20px; }
+  .body h3 .ver { color: var(--dim); font-size: 13px; font-weight: 500; }
   .body p { margin: 0; color: var(--dim); font-size: 14px; line-height: 1.4; flex: 1; }
   .links { display: flex; gap: 8px; margin-top: 4px; }
   .links a { flex: 1; text-align: center; padding: 9px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 15px; }
@@ -63,7 +64,8 @@
     <a href="../mercador-e-legiao/guia-unity"><b>Mercador &amp; Legião</b><span>Tutorial Unity do MVP completo (heróis, quests, combate, crafting e loja).</span></a>
   </div>
 </main>
-<footer>Mangue Byte Games · Cada protótipo segue a Parte 1 do seu GDD; o README de cada pasta em <a href="https://github.com/Manguebyte/gdd/tree/main/prototipos">prototipos/</a> lista o que tem, o que ficou de fora e os atalhos de teste.</footer>
+<footer>Mangue Byte Games · O número no cartão é a versão do jogo (MAJOR.MINOR.PATCH; 0.x enquanto não lança) · Cada protótipo segue a Parte 1 do seu GDD; o README de cada pasta em <a href="https://github.com/Manguebyte/gdd/tree/main/prototipos">prototipos/</a> lista o que tem, o que ficou de fora e os atalhos de teste.</footer>
+<script src="versao.js"></script>
 <script>
   // Um item por protótipo: pasta, nome, descrição, página do GDD no site e se a tela é em retrato.
   const GAMES = [
@@ -85,7 +87,7 @@
     ['iso-cards', 'Iso Cards', 'RPG tático isométrico em que toda ação é uma carta: viaje por 5 biomas, troque de classe e forje cartas com esferas.', 'iso-cards', false, 'RPG tático de cartas'],
     ['requiem-of-blessings', 'Requiem of Blessings', 'RPG de fantasia sombria com turnos ativos: esquiva, parry e Sequência de Desvio.', 'requiem-of-blessings', false, 'RPG sombrio'],
     ['craft-dice', 'Craft Dice', 'Roguelike + soulslike: explore a ilha carmesim e lute com dados de faces forjadas.', 'craft-dice', false, 'Roguelike de dados'],
-    ['caderno-de-aventuras', 'Caderno de Aventuras', 'O RPG do caderno da escola: o mestre desenha o mapa com caneta enquanto você anda, a luta é nos dados, e cada monstro tem um rei no fundo da sua masmorra.', 'caderno-de-aventuras', false, 'RPG de dados'],
+    ['caderno-de-aventuras', 'Caderno de Aventuras', 'O RPG do caderno da escola: o mestre desenha o mapa com caneta enquanto você anda por 5 páginas de biomas, a luta é nos dados, e cada monstro tem um rei no fundo da sua masmorra.', 'caderno-de-aventuras', false, 'RPG de dados'],
     ['caca-as-bruxas', 'Caça às Bruxas', 'Você é a bruxa caçada: enfrente o demônio, aprenda magias e sobreviva à Suspeita da vila.', 'caca-as-bruxas', false, 'Soulslike 2D'],
     ['charuto-racer', 'Charuto Racer', 'Fórmula 1 dos anos 60 em estrada pseudo-3D, no estilo Top Gear: corra a temporada, ganhe dinheiro e compre peças.', 'charuto-racer', false, 'Corrida'],
     ['rallysurvive', 'RallySurvive', 'Contrarrelógio topdown: o carro segue o mouse, a distância é o acelerador. Saiu da pista, bateu.', 'rallysurvive', false, 'Corrida'],
@@ -103,7 +105,7 @@
   document.getElementById('grid').innerHTML = GAMES.map(([dir, name, desc, gdd, portrait, tag]) => `
     <article class="card">
       <a class="thumb${portrait ? ' portrait' : ''}" href="./${dir}/" style="--img:url('thumbs/${dir}.jpg')"><img src="thumbs/${dir}.jpg" alt="${name}" loading="lazy"><span class="tag">${tag}</span></a>
-      <div class="body"><h3>${name}</h3><p>${desc}</p>
+      <div class="body"><h3>${name} <small class="ver">v${VERSOES.doPrototipo(dir).versao}</small></h3><p>${desc}</p>
         <div class="links"><a class="play" href="./${dir}/">▶ Jogar</a><a class="doc" href="../${gdd}/gdd">GDD</a></div></div>
     </article>`).join('');
 </script>

@@ -1,5 +1,7 @@
 # Caderno de Aventuras — GDD inicial
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
 ## Visão geral
@@ -15,7 +17,8 @@ Caderno de Aventuras recria o RPG que a gente jogava no caderno da escola. Um co
 - **Tudo parece feito à mão.** Folha pautada, margem vermelha, caneta para o mapa e lápis de cor para pintar. Nenhum gráfico "limpo".
 - **A escolha de brigar é do jogador.** Monstros desenhados no mapa não perseguem ninguém; enfrentar ou dar a volta é decisão de quem joga.
 - **Sempre tem um rei no fundo.** Cada monstro tem uma versão chefe (Rei Rato, Rainha Aranha...) esperando no fundo da sua masmorra.
-- **Fogueiras, não cidades.** Como num souls-like, não há vilas: há acampamentos com fogueira espalhados pela ilha. Descansar cura, mas todo monstro vencido volta; os guerreiros que descansam ali vendem o que o herói precisa.
+- **Fogueiras, não cidades.** Como num souls-like, não há vilas: há acampamentos com fogueira espalhados pelas páginas. Descansar cura, mas todo monstro vencido volta; os guerreiros que descansam ali vendem o que o herói precisa.
+- **Cada bioma é uma página do caderno.** Campos, Deserto, Montanhas Geladas, Pântano Sombrio e Vulcão: cada um ocupa uma folha inteira, do tamanho de uma ilha, para ter muito o que explorar antes de virar a página.
 
 **Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular. O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
 
@@ -44,37 +47,55 @@ O mestre não aparece, mas está em todo lugar:
 - **Narração:** um balão "Mestre:" comenta o que acontece. Na primeira vez em cada terreno ("Floresta! O mestre rabisca um monte de arvorezinhas"), ao entrar numa região mais perigosa, ao chegar numa fogueira, ao bater na água ou na montanha.
 - **A borracha do mestre:** quando o herói descansa numa fogueira (ou desmaia), o mestre apaga os X dos monstros vencidos: eles voltam para o mapa.
 - **Personagens no caminho:** os de balão com "?" azul dão dicas das regras e às vezes um presente; ao conversar de novo, dão outra dica. Os de balão amarelo com "!" vermelho têm nome e dão missões (ver Missões).
-- **Virar a página:** ao descer numa masmorra, o mestre tira a ilha da tela e desenha o interior numa página nova; ao subir, volta para a página da ilha.
+- **Virar a página:** ao chegar no canto dobrado no fim de uma página, o mestre vira a folha e começa o bioma seguinte. Ao descer numa masmorra, ele tira a página da tela e desenha o interior numa folha à parte; ao subir, volta para a página de cima.
 - Avisa quando anoitece ("O mestre pinta a folha de azul-escuro...") e quando amanhece ("O mestre apaga o azul com a borracha").
 
 ## Mundo
 
 **Definido**
 
-- O mundo é uma ilha de 48 × 34 quadrados, gerada de uma semente no começo da aventura e salva com ela. O mar cerca tudo.
-- Terrenos: água e montanha (bloqueiam), praia, campo, floresta e pântano (andáveis).
+- O mundo são **5 páginas do caderno, uma por bioma**, sempre na mesma ordem: Campos, Deserto, Montanhas Geladas, Pântano Sombrio e Vulcão. Cada página é uma ilha de 48 × 34 quadrados (cerca de 700 dá para alcançar a pé), cercada de água (no Vulcão, de lava).
+- Tudo é gerado de uma semente no começo da aventura e salvo com ela. Cada página tem a sua semente, tirada da semente do mundo e do número da página, e é gerada sozinha.
+- **Os 6 terrenos têm o mesmo papel em toda página.** Água e montanha bloqueiam; areia, campo, mata e pântano se andam, e mata e pântano escondem mais bicho. Cada bioma dá outro nome e outro desenho a eles, e muda o quanto de cada um aparece:
+
+| Papel | Campos | Deserto | Montanhas Geladas | Pântano Sombrio | Vulcão |
+| --- | --- | --- | --- | --- | --- |
+| água (bloqueia) | água | oásis | água gelada (com blocos de gelo) | água escura | lava |
+| areia | praia | areia | gelo | lama | cinzas |
+| campo | campo | dunas | neve | terra morta (com túmulos) | rocha |
+| mata | floresta | cactos | pinheiros | árvores mortas | árvores queimadas |
+| pântano | pântano | areia movediça | neve funda | brejo | fumarolas |
+| montanha (bloqueia) | montanha | rochedos | picos nevados | rochas | vulcões |
+
+- **Como cada bioma muda o terreno (proposta):** o Deserto é seco (quase só dunas, poucos cactos, pouca areia movediça), o Pântano Sombrio é úmido (muita árvore morta e brejo), as Montanhas Geladas e o Vulcão têm mais montanha. No gerador, isso são os limites de elevação (água e montanha) e um ajuste de umidade por bioma.
+- **Os biomas mudam o visual e os monstros, não as regras.** Terreno, desenho, monstros, chefes e lojas mudam de uma página para outra; andar, lutar, dia e noite, tochas e fogueiras funcionam igual em todas.
 - **Revelação:** ao chegar num quadrado, o mestre desenha todos os quadrados num raio de ~2,6 ao redor que ainda estavam em branco, do mais perto para o mais longe, um após o outro.
-- **Regiões de perigo 1 a 6** pela distância a pé desde a fogueira inicial. Cada região tem seu par de monstros.
-- **Acampamentos com fogueira** com nome de material escolar. Os 3 primeiros ficam no início (Acampamento Apontador), a 1/3 e a 2/3 do caminho. Depois de monstros e baús, cada região que ficou sem fogueira ganha uma, num campo ou praia livre, sem nada encostado, a 4+ quadrados do covil e a 6+ das outras fogueiras. Na prática, são 6 por ilha, uma por região. Os nomes seguem a ordem: Apontador, Borracha, Régua, Clipe, Grampo, Compasso, Estojo, Transferidor, Lancheira.
+- **Regiões de perigo 1 a 15**, 3 por página, pela distância a pé desde a primeira fogueira da página: os Campos são as regiões 1–3, o Deserto 4–6, as Montanhas Geladas 7–9, o Pântano Sombrio 10–12 e o Vulcão 13–15. Cada região tem seu par de monstros.
+- **5 acampamentos com fogueira por página**, com nome de material escolar: o primeiro no início da página e os outros a ~1/5, ~2/5, ~3/5 e ~4/5 do caminho até o fim, sempre num campo ou areia. Os nomes seguem a ordem do caderno: Apontador, Borracha, Régua, Clipe e Grampo nos Campos; Compasso, Estojo, Transferidor, Lancheira e Lápis de cor no Deserto; Caneta, Mochila, Tesoura, Cola e Fichário nas Montanhas Geladas; Esquadro, Giz, Marca-texto, Corretivo e Lapiseira no Pântano Sombrio; Pincel, Guache, Carimbo, Calculadora e Globo no Vulcão.
 - No mapa, o acampamento é uma barraca listrada, a fogueira e um guerreiro sentado, com o nome escrito em cima.
-- **Covil do Dragão** no ponto alcançável mais distante da fogueira inicial, cercado por monstros da região 6.
-- Pelo mapa: monstros desenhados (~7,5% dos quadrados livres), baús (~2%), **12 entradas de masmorra** (uma por monstro, na região dele) e **15 personagens**: 6 que dão missões (um por região) e 9 que dão dicas.
+- **Passagem:** no ponto alcançável mais distante da primeira fogueira fica o **canto dobrado da página**, com uma seta vermelha e o nome da próxima página ("Deserto →"). Na última página, ali fica o **Covil do Dragão**. Em volta dos dois, a 2 quadrados, há mais monstros (40% dos quadrados), da região mais forte da página.
+- **Volta:** da 2ª página em diante, ao lado da primeira fogueira há uma folha com uma seta verde e o nome da página anterior ("← Campos").
+- Por página: monstros desenhados (~7,5% dos quadrados livres), baús (~2%), **6 entradas de masmorra** (uma por monstro, na região dele) e **7 personagens**: 3 que dão missões (um por região) e 4 que dão dicas.
 - **Personagens espaçados:** nenhum personagem fica a menos de 5 quadrados de outro (contando na horizontal ou na vertical, a maior das duas distâncias), nem colado numa masmorra.
-- Masmorras ficam a 4+ quadrados das fogueiras e do covil e a 6+ umas das outras. Se uma não couber na região dela, aquela ilha fica sem ela (a missão do chefe passa a pedir o outro rei da região).
-- Fogueiras extras, masmorras e personagens são sorteados **depois** de covil, monstros e baús, então a mesma semente gera a mesma ilha base de antes; as 3 primeiras fogueiras ficam onde eram as vilas.
+- Masmorras ficam a 4+ quadrados das fogueiras e do fim da página e a 6+ umas das outras. Se uma não couber na região dela, aquela página fica sem ela (a missão do chefe passa a pedir o outro rei da região).
+- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens.
 
 **Em aberto**
 
 - Mapa feito à mão em vez de gerado (o mestre do caderno inventava na hora, mas tinha um roteiro).
 - Barcos, pontes ou atalhos para atravessar água e montanha.
+- Exigir alguma coisa para virar a página (vencer um dos chefes da página, por exemplo). Hoje a passagem está sempre aberta; só os monstros em volta dela seguram o herói.
+- Mais páginas (outros biomas) ou uma ordem diferente a cada aventura.
 
 ## Movimento
 
 - Um quadrado por vez, nas 4 direções: setas ou WASD, direcional na tela no celular, ou tocando/clicando num quadrado já desenhado (o herói vai sozinho pelo caminho mais curto entre os quadrados conhecidos).
 - Andar até um monstro, um personagem ou o covil abre o encontro sem entrar no quadrado.
 - Entrar numa fogueira abre a folha do acampamento; entrar num baú abre o baú.
-- **Encontros surpresa:** a mais de 2 quadrados de uma fogueira e fora de quadrados com algo desenhado, cada passo pode trazer um monstro do mato: 4% na praia, 5% no campo, 8,5% na floresta e 9,5% no pântano. Vem um monstro da região (25% de chance de ser da região anterior).
-- O botão de mapa afasta a câmera para ver a ilha inteira já desenhada (ou a masmorra inteira, dentro dela).
+- **Virar a página:** pisar no canto dobrado pergunta se o herói quer ir para a próxima página. Na primeira vez, o aviso diz que lá os monstros são mais fortes. Indo para a frente, o herói chega na primeira fogueira da página nova, que já vira o lugar onde ele acorda se desmaiar. Pisar na seta de volta leva ao canto dobrado da página anterior. Na primeira vez em cada página, o mestre narra a chegada ("O mestre vira a página e pega a caneta amarela: é o Deserto...").
+- **Encontros surpresa:** a mais de 2 quadrados de uma fogueira e fora de quadrados com algo desenhado, cada passo pode trazer um monstro do mato: 4% na areia, 5% no campo, 8,5% na mata e 9,5% no pântano (com os nomes de cada bioma). Vem um monstro da região (25% de chance de ser da região anterior, mas nunca de outra página).
+- O botão de mapa afasta a câmera para ver a página inteira já desenhada (ou a masmorra inteira, dentro dela).
+- O HUD mostra o número e o nome da página ("2. Deserto"); no celular, só o número.
 
 ## Dia e noite
 
@@ -83,7 +104,8 @@ O mestre não aparece, mas está em todo lugar:
 - O relógio anda **um passo por quadrado andado**: o dia tem 100 passos. Passos 0–64 são dia, 65–74 escurecem aos poucos, 75–94 são noite e 95–99 clareiam. A aventura começa no passo 10 do Dia 1.
 - O HUD mostra sol ou lua, "Dia N" e "noite".
 - **À noite, os monstros ficam mais fortes:** rolam **um dado de ataque a mais** do mesmo tipo (Lobo 1d10 vira 2d10). Em compensação, dão **+50% de experiência**. Encontros surpresa ficam 50% mais comuns. Vale para monstros do mapa, encontros surpresa e o dragão; não vale dentro das masmorras.
-- **Escuro** é a noite na ilha ou qualquer hora dentro de uma masmorra. No escuro:
+- O relógio é um só para o mundo todo: virar a página não muda a hora.
+- **Escuro** é a noite numa página ou qualquer hora dentro de uma masmorra. No escuro:
   - **Com tocha acesa:** o mestre desenha num raio de ~2,2 quadrados, e a luz em volta do herói tem ~3 quadrados, tremendo como fogo.
   - **Sem tocha:** o mestre só desenha os 8 quadrados vizinhos, e a tela fica escura a mais de ~1 quadrado do herói. O que já foi desenhado continua lá, mas aparece apagado sob o azul.
 - **Tochas:** custam 5 moedas com o mercador de qualquer fogueira; o herói começa com 2. Acendem sozinhas quando fica escuro, cada uma dura **40 passos no escuro** (de dia não gasta), e quando acaba a próxima acende sozinha. O mestre avisa quando a última apaga.
@@ -99,32 +121,50 @@ O mestre não aparece, mas está em todo lugar:
 
 **Definido**
 
-- Cada monstro comum tem uma masmorra na sua região, com a versão **chefe** dele no fundo: o mesmo desenho, um pouco menor, com uma coroa amarela na cabeça.
+- Cada monstro comum tem uma masmorra na sua região, com a versão **chefe** dele no fundo: o mesmo desenho, um pouco menor, com uma coroa amarela na cabeça. São 30 masmorras no mundo, 6 por página.
 - No mapa, a entrada é um arco de pedra cinza com porta escura e uma coroa em cima, com o nome do lugar escrito (Esgoto, Cripta...). Pisar nela pergunta se o herói quer descer, mostrando vida e dados do chefe e quantas tochas ele tem.
-- **Interior (gerado da semente da ilha e do número da masmorra):** 21 × 16 quadrados, divididos em 4 × 3 celas de 5 quadrados com uma sala de 2 a 4 quadrados de lado em cada. Um labirinto liga as salas por corredores em L, mais 2 ligações extras. A escada de **Saída** fica numa sala; o **chefe**, na sala mais longe dela a pé.
+- **Interior (gerado da semente da página e do número da masmorra):** 21 × 16 quadrados, divididos em 4 × 3 celas de 5 quadrados com uma sala de 2 a 4 quadrados de lado em cada. Um labirinto liga as salas por corredores em L, mais 2 ligações extras. A escada de **Saída** fica numa sala; o **chefe**, na sala mais longe dela a pé.
 - **Desenho:** paredes que encostam no chão são pintadas de cinza com a borda em caneta preta; pedra maciça fica em branco. O chão tem pontinhos de lápis.
 - Nas outras salas: monstros (60% de chance por sala; 80% deles do tipo da masmorra, o resto do outro monstro da região) e até 2 baús. Ficam fora da linha e da coluna do meio da sala, por onde chegam os corredores. Dentro da masmorra não há encontros surpresa.
 - Dentro é sempre escuro (ver Dia e noite). O relógio continua andando.
-- **Sair:** pisar de novo na escada pergunta se quer subir; o herói volta para a entrada na ilha. Desmaiar lá dentro leva para a última fogueira, como na ilha.
-- **Vencer o chefe** deixa X nele e risca a entrada da masmorra na ilha. Atrás do trono há um baú com um **equipamento** de uma loja à frente da região (a mesma regra dos baús raros). Baús abertos e o que foi desenhado de cada masmorra ficam salvos; dá para voltar depois. Os monstros dela voltam quando o herói descansa numa fogueira, mas o chefe vencido não volta.
+- **Sair:** pisar de novo na escada pergunta se quer subir; o herói volta para a entrada, na página. Desmaiar lá dentro leva para a última fogueira, como lá em cima.
+- **Vencer o chefe** deixa X nele e risca a entrada da masmorra na página. Atrás do trono há um baú com um **equipamento** da loja da página seguinte (a mesma regra dos baús raros). Baús abertos e o que foi desenhado de cada masmorra ficam salvos; dá para voltar depois. Os monstros dela voltam quando o herói descansa numa fogueira, mas o chefe vencido não volta.
 - **Fugir de um chefe:** d20 ≥ 13.
 
 **Chefes (proposta):** vida = 2 × a do monstro + 10; ataque com um dado a mais; mesma defesa; o dobro de dados de moeda; 4 × a experiência; deixam 2d6 despojos.
 
-| Masmorra | Chefe | Vida | Ataque | Defesa | Moedas | XP |
-| --- | --- | --- | --- | --- | --- | --- |
-| Poço do Rei Slime | Rei Slime | 26 | 2d4 | — | 4d4 | 12 |
-| Esgoto do Rei Rato | Rei Rato | 22 | 2d6 | — | 4d4 | 12 |
-| Caverna do Rei Goblin | Rei Goblin | 38 | 3d4 | — | 6d6 | 28 |
-| Toca do Rei Lobo | Rei Lobo | 42 | 2d10 | — | 6d6 | 28 |
-| Cripta do Rei Esqueleto | Rei Esqueleto | 58 | 3d6 | 1d4 | 8d6 | 48 |
-| Ninho da Rainha Aranha | Rainha Aranha | 54 | 3d6 | 1d4 | 8d6 | 48 |
-| Forte do Rei Orc | Rei Orc | 86 | 3d8 | 1d6 | 8d10 | 80 |
-| Cabana da Rainha Bruxa | Rainha Bruxa | 74 | 4d6 | — | 8d10 | 80 |
-| Gruta do Rei Ogro | Rei Ogro | 134 | 4d8 | 2d4 | 12d10 | 140 |
-| Torre do Rei Cavaleiro | Rei Cavaleiro | 122 | 4d10 | 2d6 | 12d10 | 140 |
-| Fosso do Rei Troll | Rei Troll | 194 | 5d8 | 2d6 | 16d10 | 240 |
-| Pedreira do Rei Golem | Rei Golem | 230 | 4d12 | 3d6 | 16d10 | 240 |
+| Página | Masmorra | Chefe | Vida | Ataque | Defesa | Moedas | XP |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Campos | Poço do Rei Slime | Rei Slime | 26 | 2d4 | — | 4d4 | 12 |
+| Campos | Esgoto do Rei Rato | Rei Rato | 22 | 2d6 | — | 4d4 | 12 |
+| Campos | Caverna do Rei Goblin | Rei Goblin | 38 | 3d4 | — | 6d6 | 24 |
+| Campos | Toca do Rei Lobo | Rei Lobo | 42 | 2d10 | — | 6d6 | 24 |
+| Campos | Ninho da Rainha Aranha | Rainha Aranha | 50 | 3d6 | 1d4 | 8d6 | 40 |
+| Campos | Forte do Rei Orc | Rei Orc | 58 | 2d12 | 1d4 | 8d6 | 40 |
+| Deserto | Fenda do Rei Escorpião | Rei Escorpião | 62 | 3d6 | 1d6 | 8d8 | 56 |
+| Deserto | Templo da Rainha Naja | Rainha Naja | 54 | 3d8 | — | 8d8 | 56 |
+| Deserto | Cripta do Rei Esqueleto | Rei Esqueleto | 78 | 3d8 | 1d4 | 10d8 | 76 |
+| Deserto | Pirâmide da Rainha Múmia | Rainha Múmia | 90 | 4d6 | 1d6 | 10d8 | 76 |
+| Deserto | Túnel da Rainha Verme | Rainha Verme | 126 | 4d8 | 1d6 | 12d8 | 100 |
+| Deserto | Pedreira do Rei Golem | Rei Golem | 138 | 4d10 | 2d6 | 12d8 | 100 |
+| Montanhas Geladas | Gruta Gelada do Rei Lobo do Gelo | Rei Lobo do Gelo | 134 | 4d10 | 1d6 | 12d10 | 128 |
+| Montanhas Geladas | Iglu do Rei Boneco de Neve | Rei Boneco de Neve | 150 | 4d8 | 2d6 | 12d10 | 128 |
+| Montanhas Geladas | Geleira do Rei Yeti | Rei Yeti | 194 | 5d8 | 2d6 | 14d10 | 160 |
+| Montanhas Geladas | Gruta do Rei Ogro | Rei Ogro | 210 | 5d8 | 2d4 | 14d10 | 160 |
+| Montanhas Geladas | Palácio de Gelo da Rainha da Nevasca | Rainha da Nevasca | 186 | 5d10 | 2d6 | 16d10 | 200 |
+| Montanhas Geladas | Fosso do Rei Troll | Rei Troll | 240 | 5d10 | 2d8 | 16d10 | 200 |
+| Pântano Sombrio | Mausoléu do Rei Zumbi | Rei Zumbi | 270 | 6d8 | 2d6 | 8d20 | 248 |
+| Pântano Sombrio | Brejo do Rei Sapo | Rei Sapo | 246 | 5d12 | 2d8 | 8d20 | 248 |
+| Pântano Sombrio | Casarão da Rainha Fantasma | Rainha Fantasma | 260 | 6d10 | 3d6 | 10d20 | 300 |
+| Pântano Sombrio | Cabana da Rainha Bruxa | Rainha Bruxa | 280 | 7d8 | 2d6 | 10d20 | 300 |
+| Pântano Sombrio | Torre do Rei Cavaleiro | Rei Cavaleiro | 340 | 6d12 | 3d8 | 12d20 | 360 |
+| Pântano Sombrio | Catacumba do Rei Ceifador | Rei Ceifador | 310 | 7d10 | 2d8 | 12d20 | 360 |
+| Vulcão | Forja da Rainha Salamandra | Rainha Salamandra | 380 | 7d10 | 3d6 | 14d20 | 432 |
+| Vulcão | Chaminé do Rei Diabrete | Rei Diabrete | 350 | 6d12 | 3d8 | 14d20 | 432 |
+| Vulcão | Canil do Rei Cão Infernal | Rei Cão Infernal | 460 | 8d10 | 3d8 | 16d20 | 512 |
+| Vulcão | Cratera do Rei Elemental | Rei Elemental | 440 | 7d12 | 4d6 | 16d20 | 512 |
+| Vulcão | Fornalha do Rei Golem de Magma | Rei Golem de Magma | 560 | 8d12 | 5d6 | 16d20 | 600 |
+| Vulcão | Pico da Rainha Fênix | Rainha Fênix | 510 | 9d10 | 3d8 | 16d20 | 600 |
 
 **Em aberto**
 
@@ -136,16 +176,26 @@ O mestre não aparece, mas está em todo lugar:
 
 **Definido**
 
-- Cada região tem um personagem com "!" que dá missões, com o nome escrito em cima: Seu Juca (região 1), Dona Filó, Tio Bento, Vó Nina, Mestre Caco e Dona Lurdes (região 6).
+- Cada região tem um personagem com "!" que dá missões, com o nome escrito em cima. São 15, um por região, na ordem: Seu Juca, Dona Filó e Tio Bento (Campos); Vó Nina, Mestre Caco e Dona Lurdes (Deserto); Seu Tonho, Dona Cida e Tio Zé (Montanhas Geladas); Vó Benta, Seu Dito e Dona Zuza (Pântano Sombrio); Mestre Bira, Dona Glória e Seu Lino (Vulcão).
 - Cada um dá **3 missões, uma depois da outra**, com os dois monstros da região dele:
-  1. **Derrotar** N do monstro A (10 / 10 / 8 / 8 / 6 / 5 por região). Só contam os vencidos depois de aceitar.
-  2. **Juntar** N despojos do monstro B (20 / 18 / 16 / 14 / 12 / 10). Contam os que o herói já tem.
-  3. **Derrotar o chefe** do monstro A (ou do B, se a masmorra de A não existir nesta ilha). Vale se ele já tiver sido vencido antes.
-- Qual dos dois monstros é A sai da semente da ilha, então cada ilha muda.
-- **Despojos:** todo monstro vencido deixa 1d3 de uma parte dele (chefe: 2d6), rolados na bandeja junto com as moedas. Exemplos: rabos de rato, gotas de gosma, ossos, pernas de aranha, verrugas de bruxa, lascas de pedra. Ficam na mochila; numa fogueira, o mercador compra por (região do monstro) moedas cada, menos os guardados para uma missão de juntar.
-- **Recompensa (proposta):** moedas 30 / 60 / 110 / 180 / 280 / 420 e experiência 15 / 30 / 55 / 90 / 140 / 210 por região, × 1 na primeira missão, × 1,5 na segunda e × 2 na do chefe. A do chefe também dá um equipamento de uma loja à frente.
+  1. **Derrotar** N do monstro A. Só contam os vencidos depois de aceitar.
+  2. **Juntar** N despojos do monstro B. Contam os que o herói já tem.
+  3. **Derrotar o chefe** do monstro A (ou do B, se a masmorra de A não existir nesta página). Vale se ele já tiver sido vencido antes.
+- Qual dos dois monstros é A sai da semente da página, então cada aventura muda.
+- **Despojos:** todo monstro vencido deixa 1d3 de uma parte dele (chefe: 2d6), rolados na bandeja junto com as moedas. Exemplos: rabos de rato, ferrões, narizes de cenoura, lençóis rasgados, penas de fênix (a lista toda está em Monstros). Ficam na mochila; numa fogueira, o mercador compra por (região do monstro) moedas cada, menos os guardados para uma missão de juntar.
+- Uma missão aceita continua valendo em outra página: dá para aceitar nos Campos, ir ao Deserto e voltar para entregar. A caixinha do HUD e a mochila dizem de quem é cada missão.
+
+**Números por região (proposta).** A recompensa é × 1 na primeira missão, × 1,5 na segunda e × 2 na do chefe; a do chefe também dá um equipamento da loja da página seguinte.
+
+| Região | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Derrotar | 10 | 10 | 8 | 8 | 8 | 6 | 6 | 6 | 5 | 5 | 5 | 4 | 4 | 4 | 3 |
+| Juntar | 20 | 18 | 16 | 15 | 14 | 13 | 12 | 11 | 10 | 10 | 9 | 8 | 8 | 7 | 6 |
+| Moedas | 30 | 45 | 60 | 80 | 100 | 120 | 150 | 180 | 210 | 250 | 290 | 330 | 380 | 430 | 480 |
+| Experiência | 15 | 25 | 40 | 55 | 75 | 100 | 130 | 165 | 205 | 250 | 300 | 360 | 430 | 510 | 600 |
+
 - Aceitar é opcional ("Agora não"), e podem ficar várias missões ativas ao mesmo tempo (uma por personagem).
-- **No HUD:** uma caixinha "Missões" embaixo dos números mostra cada missão ativa com o progresso (3/10). Quando fica pronta, o mestre avisa e a linha fica verde com "volte a Seu Juca". Para receber, é preciso falar com o personagem de novo. A mochila também lista as missões.
+- **No HUD:** uma caixinha "Missões" embaixo dos números mostra cada missão ativa com o progresso (3/10). Quando fica pronta, o mestre avisa e a linha fica verde com "volte a Seu Juca". Para receber, é preciso falar com o personagem de novo. A mochila também lista as missões, com a página de quem deu.
 - Os monstros desenhados voltam a cada descanso na fogueira, e com uma missão ativa de derrotar ou juntar, **metade dos encontros surpresa na região daquele monstro traz o monstro pedido**.
 - Depois das 3 missões, o personagem só agradece.
 
@@ -179,7 +229,7 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 - **Antes da luta:** contra um monstro desenhado, o jogador vê vida e dados dele e escolhe "Enfrentar" ou "Deixar pra lá" (sem rolagem). Num encontro surpresa, pode tentar fugir antes (d20 ≥ 8); se falhar, o monstro ataca primeiro.
 - **Vitória:** rola os dados de moedas do monstro junto com os despojos (1d3; chefe 2d6) e ganha a experiência dele (+50% à noite). Monstros desenhados vencidos ficam com X até o próximo descanso numa fogueira (ou desmaio), quando voltam.
 - **À noite**, a folha da luta mostra a lua e o lembrete "+1 dado de ataque, +50% de experiência".
-- **Derrota (desmaio):** o herói acorda na última fogueira por onde passou, com vida e magia cheias e **metade do ouro**, e os monstros vencidos voltam (como num descanso). Nada mais se perde.
+- **Derrota (desmaio):** o herói acorda na última fogueira por onde passou (que pode estar em outra página), com vida e magia cheias e **metade do ouro**, e os monstros vencidos voltam (como num descanso). Nada mais se perde.
 - **Em aberto:** o ouro perdido ficar caído onde o herói desmaiou, para ele voltar e pegar (como as almas de um souls-like).
 
 **Em aberto**
@@ -203,23 +253,30 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 | Espada de ferro | arma | 2d6 | 70 | 1 |
 | Machado de guerra | arma | 2d8 | 140 | 2 |
 | Espada de prata | arma | 3d8 | 260 | 2 |
-| Montante | arma | 3d12 | 480 | 3 |
-| Espada rúnica | arma | 4d12 | 800 | 3 |
-| Lâmina do Dragão | arma | 5d20 | 1200 | 3 |
+| Montante | arma | 3d12 | 600 | 3 |
+| Espada rúnica | arma | 4d12 | 1100 | 3 |
+| Espada de cristal | arma | 5d12 | 2600 | 4 |
+| Lâmina do Dragão | arma | 5d20 | 6000 | 5 |
 | Tampa de panela | escudo | 1d4 | 12 | 1 |
 | Escudo de madeira | escudo | 1d6 | 40 | 1 |
 | Escudo de ferro | escudo | 2d6 | 160 | 2 |
-| Escudo de torre | escudo | 3d6 | 420 | 3 |
+| Escudo de torre | escudo | 3d6 | 500 | 3 |
+| Escudo rúnico | escudo | 4d6 | 1900 | 4 |
+| Escudo de dragão | escudo | 5d6 | 4200 | 5 |
 | Roupa de couro | armadura | 1d4 | 25 | 1 |
 | Cota de malha | armadura | 2d4 | 110 | 2 |
 | Armadura de placas | armadura | 2d8 | 380 | 2 |
-| Armadura de dragão | armadura | 3d10 | 950 | 3 |
+| Armadura de gelo | armadura | 3d8 | 950 | 3 |
+| Armadura rúnica | armadura | 4d8 | 2400 | 4 |
+| Armadura de dragão | armadura | 5d8 | 5000 | 5 |
 | Poção de vida | poção | 3d6 de vida | 12 | 1 |
 | Poção de magia | poção | 2d4 de Magia | 15 | 1 |
+| Poção grande | poção | 8d8 de vida | 70 | 3 |
 
-- **Loja** é o nível da fogueira que vende o item: as fogueiras das regiões 1–2 vendem o nível 1, as das regiões 3–4 até o 2, as das regiões 5–6 até o 3.
+- **Loja** é o nível da fogueira que vende o item, e é a página dela: as fogueiras dos Campos vendem o nível 1, as do Deserto até o 2, as das Montanhas Geladas até o 3, as do Pântano Sombrio até o 4 e as do Vulcão até o 5. Cada página nova traz equipamento melhor, e os preços sobem junto com as moedas que os monstros de lá deixam.
 - Comprar um equipamento já o equipa; o anterior vai para a mochila. Na mochila dá para trocar o equipado e, numa fogueira, vender por metade do preço.
-- Cada item tem ícone desenhado em lápis de cor, com a cor do material (madeira marrom, ferro grafite, prata azul-claro, rúnica roxa, dragão vermelha).
+- Cada item tem ícone desenhado em lápis de cor, com a cor do material (madeira marrom, ferro grafite, prata e gelo azul-claro, cristal rosa, rúnica roxa, dragão vermelha).
+- **A curva (proposta, conferida numa simulação):** um herói que só ataca, compra o melhor que dá na loja da página e descansa com meia vida chega ao fim do Vulcão por volta do nível 39 e vence o dragão em ~75% das vezes. A primeira região de cada página fica fácil logo depois das compras, e a última, difícil. Com feitiços e poções fica mais fácil; falta uma pessoa jogar a curva toda.
 
 ## Feitiços (proposta)
 
@@ -231,39 +288,62 @@ Comprados uma vez da maga de uma fogueira, como pergaminhos, e ficam para sempre
 | Cura | 2 | 2d6 de vida (também fora da luta) | 45 | 1 |
 | Bola de fogo | 3 | 3d8 de dano | 150 | 2 |
 | Raio | 5 | 4d10 de dano | 420 | 3 |
+| Cura maior | 5 | 6d8 de vida (também fora da luta) | 900 | 3 |
+| Nevasca | 7 | 6d10 de dano | 1600 | 4 |
+| Meteoro | 9 | 8d12 de dano | 3500 | 5 |
 
 ## Monstros (proposta)
 
-| Região | Monstro | Vida | Ataque | Defesa | Moedas | XP |
-| --- | --- | --- | --- | --- | --- | --- |
-| 1 | Slime | 8 | 1d4 | — | 2d4 | 3 |
-| 1 | Rato gigante | 6 | 1d6 | — | 2d4 | 3 |
-| 2 | Goblin | 14 | 2d4 | — | 3d6 | 7 |
-| 2 | Lobo | 16 | 1d10 | — | 3d6 | 7 |
-| 3 | Esqueleto | 24 | 2d6 | 1d4 | 4d6 | 12 |
-| 3 | Aranha gigante | 22 | 2d6 | 1d4 | 4d6 | 12 |
-| 4 | Orc | 38 | 2d8 | 1d6 | 4d10 | 20 |
-| 4 | Bruxa do pântano | 32 | 3d6 | — | 4d10 | 20 |
-| 5 | Ogro | 62 | 3d8 | 2d4 | 6d10 | 35 |
-| 5 | Cavaleiro negro | 56 | 3d10 | 2d6 | 6d10 | 35 |
-| 6 | Troll | 92 | 4d8 | 2d6 | 8d10 | 60 |
-| 6 | Golem de pedra | 110 | 3d12 | 3d6 | 8d10 | 60 |
-| Chefe | Dragão Vermelho | 240 | 5d12 | 2d6 | 10d20 | — |
+| Página | Região | Monstro | Vida | Ataque | Defesa | Moedas | XP | Despojo |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Campos | 1 | Slime | 8 | 1d4 | — | 2d4 | 3 | gotas de gosma |
+| Campos | 1 | Rato gigante | 6 | 1d6 | — | 2d4 | 3 | rabos de rato |
+| Campos | 2 | Goblin | 14 | 2d4 | — | 3d6 | 6 | orelhas de goblin |
+| Campos | 2 | Lobo | 16 | 1d10 | — | 3d6 | 6 | presas de lobo |
+| Campos | 3 | Aranha gigante | 20 | 2d6 | 1d4 | 4d6 | 10 | pernas de aranha |
+| Campos | 3 | Orc | 24 | 1d12 | 1d4 | 4d6 | 10 | dentes de orc |
+| Deserto | 4 | Escorpião gigante | 26 | 2d6 | 1d6 | 4d8 | 14 | ferrões |
+| Deserto | 4 | Naja | 22 | 2d8 | — | 4d8 | 14 | escamas de naja |
+| Deserto | 5 | Esqueleto | 34 | 2d8 | 1d4 | 5d8 | 19 | ossos |
+| Deserto | 5 | Múmia | 40 | 3d6 | 1d6 | 5d8 | 19 | faixas de múmia |
+| Deserto | 6 | Verme da areia | 58 | 3d8 | 1d6 | 6d8 | 25 | dentes de verme |
+| Deserto | 6 | Golem de pedra | 64 | 3d10 | 2d6 | 6d8 | 25 | lascas de pedra |
+| Montanhas Geladas | 7 | Lobo do gelo | 62 | 3d10 | 1d6 | 6d10 | 32 | pelos gelados |
+| Montanhas Geladas | 7 | Boneco de neve malvado | 70 | 3d8 | 2d6 | 6d10 | 32 | narizes de cenoura |
+| Montanhas Geladas | 8 | Yeti | 92 | 4d8 | 2d6 | 7d10 | 40 | tufos de yeti |
+| Montanhas Geladas | 8 | Ogro | 100 | 4d8 | 2d4 | 7d10 | 40 | tufos de pelo de ogro |
+| Montanhas Geladas | 9 | Espírito do gelo | 88 | 4d10 | 2d6 | 8d10 | 50 | flocos eternos |
+| Montanhas Geladas | 9 | Troll | 115 | 4d10 | 2d8 | 8d10 | 50 | unhas de troll |
+| Pântano Sombrio | 10 | Zumbi | 130 | 5d8 | 2d6 | 4d20 | 62 | dedos de zumbi |
+| Pântano Sombrio | 10 | Sapo gigante | 118 | 4d12 | 2d8 | 4d20 | 62 | línguas de sapo |
+| Pântano Sombrio | 11 | Fantasma | 125 | 5d10 | 3d6 | 5d20 | 75 | lençóis rasgados |
+| Pântano Sombrio | 11 | Bruxa do pântano | 135 | 6d8 | 2d6 | 5d20 | 75 | verrugas de bruxa |
+| Pântano Sombrio | 12 | Cavaleiro negro | 165 | 5d12 | 3d8 | 6d20 | 90 | plumas negras |
+| Pântano Sombrio | 12 | Ceifador | 150 | 6d10 | 2d8 | 6d20 | 90 | ampulhetas |
+| Vulcão | 13 | Salamandra de fogo | 185 | 6d10 | 3d6 | 7d20 | 108 | caudas de salamandra |
+| Vulcão | 13 | Diabrete | 170 | 5d12 | 3d8 | 7d20 | 108 | chifrinhos |
+| Vulcão | 14 | Cão infernal | 225 | 7d10 | 3d8 | 8d20 | 128 | coleiras em brasa |
+| Vulcão | 14 | Elemental de fogo | 215 | 6d12 | 4d6 | 8d20 | 128 | brasas vivas |
+| Vulcão | 15 | Golem de magma | 275 | 7d12 | 5d6 | 8d20 | 150 | pedras de magma |
+| Vulcão | 15 | Fênix | 250 | 8d10 | 3d8 | 8d20 | 150 | penas de fênix |
+| Vulcão | Chefe | Dragão Vermelho | 600 | 8d12 | 4d8 | 10d20 | — | — |
 
-Os chefes de cada monstro estão em Masmorras e chefes. Vencer o Dragão Vermelho termina a aventura: o mestre escreve "FIM" e mostra passos, monstros vencidos, nível e ouro. Dá para continuar explorando ou começar outra ilha.
+Moedas e experiência dependem só da região (os dois monstros de uma região dão o mesmo). Os chefes de cada monstro estão em Masmorras e chefes. Vencer o Dragão Vermelho, no fim do Vulcão, termina a aventura: o mestre escreve "FIM" e mostra passos, monstros vencidos, nível e ouro. Dá para continuar explorando ou começar outra aventura.
+
+Os monstros novos de cada bioma também são desenhados à mão por código: escorpião de rabo em gomos, naja de capuz aberto, múmia de faixas soltas, verme saindo da areia; lobo do gelo (o lobo em azul), boneco de neve de cartola e sobrancelha brava, yeti peludo, espírito do gelo com cristais em volta; zumbi de braços esticados, sapo de língua de fora, fantasma de lençol, ceifador de foice; salamandra e cão infernal com labaredas nas costas, diabrete de tridente, elemental de fogo, golem de magma (o golem em marrom com rachaduras de lava) e fênix de asas abertas.
 
 ## Fogueiras (acampamentos)
 
 **Definido**
 
-Não há vilas nem cidades. Como num souls-like, a ilha tem acampamentos com fogueira, e outros guerreiros descansam em volta dela.
+Não há vilas nem cidades. Como num souls-like, cada página tem 5 acampamentos com fogueira (ver Mundo), e outros guerreiros descansam em volta dela.
 
 - **Chegar** numa fogueira marca ali o lugar onde o herói acorda se desmaiar e abre a folha do acampamento. Na primeira vez, o mestre narra a chegada.
-- **Descansar** é de graça: enche vida e Magia e, a partir do passo 60 do dia, vira "Dormir" e passa a noite. Mas **todo monstro vencido volta**, na ilha e nas masmorras: o mestre apaga os X com a borracha. Chefes vencidos, o dragão e baús abertos não voltam.
-- **Os guerreiros vendem**, até o nível de loja da fogueira (ver Itens):
+- **Descansar** é de graça: enche vida e Magia e, a partir do passo 60 do dia, vira "Dormir" e passa a noite. Mas **todo monstro vencido volta**, em todas as páginas e masmorras: o mestre apaga os X com a borracha. Chefes vencidos, o dragão e baús abertos não voltam.
+- **Os guerreiros vendem**, até o nível de loja da fogueira, que é a página dela (ver Itens):
   - **Ferreiro andarilho:** armas, escudos e armaduras.
   - **Maga:** feitiços.
-  - **Mercador:** poções e tochas (5 moedas); compra despojos (a região do monstro em moedas cada; os guardados para uma missão de juntar não entram na venda) e equipamento da mochila pela metade do preço.
+  - **Mercador:** poções (a Poção grande só da 3ª página em diante) e tochas (5 moedas); compra despojos (a região do monstro em moedas cada; os guardados para uma missão de juntar não entram na venda) e equipamento da mochila pela metade do preço.
 - Perto de uma fogueira (até 2 quadrados) não há encontro surpresa.
 
 **Em aberto**
@@ -277,29 +357,35 @@ Ao abrir, rola-se 1d20 de sorte:
 
 - 1–13: moedas, (região + 1)d8.
 - 14–18: uma poção (vida ou magia).
-- 19–20: um equipamento de uma loja à frente da região, que vai para a mochila (nunca a Lâmina do Dragão).
+- 19–20: um equipamento da loja da página seguinte, que vai para a mochila (nunca a Lâmina do Dragão; no Vulcão, da própria loja do Vulcão).
 
 Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
 ## Salvamento
 
-Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v2`): semente da ilha, personagem (com tochas, despojos, missões e em que mapa ele está), relógio e dia, e, para a ilha e para cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para a ilha, também os personagens visitados e as masmorras limpas. Um save de antes das fogueiras continua valendo: as 3 primeiras fogueiras estão onde eram as vilas. Ao continuar, o mapa atual é redesenhado de uma vez a partir da semente.
+Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`): semente do mundo, personagem (com tochas, despojos, missões, a página e o mapa em que ele está e a página da fogueira onde acorda), relógio e dia, e, para cada página e cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para cada página, também os personagens visitados, as masmorras limpas e (na última) se o dragão foi vencido. Ao continuar, as 5 páginas são geradas de novo da semente e o mapa atual é redesenhado de uma vez.
 
-Um save da versão 1 (`caderno-aventuras-save-v1`, antes das masmorras) é convertido: a ilha de uma semente é a mesma, só ganhou masmorras e personagens.
+Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma semente agora gera outro mundo, então o jogo começa uma aventura nova.
 
 ## Em aberto (geral)
 
 - Nome definitivo.
 - Plataformas da versão final (web, PC, celular).
-- Balanceamento de toda a curva (protótipo ainda não foi jogado do começo ao fim por uma pessoa).
+- Balanceamento de toda a curva (protótipo ainda não foi jogado do começo ao fim por uma pessoa). Com 5 páginas, a aventura ficou bem mais longa: falta saber se cansa, e se vale encurtar as páginas do meio.
 - Multijogador local "da sala de aula": vários heróis, um passa o turno para o outro.
 - Modo mestre: um jogador desenha/posiciona o mapa e os monstros para outro jogar.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia. Já com as 5 páginas de bioma.
 
 ---
 
 # Parte 2 — Guia de Implementação Unity
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
+
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`). As 5 páginas de bioma da Parte 1 (Mundo) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

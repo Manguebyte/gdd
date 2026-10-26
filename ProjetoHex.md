@@ -1,5 +1,7 @@
 # GDD — Projeto Hex (nome de trabalho)
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial: a ideia ainda está sendo amadurecida, então este GDD separa com cuidado o que já foi **Definido** do que está **Em aberto**. Os números de balanceamento (custos, tempos de coleta, tamanho do mapa) ainda não foram decididos: os valores da tabela §17 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 >
 > "Projeto Hex" é só um nome de trabalho para arquivos, pastas e namespace do código. O nome do jogo está **Em aberto**.
@@ -230,6 +232,10 @@ Fica para depois:
 - Orientação no mobile e notificações (§13).
 - Áudio (§14).
 - Save na nuvem (§15).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD neste dia.
 
 ---
 

@@ -15,6 +15,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 import GithubSlugger from 'github-slugger';
 
@@ -218,6 +219,68 @@ export const GAMES = [
   },
 ];
 
+// ---------- versões ----------
+// A versão de cada jogo mora em prototipos/versao.js (o mesmo arquivo que os
+// protótipos carregam). Cada GDD repete o número no cabeçalho ("**Versão:**",
+// ou "**Versões:**" quando o arquivo tem vários jogos) e tem uma entrada para
+// ele no "Histórico de versões". Se algo discordar, o build falha aqui, para
+// ninguém subir a versão num lugar só.
+function loadVersions() {
+  const ctx = {};
+  vm.runInNewContext(fs.readFileSync(path.join(REPO_ROOT, 'prototipos', 'versao.js'), 'utf8'), ctx);
+  return ctx.VERSOES;
+}
+
+// Jogos de um arquivo de GDD: [{ id, nome, versao }].
+function gamesOfSource(versions, source) {
+  return Object.entries(versions.JOGOS)
+    .filter(([, [, gdd]]) => gdd === source)
+    .map(([id, [nome, , versao]]) => ({ id, nome, versao }));
+}
+
+function checkVersions(versions) {
+  const errors = [];
+  const sources = new Set(GAMES.map((g) => g.source));
+  for (const [id, [, gdd, versao]] of Object.entries(versions.JOGOS)) {
+    if (!sources.has(gdd)) errors.push(`${id}: o GDD ${gdd} não está na tabela GAMES.`);
+    if (!/^\d+\.\d+\.\d+$/.test(versao)) errors.push(`${id}: versão "${versao}" não é MAJOR.MINOR.PATCH.`);
+  }
+  for (const game of GAMES) {
+    const jogos = gamesOfSource(versions, game.source);
+    if (!jogos.length) {
+      errors.push(`${game.source}: nenhum jogo em prototipos/versao.js aponta para este GDD.`);
+      continue;
+    }
+    const text = fs.readFileSync(path.join(REPO_ROOT, game.source), 'utf8').replace(/\r\n/g, '\n');
+    const header = text.split('\n').slice(0, 12).find((l) => /^\*\*Vers(ão|ões):\*\*/.test(l)) || '';
+    const history = text.split('## Histórico de versões\n')[1] || '';
+    const multi = jogos.length > 1;
+    for (const j of jogos) {
+      const label = multi ? `${j.nome} ${j.versao}` : j.versao;
+      const inHeader = multi ? header.includes(label) : header.startsWith(`**Versão:** ${j.versao} `) || header === `**Versão:** ${j.versao}`;
+      if (!inHeader) errors.push(`${game.source}: o cabeçalho não diz ${label} (como prototipos/versao.js).`);
+      if (!history.includes(`- **${label}**`)) errors.push(`${game.source}: o "Histórico de versões" não tem a entrada **${label}**.`);
+    }
+  }
+  // Protótipos: cada pasta com index.html carrega ../versao.js e pertence a
+  // um jogo; um package.json (Vite) tem a mesma versão. Só avisa, porque
+  // uma pasta nova ainda não rastreada não deve quebrar o build local.
+  const protoDir = path.join(REPO_ROOT, 'prototipos');
+  for (const entry of fs.readdirSync(protoDir, { withFileTypes: true })) {
+    const index = path.join(protoDir, entry.name, 'index.html');
+    if (!entry.isDirectory() || !fs.existsSync(index)) continue;
+    const jogo = versions.doPrototipo(entry.name);
+    if (!jogo) console.warn(`[split-gdds] protótipo ${entry.name}: sem jogo em prototipos/versao.js.`);
+    else if (!fs.readFileSync(index, 'utf8').includes('../versao.js')) console.warn(`[split-gdds] protótipo ${entry.name}: index.html não carrega ../versao.js.`);
+    const pkg = path.join(protoDir, entry.name, 'package.json');
+    if (jogo && fs.existsSync(pkg)) {
+      const v = JSON.parse(fs.readFileSync(pkg, 'utf8')).version;
+      if (v !== jogo.versao) errors.push(`prototipos/${entry.name}/package.json: versão ${v}, mas prototipos/versao.js diz ${jogo.versao}.`);
+    }
+  }
+  if (errors.length) throw new Error('[split-gdds] versões fora de sincronia:\n- ' + errors.join('\n- '));
+}
+
 const FENCE = /^ {0,3}(```|~~~)/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 
@@ -385,29 +448,36 @@ function editUrl(game) {
   return `${REPO_URL}/edit/main/${game.source}`;
 }
 
-function buildIntro() {
+function buildIntro(versions) {
   const rows = GAMES.map((g) => {
+    const jogos = gamesOfSource(versions, g.source);
+    const ver = jogos.length > 1 ? jogos.map((j) => `${j.nome} ${j.versao}`).join('<br/>') : jogos[0].versao;
     const first = g.guideOnly ? 'guia-unity' : 'gdd';
     const links = g.guideOnly
       ? `[${g.guideLabel}](./${g.slug}/guia-unity.md)`
       : g.gddOnly
         ? `[GDD](./${g.slug}/gdd.md)`
         : `[GDD](./${g.slug}/gdd.md) · [${g.guideLabel ?? 'Guia Unity'}](./${g.slug}/guia-unity.md)`;
-    return `| [${g.label}](./${g.slug}/${first}.md) | ${g.description} | ${links} |`;
+    return `| [${g.label}](./${g.slug}/${first}.md) | ${g.description} | ${ver} | ${links} |`;
   });
   return (
     frontMatter({ title: 'GDDs da Mangue Byte Games', slug: '/', sidebar_position: 0, sidebar_label: 'Início' }) +
     'Documentos de design dos jogos do estúdio. Cada jogo tem duas páginas: o **GDD** (mecânicas, regras e decisões ' +
     'de design) e o **Guia Unity** (implementação passo a passo).\n\n' +
-    '| Jogo | Resumo | Páginas |\n| --- | --- | --- |\n' +
+    '| Jogo | Resumo | Versão | Páginas |\n| --- | --- | --- | --- |\n' +
     rows.join('\n') +
     '\n\n' +
+    'A versão segue o versionamento semântico (MAJOR.MINOR.PATCH). Enquanto o jogo não lança, fica em 0.y.z: ' +
+    'MINOR sobe com mecânica, conteúdo ou sistema novo (ou quando um save antigo deixa de valer), PATCH com ' +
+    'correção, balanceamento ou texto. 1.0.0 é o primeiro lançamento. O histórico fica no fim do GDD de cada jogo.\n\n' +
     'As páginas são geradas a partir dos arquivos `.md` da raiz do repositório. Para corrigir algo, edite o arquivo ' +
     'original (o link "Editar esta página" no fim de cada página leva direto a ele).\n'
   );
 }
 
 export function splitGdds() {
+  const versions = loadVersions();
+  checkVersions(versions);
   fs.mkdirSync(DOCS_DIR, { recursive: true });
 
   // Remove pastas de jogos que saíram da tabela GAMES.
@@ -480,7 +550,7 @@ export function splitGdds() {
     );
   });
 
-  writeIfChanged(path.join(DOCS_DIR, 'intro.md'), buildIntro());
+  writeIfChanged(path.join(DOCS_DIR, 'intro.md'), buildIntro(versions));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

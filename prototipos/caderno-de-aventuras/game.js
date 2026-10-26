@@ -10,18 +10,22 @@
 // ficam mais fortes e, sem tocha, o herói quase não enxerga. Não há vilas:
 // como num souls-like, há fogueiras de acampamento. Descansar nelas cura,
 // mas todo monstro vencido volta; os guerreiros em volta vendem coisas.
+// O mundo são 5 páginas do caderno, uma por bioma (Campos, Deserto,
+// Montanhas Geladas, Pântano Sombrio e Vulcão); no fim de cada uma, o
+// mestre vira a página. O dragão mora no fim da última.
 //
 // ESTRATÉGIA: o mapa revelado é "assado" em pedaços de canvas (chunks) e só
 // os quadrados novos são desenhados a cada quadro, aos poucos, com a caneta
 // do mestre na ponta do traço. Menus e luta são HTML por cima, em folha
 // pautada; dados e monstros são desenhados em canvas pequenos. O "mapa
-// atual" (M) é a ilha ou o interior de uma masmorra; cada um tem o seu
-// estado (L: quadrados revelados, rastro, monstros vencidos, baús abertos).
+// atual" (M) é a página onde o herói está (W) ou o interior de uma
+// masmorra dela; cada um tem o seu estado (L: quadrados revelados, rastro,
+// monstros vencidos, baús abertos).
 (function () {
   'use strict';
   const S = Sketch, C = S.C, A = Art, Wd = World;
   const T = 64, CH = 8, BAKE = 1.5;
-  const SAVE_KEY = 'caderno-aventuras-save-v2', OLD_SAVE_KEY = 'caderno-aventuras-save-v1';
+  const SAVE_KEY = 'caderno-aventuras-save-v3';
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -30,48 +34,86 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   // ---------- dados do jogo (números são proposta) ----------
-  // loja = nível da fogueira que vende: 1 nas regiões 1–2, 2 nas 3–4, 3 nas 5–6.
+  // loja = nível da fogueira que vende: a página (1 nos Campos ... 5 no Vulcão).
   const ITEMS = {
     espada_madeira: { nome: 'Espada de madeira', slot: 'arma', dado: [1, 6], preco: 10, icon: 'sword', cor: C.BROWN, loja: 1 },
     espada_curta: { nome: 'Espada curta', slot: 'arma', dado: [1, 8], preco: 30, icon: 'sword', cor: C.GRAY, loja: 1 },
     espada_ferro: { nome: 'Espada de ferro', slot: 'arma', dado: [2, 6], preco: 70, icon: 'sword', cor: C.INK, loja: 1 },
     machado: { nome: 'Machado de guerra', slot: 'arma', dado: [2, 8], preco: 140, icon: 'axe', cor: C.GRAY, loja: 2 },
     espada_prata: { nome: 'Espada de prata', slot: 'arma', dado: [3, 8], preco: 260, icon: 'sword', cor: C.LBLUE, loja: 2 },
-    montante: { nome: 'Montante', slot: 'arma', dado: [3, 12], preco: 480, icon: 'sword', cor: C.BLUE, loja: 3 },
-    espada_runica: { nome: 'Espada rúnica', slot: 'arma', dado: [4, 12], preco: 800, icon: 'sword', cor: C.PURPLE, loja: 3 },
-    lamina_dragao: { nome: 'Lâmina do Dragão', slot: 'arma', dado: [5, 20], preco: 1200, icon: 'sword', cor: C.RED, loja: 3 },
+    montante: { nome: 'Montante', slot: 'arma', dado: [3, 12], preco: 600, icon: 'sword', cor: C.BLUE, loja: 3 },
+    espada_runica: { nome: 'Espada rúnica', slot: 'arma', dado: [4, 12], preco: 1100, icon: 'sword', cor: C.PURPLE, loja: 3 },
+    espada_cristal: { nome: 'Espada de cristal', slot: 'arma', dado: [5, 12], preco: 2600, icon: 'sword', cor: C.PINK, loja: 4 },
+    lamina_dragao: { nome: 'Lâmina do Dragão', slot: 'arma', dado: [5, 20], preco: 6000, icon: 'sword', cor: C.RED, loja: 5 },
     tampa_panela: { nome: 'Tampa de panela', slot: 'escudo', dado: [1, 4], preco: 12, icon: 'shield', cor: C.GRAY, loja: 1 },
     escudo_madeira: { nome: 'Escudo de madeira', slot: 'escudo', dado: [1, 6], preco: 40, icon: 'shield', cor: C.BROWN, loja: 1 },
     escudo_ferro: { nome: 'Escudo de ferro', slot: 'escudo', dado: [2, 6], preco: 160, icon: 'shield', cor: C.INK, loja: 2 },
-    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [3, 6], preco: 420, icon: 'shield', cor: C.BLUE, loja: 3 },
+    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [3, 6], preco: 500, icon: 'shield', cor: C.BLUE, loja: 3 },
+    escudo_runico: { nome: 'Escudo rúnico', slot: 'escudo', dado: [4, 6], preco: 1900, icon: 'shield', cor: C.PURPLE, loja: 4 },
+    escudo_dragao: { nome: 'Escudo de dragão', slot: 'escudo', dado: [5, 6], preco: 4200, icon: 'shield', cor: C.RED, loja: 5 },
     roupa_couro: { nome: 'Roupa de couro', slot: 'armadura', dado: [1, 4], preco: 25, icon: 'armor', cor: C.BROWN, loja: 1 },
     cota_malha: { nome: 'Cota de malha', slot: 'armadura', dado: [2, 4], preco: 110, icon: 'armor', cor: C.GRAY, loja: 2 },
     placas: { nome: 'Armadura de placas', slot: 'armadura', dado: [2, 8], preco: 380, icon: 'armor', cor: C.INK, loja: 2 },
-    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [3, 10], preco: 950, icon: 'armor', cor: C.RED, loja: 3 },
+    armadura_gelo: { nome: 'Armadura de gelo', slot: 'armadura', dado: [3, 8], preco: 950, icon: 'armor', cor: C.LBLUE, loja: 3 },
+    armadura_runica: { nome: 'Armadura rúnica', slot: 'armadura', dado: [4, 8], preco: 2400, icon: 'armor', cor: C.PURPLE, loja: 4 },
+    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [5, 8], preco: 5000, icon: 'armor', cor: C.RED, loja: 5 },
     pocao_vida: { nome: 'Poção de vida', slot: 'pocao', dado: [3, 6], preco: 12, icon: 'potion', cor: C.RED, loja: 1, efeito: 'hp' },
     pocao_mana: { nome: 'Poção de magia', slot: 'pocao', dado: [2, 4], preco: 15, icon: 'potion', cor: C.BLUE, loja: 1, efeito: 'pm' },
+    pocao_grande: { nome: 'Poção grande', slot: 'pocao', dado: [8, 8], preco: 70, icon: 'potion', cor: C.PINK, loja: 3, efeito: 'hp' },
   };
+  const POTS = Object.keys(ITEMS).filter(id => ITEMS[id].slot === 'pocao');
   // Feitiço gasta Magia (PM) e ignora a defesa do monstro.
   const SPELLS = {
     faisca: { nome: 'Faísca', pm: 1, dado: [2, 4], tipo: 'dano', cor: C.YELLOW, preco: 30, loja: 1 },
     cura: { nome: 'Cura', pm: 2, dado: [2, 6], tipo: 'cura', cor: C.GREEN, preco: 45, loja: 1 },
     bola_fogo: { nome: 'Bola de fogo', pm: 3, dado: [3, 8], tipo: 'dano', cor: C.ORANGE, preco: 150, loja: 2 },
     raio: { nome: 'Raio', pm: 5, dado: [4, 10], tipo: 'dano', cor: C.PURPLE, preco: 420, loja: 3 },
+    cura_maior: { nome: 'Cura maior', pm: 5, dado: [6, 8], tipo: 'cura', cor: C.LGREEN, preco: 900, loja: 3 },
+    nevasca: { nome: 'Nevasca', pm: 7, dado: [6, 10], tipo: 'dano', cor: C.LBLUE, preco: 1600, loja: 4 },
+    meteoro: { nome: 'Meteoro', pm: 9, dado: [8, 12], tipo: 'dano', cor: C.RED, preco: 3500, loja: 5 },
   };
+  // Moedas e experiência por região do mundo (1 a 15); os números de cada
+  // monstro estão na tabela logo abaixo.
+  const OURO = [null, [2, 4], [3, 6], [4, 6], [4, 8], [5, 8], [6, 8], [6, 10], [7, 10], [8, 10], [4, 20], [5, 20], [6, 20], [7, 20], [8, 20], [8, 20]];
+  const XP = [0, 3, 6, 10, 14, 19, 25, 32, 40, 50, 62, 75, 90, 108, 128, 150];
+  const mon = (pl, nome, art, tier, hp, atk, def) => ({ pl, nome, art, hp, atk, def, ouro: OURO[tier], xp: XP[tier] });
   const MONSTERS = {
-    slime: { pl: 'slimes', nome: 'Slime', art: 'o', hp: 8, atk: [1, 4], def: null, ouro: [2, 4], xp: 3 },
-    rato: { pl: 'ratos gigantes', nome: 'Rato gigante', art: 'o', hp: 6, atk: [1, 6], def: null, ouro: [2, 4], xp: 3 },
-    goblin: { pl: 'goblins', nome: 'Goblin', art: 'o', hp: 14, atk: [2, 4], def: null, ouro: [3, 6], xp: 7 },
-    lobo: { pl: 'lobos', nome: 'Lobo', art: 'o', hp: 16, atk: [1, 10], def: null, ouro: [3, 6], xp: 7 },
-    esqueleto: { pl: 'esqueletos', nome: 'Esqueleto', art: 'o', hp: 24, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
-    aranha: { pl: 'aranhas gigantes', nome: 'Aranha gigante', art: 'a', hp: 22, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
-    orc: { pl: 'orcs', nome: 'Orc', art: 'o', hp: 38, atk: [2, 8], def: [1, 6], ouro: [4, 10], xp: 20 },
-    bruxa: { pl: 'bruxas do pântano', nome: 'Bruxa do pântano', art: 'a', hp: 32, atk: [3, 6], def: null, ouro: [4, 10], xp: 20 },
-    ogro: { pl: 'ogros', nome: 'Ogro', art: 'o', hp: 62, atk: [3, 8], def: [2, 4], ouro: [6, 10], xp: 35 },
-    cavaleiro: { pl: 'cavaleiros negros', nome: 'Cavaleiro negro', art: 'o', hp: 56, atk: [3, 10], def: [2, 6], ouro: [6, 10], xp: 35 },
-    troll: { pl: 'trolls', nome: 'Troll', art: 'o', hp: 92, atk: [4, 8], def: [2, 6], ouro: [8, 10], xp: 60 },
-    golem: { pl: 'golens de pedra', nome: 'Golem de pedra', art: 'o', hp: 110, atk: [3, 12], def: [3, 6], ouro: [8, 10], xp: 60 },
-    dragao: { nome: 'Dragão Vermelho', art: 'o', hp: 240, atk: [5, 12], def: [2, 6], ouro: [10, 20], xp: 0 },
+    // Campos
+    slime: mon('slimes', 'Slime', 'o', 1, 8, [1, 4], null),
+    rato: mon('ratos gigantes', 'Rato gigante', 'o', 1, 6, [1, 6], null),
+    goblin: mon('goblins', 'Goblin', 'o', 2, 14, [2, 4], null),
+    lobo: mon('lobos', 'Lobo', 'o', 2, 16, [1, 10], null),
+    aranha: mon('aranhas gigantes', 'Aranha gigante', 'a', 3, 20, [2, 6], [1, 4]),
+    orc: mon('orcs', 'Orc', 'o', 3, 24, [1, 12], [1, 4]),
+    // Deserto
+    escorpiao: mon('escorpiões gigantes', 'Escorpião gigante', 'o', 4, 26, [2, 6], [1, 6]),
+    cobra: mon('najas', 'Naja', 'a', 4, 22, [2, 8], null),
+    esqueleto: mon('esqueletos', 'Esqueleto', 'o', 5, 34, [2, 8], [1, 4]),
+    mumia: mon('múmias', 'Múmia', 'a', 5, 40, [3, 6], [1, 6]),
+    verme: mon('vermes da areia', 'Verme da areia', 'o', 6, 58, [3, 8], [1, 6]),
+    golem: mon('golens de pedra', 'Golem de pedra', 'o', 6, 64, [3, 10], [2, 6]),
+    // Montanhas Geladas
+    lobo_gelo: mon('lobos do gelo', 'Lobo do gelo', 'o', 7, 62, [3, 10], [1, 6]),
+    boneco_neve: mon('bonecos de neve malvados', 'Boneco de neve malvado', 'o', 7, 70, [3, 8], [2, 6]),
+    yeti: mon('yetis', 'Yeti', 'o', 8, 92, [4, 8], [2, 6]),
+    ogro: mon('ogros', 'Ogro', 'o', 8, 100, [4, 8], [2, 4]),
+    espirito_gelo: mon('espíritos do gelo', 'Espírito do gelo', 'o', 9, 88, [4, 10], [2, 6]),
+    troll: mon('trolls', 'Troll', 'o', 9, 115, [4, 10], [2, 8]),
+    // Pântano Sombrio
+    zumbi: mon('zumbis', 'Zumbi', 'o', 10, 130, [5, 8], [2, 6]),
+    sapo: mon('sapos gigantes', 'Sapo gigante', 'o', 10, 118, [4, 12], [2, 8]),
+    fantasma: mon('fantasmas', 'Fantasma', 'o', 11, 125, [5, 10], [3, 6]),
+    bruxa: mon('bruxas do pântano', 'Bruxa do pântano', 'a', 11, 135, [6, 8], [2, 6]),
+    cavaleiro: mon('cavaleiros negros', 'Cavaleiro negro', 'o', 12, 165, [5, 12], [3, 8]),
+    ceifador: mon('ceifadores', 'Ceifador', 'o', 12, 150, [6, 10], [2, 8]),
+    // Vulcão
+    salamandra: mon('salamandras de fogo', 'Salamandra de fogo', 'a', 13, 185, [6, 10], [3, 6]),
+    diabrete: mon('diabretes', 'Diabrete', 'o', 13, 170, [5, 12], [3, 8]),
+    cao_infernal: mon('cães infernais', 'Cão infernal', 'o', 14, 225, [7, 10], [3, 8]),
+    elemental: mon('elementais de fogo', 'Elemental de fogo', 'o', 14, 215, [6, 12], [4, 6]),
+    golem_magma: mon('golens de magma', 'Golem de magma', 'o', 15, 275, [7, 12], [5, 6]),
+    fenix: mon('fênix', 'Fênix', 'a', 15, 250, [8, 10], [3, 8]),
+    dragao: { nome: 'Dragão Vermelho', art: 'o', hp: 600, atk: [8, 12], def: [4, 8], ouro: [10, 20], xp: 0 },
   };
   // Cada monstro tem uma versão chefe no fundo da masmorra dele ("Rei Rato"):
   // o dobro da vida +10, um dado de ataque a mais e o dobro de dados de moeda.
@@ -89,75 +131,144 @@
   const PARTS = {
     slime: ['gota de gosma', 'gotas de gosma'], rato: ['rabo de rato', 'rabos de rato'],
     goblin: ['orelha de goblin', 'orelhas de goblin'], lobo: ['presa de lobo', 'presas de lobo'],
-    esqueleto: ['osso', 'ossos'], aranha: ['perna de aranha', 'pernas de aranha'],
-    orc: ['dente de orc', 'dentes de orc'], bruxa: ['verruga de bruxa', 'verrugas de bruxa'],
-    ogro: ['tufo de pelo de ogro', 'tufos de pelo de ogro'], cavaleiro: ['pluma negra', 'plumas negras'],
-    troll: ['unha de troll', 'unhas de troll'], golem: ['lasca de pedra', 'lascas de pedra'],
+    aranha: ['perna de aranha', 'pernas de aranha'], orc: ['dente de orc', 'dentes de orc'],
+    escorpiao: ['ferrão', 'ferrões'], cobra: ['escama de naja', 'escamas de naja'],
+    esqueleto: ['osso', 'ossos'], mumia: ['faixa de múmia', 'faixas de múmia'],
+    verme: ['dente de verme', 'dentes de verme'], golem: ['lasca de pedra', 'lascas de pedra'],
+    lobo_gelo: ['pelo gelado', 'pelos gelados'], boneco_neve: ['nariz de cenoura', 'narizes de cenoura'],
+    yeti: ['tufo de yeti', 'tufos de yeti'], ogro: ['tufo de pelo de ogro', 'tufos de pelo de ogro'],
+    espirito_gelo: ['floco eterno', 'flocos eternos'], troll: ['unha de troll', 'unhas de troll'],
+    zumbi: ['dedo de zumbi', 'dedos de zumbi'], sapo: ['língua de sapo', 'línguas de sapo'],
+    fantasma: ['lençol rasgado', 'lençóis rasgados'], bruxa: ['verruga de bruxa', 'verrugas de bruxa'],
+    cavaleiro: ['pluma negra', 'plumas negras'], ceifador: ['ampulheta', 'ampulhetas'],
+    salamandra: ['cauda de salamandra', 'caudas de salamandra'], diabrete: ['chifrinho', 'chifrinhos'],
+    cao_infernal: ['coleira em brasa', 'coleiras em brasa'], elemental: ['brasa viva', 'brasas vivas'],
+    golem_magma: ['pedra de magma', 'pedras de magma'], fenix: ['pena de fênix', 'penas de fênix'],
   };
   const cap = t => t[0].toUpperCase() + t.slice(1);
   const um = m => m.art === 'a' ? 'uma' : 'um';
   const oa = m => m.art === 'a' ? 'a' : 'o';
 
   // Missões de quem tem "!" no balão: 3 em sequência, ficando maiores.
-  const QUEST_N = { matar: [10, 10, 8, 8, 6, 5], coletar: [20, 18, 16, 14, 12, 10] };
-  const QUEST_OURO = [30, 60, 110, 180, 280, 420], QUEST_XP = [15, 30, 55, 90, 140, 210];
+  // Um número por região do mundo (1 a 15).
+  const QUEST_N = {
+    matar: [10, 10, 8, 8, 8, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3],
+    coletar: [20, 18, 16, 15, 14, 13, 12, 11, 10, 10, 9, 8, 8, 7, 6],
+  };
+  const QUEST_OURO = [30, 45, 60, 80, 100, 120, 150, 180, 210, 250, 290, 330, 380, 430, 480];
+  const QUEST_XP = [15, 25, 40, 55, 75, 100, 130, 165, 205, 250, 300, 360, 430, 510, 600];
   // Dia e noite: o relógio anda um passo por quadrado. Uma tocha dura 40 passos no escuro.
   const CICLO = 100, TOCHA_PASSOS = 40, TOCHA_PRECO = 5;
   const xpNext = l => Math.round(10 * Math.pow(l, 1.5));
 
   // Cada personagem de dica fala uma frase; ao conversar de novo, fala outra
-  // (a frase k, depois k + 9, k + 18...), então nenhuma dica fica de fora.
+  // (a frase k, depois k + 20, k + 40...), então nenhuma dica fica de fora.
+  // Há 4 personagens de dica por página: as frases 0–3 são dos Campos, 4–7
+  // do Deserto, e assim por diante, então cada página fala dela mesma.
   const NPC_LINES = [
-    'Dizem que o dragão mora no ponto mais longe daqui. Quanto mais longe você vai, mais forte é o monstro.',
+    'O mapa não acaba nesta folha. No ponto mais longe daqui tem um canto de página dobrado: é por ali que o mestre vira a página.',
     'Cada arma dá dados. A espada de madeira é 1d6... já ouvi falar de uma lâmina que rola 5d20!',
     'De noite os monstros ficam mais fortes: rolam um dado de ataque a mais. Em compensação, dão mais experiência.',
     'Sem tocha, de noite você não enxerga um palmo na frente do nariz. Em toda fogueira tem alguém vendendo tocha.',
-    'Cada tipo de monstro tem um rei escondido numa masmorra. Procure as portas de pedra com uma coroa em cima.',
+    'No deserto até o rei é escorpião. Cada tipo de monstro tem um rei escondido numa masmorra: procure as portas de pedra com uma coroa em cima.',
     'Gente com "!" no balão tem serviço pra você. E paga bem!',
     'Escudo e armadura também rolam dados. A soma deles sai do dano que você toma.',
-    'Se desmaiar, você acorda na última fogueira por onde passou, mas perde metade do ouro. E os monstros voltam.',
+    'Cada página nova tem guerreiros novos nas fogueiras, e eles vendem coisa melhor que os da página de antes.',
+    'Nas Montanhas Geladas até o boneco de neve é malvado. Poção grande, só daqui pra frente.',
+    'Quer voltar uma página? A seta verde fica do lado da primeira fogueira.',
     'Defesa alta? Feitiço não liga pra escudo: a magia passa direto.',
-    'Descansar na fogueira cura tudo e passa a noite... mas todo monstro que você venceu volta pro mapa.',
-    'Quanto mais longe a fogueira, melhor o equipamento dos guerreiros que descansam nela.',
+    'Descansar na fogueira cura tudo e passa a noite... mas todo monstro que você venceu volta pro mapa. Em todas as páginas.',
+    'O Pântano Sombrio é cheio de túmulos. Os mortos daqui não ficam quietos.',
     'Monstro desenhado no mapa não corre atrás de ninguém. Você escolhe se quer brigar.',
-    'No mato fechado aparece bicho do nada. Cuidado na floresta e no pântano.',
+    'No mato fechado aparece bicho do nada. Cuidado nas árvores e no brejo.',
+    'Se desmaiar, você acorda na última fogueira por onde passou, mas perde metade do ouro. E os monstros voltam.',
+    'O Dragão Vermelho dorme no fundo do Vulcão, na última página do caderno. Quanto mais perto dele, mais forte é o monstro.',
     'Baú tem moeda, poção e, com sorte, equipamento bom.',
     'Fugir é rolar um d20. Logo no começo da luta é mais fácil.',
-    'Rabo de rato, osso de esqueleto... tudo que cai dos monstros vale umas moedas na fogueira.',
+    'Rabo de rato, pena de fênix... tudo que cai dos monstros vale umas moedas na fogueira.',
   ];
+  const DICAS = 20;
   // Quem descansa em cada fogueira (cada uma usa uma frase, pela ordem).
   const CAMP_TEXT = [
     'Em volta do fogo: um ferreiro andarilho afiando a espada, uma maga de chapéu torto e um mercador cochilando.',
     'Uma cavaleira remenda o escudo, um mago velho lê pergaminhos e um mercador conta moedas.',
     'Dois guerreiros assam linguiça no fogo. Um deles carrega uma mochila cheia de armas pra vender.',
   ];
+  // O mestre comenta o terreno na primeira vez que o herói pisa nele (por bioma).
   const TERRAIN_TEXT = {
-    [Wd.AREIA]: 'Praia! O mestre faz pontinhos de areia com a caneta amarela.',
-    [Wd.MATA]: 'Floresta! O mestre rabisca um monte de arvorezinhas. No mato aparece mais monstro.',
-    [Wd.PANTANO]: 'Pântano... cheira mal e esconde bicho. O mestre pinta tudo de verde-oliva.',
+    campos: {
+      [Wd.AREIA]: 'Praia! O mestre faz pontinhos de areia com a caneta amarela.',
+      [Wd.MATA]: 'Floresta! O mestre rabisca um monte de arvorezinhas. No mato aparece mais monstro.',
+      [Wd.PANTANO]: 'Pântano... cheira mal e esconde bicho. O mestre pinta tudo de verde-oliva.',
+    },
+    deserto: {
+      [Wd.MATA]: 'Cactos! O mestre desenha com cuidado para não se espetar. Atrás deles tem bicho escondido.',
+      [Wd.PANTANO]: 'Areia movediça! O mestre rabisca um redemoinho. Melhor andar rápido.',
+    },
+    neve: {
+      [Wd.AREIA]: 'Gelo! O mestre risca rachaduras com o lápis azul.',
+      [Wd.MATA]: 'Pinheiros cobertos de neve. Bom lugar para um yeti se esconder.',
+      [Wd.PANTANO]: 'Neve funda até o joelho. O mestre desenha montinhos de neve.',
+    },
+    pantano: {
+      [Wd.CAMPO]: 'Terra morta e túmulos tortos. O mestre pega o lápis cinza.',
+      [Wd.MATA]: 'Árvores mortas, cheias de galho seco. Alguma coisa se mexeu ali.',
+      [Wd.PANTANO]: 'Brejo! Borbulha, fede e esconde bicho.',
+    },
+    vulcao: {
+      [Wd.AREIA]: 'Cinzas. O mestre assopra o papel e continua desenhando.',
+      [Wd.MATA]: 'Árvores queimadas, ainda soltando brasa.',
+      [Wd.PANTANO]: 'Fumarolas! Fumaça quente sai das rachaduras do chão.',
+    },
   };
+  // Ao entrar numa região nova da página (a primeira de cada página tem o texto da chegada).
   const REGION_TEXT = {
     2: 'O mestre sorri: "daqui pra frente tem goblin e lobo".',
-    3: 'Esqueletos e aranhas por aqui. Melhor ter escudo.',
-    4: 'Terra de orcs e bruxas. O mestre aperta a caneta com força.',
-    5: 'Ogros e cavaleiros negros... você está longe de casa.',
-    6: 'Trolls e golens. O covil do dragão deve estar perto.',
+    3: 'Aranhas e orcs por aqui. O canto dobrado da página deve estar perto.',
+    5: 'Esqueletos e múmias. O mestre desenha ruínas meio enterradas na areia.',
+    6: 'Vermes da areia e golens de pedra. O fim da página está perto.',
+    8: 'Yetis e ogros. O vento gelado vira a folha sozinho.',
+    9: 'Espíritos do gelo e trolls. O mestre aperta a caneta com força.',
+    11: 'Fantasmas e bruxas. O mestre faz a lua mais apagada.',
+    12: 'Cavaleiros negros e ceifadores... você está longe de casa.',
+    14: 'Cães infernais e elementais de fogo. O papel está quente.',
+    15: 'Golens de magma e fênix. O covil do dragão deve estar perto.',
   };
+  // Na primeira vez em cada página. `aviso` aparece antes de virar a página.
+  const BIOME_TEXT = [
+    { chegada: '', aviso: '' },
+    { chegada: 'O mestre vira a página e pega a caneta amarela: é o Deserto. Escorpiões e najas por aqui.',
+      aviso: 'No Deserto os monstros são bem mais fortes que nos Campos. Os guerreiros das fogueiras de lá vendem coisa melhor.' },
+    { chegada: 'Página nova, toda branca: as Montanhas Geladas. O mestre só pinta o que não é neve. Lobos do gelo e bonecos de neve malvados por aqui.',
+      aviso: 'As Montanhas Geladas são mais perigosas que o Deserto.' },
+    { chegada: 'O mestre vira a página e escurece tudo com o lápis: o Pântano Sombrio. Zumbis e sapos gigantes por aqui.',
+      aviso: 'O Pântano Sombrio é mais perigoso que as Montanhas Geladas.' },
+    { chegada: 'Última página. O mestre pega a caneta vermelha: o Vulcão. Salamandras e diabretes por aqui, e o Dragão Vermelho no fim.',
+      aviso: 'É a última página: o Vulcão, onde mora o Dragão Vermelho. Os monstros de lá são os mais fortes do caderno.' },
+  ];
 
   // ---------- estado ----------
-  // W = a ilha; M = o mapa onde o herói está (a ilha ou uma masmorra); L = o estado desse mapa.
-  let W = null, P = null, G = null, M = null, L = null, dunCache = {};
+  // WORLD = as 5 páginas; W = a página onde o herói está; M = o mapa onde ele
+  // está (a página ou uma masmorra dela); L = o estado desse mapa.
+  let WORLD = null, W = null, P = null, G = null, M = null, L = null, dunCache = {};
   const newLevel = m => ({ rev: new Uint8Array(m.W * m.H), dead: new Set(), opened: new Set(), trail: new Set() });
+  // Estado de uma página: além do mapa, quem já deu presente, as masmorras
+  // limpas e (na última) se o dragão foi vencido.
+  const newPage = m => ({ ...newLevel(m), talked: new Set(), cleared: new Set(), won: false });
+  // G.dun é por "página:masmorra" ("2:4" = masmorra 4 da 3ª página).
   const newState = () => ({
-    over: { ...newLevel(W), talked: new Set(), cleared: new Set(), won: false }, dun: {},
+    pg: WORLD.pages.map(newPage), dun: {},
     seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {},
   });
+  const here = () => G.pg[P.pg];
+  const dunKey = (pg, n) => pg + ':' + n;
   function newPlayer(nome) {
+    const w = WORLD.pages[0];
     return {
       nome, lvl: 1, xp: 0, hp: 20, hpMax: 20, pm: 3, pmMax: 3, ouro: 15,
       equip: { arma: 'espada_madeira', escudo: null, armadura: null },
-      bolsa: [], pocoes: { pocao_vida: 2, pocao_mana: 0 }, magias: [],
-      x: W.start % W.W, y: (W.start / W.W) | 0, respawn: W.start,
+      bolsa: [], pocoes: { pocao_vida: 2, pocao_mana: 0, pocao_grande: 0 }, magias: [],
+      pg: 0, x: w.start % w.W, y: (w.start / w.W) | 0, respawn: w.start, rpg: 0,
       onde: null, ox: 0, oy: 0, tochas: 2, tocha: 0,
       abates: {}, partes: {}, missoes: [], etapa: {},
     };
@@ -191,12 +302,13 @@
   }
 
   // ---------- missões ----------
-  const npcAt = i => W.obj.get(i);
+  // Quem deu a missão (pode estar em outra página).
+  const npcOf = q => WORLD.pages[q.pg].obj.get(q.npc);
   function questsOf(i, o) {
     const pool = Wd.POOLS[o.tier], h = S.hash(W.seed, i, 5), tr = o.tier - 1;
     const a = pool[h % 2], b = pool[(h + 1) % 2];
     const list = [{ tipo: 'matar', kind: a, n: QUEST_N.matar[tr] }, { tipo: 'coletar', kind: b, n: QUEST_N.coletar[tr] }];
-    // O chefe pedido é o de uma masmorra que existe nesta ilha.
+    // O chefe pedido é o de uma masmorra que existe nesta página.
     const has = k => W.dungeons.some(d => W.obj.get(d).kind === k);
     const boss = has(a) ? a : has(b) ? b : null;
     if (boss) list.push({ tipo: 'chefe', kind: boss, n: 1 });
@@ -213,7 +325,7 @@
   function questPing() {
     for (const q of P.missoes) if (!q.avisado && progress(q) >= q.n) {
       q.avisado = true;
-      narrate(`Missão cumprida: ${questText(q)}! Volte a ${npcAt(q.npc).nome} para receber.`);
+      narrate(`Missão cumprida: ${questText(q)}! Volte a ${npcOf(q).nome} para receber.`);
     }
   }
 
@@ -326,14 +438,17 @@
       bake(A.trail(a % M.W, (a / M.W) | 0, b % M.W, (b / M.W) | 0, T, S.hash(M.seed, a, b)));
     }
   }
-  // Troca o mapa atual: null = a ilha; n = a masmorra n. O mestre "vira a página".
-  function dunMap(n) {
-    const o = W.obj.get(W.dungeons[n]);
-    return dunCache[n] || (dunCache[n] = Wd.dungeon(W.seed, n, o.kind, o.tier));
+  // Interior da masmorra n da página pg (gerado na primeira vez que precisa).
+  function dunMap(n, pg = P.pg) {
+    const w = WORLD.pages[pg], o = w.obj.get(w.dungeons[n]), k = dunKey(pg, n);
+    return dunCache[k] || (dunCache[k] = Wd.dungeon(w.seed, n, o.kind, o.tier));
   }
+  // Troca a página do herói (sem redesenhar: chame setMap depois).
+  function setPage(pg) { P.pg = pg; W = WORLD.pages[pg]; }
+  // Troca o mapa atual: null = a página; n = a masmorra n dela.
   function setMap(n) {
     P.onde = n == null ? null : n;
-    if (P.onde == null) { M = W; L = G.over; } else { M = dunMap(n); L = G.dun[n] || (G.dun[n] = newLevel(M)); }
+    if (P.onde == null) { M = W; L = here(); } else { M = dunMap(n); const k = dunKey(P.pg, n); L = G.dun[k] || (G.dun[k] = newLevel(M)); }
     walker = null; path = [];
     rebakeAll();
   }
@@ -482,7 +597,7 @@
   // ---------- movimento e eventos do mapa ----------
   function blocking(i) {
     const o = M.obj.get(i);
-    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i)) || o.type === 'npc' || (o.type === 'covil' && !G.over.won));
+    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i)) || o.type === 'npc' || (o.type === 'covil' && !L.won));
   }
   function stepTo(nx, ny) {
     if (nx < 0 || ny < 0 || nx >= M.W || ny >= M.H) return;
@@ -500,7 +615,10 @@
       path = [];
       if (!stepTo.warned || now - stepTo.warned > 2500) {
         stepTo.warned = now;
-        narrate(M.t[i] === Wd.AGUA ? pick(['Aí é água! Sem barco, nada feito.', 'O mestre balança a cabeça: "não dá pra nadar".'])
+        const bio = M.biome;
+        narrate(M.t[i] === Wd.AGUA ? (bio === 'vulcao' ? pick(['Lava! Nem pensar.', 'O mestre ri: "quer virar churrasco?"'])
+          : bio === 'pantano' ? 'Água preta e funda. Melhor não.'
+          : pick(['Aí é água! Sem barco, nada feito.', 'O mestre balança a cabeça: "não dá pra nadar".']))
           : M.t[i] === Wd.PAREDE ? 'Parede de pedra.' : 'Montanha íngreme demais. Dá a volta.');
       }
       return;
@@ -542,7 +660,8 @@
     reveal(P.x, P.y);
     const i = idx(P.x, P.y), t = M.t[i], tier = M.tier[i], o = M.obj.get(i);
     if (!inDungeon()) {
-      if (TERRAIN_TEXT[t] && !G.seen.has('t' + t)) { G.seen.add('t' + t); narrate(TERRAIN_TEXT[t]); }
+      const tt = TERRAIN_TEXT[W.biome][t], tk = 't' + W.biome + t;
+      if (tt && !G.seen.has(tk)) { G.seen.add(tk); narrate(tt); }
       else if (REGION_TEXT[tier] && !G.seen.has('r' + tier)) { G.seen.add('r' + tier); narrate(REGION_TEXT[tier]); }
       if (!wasNight && isNight()) narrate(P.tocha > 0 ? 'Anoiteceu. O mestre pinta a folha de azul-escuro; sua tocha ilumina em volta. Os monstros ficam mais fortes.'
         : 'Anoiteceu! O mestre pinta a folha de azul-escuro. Sem tocha, você mal enxerga, e os monstros ficam mais fortes.');
@@ -551,6 +670,7 @@
     if (o && o.type === 'fogueira') { path = []; held = null; camp(i, o); }
     else if (o && o.type === 'masmorra') { path = []; held = null; enterDungeon(i, o); }
     else if (o && o.type === 'saida') { path = []; held = null; leaveDungeon(); }
+    else if (o && (o.type === 'passagem' || o.type === 'volta')) { path = []; held = null; turnPage(o); }
     else if (o && o.type === 'bau' && !L.opened.has(i)) { path = []; held = null; chest(i, o); }
     else if (!o && !inDungeon() && G.steps > 6 && !nearCamp(P.x, P.y)) {
       const chance = ({ [Wd.AREIA]: 0.04, [Wd.CAMPO]: 0.05, [Wd.MATA]: 0.085, [Wd.PANTANO]: 0.095 }[t] || 0) * (isNight() ? 1.5 : 1);
@@ -600,11 +720,13 @@
     const night = isNight() || inDungeon();
     $('time-img').src = A.iconURL(night ? 'moon' : 'sun');
     $('s-time').querySelector('b').textContent = inDungeon() ? 'Masmorra' : `Dia ${G.day}${isNight() ? ' · noite' : ''}`;
+    // No celular só o número da página (o nome do bioma fica escondido no CSS).
+    $('s-page').querySelector('b').innerHTML = `${P.pg + 1}<span class="bio">. ${Wd.BIOMAS[P.pg].nome}</span>`;
     $('s-torch').querySelector('b').innerHTML = `${P.tochas}${P.tocha > 0 ? ` <small>acesa: ${P.tocha}</small>` : ''}`;
     $('torch-img').src = A.iconURL('torch', P.tocha > 0 ? '' : 'off');
     const qs2 = P.missoes.map(q => {
       const pr = Math.min(q.n, progress(q)), done = pr >= q.n;
-      return `<div class="${done ? 'done' : ''}">${done ? '✓' : '•'} ${questText(q)} <b>${pr}/${q.n}</b>${done ? ` <small>volte a ${npcAt(q.npc).nome}</small>` : ''}</div>`;
+      return `<div class="${done ? 'done' : ''}">${done ? '✓' : '•'} ${questText(q)} <b>${pr}/${q.n}</b>${done ? ` <small>volte a ${npcOf(q).nome}</small>` : ''}</div>`;
     });
     $('quests').innerHTML = qs2.length ? `<i>Missões</i>${qs2.join('')}` : '';
     $('quests').hidden = !qs2.length;
@@ -757,7 +879,7 @@
     let first = !opt.ambush, result = null;
     while (!result && P.hp > 0) {
       const dc = kind === 'dragao' ? 15 : md.chefe ? 13 : first ? 8 : 11;
-      const hasPot = P.pocoes.pocao_vida > 0 || P.pocoes.pocao_mana > 0;
+      const hasPot = POTS.some(id => P.pocoes[id] > 0);
       const choice = await ask(acts, [
         { html: `${ic('sword', ITEMS[P.equip.arma]?.cor)} Atacar <small>${fmtD(atkDie())}</small>`, v: 'atk', cls: 'red' },
         { html: `${ic('scroll', C.PURPLE)} Feitiço`, v: 'spell', cls: 'purple', off: !P.magias.length },
@@ -771,7 +893,7 @@
           v: 's:' + id, cls: 'purple', off: P.pm < SPELLS[id].pm,
         })).concat([{ html: 'Voltar', v: 'back' }]));
       } else if (choice === 'pot') {
-        act = await ask(acts, ['pocao_vida', 'pocao_mana'].filter(id => P.pocoes[id] > 0).map(id => ({
+        act = await ask(acts, POTS.filter(id => P.pocoes[id] > 0).map(id => ({
           html: `${itemIc(id)} ${ITEMS[id].nome} ×${P.pocoes[id]} <small>${fmtD(ITEMS[id].dado)}</small>`, v: 'p:' + id, cls: 'green',
         })).concat([{ html: 'Voltar', v: 'back' }]));
       }
@@ -863,13 +985,15 @@
     return ups;
   }
 
+  // Desmaiou: acorda na última fogueira (que pode ser de outra página).
   function faint() {
     const lost = Math.floor(P.ouro / 2);
     P.ouro -= lost; P.hp = P.hpMax; P.pm = P.pmMax;
-    if (inDungeon()) setMap(null);
+    P.onde = null;
+    setPage(P.rpg);
     P.x = P.respawn % W.W; P.y = (P.respawn / W.W) | 0;
-    walker = null; path = [];
     respawnMonsters();
+    setMap(null);
     snapCam();
     narrate(`Você acorda no ${Wd.FOGUEIRAS[W.obj.get(P.respawn).n]}, todo enfaixado. Perdeu ${lost} moedas, e os monstros voltaram.`);
     hud(); save();
@@ -887,7 +1011,7 @@
     if (r === 'vitoria') { L.dead.add(i); animate(A.cross(i % M.W, (i / M.W) | 0, T, i)); save(); }
   }
 
-  // O chefe no fundo da masmorra. Vencer marca a masmorra com X na ilha e
+  // O chefe no fundo da masmorra. Vencer marca a masmorra com X na página e
   // abre o baú do tesouro atrás do trono.
   async function meetBoss(i, o) {
     const id = 'chefe_' + o.kind, m = MONSTERS[id];
@@ -900,24 +1024,24 @@
     const r = await combat(id, { text: `${m.nome} se levanta do trono. O mestre pinta a coroa de amarelo bem forte.` });
     if (r !== 'vitoria') return;
     L.dead.add(i);
-    G.over.cleared.add(M.masmorra);
+    here().cleared.add(M.masmorra);
     animate(A.cross(i % M.W, (i / M.W) | 0, T, i));
     const it = loot(M.tier[i]);
     P.bolsa.push(it);
     save();
     await dialog('Tesouro do chefe!', `<p>Atrás do trono tinha um baú. Dentro: ${itemIc(it)} <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)})! Está na mochila.</p>
-      <p class="small">Volte pela escada para sair. Na ilha, o mestre risca a entrada desta masmorra.</p>`,
+      <p class="small">Volte pela escada para sair. Lá em cima, o mestre risca a entrada desta masmorra.</p>`,
       [{ html: 'Oba!', v: 1, cls: 'green' }], A.iconURL('chest', '', 160));
     hud(); save();
   }
-  // Equipamento de uma loja à frente da região (nunca a Lâmina do Dragão).
+  // Equipamento da loja da página seguinte (nunca a Lâmina do Dragão).
   function loot(tier) {
-    const lvl = Math.min(3, Math.ceil(tier / 2) + 1);
+    const lvl = Math.min(5, Math.ceil(tier / 3) + 1);
     return pick(Object.keys(ITEMS).filter(id => ITEMS[id].loja === lvl && ITEMS[id].slot !== 'pocao' && id !== 'lamina_dragao'));
   }
 
   async function enterDungeon(i, o) {
-    const id = 'chefe_' + o.kind, m = MONSTERS[id], done = G.over.cleared.has(o.n);
+    const id = 'chefe_' + o.kind, m = MONSTERS[id], done = here().cleared.has(o.n);
     const v = await dialog(Wd.nomeMasmorra(o.kind),
       `<p>${done ? `Você já derrotou ${oa(m)} ${m.nome}. Lá embaixo ainda tem o que ficou para trás.`
         : `Uma escada desce para o escuro. Lá no fundo mora ${oa(m)} <b>${m.nome}</b>.`}</p>
@@ -936,19 +1060,51 @@
     hud(); save();
   }
   async function leaveDungeon() {
-    const v = await dialog('Escada', '<p>Subir de volta para a ilha?</p>',
+    const B = Wd.BIOMAS[P.pg];
+    const v = await dialog('Escada', `<p>Subir de volta para ${B.art} ${B.nome}?</p>`,
       [{ html: 'Subir', v: 'sim', cls: 'green' }, { html: 'Ficar aqui', v: 'nao' }], A.iconURL('map', '', 160));
     if (v !== 'sim') return;
     setMap(null);
     P.x = P.ox; P.y = P.oy;
     snapCam();
-    narrate('O mestre volta para a página da ilha.');
+    narrate('O mestre volta para a página de cima.');
+    hud(); save();
+  }
+
+  // Virar a página (passagem no fim da página) ou voltar uma (seta ao lado
+  // da primeira fogueira). Indo para a frente, o herói chega na primeira
+  // fogueira da página nova, que já vira o lugar onde ele acorda.
+  async function turnPage(o) {
+    const fwd = o.to > P.pg, B = Wd.BIOMAS[o.to], first = !G.seen.has('p' + o.to);
+    const v = await dialog(fwd ? 'Virar a página' : 'Voltar uma página',
+      `<p>${fwd ? `A trilha chega no canto dobrado da folha. Do outro lado, o mestre já rabiscou o começo de outra página: <b>${B.nome}</b>.`
+        : `A seta leva de volta para a página anterior: <b>${B.nome}</b>.`}</p>
+       ${fwd && first ? `<p class="small">${BIOME_TEXT[o.to].aviso}</p>` : ''}`,
+      [{ html: fwd ? 'Virar a página' : 'Voltar', v: 'sim', cls: fwd ? 'red' : 'green' }, { html: 'Ficar aqui', v: 'nao' }],
+      A.iconURL('map', '', 160));
+    if (v !== 'sim') return;
+    setPage(o.to);
+    setMap(null);
+    const dest = fwd ? W.start : W.lair;
+    P.x = dest % W.W; P.y = (dest / W.W) | 0;
+    if (fwd) {
+      P.respawn = W.start; P.rpg = P.pg;
+      G.seen.add('v' + W.obj.get(W.start).n);
+    }
+    snapCam();
+    reveal(P.x, P.y);
+    G.seen.add('p' + o.to);
+    narrate(first && BIOME_TEXT[o.to].chegada ? BIOME_TEXT[o.to].chegada
+      : fwd ? `O mestre vira a página: ${B.nome}. Você chega no ${Wd.FOGUEIRAS[W.obj.get(W.start).n]}.`
+      : `O mestre volta uma página: ${B.nome}.`);
     hud(); save();
   }
 
   async function ambush(tier) {
     // Metade das vezes, vem o monstro que uma missão ativa desta região pede.
-    const pool = Wd.POOLS[Math.max(1, Math.random() < 0.25 ? tier - 1 : tier)];
+    // Um quarto das vezes vem um da região de antes, mas só da mesma página.
+    const first = P.pg * 3 + 1;
+    const pool = Wd.POOLS[Math.max(first, Math.random() < 0.25 ? tier - 1 : tier)];
     const want = P.missoes.filter(q => q.tipo !== 'chefe' && TIER_OF[q.kind] === tier && progress(q) < q.n).map(q => q.kind);
     const kind = want.length && Math.random() < 0.5 ? pick(want) : pick(pool), m = MONSTERS[kind];
     const v = await dialog('Surpresa!', `<p>${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome} pula do meio do mato!</p>
@@ -980,7 +1136,7 @@
     if (v !== 'luta') return;
     const r = await combat('dragao', { text: 'O Dragão Vermelho abre as asas. O mestre troca para a caneta vermelha.' });
     if (r !== 'vitoria') return;
-    G.over.won = true;
+    here().won = true;
     animate(A.cross(i % W.W, (i / W.W) | 0, T, i));
     save();
     const e = await dialog('FIM!', `<p>${esc(P.nome)} derrotou o Dragão Vermelho! O mestre escreve "FIM" bem grande e desenha uma coroa.</p>
@@ -992,21 +1148,22 @@
   async function talk(i, o) {
     if (o.quest) { await questGiver(i, o); return; }
     let extra = '';
-    if (o.presente && !G.over.talked.has(i)) {
+    if (o.presente && !here().talked.has(i)) {
       if (o.fala % 2) { P.pocoes.pocao_vida++; extra = `<p><b>Ganhou uma Poção de vida!</b></p>`; }
       else { const g = 10 * W.tier[i]; P.ouro += g; extra = `<p><b>Ganhou ${g} moedas!</b></p>`; SFX.coin(); }
     }
-    G.over.talked.add(i);
-    const n = G.conversa[i] || 0;
-    G.conversa[i] = n + 1;
-    await dialog('Alguém no caminho', `<p>"${NPC_LINES[(o.fala + n * 9) % NPC_LINES.length]}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
+    here().talked.add(i);
+    const key = dunKey(P.pg, i), n = G.conversa[key] || 0;
+    G.conversa[key] = n + 1;
+    await dialog('Alguém no caminho', `<p>"${NPC_LINES[(o.fala + n * DICAS) % NPC_LINES.length]}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
     save();
   }
 
   // Quem tem "!" no balão: oferece a próxima missão, mostra quanto falta ou
   // recebe a missão pronta e paga (a do chefe também dá um equipamento).
   async function questGiver(i, o) {
-    const list = questsOf(i, o), stage = P.etapa[i] || 0, cur = P.missoes.find(q => q.npc === i);
+    const key = dunKey(P.pg, i), list = questsOf(i, o), stage = P.etapa[key] || 0;
+    const cur = P.missoes.find(q => q.pg === P.pg && q.npc === i);
     if (cur) {
       const pr = Math.min(cur.n, progress(cur));
       if (pr < cur.n) {
@@ -1021,7 +1178,7 @@
       let prize = '';
       if (cur.tipo === 'chefe') { const it = loot(o.tier + 1); P.bolsa.push(it); prize = `<p>${itemIc(it)} E ainda ganhou <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)})! Está na mochila.</p>`; }
       P.missoes = P.missoes.filter(q => q !== cur);
-      P.etapa[i] = stage + 1;
+      P.etapa[key] = stage + 1;
       hud(); save();
       await dialog(o.nome, `<p>"Você conseguiu! Muito obrigado, ${esc(P.nome)}!"</p><p><b>+${ouro} moedas, +${xp} de experiência.</b>${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b>` : ''}</p>${prize}`,
         [{ html: 'De nada!', v: 1, cls: 'green' }], A.iconURL('coin', '', 160));
@@ -1041,7 +1198,7 @@
       [{ html: 'Aceitar', v: 'sim', cls: 'green' }, { html: 'Agora não', v: 'nao' }],
       A.monsterURL(q.tipo === 'chefe' ? 'chefe_' + q.kind : q.kind, 160));
     if (v !== 'sim') return;
-    P.missoes.push({ npc: i, k: stage, ...q, base: P.abates[q.kind] || 0 });
+    P.missoes.push({ pg: P.pg, npc: i, k: stage, ...q, base: P.abates[q.kind] || 0 });
     narrate(`Missão anotada na margem do caderno: ${questText(q)}.`);
     questPing();
     hud(); save();
@@ -1078,12 +1235,12 @@
   }
 
   // ---------- fogueira: descansar e comprar dos guerreiros ----------
-  // Nível da loja de uma fogueira: 1 nas regiões 1–2, 2 nas 3–4, 3 nas 5–6.
-  const campLevel = i => Math.min(3, Math.ceil(W.tier[i] / 2));
+  // Nível da loja de uma fogueira: a página dela (1 nos Campos ... 5 no Vulcão).
+  const campLevel = i => Wd.pageOf(W.tier[i]) + 1;
   function camp(i, o) {
     const first = !G.seen.has('v' + o.n);
     G.seen.add('v' + o.n);
-    P.respawn = i;
+    P.respawn = i; P.rpg = P.pg;
     if (first) narrate(`Você chega no ${Wd.FOGUEIRAS[o.n]} e se aquece na fogueira. Se desmaiar, acorda aqui.`);
     renderCamp(i, o.n);
   }
@@ -1098,21 +1255,21 @@
     narrate(late ? `Você dorme perto do fogo e acorda de manhã. Dia ${G.day}. O mestre apaga os X dos monstros com a borracha: eles voltaram.`
       : 'Você descansa perto do fogo. O mestre apaga os X dos monstros com a borracha: eles voltaram.');
   }
-  // Tira os monstros vencidos da ilha e das masmorras (chefes ficam vencidos)
-  // e redesenha o mapa atual sem os X.
+  // Tira os monstros vencidos de todas as páginas e masmorras (chefes ficam
+  // vencidos) e redesenha o mapa atual sem os X.
   function respawnMonsters() {
-    G.over.dead.clear();
-    for (const n in G.dun) {
-      const m = dunMap(+n);
-      for (const i of [...G.dun[n].dead]) if (m.obj.get(i).type !== 'chefe') G.dun[n].dead.delete(i);
+    for (const l of G.pg) l.dead.clear();
+    for (const k in G.dun) {
+      const [pg, n] = k.split(':').map(Number), m = dunMap(n, pg);
+      for (const i of [...G.dun[k].dead]) if (m.obj.get(i).type !== 'chefe') G.dun[k].dead.delete(i);
     }
-    rebakeAll();
+    if (M) rebakeAll();
   }
   function owned(id) { return P.bolsa.includes(id) || Object.values(P.equip).includes(id); }
   function renderCamp(i, n) {
     const coin = ic('coin'), lvl = campLevel(i), late = G.clock >= 60;
     const gear = Object.keys(ITEMS).filter(id => ITEMS[id].loja <= lvl && ITEMS[id].slot !== 'pocao');
-    const pots = Object.keys(ITEMS).filter(id => ITEMS[id].slot === 'pocao');
+    const pots = POTS.filter(id => ITEMS[id].loja <= lvl);
     const spells = Object.keys(SPELLS).filter(id => SPELLS[id].loja <= lvl);
     const slotName = { arma: 'arma', escudo: 'escudo', armadura: 'armadura' };
     const row = (icon, name, info, price, act, off, note = '') =>
@@ -1180,11 +1337,11 @@
       <h3>Equipado</h3>${slot('arma')}${slot('escudo')}${slot('armadura')}
       <h3>Na mochila</h3>
       ${P.bolsa.length ? P.bolsa.map((id, k) => `<div class="row">${itemIc(id)}<span class="nm">${ITEMS[id].nome} <small>${fmtD(ITEMS[id].dado)}</small></span><button data-act="eq:${k}">Equipar</button></div>`).join('') : '<p class="small">Vazia. Itens que sobram ao comprar ou achar em baús vêm para cá.</p>'}
-      ${['pocao_vida', 'pocao_mana'].map(id => `<div class="row">${itemIc(id)}<span class="nm">${ITEMS[id].nome} ×${P.pocoes[id]} <small>${fmtD(ITEMS[id].dado)}</small></span><button data-act="use:${id}" ${P.pocoes[id] ? '' : 'disabled'}>Beber</button></div>`).join('')}
+      ${POTS.filter(id => ITEMS[id].loja === 1 || P.pocoes[id]).map(id => `<div class="row">${itemIc(id)}<span class="nm">${ITEMS[id].nome} ×${P.pocoes[id] || 0} <small>${fmtD(ITEMS[id].dado)}</small></span><button data-act="use:${id}" ${P.pocoes[id] ? '' : 'disabled'}>Beber</button></div>`).join('')}
       <div class="row">${ic('torch')}<span class="nm">Tochas ×${P.tochas} <small>${P.tocha > 0 ? `uma acesa, mais ${P.tocha} passos` : `acendem sozinhas no escuro, ${TOCHA_PASSOS} passos cada`}</small></span></div>
       ${Object.keys(P.partes).filter(k => P.partes[k] > 0).map(k => `<div class="row"><img class="ic" src="${A.monsterURL(k, 64)}" alt=""><span class="nm">${cap(PARTS[k][P.partes[k] > 1 ? 1 : 0])} ×${P.partes[k]} <small>despojo de ${MONSTERS[k].nome}</small></span></div>`).join('')}
       <h3>Missões</h3>
-      ${P.missoes.length ? P.missoes.map(q => { const pr = Math.min(q.n, progress(q)); return `<div class="row">${ic('scroll', C.OCHRE)}<span class="nm">${questText(q)} <small>${pr}/${q.n}</small><em>${pr >= q.n ? `pronta: volte a ${npcAt(q.npc).nome}` : `para ${npcAt(q.npc).nome}`}</em></span></div>`; }).join('') : '<p class="small">Nenhuma. Quem tem "!" no balão tem serviço pra você.</p>'}
+      ${P.missoes.length ? P.missoes.map(q => { const pr = Math.min(q.n, progress(q)), who = `${npcOf(q).nome} (${Wd.BIOMAS[q.pg].nome})`; return `<div class="row">${ic('scroll', C.OCHRE)}<span class="nm">${questText(q)} <small>${pr}/${q.n}</small><em>${pr >= q.n ? `pronta: volte a ${who}` : `para ${who}`}</em></span></div>`; }).join('') : '<p class="small">Nenhuma. Quem tem "!" no balão tem serviço pra você.</p>'}
       <h3>Magias</h3>
       ${P.magias.length ? P.magias.map(id => `<div class="row">${itemIc(id)}<span class="nm">${SPELLS[id].nome} <small>${fmtD(SPELLS[id].dado)} · ${SPELLS[id].pm} PM</small></span>${SPELLS[id].tipo === 'cura' ? `<button data-act="cast:${id}" ${P.pm >= SPELLS[id].pm && P.hp < P.hpMax ? '' : 'disabled'}>Usar</button>` : ''}</div>`).join('') : '<p class="small">Nenhuma ainda. As magas das fogueiras vendem pergaminhos.</p>'}
       <p id="bag-msg" class="small"></p>
@@ -1224,48 +1381,48 @@
     if (!W || !P) return;
     try {
       const dun = {};
-      for (const n in G.dun) dun[n] = saveLevel(G.dun[n]);
+      for (const k in G.dun) dun[k] = saveLevel(G.dun[k]);
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 2, seed: W.seed, P, dun,
-        over: { ...saveLevel(G.over), talked: [...G.over.talked], cleared: [...G.over.cleared], won: G.over.won },
+        v: 3, seed: WORLD.seed, P, dun,
+        pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
-  // O save da versão 1 (antes das masmorras) vira o da 2: a ilha de uma
-  // semente é a mesma, só ganhou masmorras e personagens novos.
+  // Saves de antes das páginas (v1 e v2) não servem: a mesma semente agora
+  // gera outro mundo. Eles ficam no navegador, mas o jogo começa do zero.
   function loadSave() {
     if (qs.has('novo')) return null;
     try {
       const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (s && s.v === 2) return s;
-      const o = JSON.parse(localStorage.getItem(OLD_SAVE_KEY));
-      if (!o || o.v !== 1) return null;
-      return {
-        v: 2, seed: o.seed, P: o.P, dun: {}, seen: o.seen, steps: o.steps, kills: o.kills, clock: 10, day: 1, conversa: {},
-        over: { rev: o.rev, dead: o.dead, opened: o.opened, trail: o.trail, talked: o.talked, cleared: [], won: o.won },
-      };
+      return s && s.v === 3 ? s : null;
     } catch (e) { return null; }
   }
 
   function startGame(data) {
-    W = Wd.generate(data.seed); dunCache = {};
+    WORLD = Wd.world(data.seed); dunCache = {};
     G = newState();
     walker = null; path = []; held = null; cam.over = false;
     if (data.P) {
-      // Campos novos (tochas, missões...) vêm do herói padrão quando o save é antigo.
       P = Object.assign(newPlayer(data.P.nome), data.P);
-      const ov = data.over;
-      loadLevel(G.over, ov);
-      ov.talked.forEach(i => G.over.talked.add(i)); ov.cleared.forEach(n => G.over.cleared.add(n));
-      G.over.won = ov.won;
-      for (const n in data.dun) { G.dun[n] = newLevel(dunMap(+n)); loadLevel(G.dun[n], data.dun[n]); }
+      data.pg.forEach((d, pg) => {
+        const l = G.pg[pg];
+        loadLevel(l, d);
+        d.talked.forEach(i => l.talked.add(i)); d.cleared.forEach(n => l.cleared.add(n));
+        l.won = d.won;
+      });
+      for (const k in data.dun) {
+        const [pg, n] = k.split(':').map(Number);
+        G.dun[k] = newLevel(dunMap(n, pg)); loadLevel(G.dun[k], data.dun[k]);
+      }
       data.seen.forEach(k => G.seen.add(k));
       Object.assign(G, { steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {} });
+      setPage(P.pg);
       setMap(P.onde);
       narrate(`De volta à aventura de ${esc(P.nome)}. O mestre abre o caderno na mesma página.`);
     } else {
       P = newPlayer(data.nome);
+      setPage(0);
       setMap(null);
       reveal(P.x, P.y);
       narrate(`Era uma vez ${esc(P.nome)}, que acordou ao lado de uma fogueira no ${Wd.FOGUEIRAS[0]}. O mestre destampa as canetas...`);
@@ -1283,6 +1440,16 @@
     if (qs.has('ouro')) P.ouro = +qs.get('ouro') || 9999;
     if (qs.has('nivel')) { const l = +qs.get('nivel') || 5; while (P.lvl < l) gainXp(xpNext(P.lvl) - P.xp); }
     if (qs.has('tochas')) P.tochas = +qs.get('tochas') || 0;
+    if (qs.has('pagina')) {
+      // Começa na primeira fogueira da página N (1 a 5).
+      const pg = Math.max(0, Math.min(Wd.PAGINAS - 1, (+qs.get('pagina') || 1) - 1));
+      setPage(pg);
+      P.x = W.start % W.W; P.y = (W.start / W.W) | 0; P.respawn = W.start; P.rpg = pg;
+      G.seen.add('p' + pg);
+      setMap(null);
+      reveal(P.x, P.y, true);
+      if (BIOME_TEXT[pg].chegada) narrate(BIOME_TEXT[pg].chegada);
+    }
     if (qs.has('noite')) { G.clock = 80; burnTorch(false); }
     if (qs.has('masmorra')) {
       const n = Math.min(W.dungeons.length - 1, +qs.get('masmorra') || 0), d = W.dungeons[n];
@@ -1388,7 +1555,10 @@
   for (const img of document.querySelectorAll('img[data-icon]')) img.src = A.iconURL(img.dataset.icon);
   sndIcon();
 
-  window.Caderno = { get state() { return { P, G, W, M, L }; }, combat, title, talk: i => talk(i, M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), rest };
+  window.Caderno = {
+    get state() { return { P, G, W, M, L, WORLD }; }, combat, title, rest,
+    talk: i => talk(i, M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), turnPage: i => turnPage(M.obj.get(i)),
+  };
 
   // As fontes de mão precisam estar carregadas antes de escrever no canvas.
   Promise.race([
@@ -1398,7 +1568,7 @@
     requestAnimationFrame(tick);
     const sv = loadSave();
     if (qs.has('novo') || qs.has('seed') || !sv) {
-      if (qs.has('seed') || qs.has('luta') || qs.has('revelar') || qs.has('masmorra')) startGame({ nome: 'Herói', seed: +qs.get('seed') || 1 });
+      if (qs.has('seed') || qs.has('luta') || qs.has('revelar') || qs.has('masmorra') || qs.has('pagina')) startGame({ nome: 'Herói', seed: +qs.get('seed') || 1 });
       else title();
     } else title();
   });

@@ -1,5 +1,7 @@
 # GDD — Star Expedition Co.
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento da **versão 1.0 de lançamento** (Google Play). Os termos canônicos (em inglês) estão no [glossário](contexts/star-expedition-co/CONTEXT.md); a decisão de não ter backend está no [ADR 0001](contexts/star-expedition-co/docs/adr/0001-sem-backend-auto-backup.md). Valores marcados como **valor inicial** são o ponto de partida do balanceamento e devem ser ajustados no teste fechado (§13.7).
 
 **Gênero:** gerenciamento de equipe com resolução idle · **Plataforma:** Android (Google Play) · **Orientação:** retrato · **Idiomas:** Português (Brasil) e Inglês · **Engine:** Unity 6 LTS
@@ -590,6 +592,10 @@ Estimativa para um jogador que abre o jogo ~4 vezes por dia depois do primeiro d
 - **E-mail de contato** da política de privacidade e da Play Console (§14.3).
 - **Liberação na Failure:** hoje o Claim de uma Failure também libera o próximo Planet (§4.1). Isso deixa o avanço limitado só pelo tempo: dá para "correr" com um único Scout barato, aceitando as perdas. Vale observar no teste fechado se a progressão fica rápida demais; a alternativa é liberar só no Success.
 - Todos os números da §16 são **valores iniciais** para o teste fechado.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

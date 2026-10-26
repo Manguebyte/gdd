@@ -1,5 +1,7 @@
 # GDD — DiceAndBlood
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem. Vários pontos centrais da mecânica de combate ainda estão em discussão com o time (ver marcações **Em aberto**) — os valores usados no Guia de Implementação Unity (Parte 2) são placeholders de MVP, não decisões fechadas.
 
 ## Índice
@@ -138,6 +140,10 @@ Lista consolidada de tudo que ainda não foi decidido, para revisão rápida com
 
 ---
 *Versão: rascunho inicial — a refinar conforme prototipagem.*
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

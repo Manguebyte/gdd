@@ -1,5 +1,7 @@
 # GDD — Marble Arena
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial a partir do briefing do usuário ("Project: Marble Arena — 3D Traditional Marble Game"). As regras, a pilha de tecnologia, a arquitetura e o roadmap vêm desse briefing e estão marcados como **Definido**. Os números (tamanhos, massas, atritos, impulso) e os detalhes que o briefing deixou abertos foram decididos para o protótipo do Marco 1 rodar: estão marcados como **placeholder** ou **Em aberto** e precisam de confirmação.
 >
 > O guia de implementação tem duas partes: a **versão web** (TypeScript, Three.js, Rapier — a do protótipo em [`prototipos/marble-arena/`](prototipos/marble-arena/)) e um **porte para Unity**, para referência futura.
@@ -250,6 +252,10 @@ Com esses números, um tiro rasteiro de 20% anda ≈ 25 cm, um de 40% anda ≈ 9
 - Sons e música (§11).
 - Tecnologia do online, leaderboard, estatísticas (§12).
 - Todos os valores da tabela do §14.
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

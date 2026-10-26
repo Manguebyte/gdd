@@ -1,5 +1,7 @@
 # GDD — Old Knight and the Witch
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial, a refinar com o protótipo.
 > O jogo parte do **Guerreiro da Masmorra (app)**, a versão do app Android (`prototipos/guerreiro-da-masmorra-app/`, em 3D em `prototipos/guerreiro-da-masmorra-app-3d/`), e muda três coisas: o elenco vira uma **dupla** (o Velho Cavaleiro e a Bruxa) que troca de lugar no meio da luta, a Bruxa joga com um **deck de cartas e mana**, e toda a arte é refeita. As regras do Guerreiro que continuam iguais não são copiadas aqui: cada seção aponta para a seção de `GuerreiroDaMasmorra.md` que vale e lista só o que muda.
 > Números marcados como **proposta** são um ponto de partida para o protótipo. Eles continuam **Em aberto** até o playtest.
@@ -368,6 +370,10 @@ O poder das cartas escala com o ATK da Bruxa. "Área" atinge todos os monstros v
 - Paleta, tamanho dos sprites e arte dos biomas (§10).
 - Como jogar uma carta: segurar 0,5 s ou dois toques (§11).
 - Áudio (§12), nuvem e leaderboard (§13).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

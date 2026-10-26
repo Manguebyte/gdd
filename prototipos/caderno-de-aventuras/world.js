@@ -1,18 +1,23 @@
-// world.js — gera a ilha que o mestre vai desenhando.
+// world.js — gera as páginas que o mestre vai desenhando.
 //
 // POR QUE: no caderno, o mestre inventava o mapa na hora, mas sabia para
 // onde a aventura ia (fogueiras no caminho, o dragão no fim). Aqui o mundo
 // inteiro é gerado de uma semente no começo e fica escondido: o jogador só
 // vê o que já andou perto, e o mestre desenha o resto quando ele chega.
+// O mundo são 5 páginas do caderno, uma por bioma (Campos, Deserto,
+// Montanhas Geladas, Pântano Sombrio e Vulcão), cada uma do tamanho de uma
+// ilha inteira, para cada bioma ter muito o que explorar.
 //
-// ESTRATÉGIA: ruído de valor (elevação e umidade) define o terreno; a borda
-// afunda para virar mar, então o mundo é uma ilha. Uma busca em largura a
-// partir da fogueira inicial mede a distância de cada quadrado: ela define a
-// região de perigo (1 a 6), onde ficam mais duas fogueiras (1/3 e 2/3 do
-// caminho) e o covil do dragão (o ponto alcançável mais longe). Depois de
-// monstros e baús, cada região sem fogueira ganha uma. Cada monstro
-// tem uma masmorra na região dele, com o rei (ou a rainha) no fundo; o
-// interior é gerado da mesma semente quando o herói entra.
+// ESTRATÉGIA: cada página é gerada sozinha da sua semente. Ruído de valor
+// (elevação e umidade) define o terreno, com limites próprios do bioma; a
+// borda afunda para virar mar (ou lava), então a página é uma ilha. Uma
+// busca em largura a partir da fogueira inicial mede a distância de cada
+// quadrado: ela divide a página em 3 regiões de perigo (as regiões 1 a 15
+// do mundo, 3 por página), põe 5 fogueiras pelo caminho e, no ponto
+// alcançável mais longe, a passagem para a próxima página (na última, o
+// covil do dragão). Cada monstro tem uma masmorra na região dele, com o
+// rei (ou a rainha) no fundo; o interior é gerado da mesma semente quando
+// o herói entra.
 (function () {
   'use strict';
   const S = (typeof window !== 'undefined' ? window : globalThis).Sketch;
@@ -21,32 +26,72 @@
   const AGUA = 0, AREIA = 1, CAMPO = 2, MATA = 3, PANTANO = 4, MONTANHA = 5, PAREDE = 6, CHAO = 7;
   const TERRENOS = ['água', 'praia', 'campo', 'floresta', 'pântano', 'montanha', 'parede', 'chão'];
 
+  // As páginas, em ordem. Os 6 terrenos têm o mesmo papel em todo bioma
+  // (água e montanha não se atravessam; mata e pântano escondem mais
+  // bicho), mas cada bioma dá outro nome e outro desenho a eles.
+  // art = artigo ("os Campos"); agua/monte = limites da elevação; umid =
+  // quanto o bioma é mais úmido (+) ou mais seco (−) que os Campos.
+  const BIOMAS = [
+    { id: 'campos', nome: 'Campos', art: 'os', agua: 0.36, monte: 0.69, umid: 0,
+      terrenos: ['água', 'praia', 'campo', 'floresta', 'pântano', 'montanha'] },
+    { id: 'deserto', nome: 'Deserto', art: 'o', agua: 0.35, monte: 0.68, umid: -0.24,
+      terrenos: ['oásis', 'areia', 'dunas', 'cactos', 'areia movediça', 'rochedos'] },
+    { id: 'neve', nome: 'Montanhas Geladas', art: 'as', agua: 0.36, monte: 0.64, umid: -0.04,
+      terrenos: ['água gelada', 'gelo', 'neve', 'pinheiros', 'neve funda', 'picos nevados'] },
+    { id: 'pantano', nome: 'Pântano Sombrio', art: 'o', agua: 0.37, monte: 0.71, umid: 0.22,
+      terrenos: ['água escura', 'lama', 'terra morta', 'árvores mortas', 'brejo', 'rochas'] },
+    { id: 'vulcao', nome: 'Vulcão', art: 'o', agua: 0.36, monte: 0.65, umid: -0.1,
+      terrenos: ['lava', 'cinzas', 'rocha', 'árvores queimadas', 'fumarolas', 'vulcões'] },
+  ];
+  const PAGINAS = BIOMAS.length;
+  // Página de uma região do mundo (1–3 → 0, 4–6 → 1, ...).
+  const pageOf = tier => Math.floor((tier - 1) / 3);
+
   // Monstros de cada região (o desenho e os números ficam em art.js e game.js).
   const POOLS = {
-    1: ['slime', 'rato'], 2: ['goblin', 'lobo'], 3: ['esqueleto', 'aranha'],
-    4: ['orc', 'bruxa'], 5: ['ogro', 'cavaleiro'], 6: ['troll', 'golem'],
+    1: ['slime', 'rato'], 2: ['goblin', 'lobo'], 3: ['aranha', 'orc'],
+    4: ['escorpiao', 'cobra'], 5: ['esqueleto', 'mumia'], 6: ['verme', 'golem'],
+    7: ['lobo_gelo', 'boneco_neve'], 8: ['yeti', 'ogro'], 9: ['espirito_gelo', 'troll'],
+    10: ['zumbi', 'sapo'], 11: ['fantasma', 'bruxa'], 12: ['cavaleiro', 'ceifador'],
+    13: ['salamandra', 'diabrete'], 14: ['cao_infernal', 'elemental'], 15: ['golem_magma', 'fenix'],
   };
-  // Acampamentos com fogueira, em ordem: os 3 primeiros ficam onde eram as
-  // vilas (início, 1/3 e 2/3 do caminho); os outros cobrem as regiões que
-  // ficaram sem fogueira.
-  const FOGUEIRAS = ['Acampamento Apontador', 'Acampamento Borracha', 'Acampamento Régua', 'Acampamento Clipe',
-    'Acampamento Grampo', 'Acampamento Compasso', 'Acampamento Estojo', 'Acampamento Transferidor', 'Acampamento Lancheira'];
+  // Acampamentos com fogueira, 5 por página, na ordem do caminho.
+  const FOGUEIRAS = [
+    'Apontador', 'Borracha', 'Régua', 'Clipe', 'Grampo',
+    'Compasso', 'Estojo', 'Transferidor', 'Lancheira', 'Lápis de cor',
+    'Caneta', 'Mochila', 'Tesoura', 'Cola', 'Fichário',
+    'Esquadro', 'Giz', 'Marca-texto', 'Corretivo', 'Lapiseira',
+    'Pincel', 'Guache', 'Carimbo', 'Calculadora', 'Globo',
+  ].map(n => 'Acampamento ' + n);
+  const FOG_POR_PAGINA = 5;
   // Masmorra de cada monstro: o lugar e o chefe lá no fundo.
   const MASMORRAS = {
     slime: ['Poço', 'Rei Slime'], rato: ['Esgoto', 'Rei Rato'],
     goblin: ['Caverna', 'Rei Goblin'], lobo: ['Toca', 'Rei Lobo'],
-    esqueleto: ['Cripta', 'Rei Esqueleto'], aranha: ['Ninho', 'Rainha Aranha'],
-    orc: ['Forte', 'Rei Orc'], bruxa: ['Cabana', 'Rainha Bruxa'],
-    ogro: ['Gruta', 'Rei Ogro'], cavaleiro: ['Torre', 'Rei Cavaleiro'],
-    troll: ['Fosso', 'Rei Troll'], golem: ['Pedreira', 'Rei Golem'],
+    aranha: ['Ninho', 'Rainha Aranha'], orc: ['Forte', 'Rei Orc'],
+    escorpiao: ['Fenda', 'Rei Escorpião'], cobra: ['Templo', 'Rainha Naja'],
+    esqueleto: ['Cripta', 'Rei Esqueleto'], mumia: ['Pirâmide', 'Rainha Múmia'],
+    verme: ['Túnel', 'Rainha Verme'], golem: ['Pedreira', 'Rei Golem'],
+    lobo_gelo: ['Gruta Gelada', 'Rei Lobo do Gelo'], boneco_neve: ['Iglu', 'Rei Boneco de Neve'],
+    yeti: ['Geleira', 'Rei Yeti'], ogro: ['Gruta', 'Rei Ogro'],
+    espirito_gelo: ['Palácio de Gelo', 'Rainha da Nevasca'], troll: ['Fosso', 'Rei Troll'],
+    zumbi: ['Mausoléu', 'Rei Zumbi'], sapo: ['Brejo', 'Rei Sapo'],
+    fantasma: ['Casarão', 'Rainha Fantasma'], bruxa: ['Cabana', 'Rainha Bruxa'],
+    cavaleiro: ['Torre', 'Rei Cavaleiro'], ceifador: ['Catacumba', 'Rei Ceifador'],
+    salamandra: ['Forja', 'Rainha Salamandra'], diabrete: ['Chaminé', 'Rei Diabrete'],
+    cao_infernal: ['Canil', 'Rei Cão Infernal'], elemental: ['Cratera', 'Rei Elemental'],
+    golem_magma: ['Fornalha', 'Rei Golem de Magma'], fenix: ['Pico', 'Rainha Fênix'],
   };
   // "Esgoto do Rei Rato", "Ninho da Rainha Aranha".
   const nomeMasmorra = kind => {
     const [lugar, chefe] = MASMORRAS[kind];
     return `${lugar} ${chefe.startsWith('Rainha') ? 'da' : 'do'} ${chefe}`;
   };
-  // Quem dá missão tem nome (as dicas vêm de gente sem nome).
-  const QUEM = ['Seu Juca', 'Dona Filó', 'Tio Bento', 'Vó Nina', 'Mestre Caco', 'Dona Lurdes'];
+  // Quem dá missão tem nome, um por região (as dicas vêm de gente sem nome).
+  const QUEM = ['Seu Juca', 'Dona Filó', 'Tio Bento', 'Vó Nina', 'Mestre Caco', 'Dona Lurdes',
+    'Seu Tonho', 'Dona Cida', 'Tio Zé', 'Vó Benta', 'Seu Dito', 'Dona Zuza', 'Mestre Bira', 'Dona Glória', 'Seu Lino'];
+  // Personagens de dica por página.
+  const DICAS_POR_PAGINA = 4;
 
   function valueNoise(r, cell) {
     const gw = Math.ceil(W / cell) + 3, gh = Math.ceil(H / cell) + 3;
@@ -77,16 +122,16 @@
     return dist;
   }
 
-  function tryGen(seed) {
-    const r = S.rng(seed);
+  function tryGen(seed, pg) {
+    const r = S.rng(seed), B = BIOMAS[pg], base = pg * 3 + 1;
     const e1 = valueNoise(r, 7), e2 = valueNoise(r, 3), m1 = valueNoise(r, 6), m2 = valueNoise(r, 2.5);
     const t = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       let e = e1(x, y) * 0.7 + e2(x, y) * 0.3;
       const d = Math.max(Math.abs(x / (W - 1) - 0.5), Math.abs(y / (H - 1) - 0.5)) * 2;
       e += 0.06 - Math.max(0, d - 0.62) * 1.4;
-      const m = m1(x, y) * 0.7 + m2(x, y) * 0.3;
-      t[y * W + x] = e < 0.36 ? AGUA : e < 0.41 ? AREIA : e > 0.69 ? MONTANHA
+      const m = m1(x, y) * 0.7 + m2(x, y) * 0.3 + B.umid;
+      t[y * W + x] = e < B.agua ? AGUA : e < B.agua + 0.05 ? AREIA : e > B.monte ? MONTANHA
         : (m > 0.6 && e < 0.5) ? PANTANO : m > 0.5 ? MATA : CAMPO;
     }
 
@@ -103,8 +148,10 @@
     for (let i = 0; i < W * H; i++) if (dist[i] >= 0) { reach++; if (dist[i] > maxD) { maxD = dist[i]; far = i; } }
     if (reach < W * H * 0.36 || maxD < 40) return null;
 
+    // Região do mundo: a página tem 3 faixas de distância (base, base+1, base+2).
+    const top = base + 2;
     const tier = new Uint8Array(W * H);
-    for (let i = 0; i < W * H; i++) tier[i] = dist[i] < 0 ? 0 : Math.min(6, 1 + Math.floor(dist[i] * 6 / (maxD + 1)));
+    for (let i = 0; i < W * H; i++) tier[i] = dist[i] < 0 ? 0 : base + Math.min(2, Math.floor(dist[i] * 3 / (maxD + 1)));
 
     const obj = new Map();
     const near = (i, j, R) => Math.abs(i % W - j % W) <= R && Math.abs(((i / W) | 0) - ((j / W) | 0)) <= R;
@@ -113,36 +160,41 @@
       for (let i = 0; i < W * H; i++) if (dist[i] >= lo && dist[i] <= hi && (t[i] === CAMPO || t[i] === AREIA)) c.push(i);
       return c.length ? c[Math.floor(r() * c.length)] : -1;
     };
-    const camps = [start, pick(maxD * 0.3, maxD * 0.38), pick(maxD * 0.62, maxD * 0.7)];
+    // 5 fogueiras pelo caminho: no início, a ~1/5, ~2/5, ~3/5 e ~4/5 da
+    // distância até o fim (2 em cada região, menos na última, que tem 1 e a
+    // passagem). Nenhuma fica perto da outra porque as faixas não se tocam.
+    const camps = [start, pick(maxD * 0.18, maxD * 0.24), pick(maxD * 0.4, maxD * 0.46),
+      pick(maxD * 0.6, maxD * 0.66), pick(maxD * 0.78, maxD * 0.84)];
     if (camps.includes(-1)) return null;
-    camps.forEach((i, n) => obj.set(i, { type: 'fogueira', n }));
-    obj.set(far, { type: 'covil' });
+    camps.forEach((i, k) => obj.set(i, { type: 'fogueira', n: pg * FOG_POR_PAGINA + k }));
+    // No fim da página, a passagem para a próxima; na última, o covil.
+    obj.set(far, pg < PAGINAS - 1 ? { type: 'passagem', to: pg + 1 } : { type: 'covil' });
+    // Da 2ª página em diante, uma seta ao lado da primeira fogueira volta
+    // para a página anterior (o primeiro vizinho que dá para pisar).
+    if (pg > 0) {
+      const sx = start % W, sy = (start / W) | 0;
+      const spot = [[1, 0], [0, 1], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+        .map(([dx, dy]) => [sx + dx, sy + dy]).filter(([x, y]) => x >= 0 && y >= 0 && x < W && y < H)
+        .map(([x, y]) => y * W + x).find(i => dist[i] > 0);
+      if (spot == null) return null;
+      obj.set(spot, { type: 'volta', to: pg - 1 });
+    }
 
     const safe = i => camps.some(v => near(i, v, 2));
     const free = [];
     for (let i = 0; i < W * H; i++) if (dist[i] > 0 && !obj.has(i) && !safe(i)) free.push(i);
+    // Perto da passagem (ou do covil) ficam os monstros mais fortes da página.
     for (const i of free) {
       const nearLair = near(i, far, 2);
       if (nearLair ? r() < 0.4 : r() < 0.075) {
-        const tr = nearLair ? 6 : tier[i], pool = POOLS[tr];
+        const tr = nearLair ? top : tier[i], pool = POOLS[tr];
         obj.set(i, { type: 'monstro', kind: pool[Math.floor(r() * pool.length)] });
       } else if (r() < 0.02) obj.set(i, { type: 'bau', tier: tier[i] });
     }
-    // Cada região sem fogueira ganha uma num campo ou praia livre, sem nada
-    // encostado, a 4+ quadrados do covil e a 6+ das outras fogueiras.
-    for (let tr = 1; tr <= 6; tr++) {
-      if (camps.some(c => tier[c] === tr)) continue;
-      const c = free.filter(i => tier[i] === tr && (t[i] === CAMPO || t[i] === AREIA) && !near(i, far, 3)
-        && !camps.some(v => near(i, v, 5)) && !free.some(j => obj.has(j) && near(i, j, 1)));
-      if (!c.length) continue;
-      const i = c[Math.floor(r() * c.length)];
-      obj.set(i, { type: 'fogueira', n: camps.length });
-      camps.push(i);
-    }
-    // Uma masmorra por monstro, na região dele, longe das fogueiras, do covil e
-    // das outras masmorras. Se não couber, aquela masmorra fica de fora.
+    // Uma masmorra por monstro, na região dele, longe das fogueiras, do fim
+    // da página e das outras masmorras. Se não couber, fica de fora.
     const dungeons = [];
-    for (let tr = 1; tr <= 6; tr++) for (const kind of POOLS[tr]) {
+    for (let tr = base; tr <= top; tr++) for (const kind of POOLS[tr]) {
       const c = [];
       for (const i of free) {
         if (obj.has(i) || tier[i] !== tr || near(i, far, 3) || camps.some(v => near(i, v, 3))) continue;
@@ -158,27 +210,38 @@
     // dicas. Ninguém fica a menos de 5 quadrados de outro personagem.
     const npcs = [];
     const roomy = i => !obj.has(i) && !npcs.some(j => near(i, j, 4)) && !dungeons.some(d => near(i, d, 1));
-    for (let tr = 1; tr <= 6; tr++) {
+    for (let tr = base; tr <= top; tr++) {
       const c = free.filter(i => tier[i] === tr && roomy(i));
       if (!c.length) continue;
       const i = c[Math.floor(r() * c.length)];
       obj.set(i, { type: 'npc', quest: true, tier: tr, nome: QUEM[tr - 1] });
       npcs.push(i);
     }
+    // `fala` conta no mundo todo (página 2 começa na fala 4), para cada
+    // página ter as suas dicas.
     let hints = 0;
-    for (let k = 0; k < 600 && hints < 9; k++) {
+    for (let k = 0; k < 600 && hints < DICAS_POR_PAGINA; k++) {
       const i = free[Math.floor(r() * free.length)];
       if (!roomy(i)) continue;
-      obj.set(i, { type: 'npc', fala: hints, presente: hints % 3 === 1 });
+      const fala = pg * DICAS_POR_PAGINA + hints;
+      obj.set(i, { type: 'npc', fala, presente: fala % 3 === 1 });
       npcs.push(i);
       hints++;
     }
-    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA };
+    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id };
   }
 
-  function generate(seed) {
-    for (let k = 0; k < 80; k++) { const w = tryGen((seed + k * 7919) >>> 0); if (w) return w; }
-    throw new Error('não consegui gerar uma ilha');
+  // Uma página: tenta a semente, depois a semente + 7919, + 2 × 7919... até
+  // sair uma ilha boa (grande e comprida o bastante).
+  function generate(seed, pg = 0) {
+    for (let k = 0; k < 80; k++) { const w = tryGen((seed + k * 7919) >>> 0, pg); if (w) return w; }
+    throw new Error('não consegui gerar uma página');
+  }
+  // O mundo: as 5 páginas, cada uma com a sua semente tirada da do mundo.
+  function world(seed) {
+    const pages = [];
+    for (let pg = 0; pg < PAGINAS; pg++) pages.push(generate(S.hash(seed, pg, 993), pg));
+    return { seed, pages };
   }
 
   // Interior de uma masmorra: 4 × 3 celas de 5 quadrados, cada uma com uma
@@ -255,7 +318,7 @@
   }
 
   (typeof window !== 'undefined' ? window : globalThis).World = {
-    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, POOLS, FOGUEIRAS, MASMORRAS, QUEM,
-    nomeMasmorra, passable, generate, dungeon,
+    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, BIOMAS, PAGINAS, POOLS, FOGUEIRAS, MASMORRAS, QUEM,
+    nomeMasmorra, pageOf, passable, generate, world, dungeon,
   };
 })();

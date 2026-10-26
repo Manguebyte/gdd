@@ -1,5 +1,7 @@
 # GDD Completo + Guia de Implementação Unity
 
+**Versões:** RallySurvive 0.1.0 · Navigation Expert 0.1.0 · RaceLegenda 0.1.0 · Street Legends 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento único reunindo os GDDs dos quatro jogos (RallySurvive, Navigation Expert, RaceLegenda, Street Legends), o guia passo a passo de implementação no Unity, e a visão futura de versão 3D topdown.
 
 ## Índice
@@ -311,6 +313,13 @@ Se um dia estes 4 jogos virarem "modos" de um único jogo, os candidatos naturai
 - Ativação de ameaça externa perseguindo o jogador (on/off) — novo ponto trazido pelo Street Legends
 
 Manter esses 5 pontos como "flags" desde já no código ajuda muito nessa convergência futura.
+
+## Histórico de versões
+
+- **RallySurvive 0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
+- **Navigation Expert 0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
+- **RaceLegenda 0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
+- **Street Legends 0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

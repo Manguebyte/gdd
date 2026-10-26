@@ -1,4 +1,7 @@
 # GDD — Orbitfall
+
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
 **Plataformas:** Android (Google Play) e Web (site próprio + itch.io)
@@ -566,6 +569,10 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 - IAP "remover anúncios", se os dados indicarem.
 - Versão iOS.
 - Eventos semanais e modos alternativos (ex.: desafio diário com seed fixa).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

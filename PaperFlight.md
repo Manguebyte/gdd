@@ -1,5 +1,7 @@
 # GDD — Paper Flight
 
+**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+
 > Documento vivo. Rascunho inicial — a refinar conforme prototipagem. O nome é provisório. Os números de balanceamento (velocidades, arrasto, custos, metas dos mapas) ainda não foram decididos: os valores da tabela §12 e do Guia de Implementação Unity (Parte 2 em diante) são **placeholders de MVP**, não decisões fechadas.
 
 ## Índice
@@ -222,6 +224,10 @@
 - Layout final das telas e marcador de recorde (§9).
 - Áudio (§10).
 - Leaderboard e monetização (§11).
+
+## Histórico de versões
+
+- **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
 

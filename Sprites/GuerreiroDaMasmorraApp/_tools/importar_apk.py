@@ -85,6 +85,8 @@ def gerar_html(apk: zipfile.ZipFile):
     if n < 60:                                       # o app tinha ~116 quando este script foi escrito
         sys.exit(f'Só {n} caminhos de arte encontrados; o app mudou a forma de carregar a arte?')
     html = re.sub(padrao, PREFIX, html)
+    # versão do jogo num canto da tela (prototipos/versao.js, igual em todo protótipo)
+    html = trocar(html, '</body>', '<script src="../versao.js"></script>\n</body>', 1, 'fim do body')
 
     PROTO.mkdir(parents=True, exist_ok=True)
     (PROTO / 'index.html').write_text(html, encoding='utf-8', newline='\n')

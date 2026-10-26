@@ -146,8 +146,51 @@ const shot = (page, name) => page.screenshot({ path: path.join(preview, name + '
     await shot(page, '18-missao-hud');
     await page.keyboard.press('m');
     await page.waitForTimeout(1500);
-    await shot(page, '19-ilha-com-masmorras');
+    await shot(page, '19-pagina-com-masmorras');
     await page.keyboard.press('m');
+
+    // As 5 páginas (biomas): de longe, toda revelada, e de perto.
+    for (let pg = 1; pg <= 5; pg++) {
+      await page.goto(base + `?novo&seed=42&pagina=${pg}&revelar`);
+      await page.waitForTimeout(1800);
+      await shot(page, `20-pagina-${pg}-perto`);
+      await page.keyboard.press('m');
+      await page.waitForTimeout(1800);
+      await shot(page, `21-pagina-${pg}-toda`);
+    }
+
+    // Virar a página: da passagem dos Campos para o Deserto, e voltar.
+    await page.goto(base + '?novo&seed=42&revelar');
+    await page.waitForTimeout(1500);
+    const lair = await page.evaluate(() => window.Caderno.state.W.lair);
+    page.evaluate(i => window.Caderno.turnPage(i), lair).catch(() => { });
+    await page.waitForTimeout(800);
+    await shot(page, '22-virar-pagina');
+    await page.locator('#acts button').first().click();
+    await page.waitForTimeout(2200);
+    await shot(page, '23-chegou-deserto');
+    const turned = await page.evaluate(() => { const { P, W } = window.Caderno.state; return { pg: P.pg, rpg: P.rpg, naFogueira: P.x + P.y * W.W === W.start }; });
+    console.log('depois de virar a página:', JSON.stringify(turned));
+    const back = await page.evaluate(() => { const { W } = window.Caderno.state; for (const [i, o] of W.obj) if (o.type === 'volta') return i; });
+    page.evaluate(i => window.Caderno.turnPage(i), back).catch(() => { });
+    await page.waitForTimeout(800);
+    await page.locator('#acts button').first().click();
+    await page.waitForTimeout(1500);
+    console.log('depois de voltar:', JSON.stringify(await page.evaluate(() => { const { P, W } = window.Caderno.state; return { pg: P.pg, naPassagem: P.x + P.y * W.W === W.lair }; })));
+
+    // Galeria: todos os monstros e os chefes deles.
+    await page.goto(base + '?novo');
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => {
+      const kinds = Object.values(World.POOLS).flat();
+      const cell = k => `<figure style="margin:0;text-align:center;font:12px sans-serif"><img src="${Art.monsterURL(k, 110)}"><figcaption>${k}</figcaption></figure>`;
+      document.body.innerHTML = `<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:4px;background:#fbf7ec;padding:8px">
+        ${kinds.map(cell).join('')}${kinds.map(k => cell('chefe_' + k)).join('')}${cell('dragao')}</div>`;
+    });
+    await page.setViewportSize({ width: 1366, height: 1100 });
+    await page.waitForTimeout(500);
+    await shot(page, '24-galeria-monstros');
+    await page.setViewportSize({ width: 1366, height: 768 });
 
     // Celular em pé.
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
