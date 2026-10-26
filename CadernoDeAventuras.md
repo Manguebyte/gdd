@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -20,7 +20,7 @@ Caderno de Aventuras recria o RPG que a gente jogava no caderno da escola. Um co
 - **Fogueiras, não cidades.** Como num souls-like, não há vilas: há acampamentos com fogueira espalhados pelas páginas. Descansar cura, mas todo monstro vencido volta; os guerreiros que descansam ali vendem o que o herói precisa.
 - **Cada bioma é uma página do caderno.** Campos, Deserto, Montanhas Geladas, Pântano Sombrio e Vulcão: cada um ocupa uma folha inteira, do tamanho de uma ilha, para ter muito o que explorar antes de virar a página.
 
-**Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular. O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
+**Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular, em pé ou deitado. No celular ele **se instala como app** (PWA): pelo botão "Instalar no celular" da capa (Android) ou por Compartilhar → "Adicionar à Tela de Início" (iPhone), ganha ícone, abre em tela cheia, gira junto com o celular e joga sem internet (os arquivos ficam guardados no aparelho; o save continua no armazenamento do navegador). O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
 
 **Protótipo:** [`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/). Os números deste documento são os do protótipo e valem como **proposta** de balanceamento.
 
@@ -377,6 +377,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.2.0** (2026-10-26): o protótipo vira app instalável no celular (PWA): ícone na tela inicial, tela cheia, joga sem internet, em pé ou deitado. Nova arrumação da tela para o celular deitado (HUD, narração, direcional, luta e folhas menores).
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia. Já com as 5 páginas de bioma.
 
 ---

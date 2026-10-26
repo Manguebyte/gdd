@@ -1478,8 +1478,10 @@
         </div>
         <p class="small how">Ande com as setas, WASD ou tocando no mapa. O mestre desenha o mundo enquanto você anda.
         Cada item dá dados: a soma é o dano, e escudo e armadura rolam a sua defesa.</p>
+        <div id="install" class="install"></div>
       </div>`, 'title');
     coverArt($('cover-cv'));
+    installOffer();
     const go = data => { SFX.init(); closePanel(); startGame(data); };
     if (sv) $('b-cont').onclick = () => go(sv);
     $('b-new').onclick = () => {
@@ -1488,6 +1490,32 @@
       go({ nome, seed: qs.has('seed') ? +qs.get('seed') : (Math.random() * 1e9) >>> 0 });
     };
   }
+  // ---------- instalar no celular (PWA) ----------
+  // O navegador avisa (beforeinstallprompt, no Android e no PC) que dá para
+  // instalar; a capa mostra um botão. No iPhone não existe esse aviso: a capa
+  // ensina o caminho pelo menu Compartilhar. Já instalado, não mostra nada.
+  let installEvt = null;
+  const standalone = () => matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; installOffer(); });
+  addEventListener('appinstalled', () => { installEvt = null; installOffer(); });
+  function installOffer() {
+    const el = $('install');
+    if (!el) return;
+    if (standalone()) { el.innerHTML = ''; return; }
+    if (installEvt) {
+      el.innerHTML = `<button id="b-install" class="green">${ic('star', C.YELLOW)} Instalar no celular</button>
+        <p class="small">Vira um app: ícone na tela inicial, tela cheia, em pé ou deitado, e joga sem internet.</p>`;
+      $('b-install').onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; installOffer(); };
+    } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      el.innerHTML = '<p class="small">No iPhone: toque em Compartilhar e depois em "Adicionar à Tela de Início" para jogar como app, em tela cheia e sem internet.</p>';
+    } else el.innerHTML = '';
+  }
+  // O service worker só roda em https (o site no GitHub Pages); abrindo o
+  // arquivo do disco ou num servidor local de teste, o jogo segue sem ele.
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => { }));
+  }
+
   // Capa: herói, dragão e um d20 sendo desenhados.
   function coverArt(c) {
     const r = c.getBoundingClientRect(), d = Math.min(2, window.devicePixelRatio || 1), x = c.getContext('2d');
