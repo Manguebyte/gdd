@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Caderno de Aventuras</title>
+<meta name="description" content="RPG de caderno da escola: o mestre desenha o mapa com canetas coloridas enquanto você anda, e as lutas são decididas nos dados.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<header id="hud" hidden>
+  <div class="stats">
+    <span class="stat" id="s-hp" title="Vida"><img data-icon="heart" alt=""><b></b></span>
+    <span class="stat" id="s-pm" title="Magia"><img data-icon="star" alt=""><b></b></span>
+    <span class="stat" id="s-gold" title="Moedas"><img data-icon="coin" alt=""><b></b></span>
+    <span class="stat" id="s-atk" title="Dados de ataque"><img data-icon="sword" alt=""><b></b></span>
+    <span class="stat" id="s-def" title="Dados de defesa"><img data-icon="shield" alt=""><b></b></span>
+    <span class="stat" id="s-lvl"><b></b><i class="xp"><i></i></i></span>
+  </div>
+  <div class="tools">
+    <button id="b-bag" title="Mochila (B)"><img data-icon="bag" alt="Mochila"></button>
+    <button id="b-map" title="Ver o mapa todo (M)"><img data-icon="map" alt="Mapa"></button>
+    <button id="b-snd" title="Som"><img id="snd-img" alt="Som"></button>
+  </div>
+</header>
+
+<div id="narr" class="narr" hidden></div>
+
+<div id="dpad" hidden>
+  <button data-d="0,-1" class="up" aria-label="Cima">▲</button>
+  <button data-d="-1,0" class="left" aria-label="Esquerda">◀</button>
+  <button data-d="1,0" class="right" aria-label="Direita">▶</button>
+  <button data-d="0,1" class="down" aria-label="Baixo">▼</button>
+</div>
+
+<div id="overlay" hidden><div id="panel" class="sheet"></div></div>
+
+<script src="sketch.js"></script>
+<script src="world.js"></script>
+<script src="art.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

@@ -169,6 +169,13 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    source: 'CapibaribeVivo.md',
+    slug: 'capibaribe-vivo',
+    label: 'Capibaribe Vivo',
+    description: 'Educativo para crianças: num barquinho, limpe o rio Capibaribe no Recife, separe o lixo e veja os bichos voltarem.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // O guia começa pela versão web (TypeScript, a do protótipo) e termina com o porte para Unity.
     source: 'MarbleArena.md',
     slug: 'marble-arena',
@@ -183,6 +190,14 @@ export const GAMES = [
     slug: 'caca-as-bruxas',
     label: 'Caça às Bruxas',
     description: 'Souls-like em que você é a bruxa caçada: cada magia aprendida aumenta a Suspeita sobre ela.',
+    gddOnly: true,
+  },
+  {
+    // Ainda não tem guia Unity, só o GDD inicial (o protótipo é web).
+    source: 'CadernoDeAventuras.md',
+    slug: 'caderno-de-aventuras',
+    label: 'Caderno de Aventuras',
+    description: 'RPG de caderno da escola: o mestre desenha o mapa com caneta enquanto você anda, e cada item dá dados para a luta.',
     gddOnly: true,
   },
   {
