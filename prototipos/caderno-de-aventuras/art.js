@@ -188,8 +188,28 @@
     return o;
   };
 
+  // Onde fica o alto da cabeça de cada monstro (caixa 100×100): é ali que o
+  // mestre desenha a coroa da versão chefe.
+  const HEAD = {
+    slime: [50, 38], rato: [78, 48], goblin: [50, 16], lobo: [76, 40], esqueleto: [50, 8], aranha: [50, 34],
+    orc: [50, 12], bruxa: [52, 6], ogro: [50, 18], cavaleiro: [50, 8], troll: [50, 17], golem: [50, 10],
+  };
+  function crown(r, o, cx, by, s = 1) {
+    const p = [[-12, 0], [-13, -10], [-6, -4], [0, -14], [6, -4], [13, -10], [12, 0]].map(([x, y]) => [cx + x * s, by + y * s]);
+    shape(r, o, p, C.OCHRE, C.YELLOW, 2.4, 2.6);
+    dot(r, o, cx, by - 4 * s, 2 * s, C.RED);
+  }
+  // Chefe ("chefe_rato" = Rei Rato): o mesmo monstro, um pouco menor para
+  // caber a coroa em cima, com uma coroa amarela na cabeça.
+  function boss(kind) {
+    const r = S.rng(S.hash(kind.length, kind.charCodeAt(0), kind.charCodeAt(1), 7)), sc = 0.84, ox = 8, oy = 14;
+    const o = S.xform(M[kind](r), sc, ox, oy), [hx, hy] = HEAD[kind];
+    crown(r, o, hx * sc + ox, hy * sc + oy + 1, 1.1);
+    return o;
+  }
   const monsterCache = {};
-  A.monster = kind => monsterCache[kind] || (monsterCache[kind] = M[kind](S.rng(S.hash(kind.length, kind.charCodeAt(0), kind.charCodeAt(1)))));
+  A.monster = kind => monsterCache[kind] || (monsterCache[kind] = kind.startsWith('chefe_') ? boss(kind.slice(6))
+    : M[kind](S.rng(S.hash(kind.length, kind.charCodeAt(0), kind.charCodeAt(1)))));
   A.monsterFresh = (kind, seed) => M[kind](S.rng(seed));
 
   // ---------- herói, gente e lugares ----------
@@ -210,24 +230,31 @@
     return o;
   };
 
-  A.npc = (r, color) => {
+  // Personagem do caminho. Quem dá dica tem "?" azul no balão; quem dá missão
+  // tem "!" vermelho num balão pintado de amarelo, para chamar atenção.
+  A.npc = (r, color, quest) => {
     const o = [];
     ov(r, o, 50, 34, 9, 9, C.INK, 3);
     shape(r, o, [[38, 28], [50, 12], [62, 28]], C.INK, color, 2.6);
     ln(r, o, 50, 43, 50, 70, C.INK, 3.4);
     ln(r, o, 50, 50, 36, 62, C.INK, 3); ln(r, o, 50, 50, 64, 62, C.INK, 3);
     ln(r, o, 50, 70, 40, 92, C.INK, 3.4); ln(r, o, 50, 70, 60, 92, C.INK, 3.4);
-    pl(r, o, [[66, 6], [92, 6], [92, 26], [78, 26], [72, 34], [72, 26], [66, 26]], true, C.INK, 2.2);
-    o.push(S.text('?', 79, 23, 18, C.BLUE, { font: S.HAND }));
+    const bal = [[66, 6], [92, 6], [92, 26], [78, 26], [72, 34], [72, 26], [66, 26]];
+    if (quest) shape(r, o, bal, C.INK, C.YELLOW, 2.2, 3);
+    else pl(r, o, bal, true, C.INK, 2.2);
+    o.push(S.text(quest ? '!' : '?', 79, 23, 18, quest ? C.RED : C.BLUE, { font: S.HAND }));
     return o;
   };
 
-  // Uma casinha de criança: parede, telhado triangular pintado e porta.
-  function house(r, o, x, y, s, roof) {
-    pl(r, o, [[x, y], [x + s, y], [x + s, y - s * 0.8], [x, y - s * 0.8]], true, C.INK, 2.2);
-    shape(r, o, [[x - 3, y - s * 0.8], [x + s / 2, y - s * 1.45], [x + s + 3, y - s * 0.8]], C.INK, roof, 2.2, 3);
-    pl(r, o, [[x + s * 0.38, y], [x + s * 0.38, y - s * 0.42], [x + s * 0.62, y - s * 0.42], [x + s * 0.62, y]], false, C.BROWN, 1.8);
+  // Fogueira de acampamento: dois troncos cruzados e a chama em cima.
+  // (cx, by) = meio da base; s = tamanho (1 = 24 de largura).
+  function campfire(r, o, cx, by, s = 1) {
+    const P = (x, y) => [cx + x * s, by + y * s];
+    ln(r, o, ...P(-12, 0), ...P(10, -6), C.BROWN, 3.4 * s); ln(r, o, ...P(12, 0), ...P(-10, -6), C.BROWN, 3.4 * s);
+    shape(r, o, [P(0, -26), P(8, -14), P(7, -5), P(0, -3), P(-7, -5), P(-8, -14), P(-3, -11)], C.RED, C.ORANGE, 2.2 * s, 2.6);
+    fill(r, o, [P(0, -15), P(4, -8), P(0, -5), P(-4, -8)], C.YELLOW, 2, 0.3, 0.95);
   }
+  A.campfire = campfire;
 
   // ---------- ícones (HUD, loja, mochila) ----------
   const I = {};
@@ -299,6 +326,28 @@
     const o = []; shape(r, o, [[20, 20], [80, 20], [80, 80], [20, 80]], C.INK, c || C.RED, 4, 5);
     for (const [x, y] of [[35, 35], [50, 50], [65, 65]]) dot(r, o, x, y, 5, C.INK); return o;
   };
+  I.fire = (r) => { const o = []; campfire(r, o, 50, 90, 3.2); return o; };
+  I.sun = (r) => {
+    const o = [];
+    for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ln(r, o, 50 + Math.cos(a) * 30, 50 + Math.sin(a) * 30, 50 + Math.cos(a) * 44, 50 + Math.sin(a) * 44, C.ORANGE, 4); }
+    blob(r, o, 50, 50, 22, 22, C.ORANGE, C.YELLOW, 4, 4); return o;
+  };
+  I.moon = (r) => {
+    const o = [], p = [];
+    for (let k = 0; k <= 12; k++) { const a = -2.2 + k / 12 * 4.4; p.push([50 + Math.cos(a) * 38, 50 + Math.sin(a) * 38]); }
+    for (let k = 12; k >= 0; k--) { const a = -1.75 + k / 12 * 3.5; p.push([64 + Math.cos(a) * 26, 50 + Math.sin(a) * 30]); }
+    shape(r, o, p.map(([x, y]) => [100 - x, y]), C.INK, C.LBLUE, 4, 4); return o;
+  };
+  I.torch = (r, lit) => {
+    const o = [];
+    shape(r, o, [[44, 46], [56, 46], [53, 94], [47, 94]], C.INK, C.BROWN, 3.4, 3.4);
+    ln(r, o, 42, 48, 58, 48, C.INK, 5);
+    if (lit !== 'off') {
+      shape(r, o, [[50, 6], [64, 26], [62, 40], [50, 44], [38, 40], [36, 26], [44, 30]], C.RED, C.ORANGE, 3.4, 3);
+      fill(r, o, [[50, 22], [57, 34], [50, 40], [43, 34]], C.YELLOW, 2.4, 0.3, 0.95);
+    }
+    return o;
+  };
   I.sound = (r, on) => {
     const o = []; shape(r, o, [[14, 38], [32, 38], [54, 18], [54, 82], [32, 62], [14, 62]], C.INK, C.GRAY, 4);
     if (on) { pl(r, o, [[66, 34], [74, 50], [66, 66]], false, C.INK, 4); pl(r, o, [[78, 22], [90, 50], [78, 78]], false, C.INK, 4); }
@@ -369,11 +418,11 @@
 
   // ---------- mapa ----------
   // Um quadrado do mapa (64×64 no mundo), já na posição do mundo. Inclui o que
-  // está em cima dele (vila, monstro, baú...) e o "X" se já foi resolvido.
+  // está em cima dele (fogueira, monstro, baú...) e o "X" se já foi resolvido.
   A.tile = (world, tx, ty, T, state) => {
     const r = S.rng(S.hash(world.seed, tx, ty, 77)), o = [];
     const x0 = tx * T, y0 = ty * T, Wd = World;
-    const ter = (x, y) => (x < 0 || y < 0 || x >= world.W || y >= world.H) ? Wd.AGUA : world.t[y * world.W + x];
+    const ter = (x, y) => (x < 0 || y < 0 || x >= world.W || y >= world.H) ? world.fora : world.t[y * world.W + x];
     const t = ter(tx, ty);
     const rx = (a, b) => a + r() * (b - a);
 
@@ -409,7 +458,7 @@
       }
     } else if (t === Wd.MATA) {
       const trees = [];
-      const n = obj ? 1 : 2 + (r() < 0.5 ? 1 : 0);
+      const n = obj ? (obj.type === 'masmorra' ? 0 : 1) : 2 + (r() < 0.5 ? 1 : 0);
       for (let k = 0; k < n; k++) trees.push([rx(x0 + 14, x0 + T - 14), rx(y0 + 12, y0 + T - 20), rx(9, 12)]);
       trees.sort((a, b) => a[1] - b[1]);
       for (const [cx, cy, rr] of trees) {
@@ -427,6 +476,18 @@
         ln(r, o, x, y, x + 1, y - 16, C.OLIVE, 1.8);
         ov(r, o, x + 1, y - 18, 2, 4.5, C.BROWN, 2.2);
       }
+    } else if (t === Wd.PAREDE) {
+      // Parede de masmorra: só a que encosta no chão é desenhada (pedra
+      // maciça fica em branco), pintada de cinza com a borda em caneta.
+      const floor = (x, y) => ter(x, y) === Wd.CHAO;
+      let touch = false;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (floor(tx + dx, ty + dy)) touch = true;
+      if (!touch) return o;
+      fill(r, o, [[x0, y0], [x0 + T, y0], [x0 + T, y0 + T], [x0, y0 + T]], C.GRAY, 5, 0.8, 0.5);
+      for (const [dx, dy, ax, ay, bx, by] of [[0, -1, 0, 0, 1, 0], [0, 1, 0, 1, 1, 1], [-1, 0, 0, 0, 0, 1], [1, 0, 1, 0, 1, 1]])
+        if (floor(tx + dx, ty + dy)) ln(r, o, x0 + ax * T, y0 + ay * T, x0 + bx * T, y0 + by * T, C.INK, 2.8);
+    } else if (t === Wd.CHAO) {
+      for (let k = 0; k < 3; k++) { const x = rx(x0 + 8, x0 + T - 8), y = rx(y0 + 8, y0 + T - 8); ln(r, o, x, y, x + 1.4, y + 0.6, C.GRAY, 1.8); }
     } else if (t === Wd.MONTANHA) {
       const n = r() < 0.5 ? 2 : 1;
       for (let k = 0; k < n; k++) {
@@ -440,12 +501,19 @@
 
     if (!obj) return o;
     const cx = x0 + T / 2, i = ty * world.W + tx;
-    if (obj.type === 'vila') {
-      house(r, o, x0 + 6, y0 + 40, 20, C.RED);
-      house(r, o, x0 + 34, y0 + 36, 22, C.ORANGE);
-      house(r, o, x0 + 20, y0 + 60, 18, C.BLUE);
-      if (obj.n === 0) { ln(r, o, x0 + 58, y0 + 58, x0 + 58, y0 + 40, C.INK, 2); shape(r, o, [[x0 + 58, y0 + 40], [x0 + 70, y0 + 44], [x0 + 58, y0 + 48]], C.INK, C.YELLOW, 1.8, 2.5); }
-      o.push(S.text(World.VILAS[obj.n], cx, y0 - 2, 19, C.INK));
+    if (obj.type === 'fogueira') {
+      // Acampamento: barraca listrada, a fogueira e um guerreiro sentado nela.
+      const tents = [C.RED, C.BLUE, C.GREEN, C.PURPLE, C.ORANGE, C.PINK];
+      const tent = [[x0 + 4, y0 + 50], [x0 + 18, y0 + 20], [x0 + 32, y0 + 50]];
+      shape(r, o, tent, C.INK, tents[obj.n % tents.length], 2.4, 3.4);
+      pl(r, o, [[x0 + 14, y0 + 50], [x0 + 18, y0 + 36], [x0 + 22, y0 + 50]], false, C.INK, 2);
+      campfire(r, o, x0 + 46, y0 + 54, 0.8);
+      ov(r, o, x0 + 56, y0 + 34, 3.5, 3.5, C.INK, 2);
+      ln(r, o, x0 + 56, y0 + 38, x0 + 57, y0 + 48, C.INK, 2.2);
+      ln(r, o, x0 + 57, y0 + 48, x0 + 50, y0 + 50, C.INK, 2.2);
+      ln(r, o, x0 + 56, y0 + 42, x0 + 50, y0 + 44, C.INK, 2);
+      ln(r, o, x0 + 60, y0 + 30, x0 + 61, y0 + 50, C.GRAY, 2);
+      o.push(S.text(World.FOGUEIRAS[obj.n], cx, y0 - 2, 17, C.INK));
     } else if (obj.type === 'covil') {
       const p = [[x0 + 2, y0 + T - 6], [x0 + 10, y0 + 22], [cx, y0 + 8], [x0 + T - 10, y0 + 22], [x0 + T - 2, y0 + T - 6]];
       shape(r, o, p, C.BROWN, C.GRAY, 2.6, 4.4);
@@ -461,7 +529,28 @@
       if (state.opened.has(i)) cross(r, o, x0, y0, T);
     } else if (obj.type === 'npc') {
       const cols = [C.BLUE, C.GREEN, C.PURPLE, C.ORANGE, C.PINK];
-      for (const s of S.xform(A.npc(r, cols[obj.fala % cols.length]), 0.56, x0 + 4, y0 + 6)) o.push(s);
+      for (const s of S.xform(A.npc(r, cols[(obj.quest ? obj.tier : obj.fala) % cols.length], obj.quest), 0.56, x0 + 4, y0 + 6)) o.push(s);
+      if (obj.quest) o.push(S.text(obj.nome, cx, y0 - 2, 16, C.INK));
+    } else if (obj.type === 'masmorra') {
+      // Entrada: arco de pedra cinza, porta escura e uma coroa em cima.
+      const arch = (w, top) => [[cx - w, y0 + T - 6], [cx - w, y0 + top + 10], [cx - w * 0.6, y0 + top + 2], [cx, y0 + top], [cx + w * 0.6, y0 + top + 2], [cx + w, y0 + top + 10], [cx + w, y0 + T - 6]];
+      shape(r, o, arch(22, 16), C.INK, C.GRAY, 2.6, 4);
+      const door = arch(12, 28);
+      pl(r, o, door, true, C.INK, 2.4); fill(r, o, door, C.INK, 2, 0.5, 0.9);
+      crown(r, o, cx, y0 + 13, 0.8);
+      o.push(S.text(World.MASMORRAS[obj.kind][0], cx, y0 - 2, 17, C.INK));
+      if (state.cleared && state.cleared.has(obj.n)) cross(r, o, x0, y0, T);
+    } else if (obj.type === 'saida') {
+      // Escada para cima: degraus cada vez mais estreitos.
+      for (let k = 0; k < 4; k++) {
+        const w = 22 - k * 4, y = y0 + T - 10 - k * 9;
+        shape(r, o, [[cx - w, y], [cx + w, y], [cx + w, y - 8], [cx - w, y - 8]], C.INK, C.OCHRE, 2.2, 3);
+      }
+      o.push(S.text('Saída', cx, y0 + 2, 17, C.GREEN));
+    } else if (obj.type === 'chefe') {
+      for (const s of S.xform(A.monster('chefe_' + obj.kind), 0.6, x0 + 2, y0 + 2)) o.push(s);
+      o.push(S.text(World.MASMORRAS[obj.kind][1], cx, y0 - 2, 17, C.RED));
+      if (state.dead.has(i)) cross(r, o, x0, y0, T);
     }
     return o;
   };

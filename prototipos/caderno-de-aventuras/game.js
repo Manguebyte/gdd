@@ -1,21 +1,27 @@
 // game.js — Caderno de Aventuras: o RPG de caderno da escola.
 //
 // POR QUE: o herói anda pela folha e o "mestre" vai desenhando o mapa com
-// canetas coloridas à medida que ele chega perto. Monstros, vilas e baús
+// canetas coloridas à medida que ele chega perto. Monstros, fogueiras e baús
 // aparecem desenhados; brigar é rolar dados: cada item equipado dá dados
 // (a espada de madeira dá 1d6, a melhor lâmina dá 5d20), a soma é o dano, e
 // o monstro faz o mesmo de volta. Escudo e armadura rolam dados de defesa
-// que descontam do dano recebido.
+// que descontam do dano recebido. Cada monstro tem um rei (chefe) no fundo
+// da sua masmorra; personagens com "!" dão missões; à noite os monstros
+// ficam mais fortes e, sem tocha, o herói quase não enxerga. Não há vilas:
+// como num souls-like, há fogueiras de acampamento. Descansar nelas cura,
+// mas todo monstro vencido volta; os guerreiros em volta vendem coisas.
 //
 // ESTRATÉGIA: o mapa revelado é "assado" em pedaços de canvas (chunks) e só
 // os quadrados novos são desenhados a cada quadro, aos poucos, com a caneta
 // do mestre na ponta do traço. Menus e luta são HTML por cima, em folha
-// pautada; dados e monstros são desenhados em canvas pequenos.
+// pautada; dados e monstros são desenhados em canvas pequenos. O "mapa
+// atual" (M) é a ilha ou o interior de uma masmorra; cada um tem o seu
+// estado (L: quadrados revelados, rastro, monstros vencidos, baús abertos).
 (function () {
   'use strict';
   const S = Sketch, C = S.C, A = Art, Wd = World;
   const T = 64, CH = 8, BAKE = 1.5;
-  const SAVE_KEY = 'caderno-aventuras-save-v1';
+  const SAVE_KEY = 'caderno-aventuras-save-v2', OLD_SAVE_KEY = 'caderno-aventuras-save-v1';
   const $ = id => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
   const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -24,68 +30,106 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
   // ---------- dados do jogo (números são proposta) ----------
+  // loja = nível da fogueira que vende: 1 nas regiões 1–2, 2 nas 3–4, 3 nas 5–6.
   const ITEMS = {
-    espada_madeira: { nome: 'Espada de madeira', slot: 'arma', dado: [1, 6], preco: 10, icon: 'sword', cor: C.BROWN, vila: 1 },
-    espada_curta: { nome: 'Espada curta', slot: 'arma', dado: [1, 8], preco: 30, icon: 'sword', cor: C.GRAY, vila: 1 },
-    espada_ferro: { nome: 'Espada de ferro', slot: 'arma', dado: [2, 6], preco: 70, icon: 'sword', cor: C.INK, vila: 1 },
-    machado: { nome: 'Machado de guerra', slot: 'arma', dado: [2, 8], preco: 140, icon: 'axe', cor: C.GRAY, vila: 2 },
-    espada_prata: { nome: 'Espada de prata', slot: 'arma', dado: [3, 8], preco: 260, icon: 'sword', cor: C.LBLUE, vila: 2 },
-    montante: { nome: 'Montante', slot: 'arma', dado: [3, 12], preco: 480, icon: 'sword', cor: C.BLUE, vila: 3 },
-    espada_runica: { nome: 'Espada rúnica', slot: 'arma', dado: [4, 12], preco: 800, icon: 'sword', cor: C.PURPLE, vila: 3 },
-    lamina_dragao: { nome: 'Lâmina do Dragão', slot: 'arma', dado: [5, 20], preco: 1200, icon: 'sword', cor: C.RED, vila: 3 },
-    tampa_panela: { nome: 'Tampa de panela', slot: 'escudo', dado: [1, 4], preco: 12, icon: 'shield', cor: C.GRAY, vila: 1 },
-    escudo_madeira: { nome: 'Escudo de madeira', slot: 'escudo', dado: [1, 6], preco: 40, icon: 'shield', cor: C.BROWN, vila: 1 },
-    escudo_ferro: { nome: 'Escudo de ferro', slot: 'escudo', dado: [2, 6], preco: 160, icon: 'shield', cor: C.INK, vila: 2 },
-    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [3, 6], preco: 420, icon: 'shield', cor: C.BLUE, vila: 3 },
-    roupa_couro: { nome: 'Roupa de couro', slot: 'armadura', dado: [1, 4], preco: 25, icon: 'armor', cor: C.BROWN, vila: 1 },
-    cota_malha: { nome: 'Cota de malha', slot: 'armadura', dado: [2, 4], preco: 110, icon: 'armor', cor: C.GRAY, vila: 2 },
-    placas: { nome: 'Armadura de placas', slot: 'armadura', dado: [2, 8], preco: 380, icon: 'armor', cor: C.INK, vila: 2 },
-    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [3, 10], preco: 950, icon: 'armor', cor: C.RED, vila: 3 },
-    pocao_vida: { nome: 'Poção de vida', slot: 'pocao', dado: [3, 6], preco: 12, icon: 'potion', cor: C.RED, vila: 1, efeito: 'hp' },
-    pocao_mana: { nome: 'Poção de magia', slot: 'pocao', dado: [2, 4], preco: 15, icon: 'potion', cor: C.BLUE, vila: 1, efeito: 'pm' },
+    espada_madeira: { nome: 'Espada de madeira', slot: 'arma', dado: [1, 6], preco: 10, icon: 'sword', cor: C.BROWN, loja: 1 },
+    espada_curta: { nome: 'Espada curta', slot: 'arma', dado: [1, 8], preco: 30, icon: 'sword', cor: C.GRAY, loja: 1 },
+    espada_ferro: { nome: 'Espada de ferro', slot: 'arma', dado: [2, 6], preco: 70, icon: 'sword', cor: C.INK, loja: 1 },
+    machado: { nome: 'Machado de guerra', slot: 'arma', dado: [2, 8], preco: 140, icon: 'axe', cor: C.GRAY, loja: 2 },
+    espada_prata: { nome: 'Espada de prata', slot: 'arma', dado: [3, 8], preco: 260, icon: 'sword', cor: C.LBLUE, loja: 2 },
+    montante: { nome: 'Montante', slot: 'arma', dado: [3, 12], preco: 480, icon: 'sword', cor: C.BLUE, loja: 3 },
+    espada_runica: { nome: 'Espada rúnica', slot: 'arma', dado: [4, 12], preco: 800, icon: 'sword', cor: C.PURPLE, loja: 3 },
+    lamina_dragao: { nome: 'Lâmina do Dragão', slot: 'arma', dado: [5, 20], preco: 1200, icon: 'sword', cor: C.RED, loja: 3 },
+    tampa_panela: { nome: 'Tampa de panela', slot: 'escudo', dado: [1, 4], preco: 12, icon: 'shield', cor: C.GRAY, loja: 1 },
+    escudo_madeira: { nome: 'Escudo de madeira', slot: 'escudo', dado: [1, 6], preco: 40, icon: 'shield', cor: C.BROWN, loja: 1 },
+    escudo_ferro: { nome: 'Escudo de ferro', slot: 'escudo', dado: [2, 6], preco: 160, icon: 'shield', cor: C.INK, loja: 2 },
+    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [3, 6], preco: 420, icon: 'shield', cor: C.BLUE, loja: 3 },
+    roupa_couro: { nome: 'Roupa de couro', slot: 'armadura', dado: [1, 4], preco: 25, icon: 'armor', cor: C.BROWN, loja: 1 },
+    cota_malha: { nome: 'Cota de malha', slot: 'armadura', dado: [2, 4], preco: 110, icon: 'armor', cor: C.GRAY, loja: 2 },
+    placas: { nome: 'Armadura de placas', slot: 'armadura', dado: [2, 8], preco: 380, icon: 'armor', cor: C.INK, loja: 2 },
+    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [3, 10], preco: 950, icon: 'armor', cor: C.RED, loja: 3 },
+    pocao_vida: { nome: 'Poção de vida', slot: 'pocao', dado: [3, 6], preco: 12, icon: 'potion', cor: C.RED, loja: 1, efeito: 'hp' },
+    pocao_mana: { nome: 'Poção de magia', slot: 'pocao', dado: [2, 4], preco: 15, icon: 'potion', cor: C.BLUE, loja: 1, efeito: 'pm' },
   };
   // Feitiço gasta Magia (PM) e ignora a defesa do monstro.
   const SPELLS = {
-    faisca: { nome: 'Faísca', pm: 1, dado: [2, 4], tipo: 'dano', cor: C.YELLOW, preco: 30, vila: 1 },
-    cura: { nome: 'Cura', pm: 2, dado: [2, 6], tipo: 'cura', cor: C.GREEN, preco: 45, vila: 1 },
-    bola_fogo: { nome: 'Bola de fogo', pm: 3, dado: [3, 8], tipo: 'dano', cor: C.ORANGE, preco: 150, vila: 2 },
-    raio: { nome: 'Raio', pm: 5, dado: [4, 10], tipo: 'dano', cor: C.PURPLE, preco: 420, vila: 3 },
+    faisca: { nome: 'Faísca', pm: 1, dado: [2, 4], tipo: 'dano', cor: C.YELLOW, preco: 30, loja: 1 },
+    cura: { nome: 'Cura', pm: 2, dado: [2, 6], tipo: 'cura', cor: C.GREEN, preco: 45, loja: 1 },
+    bola_fogo: { nome: 'Bola de fogo', pm: 3, dado: [3, 8], tipo: 'dano', cor: C.ORANGE, preco: 150, loja: 2 },
+    raio: { nome: 'Raio', pm: 5, dado: [4, 10], tipo: 'dano', cor: C.PURPLE, preco: 420, loja: 3 },
   };
   const MONSTERS = {
-    slime: { nome: 'Slime', art: 'o', hp: 8, atk: [1, 4], def: null, ouro: [2, 4], xp: 3 },
-    rato: { nome: 'Rato gigante', art: 'o', hp: 6, atk: [1, 6], def: null, ouro: [2, 4], xp: 3 },
-    goblin: { nome: 'Goblin', art: 'o', hp: 14, atk: [2, 4], def: null, ouro: [3, 6], xp: 7 },
-    lobo: { nome: 'Lobo', art: 'o', hp: 16, atk: [1, 10], def: null, ouro: [3, 6], xp: 7 },
-    esqueleto: { nome: 'Esqueleto', art: 'o', hp: 24, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
-    aranha: { nome: 'Aranha gigante', art: 'a', hp: 22, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
-    orc: { nome: 'Orc', art: 'o', hp: 38, atk: [2, 8], def: [1, 6], ouro: [4, 10], xp: 20 },
-    bruxa: { nome: 'Bruxa do pântano', art: 'a', hp: 32, atk: [3, 6], def: null, ouro: [4, 10], xp: 20 },
-    ogro: { nome: 'Ogro', art: 'o', hp: 62, atk: [3, 8], def: [2, 4], ouro: [6, 10], xp: 35 },
-    cavaleiro: { nome: 'Cavaleiro negro', art: 'o', hp: 56, atk: [3, 10], def: [2, 6], ouro: [6, 10], xp: 35 },
-    troll: { nome: 'Troll', art: 'o', hp: 92, atk: [4, 8], def: [2, 6], ouro: [8, 10], xp: 60 },
-    golem: { nome: 'Golem de pedra', art: 'o', hp: 110, atk: [3, 12], def: [3, 6], ouro: [8, 10], xp: 60 },
+    slime: { pl: 'slimes', nome: 'Slime', art: 'o', hp: 8, atk: [1, 4], def: null, ouro: [2, 4], xp: 3 },
+    rato: { pl: 'ratos gigantes', nome: 'Rato gigante', art: 'o', hp: 6, atk: [1, 6], def: null, ouro: [2, 4], xp: 3 },
+    goblin: { pl: 'goblins', nome: 'Goblin', art: 'o', hp: 14, atk: [2, 4], def: null, ouro: [3, 6], xp: 7 },
+    lobo: { pl: 'lobos', nome: 'Lobo', art: 'o', hp: 16, atk: [1, 10], def: null, ouro: [3, 6], xp: 7 },
+    esqueleto: { pl: 'esqueletos', nome: 'Esqueleto', art: 'o', hp: 24, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
+    aranha: { pl: 'aranhas gigantes', nome: 'Aranha gigante', art: 'a', hp: 22, atk: [2, 6], def: [1, 4], ouro: [4, 6], xp: 12 },
+    orc: { pl: 'orcs', nome: 'Orc', art: 'o', hp: 38, atk: [2, 8], def: [1, 6], ouro: [4, 10], xp: 20 },
+    bruxa: { pl: 'bruxas do pântano', nome: 'Bruxa do pântano', art: 'a', hp: 32, atk: [3, 6], def: null, ouro: [4, 10], xp: 20 },
+    ogro: { pl: 'ogros', nome: 'Ogro', art: 'o', hp: 62, atk: [3, 8], def: [2, 4], ouro: [6, 10], xp: 35 },
+    cavaleiro: { pl: 'cavaleiros negros', nome: 'Cavaleiro negro', art: 'o', hp: 56, atk: [3, 10], def: [2, 6], ouro: [6, 10], xp: 35 },
+    troll: { pl: 'trolls', nome: 'Troll', art: 'o', hp: 92, atk: [4, 8], def: [2, 6], ouro: [8, 10], xp: 60 },
+    golem: { pl: 'golens de pedra', nome: 'Golem de pedra', art: 'o', hp: 110, atk: [3, 12], def: [3, 6], ouro: [8, 10], xp: 60 },
     dragao: { nome: 'Dragão Vermelho', art: 'o', hp: 240, atk: [5, 12], def: [2, 6], ouro: [10, 20], xp: 0 },
   };
+  // Cada monstro tem uma versão chefe no fundo da masmorra dele ("Rei Rato"):
+  // o dobro da vida +10, um dado de ataque a mais e o dobro de dados de moeda.
+  for (const kind of Object.keys(Wd.MASMORRAS)) {
+    const m = MONSTERS[kind], nome = Wd.MASMORRAS[kind][1];
+    MONSTERS['chefe_' + kind] = {
+      nome, art: nome.startsWith('Rainha') ? 'a' : 'o', hp: m.hp * 2 + 10, atk: [m.atk[0] + 1, m.atk[1]], def: m.def,
+      ouro: [m.ouro[0] * 2, m.ouro[1]], xp: m.xp * 4, chefe: true, base: kind,
+    };
+  }
+  const TIER_OF = {};
+  for (const t in Wd.POOLS) for (const k of Wd.POOLS[t]) TIER_OF[k] = +t;
+  // Despojos: o que cai de cada monstro vencido (1d3; do chefe, 2d6). Servem
+  // para missões e valem (região) moedas cada nas fogueiras.
+  const PARTS = {
+    slime: ['gota de gosma', 'gotas de gosma'], rato: ['rabo de rato', 'rabos de rato'],
+    goblin: ['orelha de goblin', 'orelhas de goblin'], lobo: ['presa de lobo', 'presas de lobo'],
+    esqueleto: ['osso', 'ossos'], aranha: ['perna de aranha', 'pernas de aranha'],
+    orc: ['dente de orc', 'dentes de orc'], bruxa: ['verruga de bruxa', 'verrugas de bruxa'],
+    ogro: ['tufo de pelo de ogro', 'tufos de pelo de ogro'], cavaleiro: ['pluma negra', 'plumas negras'],
+    troll: ['unha de troll', 'unhas de troll'], golem: ['lasca de pedra', 'lascas de pedra'],
+  };
+  const cap = t => t[0].toUpperCase() + t.slice(1);
   const um = m => m.art === 'a' ? 'uma' : 'um';
+  const oa = m => m.art === 'a' ? 'a' : 'o';
+
+  // Missões de quem tem "!" no balão: 3 em sequência, ficando maiores.
+  const QUEST_N = { matar: [10, 10, 8, 8, 6, 5], coletar: [20, 18, 16, 14, 12, 10] };
+  const QUEST_OURO = [30, 60, 110, 180, 280, 420], QUEST_XP = [15, 30, 55, 90, 140, 210];
+  // Dia e noite: o relógio anda um passo por quadrado. Uma tocha dura 40 passos no escuro.
+  const CICLO = 100, TOCHA_PASSOS = 40, TOCHA_PRECO = 5;
   const xpNext = l => Math.round(10 * Math.pow(l, 1.5));
 
+  // Cada personagem de dica fala uma frase; ao conversar de novo, fala outra
+  // (a frase k, depois k + 9, k + 18...), então nenhuma dica fica de fora.
   const NPC_LINES = [
     'Dizem que o dragão mora no ponto mais longe daqui. Quanto mais longe você vai, mais forte é o monstro.',
-    'Defesa alta? Feitiço não liga pra escudo: a magia passa direto.',
     'Cada arma dá dados. A espada de madeira é 1d6... já ouvi falar de uma lâmina que rola 5d20!',
+    'De noite os monstros ficam mais fortes: rolam um dado de ataque a mais. Em compensação, dão mais experiência.',
+    'Sem tocha, de noite você não enxerga um palmo na frente do nariz. Em toda fogueira tem alguém vendendo tocha.',
+    'Cada tipo de monstro tem um rei escondido numa masmorra. Procure as portas de pedra com uma coroa em cima.',
+    'Gente com "!" no balão tem serviço pra você. E paga bem!',
     'Escudo e armadura também rolam dados. A soma deles sai do dano que você toma.',
-    'Se desmaiar, você acorda na última vila por onde passou, mas perde metade do ouro.',
-    'A Aldeia Borracha vende coisa melhor que a Vila Apontador. A Cidade Régua, melhor ainda.',
+    'Se desmaiar, você acorda na última fogueira por onde passou, mas perde metade do ouro. E os monstros voltam.',
+    'Defesa alta? Feitiço não liga pra escudo: a magia passa direto.',
+    'Descansar na fogueira cura tudo e passa a noite... mas todo monstro que você venceu volta pro mapa.',
+    'Quanto mais longe a fogueira, melhor o equipamento dos guerreiros que descansam nela.',
     'Monstro desenhado no mapa não corre atrás de ninguém. Você escolhe se quer brigar.',
     'No mato fechado aparece bicho do nada. Cuidado na floresta e no pântano.',
     'Baú tem moeda, poção e, com sorte, equipamento bom.',
     'Fugir é rolar um d20. Logo no começo da luta é mais fácil.',
-    'Quando o mestre faz um X em cima de alguma coisa, é porque já foi resolvida.',
+    'Rabo de rato, osso de esqueleto... tudo que cai dos monstros vale umas moedas na fogueira.',
   ];
-  const VILLAGE_TEXT = [
-    'Primeira vila da ilha. Tem pousada, ferreiro e uma senhora que vende poção.',
-    'Uma aldeia no meio do caminho. O ferreiro daqui trabalha com ferro e prata.',
-    'A maior cidade da ilha. Dizem que o ferreiro forjou uma lâmina com escama de dragão.',
+  // Quem descansa em cada fogueira (cada uma usa uma frase, pela ordem).
+  const CAMP_TEXT = [
+    'Em volta do fogo: um ferreiro andarilho afiando a espada, uma maga de chapéu torto e um mercador cochilando.',
+    'Uma cavaleira remenda o escudo, um mago velho lê pergaminhos e um mercador conta moedas.',
+    'Dois guerreiros assam linguiça no fogo. Um deles carrega uma mochila cheia de armas pra vender.',
   ];
   const TERRAIN_TEXT = {
     [Wd.AREIA]: 'Praia! O mestre faz pontinhos de areia com a caneta amarela.',
@@ -101,10 +145,12 @@
   };
 
   // ---------- estado ----------
-  let W = null, P = null, G = null;
+  // W = a ilha; M = o mapa onde o herói está (a ilha ou uma masmorra); L = o estado desse mapa.
+  let W = null, P = null, G = null, M = null, L = null, dunCache = {};
+  const newLevel = m => ({ rev: new Uint8Array(m.W * m.H), dead: new Set(), opened: new Set(), trail: new Set() });
   const newState = () => ({
-    rev: new Uint8Array(W.W * W.H), dead: new Set(), opened: new Set(), talked: new Set(), trail: new Set(),
-    seen: new Set(), steps: 0, kills: 0, won: false,
+    over: { ...newLevel(W), talked: new Set(), cleared: new Set(), won: false }, dun: {},
+    seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {},
   });
   function newPlayer(nome) {
     return {
@@ -112,6 +158,8 @@
       equip: { arma: 'espada_madeira', escudo: null, armadura: null },
       bolsa: [], pocoes: { pocao_vida: 2, pocao_mana: 0 }, magias: [],
       x: W.start % W.W, y: (W.start / W.W) | 0, respawn: W.start,
+      onde: null, ox: 0, oy: 0, tochas: 2, tocha: 0,
+      abates: {}, partes: {}, missoes: [], etapa: {},
     };
   }
   const fmtD = d => d ? `${d[0]}d${d[1]}` : '—';
@@ -119,7 +167,55 @@
   const avg = d => d ? d[0] * (d[1] + 1) / 2 : 0;
   const atkDie = () => P.equip.arma ? ITEMS[P.equip.arma].dado : [1, 2];
   const defDice = () => [P.equip.escudo, P.equip.armadura].filter(Boolean).map(id => ITEMS[id].dado);
-  const idx = (x, y) => y * W.W + x;
+  const idx = (x, y) => y * M.W + x;
+
+  // ---------- dia, noite e tocha ----------
+  // Relógio de 0 a 99: 0–64 dia, 65–74 escurece aos poucos, 75–94 noite, 95–99 amanhece.
+  const darkness = () => { const c = G.clock; return c < 65 ? 0 : c < 75 ? (c - 64) / 10 : c < 95 ? 1 : (100 - c) / 6; };
+  const isNight = () => darkness() >= 0.5;
+  const inDungeon = () => P.onde != null;
+  const isDark = () => inDungeon() || isNight();
+  const lit = () => isDark() && P.tocha > 0;
+  // À noite (fora da masmorra) o monstro rola um dado de ataque a mais.
+  const nightBonus = () => isNight() && !inDungeon();
+  const atkOf = md => nightBonus() ? [md.atk[0] + 1, md.atk[1]] : md.atk;
+  // No escuro, cada passo gasta a tocha acesa; quando ela acaba, acende a próxima sozinho.
+  function burnTorch(step) {
+    if (!isDark()) return;
+    let out = false;
+    if (step && P.tocha > 0) { P.tocha--; out = !P.tocha; }
+    if (P.tocha <= 0 && P.tochas > 0) {
+      P.tochas--; P.tocha = TOCHA_PASSOS;
+      narrate(out ? 'A tocha apagou e você acende outra.' : 'Você acende uma tocha. O mestre pinta um círculo de luz amarela.');
+    } else if (out) narrate('A tocha apagou! Sem tocha, você mal enxerga.');
+  }
+
+  // ---------- missões ----------
+  const npcAt = i => W.obj.get(i);
+  function questsOf(i, o) {
+    const pool = Wd.POOLS[o.tier], h = S.hash(W.seed, i, 5), tr = o.tier - 1;
+    const a = pool[h % 2], b = pool[(h + 1) % 2];
+    const list = [{ tipo: 'matar', kind: a, n: QUEST_N.matar[tr] }, { tipo: 'coletar', kind: b, n: QUEST_N.coletar[tr] }];
+    // O chefe pedido é o de uma masmorra que existe nesta ilha.
+    const has = k => W.dungeons.some(d => W.obj.get(d).kind === k);
+    const boss = has(a) ? a : has(b) ? b : null;
+    if (boss) list.push({ tipo: 'chefe', kind: boss, n: 1 });
+    return list;
+  }
+  const questText = q => q.tipo === 'matar' ? `Derrotar ${q.n} ${MONSTERS[q.kind].pl}`
+    : q.tipo === 'coletar' ? `Juntar ${q.n} ${PARTS[q.kind][1]}`
+    : `Derrotar ${oa(MONSTERS['chefe_' + q.kind])} ${MONSTERS['chefe_' + q.kind].nome}`;
+  const progress = q => q.tipo === 'coletar' ? (P.partes[q.kind] || 0)
+    : q.tipo === 'chefe' ? Math.min(1, P.abates['chefe_' + q.kind] || 0)
+    : (P.abates[q.kind] || 0) - q.base;
+  const questReward = (tier, k) => [Math.round(QUEST_OURO[tier - 1] * (1 + k * 0.5)), Math.round(QUEST_XP[tier - 1] * (1 + k * 0.5))];
+  // Avisa (uma vez) quando uma missão fica pronta para entregar.
+  function questPing() {
+    for (const q of P.missoes) if (!q.avisado && progress(q) >= q.n) {
+      q.avisado = true;
+      narrate(`Missão cumprida: ${questText(q)}! Volte a ${npcAt(q.npc).nome} para receber.`);
+    }
+  }
 
   // ---------- som (sintetizado, sem arquivos) ----------
   const SFX = {
@@ -169,7 +265,7 @@
 
   // Desktop vê ~12 quadrados de largura; celular em pé, ~6,5 (senão o herói some).
   function baseZoom() { return Math.max(0.55, Math.min(1.35, Math.min(vw / (T * (vw < vh ? 6.5 : 12)), vh / (T * 8.5)))); }
-  function overZoom() { return Math.min(vw / (W.W * T), vh / (W.H * T)) * 0.96; }
+  function overZoom() { return Math.min(vw / (M.W * T), vh / (M.H * T)) * 0.96; }
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     vw = innerWidth; vh = innerHeight;
@@ -202,32 +298,46 @@
     anims.push({ list, t0: performance.now() + delay, dur: (260 + Math.min(1100, S.total(list) * 0.42)) / speed });
   }
 
+  // Raio do que o mestre desenha: de dia ~2,6 quadrados; no escuro com tocha
+  // ~2,2; no escuro sem tocha, só os 8 vizinhos.
   function reveal(px, py, instant) {
-    const found = [];
+    const found = [], R2 = !isDark() ? 6.8 : lit() ? 5 : 2;
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
       const d = dx * dx + dy * dy, x = px + dx, y = py + dy;
-      if (d > 6.8 || x < 0 || y < 0 || x >= W.W || y >= W.H || G.rev[idx(x, y)]) continue;
-      G.rev[idx(x, y)] = 1;
+      if (d > R2 || x < 0 || y < 0 || x >= M.W || y >= M.H || L.rev[idx(x, y)]) continue;
+      L.rev[idx(x, y)] = 1;
       found.push([x, y, d + Math.random() * 0.5]);
     }
     found.sort((a, b) => a[2] - b[2]);
-    found.forEach(([x, y], k) => { const s = A.tile(W, x, y, T, G); if (instant) bake(s); else animate(s, k * 70); });
+    found.forEach(([x, y], k) => { const s = A.tile(M, x, y, T, L); if (instant) bake(s); else animate(s, k * 70); });
   }
   function addTrail(ax, ay, bx, by, instant) {
     const a = idx(ax, ay), b = idx(bx, by), key = Math.min(a, b) + '-' + Math.max(a, b);
-    if (!instant && G.trail.has(key)) return;
-    G.trail.add(key);
-    const s = A.trail(ax, ay, bx, by, T, S.hash(W.seed, a, b));
+    if (!instant && L.trail.has(key)) return;
+    L.trail.add(key);
+    const s = A.trail(ax, ay, bx, by, T, S.hash(M.seed, a, b));
     if (instant) bake(s); else animate(s, 0, 2.5);
   }
   function rebakeAll() {
     chunks.clear(); anims.length = 0;
-    for (let i = 0; i < G.rev.length; i++) if (G.rev[i]) bake(A.tile(W, i % W.W, (i / W.W) | 0, T, G));
-    for (const key of G.trail) {
+    for (let i = 0; i < L.rev.length; i++) if (L.rev[i]) bake(A.tile(M, i % M.W, (i / M.W) | 0, T, L));
+    for (const key of L.trail) {
       const [a, b] = key.split('-').map(Number);
-      bake(A.trail(a % W.W, (a / W.W) | 0, b % W.W, (b / W.W) | 0, T, S.hash(W.seed, a, b)));
+      bake(A.trail(a % M.W, (a / M.W) | 0, b % M.W, (b / M.W) | 0, T, S.hash(M.seed, a, b)));
     }
   }
+  // Troca o mapa atual: null = a ilha; n = a masmorra n. O mestre "vira a página".
+  function dunMap(n) {
+    const o = W.obj.get(W.dungeons[n]);
+    return dunCache[n] || (dunCache[n] = Wd.dungeon(W.seed, n, o.kind, o.tier));
+  }
+  function setMap(n) {
+    P.onde = n == null ? null : n;
+    if (P.onde == null) { M = W; L = G.over; } else { M = dunMap(n); L = G.dun[n] || (G.dun[n] = newLevel(M)); }
+    walker = null; path = [];
+    rebakeAll();
+  }
+  function snapCam() { cam.x = P.x * T + T / 2; cam.y = P.y * T + T / 2 + 20; cam.z = baseZoom(); }
 
   // ---------- desenho da tela ----------
   function heroPos() {
@@ -278,9 +388,45 @@
     S.drawAll(ctx, heroFrames[walker && walker.t > 0.5 ? 1 : 0], 1);
     ctx.restore();
 
+    if (darkV > 0.01 && !cam.over) drawDark(ox + px * z, oy + py * z);
     if (head) drawPen(head);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     drawMargin();
+  }
+  // A noite é o mestre pintando a folha de azul-escuro com lápis, menos um
+  // círculo em volta do herói (maior com tocha, tremendo como fogo).
+  const darkCv = document.createElement('canvas'), dctx = darkCv.getContext('2d');
+  const nightHatch = (() => {
+    const g = document.createElement('canvas'); g.width = g.height = 14;
+    const x = g.getContext('2d');
+    x.strokeStyle = 'rgba(20,22,60,0.55)'; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(-2, 16); x.lineTo(16, -2); x.stroke();
+    return ctx.createPattern(g, 'repeat');
+  })();
+  let darkV = 0;
+  function drawDark(sx, sy) {
+    if (darkCv.width !== cv.width || darkCv.height !== cv.height) { darkCv.width = cv.width; darkCv.height = cv.height; }
+    const d = dctx, z = cam.z, a = darkV, on = lit();
+    d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    d.globalCompositeOperation = 'source-over';
+    d.clearRect(0, 0, vw, vh);
+    d.fillStyle = `rgba(30,34,84,${0.62 * a})`; d.fillRect(0, 0, vw, vh);
+    d.globalAlpha = a; d.fillStyle = nightHatch; d.fillRect(0, 0, vw, vh); d.globalAlpha = 1;
+    const fl = on ? 1 + Math.sin(now / 90) * 0.05 + Math.sin(now / 37) * 0.03 : 1;
+    const r1 = (on ? 3.3 : 1.5) * T * z * fl, r0 = (on ? 1.9 : 0.55) * T * z;
+    const g = d.createRadialGradient(sx, sy, 0, sx, sy, r1);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(r0 / r1, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    d.globalCompositeOperation = 'destination-out';
+    d.fillStyle = g; d.beginPath(); d.arc(sx, sy, r1, 0, 7); d.fill();
+    d.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(darkCv, 0, 0);
+    if (on) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = ctx.createRadialGradient(sx, sy, 0, sx, sy, r1);
+      w.addColorStop(0, `rgba(239,138,34,${0.13 * a})`); w.addColorStop(1, 'rgba(239,138,34,0)');
+      ctx.fillStyle = w; ctx.beginPath(); ctx.arc(sx, sy, r1, 0, 7); ctx.fill();
+    }
   }
   // A caneta do mestre, com a cor do traço que está desenhando.
   function drawPen(h) {
@@ -322,7 +468,9 @@
         else if (dir) stepTo(P.x + dir[0], P.y + dir[1]);
       }
       const [hx, hy] = heroPos();
-      const tx = cam.over ? W.W * T / 2 : hx * T + T / 2, ty = cam.over ? W.H * T / 2 : hy * T + T / 2 + 20;
+      const tx = cam.over ? M.W * T / 2 : hx * T + T / 2, ty = cam.over ? M.H * T / 2 : hy * T + T / 2 + 20;
+      const dTarget = inDungeon() ? 0.9 : darkness() * 0.85;
+      darkV += (dTarget - darkV) * Math.min(1, dt * 2);
       const tz = cam.over ? overZoom() : baseZoom(), k = Math.min(1, dt * 5);
       cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; cam.z += (tz - cam.z) * k;
       if (anims.some(a => now >= a.t0) && now - lastScrib > 110) { lastScrib = now; SFX.scribble(); }
@@ -333,25 +481,27 @@
 
   // ---------- movimento e eventos do mapa ----------
   function blocking(i) {
-    const o = W.obj.get(i);
-    return o && ((o.type === 'monstro' && !G.dead.has(i)) || o.type === 'npc' || (o.type === 'covil' && !G.won));
+    const o = M.obj.get(i);
+    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i)) || o.type === 'npc' || (o.type === 'covil' && !G.over.won));
   }
   function stepTo(nx, ny) {
-    if (nx < 0 || ny < 0 || nx >= W.W || ny >= W.H) return;
+    if (nx < 0 || ny < 0 || nx >= M.W || ny >= M.H) return;
     if (nx !== P.x) face = nx > P.x ? 1 : -1;
-    const i = idx(nx, ny), o = W.obj.get(i);
+    const i = idx(nx, ny), o = M.obj.get(i);
     if (blocking(i)) {
       path = []; held = null;
       if (o.type === 'monstro') meetMonster(i, o);
+      else if (o.type === 'chefe') meetBoss(i, o);
       else if (o.type === 'npc') talk(i, o);
       else lair(i);
       return;
     }
-    if (!Wd.passable(W.t[i])) {
+    if (!Wd.passable(M.t[i])) {
       path = [];
       if (!stepTo.warned || now - stepTo.warned > 2500) {
         stepTo.warned = now;
-        narrate(W.t[i] === Wd.AGUA ? pick(['Aí é água! Sem barco, nada feito.', 'O mestre balança a cabeça: "não dá pra nadar".']) : 'Montanha íngreme demais. Dá a volta.');
+        narrate(M.t[i] === Wd.AGUA ? pick(['Aí é água! Sem barco, nada feito.', 'O mestre balança a cabeça: "não dá pra nadar".'])
+          : M.t[i] === Wd.PAREDE ? 'Parede de pedra.' : 'Montanha íngreme demais. Dá a volta.');
       }
       return;
     }
@@ -360,39 +510,50 @@
   }
   // Busca em largura pelos quadrados já desenhados (toque/clique no mapa).
   function findPath(tx, ty) {
-    const goal = idx(tx, ty), start = idx(P.x, P.y), prev = new Int32Array(W.W * W.H).fill(-1), q = [start];
+    const goal = idx(tx, ty), start = idx(P.x, P.y), prev = new Int32Array(M.W * M.H).fill(-1), q = [start];
     prev[start] = start;
     for (let h = 0; h < q.length; h++) {
       const i = q[h];
       if (i === goal) break;
-      const x = i % W.W, y = (i / W.W) | 0;
+      const x = i % M.W, y = (i / M.W) | 0;
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const nx = x + dx, ny = y + dy;
-        if (nx < 0 || ny < 0 || nx >= W.W || ny >= W.H) continue;
+        if (nx < 0 || ny < 0 || nx >= M.W || ny >= M.H) continue;
         const j = idx(nx, ny);
-        if (prev[j] >= 0 || !G.rev[j]) continue;
-        if (j !== goal && (!Wd.passable(W.t[j]) || blocking(j))) continue;
+        if (prev[j] >= 0 || !L.rev[j]) continue;
+        if (j !== goal && (!Wd.passable(M.t[j]) || blocking(j))) continue;
         prev[j] = i; q.push(j);
       }
     }
     if (prev[goal] < 0 || goal === start) return null;
     const out = [];
-    for (let i = goal; i !== start; i = prev[i]) out.unshift([i % W.W, (i / W.W) | 0]);
+    for (let i = goal; i !== start; i = prev[i]) out.unshift([i % M.W, (i / M.W) | 0]);
     return out;
   }
-  const nearVillage = (x, y) => W.villages.some(v => Math.abs(v % W.W - x) <= 2 && Math.abs(((v / W.W) | 0) - y) <= 2);
+  const nearCamp = (x, y) => M.camps.some(v => Math.abs(v % M.W - x) <= 2 && Math.abs(((v / M.W) | 0) - y) <= 2);
 
   function arrive(fx, fy) {
     G.steps++;
+    // O relógio anda um passo; o mestre avisa quando anoitece e amanhece.
+    const wasNight = isNight();
+    if (++G.clock >= CICLO) { G.clock = 0; G.day++; }
+    burnTorch(true);
     addTrail(fx, fy, P.x, P.y);
     reveal(P.x, P.y);
-    const i = idx(P.x, P.y), t = W.t[i], tier = W.tier[i], o = W.obj.get(i);
-    if (TERRAIN_TEXT[t] && !G.seen.has('t' + t)) { G.seen.add('t' + t); narrate(TERRAIN_TEXT[t]); }
-    else if (REGION_TEXT[tier] && !G.seen.has('r' + tier)) { G.seen.add('r' + tier); narrate(REGION_TEXT[tier]); }
-    if (o && o.type === 'vila') { path = []; held = null; village(i, o); }
-    else if (o && o.type === 'bau' && !G.opened.has(i)) { path = []; held = null; chest(i, o); }
-    else if (!o && G.steps > 6 && !nearVillage(P.x, P.y)) {
-      const chance = { [Wd.AREIA]: 0.04, [Wd.CAMPO]: 0.05, [Wd.MATA]: 0.085, [Wd.PANTANO]: 0.095 }[t] || 0;
+    const i = idx(P.x, P.y), t = M.t[i], tier = M.tier[i], o = M.obj.get(i);
+    if (!inDungeon()) {
+      if (TERRAIN_TEXT[t] && !G.seen.has('t' + t)) { G.seen.add('t' + t); narrate(TERRAIN_TEXT[t]); }
+      else if (REGION_TEXT[tier] && !G.seen.has('r' + tier)) { G.seen.add('r' + tier); narrate(REGION_TEXT[tier]); }
+      if (!wasNight && isNight()) narrate(P.tocha > 0 ? 'Anoiteceu. O mestre pinta a folha de azul-escuro; sua tocha ilumina em volta. Os monstros ficam mais fortes.'
+        : 'Anoiteceu! O mestre pinta a folha de azul-escuro. Sem tocha, você mal enxerga, e os monstros ficam mais fortes.');
+      else if (wasNight && !isNight()) narrate(`Amanheceu! Dia ${G.day + (G.clock > 90 ? 1 : 0)}. O mestre apaga o azul com a borracha.`);
+    }
+    if (o && o.type === 'fogueira') { path = []; held = null; camp(i, o); }
+    else if (o && o.type === 'masmorra') { path = []; held = null; enterDungeon(i, o); }
+    else if (o && o.type === 'saida') { path = []; held = null; leaveDungeon(); }
+    else if (o && o.type === 'bau' && !L.opened.has(i)) { path = []; held = null; chest(i, o); }
+    else if (!o && !inDungeon() && G.steps > 6 && !nearCamp(P.x, P.y)) {
+      const chance = ({ [Wd.AREIA]: 0.04, [Wd.CAMPO]: 0.05, [Wd.MATA]: 0.085, [Wd.PANTANO]: 0.095 }[t] || 0) * (isNight() ? 1.5 : 1);
       if (Math.random() < chance) { path = []; held = null; ambush(tier); }
     }
     hud(); save();
@@ -435,7 +596,18 @@
   }
 
   function hud() {
-    if (!P) return;
+    if (!P || !G) return;
+    const night = isNight() || inDungeon();
+    $('time-img').src = A.iconURL(night ? 'moon' : 'sun');
+    $('s-time').querySelector('b').textContent = inDungeon() ? 'Masmorra' : `Dia ${G.day}${isNight() ? ' · noite' : ''}`;
+    $('s-torch').querySelector('b').innerHTML = `${P.tochas}${P.tocha > 0 ? ` <small>acesa: ${P.tocha}</small>` : ''}`;
+    $('torch-img').src = A.iconURL('torch', P.tocha > 0 ? '' : 'off');
+    const qs2 = P.missoes.map(q => {
+      const pr = Math.min(q.n, progress(q)), done = pr >= q.n;
+      return `<div class="${done ? 'done' : ''}">${done ? '✓' : '•'} ${questText(q)} <b>${pr}/${q.n}</b>${done ? ` <small>volte a ${npcAt(q.npc).nome}</small>` : ''}</div>`;
+    });
+    $('quests').innerHTML = qs2.length ? `<i>Missões</i>${qs2.join('')}` : '';
+    $('quests').hidden = !qs2.length;
     $('s-hp').querySelector('b').textContent = `${P.hp}/${P.hpMax}`;
     $('s-pm').querySelector('b').textContent = `${P.pm}/${P.pmMax}`;
     $('s-gold').querySelector('b').textContent = P.ouro;
@@ -536,7 +708,7 @@
 
   // ---------- combate ----------
   async function combat(kind, opt = {}) {
-    const md = MONSTERS[kind], m = { ...md, max: md.hp };
+    const md = MONSTERS[kind], night = nightBonus(), m = { ...md, max: md.hp, atk: atkOf(md) };
     openPanel(`
       <div class="combat">
         <div class="foe">
@@ -544,6 +716,7 @@
           <h2>${m.nome}</h2>
           <div class="bar foe-bar"><i></i></div>
           <p class="small">${ic('heart')}<span id="foe-hp"></span> ${ic('sword')}${fmtD(m.atk)} ${ic('shield')}${fmtD(m.def)}</p>
+          ${night ? `<p class="small night">${ic('moon')} noite: +1 dado de ataque, +50% de experiência</p>` : ''}
         </div>
         <div class="side">
           <p class="me"><b>${esc(P.nome)}</b> ${ic('heart')}<span id="me-hp"></span> ${ic('star')}<span id="me-pm"></span></p>
@@ -583,7 +756,7 @@
     if (opt.ambush) { log(`${m.nome} ataca primeiro!`); await monsterTurn(); }
     let first = !opt.ambush, result = null;
     while (!result && P.hp > 0) {
-      const dc = kind === 'dragao' ? 15 : first ? 8 : 11;
+      const dc = kind === 'dragao' ? 15 : md.chefe ? 13 : first ? 8 : 11;
       const hasPot = P.pocoes.pocao_vida > 0 || P.pocoes.pocao_mana > 0;
       const choice = await ask(acts, [
         { html: `${ic('sword', ITEMS[P.equip.arma]?.cor)} Atacar <small>${fmtD(atkDie())}</small>`, v: 'atk', cls: 'red' },
@@ -653,14 +826,20 @@
     if (result === 'vitoria') {
       foe.defeat();
       G.kills++;
-      log(`Você venceu ${m.nome}! O mestre faz um X em cima dele.`);
+      P.abates[kind] = (P.abates[kind] || 0) + 1;
+      log(`Você venceu ${m.nome}! O mestre faz um X em cima.`);
       await wait(500);
-      const [ouro] = await tray.roll([{ label: 'Moedas', dice: expand([m.ouro]), color: C.YELLOW }]);
+      // Moedas e despojos rolam juntos na bandeja.
+      const base = md.base || kind, part = PARTS[base];
+      const groups = [{ label: 'Moedas', dice: expand([m.ouro]), color: C.YELLOW }];
+      if (part) groups.push({ label: cap(part[1]), dice: expand([md.chefe ? [2, 6] : [1, 3]]), color: C.BROWN });
+      const [ouro, np = 0] = await tray.roll(groups);
       P.ouro += ouro;
+      if (np) P.partes[base] = (P.partes[base] || 0) + np;
       SFX.coin();
       tray.result(`+${ouro}`, 'moedas', C.OCHRE);
-      const ups = gainXp(m.xp);
-      log(`+${ouro} moedas${m.xp ? `, +${m.xp} de experiência` : ''}.${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b> Vida e magia cheias.` : ''}`);
+      const xp = Math.round(m.xp * (night ? 1.5 : 1)), ups = gainXp(xp);
+      log(`+${ouro} moedas${np ? `, +${np} ${part[np > 1 ? 1 : 0]}` : ''}${xp ? `, +${xp} de experiência${night ? ' (noite)' : ''}` : ''}.${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b> Vida e magia cheias.` : ''}`);
       bars();
     } else if (result === 'derrota') {
       log('Você desmaiou... O mestre vira a página.');
@@ -668,7 +847,8 @@
     await ask(acts, [{ html: 'Continuar', v: 1, cls: 'green' }]);
     closePanel();
     if (result === 'derrota') faint();
-    save();
+    else questPing();
+    hud(); save();
     return result;
   }
 
@@ -686,9 +866,12 @@
   function faint() {
     const lost = Math.floor(P.ouro / 2);
     P.ouro -= lost; P.hp = P.hpMax; P.pm = P.pmMax;
+    if (inDungeon()) setMap(null);
     P.x = P.respawn % W.W; P.y = (P.respawn / W.W) | 0;
     walker = null; path = [];
-    narrate(`Você acorda em ${Wd.VILAS[W.obj.get(P.respawn).n]}, todo enfaixado. Perdeu ${lost} moedas.`);
+    respawnMonsters();
+    snapCam();
+    narrate(`Você acorda no ${Wd.FOGUEIRAS[W.obj.get(P.respawn).n]}, todo enfaixado. Perdeu ${lost} moedas, e os monstros voltaram.`);
     hud(); save();
   }
 
@@ -696,19 +879,80 @@
     const m = MONSTERS[o.kind];
     const v = await dialog(`${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome}!`,
       `<p>O mestre desenhou ${um(m)} ${m.nome} bem no caminho.</p>
-       <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(m.atk)} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
        <p class="small">Seu ataque: ${fmtD(atkDie())} · sua defesa: ${defDice().map(fmtD).join(' + ') || 'nenhuma'}</p>`,
       [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Deixar pra lá', v: 'nao' }], A.monsterURL(o.kind, 160));
     if (v !== 'luta') return;
     const r = await combat(o.kind);
-    if (r === 'vitoria') { G.dead.add(i); animate(A.cross(i % W.W, (i / W.W) | 0, T, i)); save(); }
+    if (r === 'vitoria') { L.dead.add(i); animate(A.cross(i % M.W, (i / M.W) | 0, T, i)); save(); }
+  }
+
+  // O chefe no fundo da masmorra. Vencer marca a masmorra com X na ilha e
+  // abre o baú do tesouro atrás do trono.
+  async function meetBoss(i, o) {
+    const id = 'chefe_' + o.kind, m = MONSTERS[id];
+    const v = await dialog(`${m.nome}!`,
+      `<p>No fundo da masmorra, num trono rabiscado com caneta dourada, está ${oa(m)} <b>${m.nome}</b>.</p>
+       <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(m.atk)} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       <p class="small">Seu ataque: ${fmtD(atkDie())} · sua defesa: ${defDice().map(fmtD).join(' + ') || 'nenhuma'} · fugir de um chefe: d20 ≥ 13.</p>`,
+      [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Agora não', v: 'nao' }], A.monsterURL(id, 160));
+    if (v !== 'luta') return;
+    const r = await combat(id, { text: `${m.nome} se levanta do trono. O mestre pinta a coroa de amarelo bem forte.` });
+    if (r !== 'vitoria') return;
+    L.dead.add(i);
+    G.over.cleared.add(M.masmorra);
+    animate(A.cross(i % M.W, (i / M.W) | 0, T, i));
+    const it = loot(M.tier[i]);
+    P.bolsa.push(it);
+    save();
+    await dialog('Tesouro do chefe!', `<p>Atrás do trono tinha um baú. Dentro: ${itemIc(it)} <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)})! Está na mochila.</p>
+      <p class="small">Volte pela escada para sair. Na ilha, o mestre risca a entrada desta masmorra.</p>`,
+      [{ html: 'Oba!', v: 1, cls: 'green' }], A.iconURL('chest', '', 160));
+    hud(); save();
+  }
+  // Equipamento de uma loja à frente da região (nunca a Lâmina do Dragão).
+  function loot(tier) {
+    const lvl = Math.min(3, Math.ceil(tier / 2) + 1);
+    return pick(Object.keys(ITEMS).filter(id => ITEMS[id].loja === lvl && ITEMS[id].slot !== 'pocao' && id !== 'lamina_dragao'));
+  }
+
+  async function enterDungeon(i, o) {
+    const id = 'chefe_' + o.kind, m = MONSTERS[id], done = G.over.cleared.has(o.n);
+    const v = await dialog(Wd.nomeMasmorra(o.kind),
+      `<p>${done ? `Você já derrotou ${oa(m)} ${m.nome}. Lá embaixo ainda tem o que ficou para trás.`
+        : `Uma escada desce para o escuro. Lá no fundo mora ${oa(m)} <b>${m.nome}</b>.`}</p>
+       <p>${ic('heart')} ${m.hp} · ${ic('sword')} ${fmtD(m.atk)} · ${ic('shield')} ${fmtD(m.def)}</p>
+       <p class="small">Lá dentro é sempre escuro: leve tochas. Você tem ${P.tochas}${P.tocha > 0 ? ' e uma acesa' : ''}.</p>`,
+      [{ html: 'Descer', v: 'sim', cls: 'red' }, { html: 'Agora não', v: 'nao' }], A.monsterURL(id, 160));
+    if (v !== 'sim') return;
+    P.ox = P.x; P.oy = P.y;
+    setMap(o.n);
+    P.x = M.start % M.W; P.y = (M.start / M.W) | 0;
+    snapCam();
+    burnTorch(false);
+    reveal(P.x, P.y);
+    narrate(P.tocha > 0 ? 'O mestre vira a página e desenha a escada descendo. Sua tocha ilumina as paredes.'
+      : 'O mestre vira a página... está tudo escuro. Sem tocha, você só vê o que está do seu lado.');
+    hud(); save();
+  }
+  async function leaveDungeon() {
+    const v = await dialog('Escada', '<p>Subir de volta para a ilha?</p>',
+      [{ html: 'Subir', v: 'sim', cls: 'green' }, { html: 'Ficar aqui', v: 'nao' }], A.iconURL('map', '', 160));
+    if (v !== 'sim') return;
+    setMap(null);
+    P.x = P.ox; P.y = P.oy;
+    snapCam();
+    narrate('O mestre volta para a página da ilha.');
+    hud(); save();
   }
 
   async function ambush(tier) {
+    // Metade das vezes, vem o monstro que uma missão ativa desta região pede.
     const pool = Wd.POOLS[Math.max(1, Math.random() < 0.25 ? tier - 1 : tier)];
-    const kind = pick(pool), m = MONSTERS[kind];
+    const want = P.missoes.filter(q => q.tipo !== 'chefe' && TIER_OF[q.kind] === tier && progress(q) < q.n).map(q => q.kind);
+    const kind = want.length && Math.random() < 0.5 ? pick(want) : pick(pool), m = MONSTERS[kind];
     const v = await dialog('Surpresa!', `<p>${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome} pula do meio do mato!</p>
-      <p>${ic('heart')} ${m.hp} · ${ic('sword')} ${fmtD(m.atk)} · ${ic('shield')} ${fmtD(m.def)}</p>
+      <p>${ic('heart')} ${m.hp} · ${ic('sword')} ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} ${fmtD(m.def)}</p>
       <p class="small">Fugir agora: role 1d20 e tire 8 ou mais. Se falhar, ele ataca primeiro.</p>`,
       [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Tentar fugir (d20)', v: 'fuga' }], A.monsterURL(kind, 160));
     if (v === 'luta') { await combat(kind); return; }
@@ -736,7 +980,7 @@
     if (v !== 'luta') return;
     const r = await combat('dragao', { text: 'O Dragão Vermelho abre as asas. O mestre troca para a caneta vermelha.' });
     if (r !== 'vitoria') return;
-    G.won = true;
+    G.over.won = true;
     animate(A.cross(i % W.W, (i / W.W) | 0, T, i));
     save();
     const e = await dialog('FIM!', `<p>${esc(P.nome)} derrotou o Dragão Vermelho! O mestre escreve "FIM" bem grande e desenha uma coroa.</p>
@@ -746,14 +990,61 @@
   }
 
   async function talk(i, o) {
+    if (o.quest) { await questGiver(i, o); return; }
     let extra = '';
-    if (o.presente && !G.talked.has(i)) {
+    if (o.presente && !G.over.talked.has(i)) {
       if (o.fala % 2) { P.pocoes.pocao_vida++; extra = `<p><b>Ganhou uma Poção de vida!</b></p>`; }
       else { const g = 10 * W.tier[i]; P.ouro += g; extra = `<p><b>Ganhou ${g} moedas!</b></p>`; SFX.coin(); }
     }
-    G.talked.add(i);
-    await dialog('Alguém no caminho', `<p>"${NPC_LINES[o.fala % NPC_LINES.length]}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
+    G.over.talked.add(i);
+    const n = G.conversa[i] || 0;
+    G.conversa[i] = n + 1;
+    await dialog('Alguém no caminho', `<p>"${NPC_LINES[(o.fala + n * 9) % NPC_LINES.length]}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
     save();
+  }
+
+  // Quem tem "!" no balão: oferece a próxima missão, mostra quanto falta ou
+  // recebe a missão pronta e paga (a do chefe também dá um equipamento).
+  async function questGiver(i, o) {
+    const list = questsOf(i, o), stage = P.etapa[i] || 0, cur = P.missoes.find(q => q.npc === i);
+    if (cur) {
+      const pr = Math.min(cur.n, progress(cur));
+      if (pr < cur.n) {
+        await dialog(o.nome, `<p>"E aí, ${esc(P.nome)}? Ainda faltam ${cur.n - pr}."</p><p><b>Missão:</b> ${questText(cur)} · ${pr}/${cur.n}</p>`,
+          [{ html: 'Já volto', v: 1 }]);
+        return;
+      }
+      if (cur.tipo === 'coletar') P.partes[cur.kind] -= cur.n;
+      const [ouro, xp] = questReward(o.tier, cur.k);
+      P.ouro += ouro; SFX.coin();
+      const ups = gainXp(xp);
+      let prize = '';
+      if (cur.tipo === 'chefe') { const it = loot(o.tier + 1); P.bolsa.push(it); prize = `<p>${itemIc(it)} E ainda ganhou <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)})! Está na mochila.</p>`; }
+      P.missoes = P.missoes.filter(q => q !== cur);
+      P.etapa[i] = stage + 1;
+      hud(); save();
+      await dialog(o.nome, `<p>"Você conseguiu! Muito obrigado, ${esc(P.nome)}!"</p><p><b>+${ouro} moedas, +${xp} de experiência.</b>${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b>` : ''}</p>${prize}`,
+        [{ html: 'De nada!', v: 1, cls: 'green' }], A.iconURL('coin', '', 160));
+      return;
+    }
+    if (stage >= list.length) {
+      await dialog(o.nome, `<p>"Graças a você a região está mais tranquila. O mestre devia desenhar uma estátua sua aqui!"</p>`, [{ html: 'Tchau!', v: 1 }]);
+      return;
+    }
+    const q = list[stage], [ouro, xp] = questReward(o.tier, stage), mm = MONSTERS[q.kind];
+    const ask2 = q.tipo === 'matar' ? `Os ${mm.pl} não me deixam em paz! Derrota ${q.n} deles pra mim?`
+      : q.tipo === 'coletar' ? `Preciso de ${q.n} ${PARTS[q.kind][1]} pra uma receita da minha avó. Consegue?`
+      : `Quem manda nesses bichos é ${oa(MONSTERS['chefe_' + q.kind])} ${MONSTERS['chefe_' + q.kind].nome}, lá no fundo da masmorra (${Wd.nomeMasmorra(q.kind)}). Dá um jeito nisso?`;
+    const v = await dialog(`${o.nome} pede ajuda`,
+      `<p>"${ask2}"</p><p><b>Missão:</b> ${questText(q)}</p>
+       <p class="small">Recompensa: ${ouro} moedas e ${xp} de experiência${q.tipo === 'chefe' ? ', mais um equipamento' : ''}.${q.tipo === 'coletar' ? ` Cada ${MONSTERS[q.kind].nome} vencido deixa 1d3 ${PARTS[q.kind][1]}.` : ''}</p>`,
+      [{ html: 'Aceitar', v: 'sim', cls: 'green' }, { html: 'Agora não', v: 'nao' }],
+      A.monsterURL(q.tipo === 'chefe' ? 'chefe_' + q.kind : q.kind, 160));
+    if (v !== 'sim') return;
+    P.missoes.push({ npc: i, k: stage, ...q, base: P.abates[q.kind] || 0 });
+    narrate(`Missão anotada na margem do caderno: ${questText(q)}.`);
+    questPing();
+    hud(); save();
   }
 
   async function chest(i, o) {
@@ -774,65 +1065,93 @@
       tray.result(`${luck}`, ITEMS[id].nome, ITEMS[id].cor);
       msg = `${itemIc(id)} Uma ${ITEMS[id].nome}!`;
     } else {
-      const lvl = Math.min(3, Math.ceil(o.tier / 2) + 1);
-      const ids = Object.keys(ITEMS).filter(id => ITEMS[id].vila === lvl && ITEMS[id].slot !== 'pocao' && id !== 'lamina_dragao');
-      const id = pick(ids);
+      const id = loot(o.tier);
       P.bolsa.push(id);
       tray.result(`${luck}!`, 'tesouro!', C.RED);
       msg = `${itemIc(id)} <b>${ITEMS[id].nome}</b> (${fmtD(ITEMS[id].dado)})! Está na mochila.`;
     }
     $('clog').innerHTML = msg;
-    G.opened.add(i);
-    animate(A.cross(i % W.W, (i / W.W) | 0, T, i + 1));
+    L.opened.add(i);
+    animate(A.cross(i % M.W, (i / M.W) | 0, T, i + 1));
     await ask($('acts'), [{ html: 'Fechar o baú', v: 1, cls: 'green' }]);
     closePanel(); save();
   }
 
-  // ---------- vila: pousada, ferreiro, magias, poções ----------
-  function village(i, o) {
+  // ---------- fogueira: descansar e comprar dos guerreiros ----------
+  // Nível da loja de uma fogueira: 1 nas regiões 1–2, 2 nas 3–4, 3 nas 5–6.
+  const campLevel = i => Math.min(3, Math.ceil(W.tier[i] / 2));
+  function camp(i, o) {
     const first = !G.seen.has('v' + o.n);
     G.seen.add('v' + o.n);
     P.respawn = i;
-    if (first) narrate(`Você chega em ${Wd.VILAS[o.n]}. Se desmaiar, acorda aqui.`);
-    renderVillage(o.n);
+    if (first) narrate(`Você chega no ${Wd.FOGUEIRAS[o.n]} e se aquece na fogueira. Se desmaiar, acorda aqui.`);
+    renderCamp(i, o.n);
+  }
+  // Descansar: vida e magia cheias, passa a noite se for tarde, e todo monstro
+  // vencido volta (menos chefes e o dragão), como num souls-like.
+  function rest() {
+    P.hp = P.hpMax; P.pm = P.pmMax;
+    const late = G.clock >= 60;
+    if (late) { G.day++; G.clock = 5; }
+    respawnMonsters();
+    SFX.lvl();
+    narrate(late ? `Você dorme perto do fogo e acorda de manhã. Dia ${G.day}. O mestre apaga os X dos monstros com a borracha: eles voltaram.`
+      : 'Você descansa perto do fogo. O mestre apaga os X dos monstros com a borracha: eles voltaram.');
+  }
+  // Tira os monstros vencidos da ilha e das masmorras (chefes ficam vencidos)
+  // e redesenha o mapa atual sem os X.
+  function respawnMonsters() {
+    G.over.dead.clear();
+    for (const n in G.dun) {
+      const m = dunMap(+n);
+      for (const i of [...G.dun[n].dead]) if (m.obj.get(i).type !== 'chefe') G.dun[n].dead.delete(i);
+    }
+    rebakeAll();
   }
   function owned(id) { return P.bolsa.includes(id) || Object.values(P.equip).includes(id); }
-  function renderVillage(n) {
-    const coin = ic('coin');
-    const inn = 3 + n * 6;
-    const gear = Object.keys(ITEMS).filter(id => ITEMS[id].vila <= n + 1 && ITEMS[id].slot !== 'pocao');
+  function renderCamp(i, n) {
+    const coin = ic('coin'), lvl = campLevel(i), late = G.clock >= 60;
+    const gear = Object.keys(ITEMS).filter(id => ITEMS[id].loja <= lvl && ITEMS[id].slot !== 'pocao');
     const pots = Object.keys(ITEMS).filter(id => ITEMS[id].slot === 'pocao');
-    const spells = Object.keys(SPELLS).filter(id => SPELLS[id].vila <= n + 1);
+    const spells = Object.keys(SPELLS).filter(id => SPELLS[id].loja <= lvl);
     const slotName = { arma: 'arma', escudo: 'escudo', armadura: 'armadura' };
     const row = (icon, name, info, price, act, off, note = '') =>
       `<div class="row">${icon}<span class="nm">${name} <small>${info}</small>${note ? `<em>${note}</em>` : ''}</span>
        <span class="pr">${price != null ? price + coin : ''}</span><button data-act="${act}" ${off ? 'disabled' : ''}>${act.startsWith('sell') ? 'Vender' : 'Comprar'}</button></div>`;
+    const partsNeeded = k => P.missoes.filter(q => q.tipo === 'coletar' && q.kind === k).reduce((a, q) => a + q.n, 0);
     openPanel(`
-      <h2>${Wd.VILAS[n]}</h2>
-      <p>${VILLAGE_TEXT[n]} Você tem ${P.ouro}${coin}</p>
-      <div class="row">${ic('heart')}<span class="nm">Pousada <small>vida e magia cheias</small></span><span class="pr">${inn}${coin}</span>
-        <button data-act="inn" ${P.ouro < inn || (P.hp === P.hpMax && P.pm === P.pmMax) ? 'disabled' : ''}>Descansar</button></div>
-      <h3>Ferreiro</h3>
+      <h2>${Wd.FOGUEIRAS[n]}</h2>
+      <p>${CAMP_TEXT[n % CAMP_TEXT.length]} Você tem ${P.ouro}${coin}</p>
+      <div class="row">${ic('fire')}<span class="nm">Descansar na fogueira <small>vida e magia cheias${late ? ', dorme até de manhã' : ''}</small><em>os monstros vencidos voltam (chefes e dragão, não)</em></span>
+        <button data-act="rest" class="red">${late ? 'Dormir' : 'Descansar'}</button></div>
+      <h3>Ferreiro andarilho</h3>
       ${gear.map(id => {
         const it = ITEMS[id], cur = P.equip[it.slot];
         const note = owned(id) ? 'você já tem' : cur ? `sua ${slotName[it.slot]}: ${fmtD(ITEMS[cur].dado)}` : `sem ${slotName[it.slot]}`;
         return row(itemIc(id), it.nome, fmtD(it.dado) + (it.slot === 'arma' ? ' de ataque' : ' de defesa'), it.preco, 'buy:' + id, owned(id) || P.ouro < it.preco, note);
       }).join('')}
-      <h3>Magias</h3>
+      <h3>Maga</h3>
       ${spells.map(id => {
         const s = SPELLS[id], has = P.magias.includes(id);
         return row(itemIc(id), s.nome, `${fmtD(s.dado)} ${s.tipo === 'cura' ? 'de cura' : 'de dano, ignora defesa'} · ${s.pm} PM`, s.preco, 'spell:' + id, has || P.ouro < s.preco, has ? 'você já sabe' : '');
       }).join('')}
-      <h3>Poções</h3>
+      <h3>Mercador</h3>
       ${pots.map(id => row(itemIc(id), ITEMS[id].nome, `${fmtD(ITEMS[id].dado)} de ${ITEMS[id].efeito === 'hp' ? 'vida' : 'magia'}`, ITEMS[id].preco, 'pot:' + id, P.ouro < ITEMS[id].preco, `você tem ${P.pocoes[id]}`)).join('')}
+      ${row(ic('torch'), 'Tocha', `acende sozinha no escuro, dura ${TOCHA_PASSOS} passos`, TOCHA_PRECO, 'torch', P.ouro < TOCHA_PRECO, `você tem ${P.tochas}`)}
+      ${Object.keys(P.partes).some(k => P.partes[k] > 0) ? `<h3>Vender despojos</h3>${Object.keys(P.partes).filter(k => P.partes[k] > 0).map(k => {
+        const need = partsNeeded(k), extra = P.partes[k] - need;
+        return row(`<img class="ic" src="${A.monsterURL(k, 64)}" alt="">`, `${P.partes[k]} ${PARTS[k][P.partes[k] > 1 ? 1 : 0]}`, `${TIER_OF[k]} cada`, extra > 0 ? extra * TIER_OF[k] : null, 'sellp:' + k, extra <= 0, need ? `${need} guardados para uma missão` : '');
+      }).join('')}` : ''}
       ${P.bolsa.length ? `<h3>Vender</h3>${P.bolsa.map((id, k) => row(itemIc(id), ITEMS[id].nome, fmtD(ITEMS[id].dado), Math.floor(ITEMS[id].preco / 2), 'sell:' + k, false)).join('')}` : ''}
-      <div class="actions"><button data-act="out" class="green">Sair da vila</button></div>`, 'village');
+      <div class="actions"><button data-act="out" class="green">Seguir viagem</button></div>`, 'village');
     $('panel').onclick = e => {
       const b = e.target.closest('button[data-act]');
       if (!b || b.disabled) return;
       const [act, arg] = b.dataset.act.split(':');
       if (act === 'out') { closePanel(); return; }
-      if (act === 'inn') { P.ouro -= inn; P.hp = P.hpMax; P.pm = P.pmMax; SFX.lvl(); }
+      if (act === 'rest') rest();
+      else if (act === 'torch') { P.ouro -= TOCHA_PRECO; P.tochas++; SFX.coin(); }
+      else if (act === 'sellp') { const extra = P.partes[arg] - partsNeeded(arg); P.partes[arg] -= extra; P.ouro += extra * TIER_OF[arg]; SFX.coin(); }
       else if (act === 'buy') {
         const it = ITEMS[arg];
         P.ouro -= it.preco;
@@ -842,7 +1161,7 @@
       else if (act === 'pot') { P.ouro -= ITEMS[arg].preco; P.pocoes[arg]++; SFX.coin(); }
       else if (act === 'sell') { const id = P.bolsa.splice(+arg, 1)[0]; P.ouro += Math.floor(ITEMS[id].preco / 2); SFX.coin(); }
       const top = $('panel').scrollTop;
-      renderVillage(n); $('panel').scrollTop = top;
+      renderCamp(i, n); $('panel').scrollTop = top;
       hud(); save();
     };
   }
@@ -862,8 +1181,12 @@
       <h3>Na mochila</h3>
       ${P.bolsa.length ? P.bolsa.map((id, k) => `<div class="row">${itemIc(id)}<span class="nm">${ITEMS[id].nome} <small>${fmtD(ITEMS[id].dado)}</small></span><button data-act="eq:${k}">Equipar</button></div>`).join('') : '<p class="small">Vazia. Itens que sobram ao comprar ou achar em baús vêm para cá.</p>'}
       ${['pocao_vida', 'pocao_mana'].map(id => `<div class="row">${itemIc(id)}<span class="nm">${ITEMS[id].nome} ×${P.pocoes[id]} <small>${fmtD(ITEMS[id].dado)}</small></span><button data-act="use:${id}" ${P.pocoes[id] ? '' : 'disabled'}>Beber</button></div>`).join('')}
+      <div class="row">${ic('torch')}<span class="nm">Tochas ×${P.tochas} <small>${P.tocha > 0 ? `uma acesa, mais ${P.tocha} passos` : `acendem sozinhas no escuro, ${TOCHA_PASSOS} passos cada`}</small></span></div>
+      ${Object.keys(P.partes).filter(k => P.partes[k] > 0).map(k => `<div class="row"><img class="ic" src="${A.monsterURL(k, 64)}" alt=""><span class="nm">${cap(PARTS[k][P.partes[k] > 1 ? 1 : 0])} ×${P.partes[k]} <small>despojo de ${MONSTERS[k].nome}</small></span></div>`).join('')}
+      <h3>Missões</h3>
+      ${P.missoes.length ? P.missoes.map(q => { const pr = Math.min(q.n, progress(q)); return `<div class="row">${ic('scroll', C.OCHRE)}<span class="nm">${questText(q)} <small>${pr}/${q.n}</small><em>${pr >= q.n ? `pronta: volte a ${npcAt(q.npc).nome}` : `para ${npcAt(q.npc).nome}`}</em></span></div>`; }).join('') : '<p class="small">Nenhuma. Quem tem "!" no balão tem serviço pra você.</p>'}
       <h3>Magias</h3>
-      ${P.magias.length ? P.magias.map(id => `<div class="row">${itemIc(id)}<span class="nm">${SPELLS[id].nome} <small>${fmtD(SPELLS[id].dado)} · ${SPELLS[id].pm} PM</small></span>${SPELLS[id].tipo === 'cura' ? `<button data-act="cast:${id}" ${P.pm >= SPELLS[id].pm && P.hp < P.hpMax ? '' : 'disabled'}>Usar</button>` : ''}</div>`).join('') : '<p class="small">Nenhuma ainda. Pergaminhos de magia são vendidos nas vilas.</p>'}
+      ${P.magias.length ? P.magias.map(id => `<div class="row">${itemIc(id)}<span class="nm">${SPELLS[id].nome} <small>${fmtD(SPELLS[id].dado)} · ${SPELLS[id].pm} PM</small></span>${SPELLS[id].tipo === 'cura' ? `<button data-act="cast:${id}" ${P.pm >= SPELLS[id].pm && P.hp < P.hpMax ? '' : 'disabled'}>Usar</button>` : ''}</div>`).join('') : '<p class="small">Nenhuma ainda. As magas das fogueiras vendem pergaminhos.</p>'}
       <p id="bag-msg" class="small"></p>
       <div class="actions"><button data-act="close" class="green">Fechar</button><button data-act="title">Tela inicial</button></div>`, 'bagp');
     $('panel').onclick = e => {
@@ -892,40 +1215,64 @@
   }
 
   // ---------- salvar / carregar ----------
+  const saveLevel = l => ({ rev: Array.from(l.rev).join(''), dead: [...l.dead], opened: [...l.opened], trail: [...l.trail] });
+  function loadLevel(l, d) {
+    for (let i = 0; i < d.rev.length; i++) if (d.rev[i] === '1') l.rev[i] = 1;
+    d.dead.forEach(i => l.dead.add(i)); d.opened.forEach(i => l.opened.add(i)); d.trail.forEach(k => l.trail.add(k));
+  }
   function save() {
     if (!W || !P) return;
     try {
+      const dun = {};
+      for (const n in G.dun) dun[n] = saveLevel(G.dun[n]);
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 1, seed: W.seed, P, rev: Array.from(G.rev).join(''), dead: [...G.dead], opened: [...G.opened],
-        talked: [...G.talked], trail: [...G.trail], seen: [...G.seen], steps: G.steps, kills: G.kills, won: G.won,
+        v: 2, seed: W.seed, P, dun,
+        over: { ...saveLevel(G.over), talked: [...G.over.talked], cleared: [...G.over.cleared], won: G.over.won },
+        seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
+  // O save da versão 1 (antes das masmorras) vira o da 2: a ilha de uma
+  // semente é a mesma, só ganhou masmorras e personagens novos.
   function loadSave() {
     if (qs.has('novo')) return null;
-    try { const s = JSON.parse(localStorage.getItem(SAVE_KEY)); return s && s.v === 1 ? s : null; } catch (e) { return null; }
+    try {
+      const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+      if (s && s.v === 2) return s;
+      const o = JSON.parse(localStorage.getItem(OLD_SAVE_KEY));
+      if (!o || o.v !== 1) return null;
+      return {
+        v: 2, seed: o.seed, P: o.P, dun: {}, seen: o.seen, steps: o.steps, kills: o.kills, clock: 10, day: 1, conversa: {},
+        over: { rev: o.rev, dead: o.dead, opened: o.opened, trail: o.trail, talked: o.talked, cleared: [], won: o.won },
+      };
+    } catch (e) { return null; }
   }
 
   function startGame(data) {
-    W = Wd.generate(data.seed);
+    W = Wd.generate(data.seed); dunCache = {};
     G = newState();
     walker = null; path = []; held = null; cam.over = false;
     if (data.P) {
-      P = data.P;
-      for (let i = 0; i < data.rev.length; i++) if (data.rev[i] === '1') G.rev[i] = 1;
-      data.dead.forEach(i => G.dead.add(i)); data.opened.forEach(i => G.opened.add(i));
-      data.talked.forEach(i => G.talked.add(i)); data.trail.forEach(k => G.trail.add(k)); data.seen.forEach(k => G.seen.add(k));
-      G.steps = data.steps; G.kills = data.kills; G.won = data.won;
-      rebakeAll();
+      // Campos novos (tochas, missões...) vêm do herói padrão quando o save é antigo.
+      P = Object.assign(newPlayer(data.P.nome), data.P);
+      const ov = data.over;
+      loadLevel(G.over, ov);
+      ov.talked.forEach(i => G.over.talked.add(i)); ov.cleared.forEach(n => G.over.cleared.add(n));
+      G.over.won = ov.won;
+      for (const n in data.dun) { G.dun[n] = newLevel(dunMap(+n)); loadLevel(G.dun[n], data.dun[n]); }
+      data.seen.forEach(k => G.seen.add(k));
+      Object.assign(G, { steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {} });
+      setMap(P.onde);
       narrate(`De volta à aventura de ${esc(P.nome)}. O mestre abre o caderno na mesma página.`);
     } else {
       P = newPlayer(data.nome);
-      chunks.clear(); anims.length = 0;
+      setMap(null);
       reveal(P.x, P.y);
-      narrate(`Era uma vez ${esc(P.nome)}, que morava em ${Wd.VILAS[0]}. O mestre destampa as canetas...`);
+      narrate(`Era uma vez ${esc(P.nome)}, que acordou ao lado de uma fogueira no ${Wd.FOGUEIRAS[0]}. O mestre destampa as canetas...`);
     }
     devShortcuts();
-    cam.x = P.x * T + T / 2; cam.y = P.y * T + T / 2 + 20; cam.z = baseZoom();
+    snapCam();
+    darkV = inDungeon() ? 0.9 : darkness() * 0.85;
     $('hud').hidden = false;
     $('dpad').hidden = !matchMedia('(pointer: coarse)').matches;
     hud(); save();
@@ -935,7 +1282,17 @@
   function devShortcuts() {
     if (qs.has('ouro')) P.ouro = +qs.get('ouro') || 9999;
     if (qs.has('nivel')) { const l = +qs.get('nivel') || 5; while (P.lvl < l) gainXp(xpNext(P.lvl) - P.xp); }
-    if (qs.has('revelar')) { G.rev.fill(1); rebakeAll(); }
+    if (qs.has('tochas')) P.tochas = +qs.get('tochas') || 0;
+    if (qs.has('noite')) { G.clock = 80; burnTorch(false); }
+    if (qs.has('masmorra')) {
+      const n = Math.min(W.dungeons.length - 1, +qs.get('masmorra') || 0), d = W.dungeons[n];
+      P.ox = d % W.W; P.oy = (d / W.W) | 0;
+      setMap(n);
+      P.x = M.start % M.W; P.y = (M.start / M.W) | 0;
+      burnTorch(false);
+      reveal(P.x, P.y, true);
+    }
+    if (qs.has('revelar')) { L.rev.fill(1); rebakeAll(); }
     if (qs.has('luta') && MONSTERS[qs.get('luta')]) setTimeout(() => combat(qs.get('luta')), 300);
   }
 
@@ -1010,8 +1367,8 @@
     if (cam.over) { cam.over = false; return; }
     const wx = (e.clientX - vw / 2) / cam.z + cam.x, wy = (e.clientY - vh / 2) / cam.z + cam.y;
     const tx = Math.floor(wx / T), ty = Math.floor(wy / T);
-    if (tx < 0 || ty < 0 || tx >= W.W || ty >= W.H) return;
-    if (!G.rev[idx(tx, ty)]) { narrate('O mestre ainda não desenhou aí. Chegue mais perto!'); return; }
+    if (tx < 0 || ty < 0 || tx >= M.W || ty >= M.H) return;
+    if (!L.rev[idx(tx, ty)]) { narrate('O mestre ainda não desenhou aí. Chegue mais perto!'); return; }
     const p = findPath(tx, ty);
     if (p) path = p;
     else if (!(tx === P.x && ty === P.y)) narrate('Não tem caminho até lá.');
@@ -1031,7 +1388,7 @@
   for (const img of document.querySelectorAll('img[data-icon]')) img.src = A.iconURL(img.dataset.icon);
   sndIcon();
 
-  window.Caderno = { get state() { return { P, G, W }; }, combat, title };
+  window.Caderno = { get state() { return { P, G, W, M, L }; }, combat, title, talk: i => talk(i, M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), rest };
 
   // As fontes de mão precisam estar carregadas antes de escrever no canvas.
   Promise.race([
@@ -1041,7 +1398,7 @@
     requestAnimationFrame(tick);
     const sv = loadSave();
     if (qs.has('novo') || qs.has('seed') || !sv) {
-      if (qs.has('seed') || qs.has('luta') || qs.has('revelar')) startGame({ nome: 'Herói', seed: +qs.get('seed') || 1 });
+      if (qs.has('seed') || qs.has('luta') || qs.has('revelar') || qs.has('masmorra')) startGame({ nome: 'Herói', seed: +qs.get('seed') || 1 });
       else title();
     } else title();
   });

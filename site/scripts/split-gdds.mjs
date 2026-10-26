@@ -193,12 +193,11 @@ export const GAMES = [
     gddOnly: true,
   },
   {
-    // Ainda não tem guia Unity, só o GDD inicial (o protótipo é web).
     source: 'CadernoDeAventuras.md',
     slug: 'caderno-de-aventuras',
     label: 'Caderno de Aventuras',
     description: 'RPG de caderno da escola: o mestre desenha o mapa com caneta enquanto você anda, e cada item dá dados para a luta.',
-    gddOnly: true,
+    guideStart: /^# Parte 2\b/,
   },
   {
     // Ainda não tem guia Unity, só o GDD inicial.

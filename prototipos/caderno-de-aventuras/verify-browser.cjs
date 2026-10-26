@@ -106,6 +106,49 @@ const shot = (page, name) => page.screenshot({ path: path.join(preview, name + '
     await shot(page, '08c-vila-comprou');
     console.log('arma depois da compra:', await page.evaluate(() => window.Caderno.state.P.equip.arma));
 
+    // Noite sem tocha e com tocha.
+    await page.goto(base + '?novo&seed=42&noite&tochas=0');
+    await page.waitForTimeout(2500);
+    await shot(page, '11-noite-sem-tocha');
+    await page.goto(base + '?novo&seed=42&noite');
+    await page.waitForTimeout(2500);
+    await shot(page, '12-noite-com-tocha');
+
+    // Masmorra: entrada, toda revelada, e o chefe.
+    await page.goto(base + '?novo&seed=42&masmorra=1');
+    await page.waitForTimeout(2500);
+    await shot(page, '13-masmorra');
+    await page.goto(base + '?novo&seed=42&masmorra=1&revelar');
+    await page.waitForTimeout(1500);
+    await page.keyboard.press('m');
+    await page.waitForTimeout(1500);
+    await shot(page, '14-masmorra-toda');
+    await page.keyboard.press('m');
+    const boss = await page.evaluate(() => { const { M } = window.Caderno.state; for (const [i, o] of M.obj) if (o.type === 'chefe') return i; });
+    page.evaluate(i => window.Caderno.meetBoss(i), boss).catch(() => { });
+    await page.waitForTimeout(800);
+    await shot(page, '15-chefe');
+    await page.locator('#acts button').first().click();
+    await page.waitForTimeout(1500);
+    await page.locator('#acts button').first().click();
+    await page.waitForTimeout(2600);
+    await shot(page, '16-chefe-luta');
+
+    // Missão: fala com quem tem "!" na região 1.
+    await page.goto(base + '?novo&seed=42&revelar');
+    await page.waitForTimeout(1500);
+    const npc = await page.evaluate(() => { const { W } = window.Caderno.state; for (const [i, o] of W.obj) if (o.type === 'npc' && o.quest && o.tier === 1) return i; });
+    page.evaluate(i => window.Caderno.talk(i), npc).catch(() => { });
+    await page.waitForTimeout(800);
+    await shot(page, '17-missao');
+    await page.locator('#acts button').first().click();
+    await page.waitForTimeout(800);
+    await shot(page, '18-missao-hud');
+    await page.keyboard.press('m');
+    await page.waitForTimeout(1500);
+    await shot(page, '19-ilha-com-masmorras');
+    await page.keyboard.press('m');
+
     // Celular em pé.
     const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
     phone.on('pageerror', e => errors.push('phone: ' + e.message));

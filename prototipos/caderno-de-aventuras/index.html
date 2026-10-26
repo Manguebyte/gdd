@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Caderno de Aventuras</title>
-<meta name="description" content="RPG de caderno da escola: o mestre desenha o mapa com canetas coloridas enquanto você anda, e as lutas são decididas nos dados.">
+<meta name="description" content="RPG de caderno da escola: o mestre desenha o mapa com canetas coloridas enquanto você anda, as lutas são decididas nos dados, e cada monstro tem um rei no fundo da sua masmorra.">
 <link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +15,7 @@
 <canvas id="map"></canvas>
 
 <header id="hud" hidden>
+  <div class="left">
   <div class="stats">
     <span class="stat" id="s-hp" title="Vida"><img data-icon="heart" alt=""><b></b></span>
     <span class="stat" id="s-pm" title="Magia"><img data-icon="star" alt=""><b></b></span>
@@ -22,6 +23,10 @@
     <span class="stat" id="s-atk" title="Dados de ataque"><img data-icon="sword" alt=""><b></b></span>
     <span class="stat" id="s-def" title="Dados de defesa"><img data-icon="shield" alt=""><b></b></span>
     <span class="stat" id="s-lvl"><b></b><i class="xp"><i></i></i></span>
+    <span class="stat" id="s-time" title="Hora do dia"><img id="time-img" alt=""><b></b></span>
+    <span class="stat" id="s-torch" title="Tochas (acendem sozinhas no escuro)"><img id="torch-img" alt=""><b></b></span>
+  </div>
+  <div id="quests" class="quests" hidden></div>
   </div>
   <div class="tools">
     <button id="b-bag" title="Mochila (B)"><img data-icon="bag" alt="Mochila"></button>
