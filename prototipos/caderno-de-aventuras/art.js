@@ -448,8 +448,26 @@
     crown(r, o, hx * sc + ox, hy * sc + oy + 1, 1.1);
     return o;
   }
+  // Guardião da passagem ("guarda_0" = Senhor da Guerra Orc): o monstro de
+  // elmo cinza com chifres, no lugar da coroa dos chefes de masmorra.
+  function helm(r, o, cx, by, s = 1) {
+    const cap = [[-13, 0], [-12, -9], [-6, -14], [6, -14], [12, -9], [13, 0]].map(([x, y]) => [cx + x * s, by + y * s]);
+    shape(r, o, cap, C.INK, C.GRAY, 2.4, 2.6);
+    for (const k of [-1, 1]) {
+      const horn = [[cx + 11 * k * s, by - 6 * s], [cx + 22 * k * s, by - 14 * s], [cx + 21 * k * s, by - 26 * s], [cx + 15 * k * s, by - 11 * s]];
+      shape(r, o, horn, C.INK, '#f3ecd8', 2.2, 2.4);
+    }
+    ln(r, o, cx - 12 * s, by - 2 * s, cx + 12 * s, by - 2 * s, C.INK, 2.2);
+  }
+  function guardian(pg) {
+    const kind = World.GUARDIOES[pg][0], r = S.rng(S.hash(pg, 17, 5)), sc = 0.84, ox = 8, oy = 14;
+    const o = S.xform(M[kind](r), sc, ox, oy), [hx, hy] = HEAD[kind];
+    helm(r, o, hx * sc + ox, hy * sc + oy + 2, 1.05);
+    return o;
+  }
   const monsterCache = {};
   A.monster = kind => monsterCache[kind] || (monsterCache[kind] = kind.startsWith('chefe_') ? boss(kind.slice(6))
+    : kind.startsWith('guarda_') ? guardian(+kind.slice(7))
     : M[kind](S.rng(S.hash(kind.length, kind.charCodeAt(0), kind.charCodeAt(1)))));
   A.monsterFresh = (kind, seed) => M[kind](S.rng(seed));
 
@@ -880,8 +898,15 @@
       // para não cobrir o nome do acampamento.
       const nome = World.BIOMAS[obj.to].nome;
       o.push(S.text(fwd ? nome + ' →' : '← ' + nome, cx, fwd ? y0 + 4 : y0 + T + 12, 16, col));
+      // Enquanto o guardião não for vencido, ele fica em pé em cima do canto.
+      if (fwd && !state.guarda) {
+        for (const s of S.xform(A.monster('guarda_' + (obj.to - 1)), 0.62, x0 + 1, y0 + 4)) o.push(s);
+        o.push(S.text(World.GUARDIOES[obj.to - 1][1], cx, y0 + T + 12, 15, C.RED));
+      }
     } else if (obj.type === 'monstro') {
       for (const s of S.xform(A.monster(obj.kind), 0.5, x0 + 7, y0 + 8)) o.push(s);
+      // Grupo: o mestre escreve quantos são em cima do monstro.
+      if (obj.n > 1) o.push(S.text('×' + obj.n, x0 + T - 10, y0 + 12, 22, C.RED));
       if (state.dead.has(i)) cross(r, o, x0, y0, T);
     } else if (obj.type === 'bau') {
       for (const s of S.xform(A.icon('chest'), 0.38, x0 + 13, y0 + 16)) o.push(s);
@@ -906,6 +931,13 @@
         shape(r, o, [[cx - w, y], [cx + w, y], [cx + w, y - 8], [cx - w, y - 8]], C.INK, C.OCHRE, 2.2, 3);
       }
       o.push(S.text('Saída', cx, y0 + 2, 17, C.GREEN));
+    } else if (obj.type === 'atalho') {
+      // A segunda escada, que sai atrás do guardião: degraus de pedra cinza.
+      for (let k = 0; k < 4; k++) {
+        const w = 22 - k * 4, y = y0 + T - 10 - k * 9;
+        shape(r, o, [[cx - w, y], [cx + w, y], [cx + w, y - 8], [cx - w, y - 8]], C.INK, C.GRAY, 2.2, 3);
+      }
+      o.push(S.text('Escada escondida', cx, y0 + 2, 15, C.PURPLE));
     } else if (obj.type === 'chefe') {
       for (const s of S.xform(A.monster('chefe_' + obj.kind), 0.6, x0 + 2, y0 + 2)) o.push(s);
       o.push(S.text(World.MASMORRAS[obj.kind][1], cx, y0 - 2, 17, C.RED));

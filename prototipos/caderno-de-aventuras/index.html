@@ -18,6 +18,25 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Patrick+Hand&display=swap">
 <link rel="stylesheet" href="style.css">
+<!-- Google Analytics: só para contar quantas pessoas abrem o Caderno de
+     Aventuras (nenhum evento do jogo, nada pessoal). Cole o ID de medição
+     ("G-...") em GA_ID; vazio, nada é carregado. Só conta no site (https):
+     abrindo do disco ou num servidor de teste, não conta. Sem internet, o
+     jogo instalado abre igual e só aquela visita não entra na conta. -->
+<script>
+  (function () {
+    var GA_ID = 'G-5QJTSYXJ85';
+    if (!GA_ID || location.protocol !== 'https:') return;
+    window.CADERNO_GA = true;
+    var s = document.createElement('script');
+    s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+  })();
+</script>
 </head>
 <body>
 <canvas id="map"></canvas>

@@ -15,6 +15,10 @@ Abra [`index.html`](index.html) no navegador (sem build). Não usa pasta `Sprite
 | `manifest.webmanifest`, `sw.js`, `icons/` | App instalável (PWA): nome, ícones (desenhados com a arte do jogo), tela cheia em qualquer orientação, e o service worker que guarda os arquivos para jogar sem internet. O cache leva a versão do jogo (de `../versao.js`). |
 | `verify-browser.cjs` | Teste no navegador com Playwright: joga um pouco e tira screenshots em `_preview/` (fora do git). |
 
+## Contar visitas (Google Analytics)
+
+O `index.html` tem um trecho do Google Analytics que só conta quantas pessoas abrem o jogo (nenhum evento, nada pessoal). Ele fica desligado enquanto `GA_ID` estiver vazio: para ligar, cole o ID de medição da propriedade (`G-...`) em `var GA_ID = '';` no `<head>`. Só conta no site (https); abrindo do disco ou num servidor de teste, nada é enviado. Com ele ligado, a capa avisa que o jogo conta visitas.
+
 ## Instalar no celular
 
 Abra o protótipo publicado no site (https) pelo navegador do celular:
@@ -43,8 +47,9 @@ O jogo ganha ícone, abre em tela cheia, gira junto com o celular (em pé ou dei
 | `?revelar` | Revela a página inteira. |
 | `?ouro=N` | Começa com N moedas. |
 | `?nivel=N` | Sobe até o nível N. |
-| `?habilidades` | Já sabe as 25 habilidades passivas; `?habilidades=2,10,15` só essas (número da fogueira − 1). |
-| `?luta=orc` | Abre uma luta contra um monstro pelo id (a lista está em `POOLS`, no `world.js`: `slime`, `escorpiao`, `boneco_neve`, `fenix`...; ou `dragao`) ou um chefe (`chefe_rato`, `chefe_fenix`...). |
+| `?habilidades` | Já sabe as 25 habilidades passivas; `?habilidades=2,10,15` só essas (número da fogueira − 1). As 2 primeiras da lista ficam equipadas. |
+| `?luta=orc` | Abre uma luta contra um monstro pelo id (a lista está em `POOLS`, no `world.js`: `slime`, `escorpiao`, `boneco_neve`, `fenix`...; ou `dragao`) ou um chefe (`chefe_rato`, `chefe_fenix`...) ou guardião (`guarda_0` a `guarda_3`). |
+| `?luta=lobo&grupo=3` | Com `?luta`, luta contra 2 ou 3 monstros iguais. |
 | `?noite` | Começa à noite (acende uma tocha se tiver). |
 | `?tochas=N` | Começa com N tochas. |
 | `?pagina=N` | Começa na primeira fogueira da página N (1 Campos, 2 Deserto, 3 Montanhas Geladas, 4 Pântano Sombrio, 5 Vulcão). |

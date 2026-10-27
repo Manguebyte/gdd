@@ -82,6 +82,10 @@
     cao_infernal: ['Canil', 'Rei Cão Infernal'], elemental: ['Cratera', 'Rei Elemental'],
     golem_magma: ['Fornalha', 'Rei Golem de Magma'], fenix: ['Pico', 'Rainha Fênix'],
   };
+  // Guardião de cada passagem (página 1 a 4): um monstro forte da última
+  // região da página, de elmo com chifres, em cima do canto dobrado. Uma
+  // masmorra perto dele tem uma segunda escada que sai atrás dele (o atalho).
+  const GUARDIOES = [['orc', 'Senhor da Guerra Orc'], ['verme', 'Verme Colossal'], ['troll', 'Troll da Montanha'], ['cavaleiro', 'Cavaleiro da Morte']];
   // "Esgoto do Rei Rato", "Ninho da Rainha Aranha".
   const nomeMasmorra = kind => {
     const [lugar, chefe] = MASMORRAS[kind];
@@ -191,6 +195,13 @@
         obj.set(i, { type: 'monstro', kind: pool[Math.floor(r() * pool.length)] });
       } else if (r() < 0.02) obj.set(i, { type: 'bau', tier: tier[i] });
     }
+    // Grupos: alguns monstros do mapa vêm em 2 ou 3 (o desenho ganha "×2" ou
+    // "×3"): ~7% em dupla e ~3% em trio, fora da primeira região do jogo. Sai
+    // de um hash da semente, sem sorteio, para não mudar o resto da página.
+    for (const [i, o] of obj) if (o.type === 'monstro' && tier[i] > 1) {
+      const h = S.hash(seed, i, 61) % 100;
+      if (h < 10) o.n = h < 3 ? 3 : 2;
+    }
     // Uma masmorra por monstro, na região dele, longe das fogueiras, do fim
     // da página e das outras masmorras. Se não couber, fica de fora.
     const dungeons = [];
@@ -228,7 +239,16 @@
       npcs.push(i);
       hints++;
     }
-    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id };
+    // A masmorra do atalho: a da última região mais perto da passagem (sem
+    // sorteio, para não mudar o resto da página). Na última página não tem.
+    const fx = far % W, fy = (far / W) | 0, gap = i => Math.abs(i % W - fx) + Math.abs(((i / W) | 0) - fy);
+    let atalho = -1;
+    if (pg < PAGINAS - 1) dungeons.forEach((d, n) => {
+      const better = atalho < 0 || (obj.get(d).tier === top) > (obj.get(dungeons[atalho]).tier === top)
+        || ((obj.get(d).tier === top) === (obj.get(dungeons[atalho]).tier === top) && gap(d) < gap(dungeons[atalho]));
+      if (better) atalho = n;
+    });
+    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho };
   }
 
   // Uma página: tenta a semente, depois a semente + 7919, + 2 × 7919... até
@@ -247,8 +267,10 @@
   // Interior de uma masmorra: 4 × 3 celas de 5 quadrados, cada uma com uma
   // sala; um labirinto (busca em profundidade) liga as celas por corredores,
   // mais 2 ligações extras para ter mais de um caminho. A escada de saída fica
-  // numa sala e o chefe, na sala mais longe dela a pé.
-  function dungeon(seed, n, kind, tr) {
+  // numa sala e o chefe, na sala mais longe dela a pé. `atalho` = página para
+  // onde sobe a segunda escada (ou -1): fica na sala mais longe depois da do
+  // chefe, colocada depois de todos os sorteios.
+  function dungeon(seed, n, kind, tr, atalho = -1) {
     const r = S.rng(S.hash(seed, n, 991));
     const CW = 5, NC = 4, NR = 3, DW = NC * CW + 1, DH = NR * CW + 1;
     const t = new Uint8Array(DW * DH).fill(PAREDE);
@@ -311,6 +333,11 @@
       if (roll < 0.6) obj.set(i, { type: 'monstro', kind: r() < 0.8 ? kind : other });
       else if (roll < 0.8 && chests < 2) { obj.set(i, { type: 'bau', tier: tr }); chests++; }
     });
+    if (atalho >= 0) {
+      let a = -1;
+      rooms.forEach((m, k) => { if (k !== s0 && k !== b0 && (a < 0 || dist[mid(m)] > dist[mid(rooms[a])])) a = k; });
+      obj.set(mid(rooms[a]), { type: 'atalho', to: atalho });
+    }
     return {
       seed: S.hash(seed, n, 992), W: DW, H: DH, t, dist, tier: new Uint8Array(DW * DH).fill(tr), maxD: 0,
       start, camps: [], lair: -1, obj, dungeons: [], fora: PAREDE, masmorra: n, kind,
@@ -318,7 +345,7 @@
   }
 
   (typeof window !== 'undefined' ? window : globalThis).World = {
-    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, BIOMAS, PAGINAS, POOLS, FOGUEIRAS, MASMORRAS, QUEM,
+    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, BIOMAS, PAGINAS, POOLS, FOGUEIRAS, MASMORRAS, QUEM, GUARDIOES,
     nomeMasmorra, pageOf, passable, generate, world, dungeon,
   };
 })();
