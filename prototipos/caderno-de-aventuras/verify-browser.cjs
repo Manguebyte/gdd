@@ -118,7 +118,8 @@ const shot = (page, name) => page.screenshot({ path: path.join(preview, name + '
     await page.goto(base + '?novo&seed=42&masmorra=1');
     await page.waitForTimeout(2500);
     await shot(page, '13-masmorra');
-    await page.goto(base + '?novo&seed=42&masmorra=1&revelar');
+    // `andar`: se a masmorra tem a variação "andar", o chefe está lá embaixo.
+    await page.goto(base + '?novo&seed=42&masmorra=1&andar&revelar');
     await page.waitForTimeout(1500);
     await page.keyboard.press('m');
     await page.waitForTimeout(1500);

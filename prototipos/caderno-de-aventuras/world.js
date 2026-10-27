@@ -86,6 +86,13 @@
   // região da página, de elmo com chifres, em cima do canto dobrado. Uma
   // masmorra perto dele tem uma segunda escada que sai atrás dele (o atalho).
   const GUARDIOES = [['orc', 'Senhor da Guerra Orc'], ['verme', 'Verme Colossal'], ['troll', 'Troll da Montanha'], ['cavaleiro', 'Cavaleiro da Morte']];
+  // Monstro lendário de cada página: um monstro da região do meio, com nome,
+  // que anda pela página e foge do herói.
+  const LENDAS = [['lobo', 'Dentuço, o Lobo Sem Dono'], ['cobra', 'Rainha das Dunas'], ['yeti', 'Pé-Grande'],
+    ['fantasma', 'Lençol Errante'], ['diabrete', 'Faísca, o Diabrete Ladrão']];
+  // Cada masmorra tem uma variação (ver dungeon): porta trancada com chave,
+  // armadilhas, enigma do mestre ou um andar a mais.
+  const VARIACOES = ['chave', 'armadilhas', 'enigma', 'andar'];
   // "Esgoto do Rei Rato", "Ninho da Rainha Aranha".
   const nomeMasmorra = kind => {
     const [lugar, chefe] = MASMORRAS[kind];
@@ -248,7 +255,21 @@
         || ((obj.get(d).tier === top) === (obj.get(dungeons[atalho]).tier === top) && gap(d) < gap(dungeons[atalho]));
       if (better) atalho = n;
     });
-    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho };
+    // Regra da página, depois de todos os sorteios e só com hash (as páginas
+    // de antes da 0.5.0 continuam iguais): miragens no Deserto (um baú ou um
+    // monstro que some quando o herói chega perto) e, no Pântano Sombrio,
+    // monstros que só aparecem à noite. Longe de personagens e masmorras.
+    const clear = i => !obj.has(i) && !near(i, far, 2) && !dungeons.some(d => near(i, d, 1)) && !npcs.some(j => near(i, j, 1));
+    if (B.id === 'deserto' || B.id === 'pantano') for (const i of free) {
+      if (!clear(i)) continue;
+      const h = S.hash(seed, i, 67) % 1000, kind = POOLS[tier[i]][S.hash(seed, i, 68) % 2];
+      if (B.id === 'deserto' && h < 40) obj.set(i, { type: 'miragem', look: h < 20 ? 'bau' : 'monstro', kind });
+      else if (B.id === 'pantano' && h < 32) obj.set(i, { type: 'monstro', kind, noite: true });
+    }
+    // Onde o monstro lendário começa: um quadrado livre da região do meio.
+    const meio = free.filter(i => tier[i] === base + 1 && clear(i));
+    const lenda = meio.length ? meio[S.hash(seed, 71) % meio.length] : start;
+    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho, lenda };
   }
 
   // Uma página: tenta a semente, depois a semente + 7919, + 2 × 7919... até
@@ -270,8 +291,17 @@
   // numa sala e o chefe, na sala mais longe dela a pé. `atalho` = página para
   // onde sobe a segunda escada (ou -1): fica na sala mais longe depois da do
   // chefe, colocada depois de todos os sorteios.
-  function dungeon(seed, n, kind, tr, atalho = -1) {
-    const r = S.rng(S.hash(seed, n, 991));
+  // Variação (0.5.0), também depois de todos os sorteios e com outro gerador,
+  // então a masmorra de antes continua igual: as 6 masmorras de uma página
+  // passam pelas 4 variações em ordem, começando de uma tirada da semente.
+  //   chave      — as portas da sala do chefe ficam trancadas; a chave está
+  //                numa sala que dá para alcançar sem passar por elas.
+  //   armadilhas — 4 quadrados de corredor com armadilha escondida.
+  //   enigma     — uma cara de pedra numa sala, com uma adivinha.
+  //   andar      — no lugar do chefe, uma escada desce para o andar de baixo
+  //                (andar = 1), outro labirinto com o chefe no fundo.
+  function dungeon(seed, n, kind, tr, atalho = -1, andar = 0) {
+    const r = S.rng(S.hash(seed, n, andar ? 997 : 991));
     const CW = 5, NC = 4, NR = 3, DW = NC * CW + 1, DH = NR * CW + 1;
     const t = new Uint8Array(DW * DH).fill(PAREDE);
     const dig = (x, y) => { t[y * DW + x] = CHAO; };
@@ -318,7 +348,7 @@
     let b0 = 0;
     rooms.forEach((m, k) => { if (dist[mid(m)] > dist[mid(rooms[b0])]) b0 = k; });
     const obj = new Map();
-    obj.set(start, { type: 'saida' });
+    obj.set(start, { type: andar ? 'subir' : 'saida' });
     obj.set(mid(rooms[b0]), { type: 'chefe', kind });
     // Monstros e baús ficam nas outras salas, fora da linha e da coluna do
     // meio (por onde chegam os corredores), para não fechar a passagem.
@@ -333,19 +363,74 @@
       if (roll < 0.6) obj.set(i, { type: 'monstro', kind: r() < 0.8 ? kind : other });
       else if (roll < 0.8 && chests < 2) { obj.set(i, { type: 'bau', tier: tr }); chests++; }
     });
-    if (atalho >= 0) {
+    if (atalho >= 0 && !andar) {
       let a = -1;
       rooms.forEach((m, k) => { if (k !== s0 && k !== b0 && (a < 0 || dist[mid(m)] > dist[mid(rooms[a])])) a = k; });
       obj.set(mid(rooms[a]), { type: 'atalho', to: atalho });
     }
+
+    let varia = andar ? '' : VARIACOES[(n + S.hash(seed, 996)) % VARIACOES.length];
+    const r2 = S.rng(S.hash(seed, n, andar ? 999 : 995));
+    const inRoom = (m, x, y) => x >= m.x && x < m.x + m.w && y >= m.y && y < m.y + m.h;
+    // Quadrados livres de uma sala, fora da linha e da coluna do meio.
+    const spotsOf = m => {
+      const s = [];
+      for (let y = m.y; y < m.y + m.h; y++) for (let x = m.x; x < m.x + m.w; x++) if (x !== m.cx && y !== m.cy && !obj.has(y * DW + x)) s.push(y * DW + x);
+      return s;
+    };
+    const B0 = rooms[b0];
+    if (varia === 'chave') {
+      // Portas: o chão que encosta na sala do chefe por fora (os corredores chegando).
+      const doors = [];
+      for (let y = B0.y - 1; y <= B0.y + B0.h; y++) for (let x = B0.x - 1; x <= B0.x + B0.w; x++) {
+        const fx = x < B0.x || x >= B0.x + B0.w, fy = y < B0.y || y >= B0.y + B0.h;
+        if (fx === fy || x < 0 || y < 0 || x >= DW || y >= DH) continue;
+        if (t[y * DW + x] === CHAO && !obj.has(y * DW + x)) doors.push(y * DW + x);
+      }
+      // O que dá para alcançar da escada com as portas fechadas.
+      const reach = new Uint8Array(DW * DH), q2 = [start];
+      reach[start] = 1;
+      for (let h = 0; h < q2.length; h++) {
+        const i = q2[h], x = i % DW, y = (i / DW) | 0;
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const j = (y + dy) * DW + x + dx;
+          if (!reach[j] && t[j] === CHAO && !doors.includes(j)) { reach[j] = 1; q2.push(j); }
+        }
+      }
+      // A chave fica na sala alcançável mais longe da escada.
+      let best = null;
+      rooms.forEach((m, k) => {
+        if (k === s0 || k === b0 || !reach[mid(m)]) return;
+        const s = spotsOf(m);
+        if (s.length && (!best || dist[mid(m)] > dist[mid(best.m)])) best = { m, s };
+      });
+      if (doors.length && best) {
+        for (const i of doors) obj.set(i, { type: 'porta' });
+        obj.set(best.s[Math.floor(r2() * best.s.length)], { type: 'chave' });
+      } else varia = 'armadilhas';
+    }
+    if (varia === 'enigma') {
+      const c = rooms.filter((m, k) => k !== s0 && k !== b0 && spotsOf(m).length);
+      if (c.length) {
+        const s = spotsOf(c[Math.floor(r2() * c.length)]);
+        obj.set(s[Math.floor(r2() * s.length)], { type: 'enigma', q: Math.floor(r2() * 1000) });
+      } else varia = 'armadilhas';
+    }
+    if (varia === 'armadilhas') {
+      // Só no corredor (fora das salas), escondidas até alguém pisar.
+      const c = [];
+      for (let i = 0; i < DW * DH; i++) if (t[i] === CHAO && !obj.has(i) && !rooms.some(m => inRoom(m, i % DW, (i / DW) | 0))) c.push(i);
+      for (let k = 0; k < 4 && c.length; k++) obj.set(c.splice(Math.floor(r2() * c.length), 1)[0], { type: 'armadilha' });
+    }
+    if (varia === 'andar') obj.set(mid(B0), { type: 'descer' });
     return {
-      seed: S.hash(seed, n, 992), W: DW, H: DH, t, dist, tier: new Uint8Array(DW * DH).fill(tr), maxD: 0,
-      start, camps: [], lair: -1, obj, dungeons: [], fora: PAREDE, masmorra: n, kind,
+      seed: S.hash(seed, n, andar ? 998 : 992), W: DW, H: DH, t, dist, tier: new Uint8Array(DW * DH).fill(tr), maxD: 0,
+      start, camps: [], lair: -1, obj, dungeons: [], fora: PAREDE, masmorra: n, kind, varia, andar,
     };
   }
 
   (typeof window !== 'undefined' ? window : globalThis).World = {
-    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, BIOMAS, PAGINAS, POOLS, FOGUEIRAS, MASMORRAS, QUEM, GUARDIOES,
+    W, H, AGUA, AREIA, CAMPO, MATA, PANTANO, MONTANHA, PAREDE, CHAO, TERRENOS, BIOMAS, PAGINAS, POOLS, FOGUEIRAS, MASMORRAS, QUEM, GUARDIOES, LENDAS, VARIACOES,
     nomeMasmorra, pageOf, passable, generate, world, dungeon,
   };
 })();

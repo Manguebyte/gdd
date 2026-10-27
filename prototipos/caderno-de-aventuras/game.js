@@ -174,6 +174,61 @@
     };
   });
 
+  // Monstro lendário de cada página (World.LENDAS): anda pela página e foge
+  // de quem chega perto. A vida do chefe do monstro + 20%, o ataque e o golpe
+  // do chefe, o triplo da experiência do chefe. A vida que perdeu fica
+  // perdida até ele cair. Na luta, depois da primeira rodada, cada vez dele
+  // tem LENDA_FOGE de chance de ele fugir.
+  const LENDA_FOGE = 0.2;
+  Wd.LENDAS.forEach(([base, nome], pg) => {
+    const b = MONSTERS['chefe_' + base];
+    MONSTERS['lenda_' + pg] = {
+      nome, art: MONSTERS[base].art, hp: Math.round(b.hp * 1.2), atk: b.atk, def: b.def || [1, 4],
+      ouro: [b.ouro[0] * 2, b.ouro[1]], xp: b.xp * 3, chefe: true, base, lenda: pg, esp: b.esp,
+    };
+  });
+  // Duelos: em cada fogueira, um guerreiro aceita um duelo de treino. Ninguém
+  // desmaia: quem chega a 0 perde e fica com 1 de vida. Ele tem a vida média
+  // dos monstros da região da fogueira × 1,4 e o ataque e a defesa do mais
+  // forte deles. A primeira vitória paga como a primeira missão da região;
+  // as revanches, um quarto das moedas e nada de experiência.
+  const DUELISTAS = [
+    ['Zeca Machado', 'o'], ['Tina Escudo', 'a'], ['Biu Martelo', 'o'], ['Nena Lança', 'a'], ['Dudu Punhos', 'o'],
+    ['Rosa da Areia', 'a'], ['Tião Duna', 'o'], ['Lia Cimitarra', 'a'], ['Juca Camelo', 'o'], ['Bia Miragem', 'a'],
+    ['Neco Gelo', 'o'], ['Ivo Avalanche', 'o'], ['Clara Nevasca', 'a'], ['Toninho Iglu', 'o'], ['Sara Pinheiro', 'a'],
+    ['Dona Névoa', 'a'], ['Zé do Lodo', 'o'], ['Maria Brejo', 'a'], ['Chico Lanterna', 'o'], ['Lena Corvo', 'a'],
+    ['Rubi Brasa', 'a'], ['Teo Vulcão', 'o'], ['Fátima Cinza', 'a'], ['Leco Fornalha', 'o'], ['Inês Labareda', 'a'],
+  ];
+  // Região da fogueira n: as 5 de uma página ficam nas regiões 1, 1, 2, 2 e 3 dela.
+  const duelTier = n => Math.floor(n / 5) * 3 + 1 + [0, 0, 1, 1, 2][n % 5];
+  DUELISTAS.forEach(([nome, art], n) => {
+    const [a, b] = Wd.POOLS[duelTier(n)].map(k => MONSTERS[k]);
+    const f = a.atk[0] * (a.atk[1] + 1) >= b.atk[0] * (b.atk[1] + 1) ? a : b;
+    MONSTERS['duelo_' + n] = { nome, art, hp: Math.round((a.hp + b.hp) / 2 * 1.4), atk: f.atk, def: f.def || a.def || b.def || [1, 4], ouro: null, xp: 0, duelo: n };
+  });
+  // Adivinhas da cara de pedra (masmorra com enigma): a certa vem primeiro.
+  const ENIGMAS = [
+    ['Tem dentes, mas não morde.', 'pente', 'cachorro', 'tesoura'],
+    ['Quanto mais se tira, maior fica.', 'buraco', 'bolo', 'cabelo'],
+    ['Anda com os pés na cabeça.', 'piolho', 'chapéu', 'acrobata'],
+    ['Tem coroa, mas não é rei; tem escamas, mas não é peixe.', 'abacaxi', 'dragão', 'cobra'],
+    ['Cai em pé e corre deitada.', 'chuva', 'gata', 'folha'],
+    ['Tem pescoço, mas não tem cabeça.', 'garrafa', 'girafa', 'camisa'],
+    ['Quanto mais seca, mais molhada fica.', 'toalha', 'esponja', 'roupa'],
+    ['Tem cabeça e tem dente, não é bicho nem é gente.', 'alho', 'prego', 'pente'],
+    ['Passa na frente do sol e não faz sombra.', 'vento', 'nuvem', 'pássaro'],
+    ['Tem asa, mas não voa; tem bico, mas não bica.', 'bule', 'galinha', 'avião'],
+    ['Tem olho, mas não enxerga.', 'agulha', 'toupeira', 'morcego'],
+    ['Sobe e desce sem sair do lugar.', 'escada', 'elevador', 'balão'],
+  ];
+  // Regras das páginas (proposta). Deserto: a cada TEMPESTADE_A passos lá fora
+  // vem uma tempestade de areia de TEMPESTADE_N passos (só os vizinhos são
+  // desenhados, e a borracha apaga um pedaço do mapa já desenhado).
+  // Vulcão: a cada ERUPCAO_A passos lá fora, o vulcão cospe lava em uns
+  // quadrados por LAVA_N passos (nunca fechando o caminho até uma fogueira,
+  // masmorra, personagem ou o covil).
+  const TEMPESTADE_A = 70, TEMPESTADE_N = 15, ERUPCAO_A = 60, LAVA_N = 30;
+
   // Habilidades passivas: combinações de pôquer nos dados. Cada nível ganho dá
   // um ponto; cada fogueira ensina uma só habilidade (a do índice dela, então
   // a página 1 ensina as 5 primeiras). O herói guarda todas as que aprendeu,
@@ -319,6 +374,14 @@
     'Rabo de rato, pena de fênix... tudo que cai dos monstros vale umas moedas na fogueira.',
   ];
   const DICAS = 20;
+  // A 4ª pessoa de dica de cada página, na primeira conversa, fala do lendário.
+  const LENDA_DICA = [
+    'Viu um lobo de estrela na cabeça? É o Dentuço, o Lobo Sem Dono. Corre de todo mundo... mas se você encurralar ele, vale um tesouro.',
+    'Tem uma naja dourada que anda pelas dunas: a Rainha das Dunas. Quando chega perto, ela some na areia.',
+    'Pegadas enormes na neve? É o Pé-Grande. Ninguém nunca pegou ele.',
+    'O Lençol Errante passeia pelo brejo. Se você machucar ele, ele foge e volta depois, ainda machucado.',
+    'Faísca, o Diabrete Ladrão, vive fugindo pelas cinzas. Dizem que ele guarda coisa boa.',
+  ];
   // Quem descansa em cada fogueira (cada uma usa uma frase, pela ordem).
   const CAMP_TEXT = [
     'Em volta do fogo: um ferreiro andarilho afiando a espada, uma maga de chapéu torto e um mercador cochilando.',
@@ -337,7 +400,7 @@
       [Wd.PANTANO]: 'Areia movediça! O mestre rabisca um redemoinho. Melhor andar rápido.',
     },
     neve: {
-      [Wd.AREIA]: 'Gelo! O mestre risca rachaduras com o lápis azul.',
+      [Wd.AREIA]: 'Gelo! O mestre risca rachaduras com o lápis azul. No gelo você escorrega até sair dele ou bater em alguma coisa.',
       [Wd.MATA]: 'Pinheiros cobertos de neve. Bom lugar para um yeti se esconder.',
       [Wd.PANTANO]: 'Neve funda até o joelho. O mestre desenha montinhos de neve.',
     },
@@ -368,13 +431,13 @@
   // Na primeira vez em cada página. `aviso` aparece antes de virar a página.
   const BIOME_TEXT = [
     { chegada: '', aviso: '' },
-    { chegada: 'O mestre vira a página e pega a caneta amarela: é o Deserto. Escorpiões e najas por aqui.',
+    { chegada: 'O mestre vira a página e pega a caneta amarela: é o Deserto. Escorpiões e najas por aqui. Cuidado com as tempestades de areia... e nem todo baú é de verdade.',
       aviso: 'No Deserto os monstros são bem mais fortes que nos Campos. Os guerreiros das fogueiras de lá vendem coisa melhor.' },
-    { chegada: 'Página nova, toda branca: as Montanhas Geladas. O mestre só pinta o que não é neve. Lobos do gelo e bonecos de neve malvados por aqui.',
+    { chegada: 'Página nova, toda branca: as Montanhas Geladas. O mestre só pinta o que não é neve. Lobos do gelo e bonecos de neve por aqui, e no gelo você escorrega.',
       aviso: 'As Montanhas Geladas são mais perigosas que o Deserto.' },
-    { chegada: 'O mestre vira a página e escurece tudo com o lápis: o Pântano Sombrio. Zumbis e sapos gigantes por aqui.',
+    { chegada: 'O mestre vira a página e escurece tudo com o lápis: o Pântano Sombrio. A neblina não deixa ver longe, e à noite os mortos se levantam.',
       aviso: 'O Pântano Sombrio é mais perigoso que as Montanhas Geladas.' },
-    { chegada: 'Última página. O mestre pega a caneta vermelha: o Vulcão. Salamandras e diabretes por aqui, e o Dragão Vermelho no fim.',
+    { chegada: 'Última página. O mestre pega a caneta vermelha: o Vulcão. De tempos em tempos ele cospe lava. O Dragão Vermelho mora no fim.',
       aviso: 'É a última página: o Vulcão, onde mora o Dragão Vermelho. Os monstros de lá são os mais fortes do caderno.' },
   ];
 
@@ -385,14 +448,23 @@
   const newLevel = m => ({ rev: new Uint8Array(m.W * m.H), dead: new Set(), opened: new Set(), trail: new Set() });
   // Estado de uma página: além do mapa, quem já deu presente, as masmorras
   // limpas, se o guardião da passagem foi vencido e (na última) se o dragão foi.
-  const newPage = m => ({ ...newLevel(m), talked: new Set(), cleared: new Set(), won: false, guarda: false });
-  // G.dun é por "página:masmorra" ("2:4" = masmorra 4 da 3ª página).
+  // `lenda` = onde está o monstro lendário da página, a vida dele e se caiu.
+  const newPage = (m, pg) => ({
+    ...newLevel(m), talked: new Set(), cleared: new Set(), won: false, guarda: false,
+    lenda: { i: m.lenda, hp: MONSTERS['lenda_' + pg].hp, dead: false },
+  });
+  // G.dun é por "página:masmorra" ("2:4" = masmorra 4 da 3ª página; "2:4:1" =
+  // o andar de baixo dela). G.lava: quadrados do Vulcão cobertos de lava,
+  // índice → [terreno de antes, passo em que esfria]. G.areia e G.vulcao contam
+  // os passos até a próxima tempestade e erupção; G.tempestade, os que faltam
+  // da tempestade de agora. G.duelos: vitórias em cada fogueira.
   const newState = () => ({
     pg: WORLD.pages.map(newPage), dun: {},
     seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {}, calma: 0,
+    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {},
   });
   const here = () => G.pg[P.pg];
-  const dunKey = (pg, n) => pg + ':' + n;
+  const dunKey = (pg, n, andar = 0) => pg + ':' + n + (andar ? ':1' : '');
   function newPlayer(nome) {
     const w = WORLD.pages[0];
     return {
@@ -400,7 +472,7 @@
       equip: { arma: 'espada_madeira', escudo: null, armadura: null },
       bolsa: [], pocoes: { pocao_vida: 2, pocao_mana: 0, pocao_grande: 0 }, magias: [],
       pg: 0, x: w.start % w.W, y: (w.start / w.W) | 0, respawn: w.start, rpg: 0,
-      onde: null, ox: 0, oy: 0, tochas: 2, tocha: 0,
+      onde: null, andar: 0, ox: 0, oy: 0, tochas: 2, tocha: 0,
       abates: {}, partes: {}, missoes: [], etapa: {}, habs: [], ativas: [],
     };
   }
@@ -499,7 +571,8 @@
   let vw = 0, vh = 0, dpr = 1, now = 0, last = 0;
   const cam = { x: 0, y: 0, z: 1, over: false };
   const chunks = new Map(), anims = [];
-  let walker = null, path = [], held = null, tap = null, face = 1, lastScrib = 0, panelOpen = false;
+  // `slide` = direção em que o herói está escorregando no gelo (ou null).
+  let walker = null, path = [], held = null, tap = null, face = 1, lastScrib = 0, panelOpen = false, slide = null;
   const heroFrames = [A.hero(0), A.hero(1)];
 
   // Granulado do papel: um padrão de pontinhos por cima de tudo.
@@ -545,10 +618,15 @@
     anims.push({ list, t0: performance.now() + delay, dur: (260 + Math.min(1100, S.total(list) * 0.42)) / speed });
   }
 
+  // Regras das páginas que mudam o que se vê: a neblina do Pântano Sombrio e
+  // a tempestade de areia do Deserto (só lá fora).
+  const foggy = () => !inDungeon() && W.biome === 'pantano';
+  const stormy = () => !inDungeon() && W.biome === 'deserto' && G.tempestade > 0;
   // Raio do que o mestre desenha: de dia ~2,6 quadrados; no escuro com tocha
-  // ~2,2; no escuro sem tocha, só os 8 vizinhos.
+  // ~2,2; no escuro sem tocha, só os 8 vizinhos. Na neblina, ~2,1 no máximo;
+  // na tempestade de areia, só os vizinhos.
   function reveal(px, py, instant) {
-    const found = [], R2 = !isDark() ? 6.8 : lit() ? 5 : 2;
+    const found = [], R2 = stormy() ? 2 : !isDark() ? (foggy() ? 4.5 : 6.8) : lit() ? (foggy() ? 4.5 : 5) : 2;
     for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
       const d = dx * dx + dy * dy, x = px + dx, y = py + dy;
       if (d > R2 || x < 0 || y < 0 || x >= M.W || y >= M.H || L.rev[idx(x, y)]) continue;
@@ -565,25 +643,30 @@
     const s = A.trail(ax, ay, bx, by, T, S.hash(M.seed, a, b));
     if (instant) bake(s); else animate(s, 0, 2.5);
   }
+  // Redesenha o mapa inteiro de uma vez. `L.noite` diz ao desenho se os
+  // monstros da noite (Pântano Sombrio) aparecem.
   function rebakeAll() {
     chunks.clear(); anims.length = 0;
+    L.noite = isNight() && !inDungeon();
     for (let i = 0; i < L.rev.length; i++) if (L.rev[i]) bake(A.tile(M, i % M.W, (i / M.W) | 0, T, L));
     for (const key of L.trail) {
       const [a, b] = key.split('-').map(Number);
       bake(A.trail(a % M.W, (a / M.W) | 0, b % M.W, (b / M.W) | 0, T, S.hash(M.seed, a, b)));
     }
   }
-  // Interior da masmorra n da página pg (gerado na primeira vez que precisa).
-  function dunMap(n, pg = P.pg) {
-    const w = WORLD.pages[pg], o = w.obj.get(w.dungeons[n]), k = dunKey(pg, n);
-    return dunCache[k] || (dunCache[k] = Wd.dungeon(w.seed, n, o.kind, o.tier, n === w.atalho ? pg + 1 : -1));
+  // Interior da masmorra n da página pg (gerado na primeira vez que precisa);
+  // andar = 1 é o andar de baixo (masmorras com a variação "andar").
+  function dunMap(n, pg = P.pg, andar = 0) {
+    const w = WORLD.pages[pg], o = w.obj.get(w.dungeons[n]), k = dunKey(pg, n, andar);
+    return dunCache[k] || (dunCache[k] = Wd.dungeon(w.seed, n, o.kind, o.tier, n === w.atalho ? pg + 1 : -1, andar));
   }
   // Troca a página do herói (sem redesenhar: chame setMap depois).
   function setPage(pg) { P.pg = pg; W = WORLD.pages[pg]; }
-  // Troca o mapa atual: null = a página; n = a masmorra n dela.
-  function setMap(n) {
+  // Troca o mapa atual: null = a página; n = a masmorra n dela (no andar `andar`).
+  function setMap(n, andar = 0) {
     P.onde = n == null ? null : n;
-    if (P.onde == null) { M = W; L = here(); } else { M = dunMap(n); const k = dunKey(P.pg, n); L = G.dun[k] || (G.dun[k] = newLevel(M)); }
+    P.andar = P.onde == null ? 0 : andar;
+    if (P.onde == null) { M = W; L = here(); } else { M = dunMap(n, P.pg, P.andar); const k = dunKey(P.pg, n, P.andar); L = G.dun[k] || (G.dun[k] = newLevel(M)); }
     walker = null; path = [];
     rebakeAll();
   }
@@ -628,6 +711,16 @@
     ctx.fillStyle = C.GRAY;
     for (const [x, y] of path) { ctx.beginPath(); ctx.arc(x * T + T / 2, y * T + T / 2 + 8, 2.4, 0, 7); ctx.fill(); }
 
+    // O monstro lendário anda pela página: não fica "assado" no mapa, é
+    // desenhado a cada quadro onde ele está, se o herói consegue vê-lo.
+    if (legendSeen()) {
+      const lg = here().lenda, lx = (lg.i % W.W) * T, ly = ((lg.i / W.W) | 0) * T;
+      ctx.save();
+      ctx.translate(lx + 7, ly + 8 + Math.sin(now / 160) * 1.5); ctx.scale(0.5, 0.5);
+      S.drawAll(ctx, A.monster('lenda_' + P.pg), 1);
+      ctx.restore();
+    }
+
     const [hx, hy] = heroPos();
     const px = hx * T + T / 2, py = hy * T + T / 2;
     const bob = walker ? -Math.abs(Math.sin(walker.t * Math.PI)) * 5 : Math.sin(now / 400) * 1.2;
@@ -638,6 +731,8 @@
     S.drawAll(ctx, heroFrames[walker && walker.t > 0.5 ? 1 : 0], 1);
     ctx.restore();
 
+    if (fogV > 0.01 && !cam.over) drawVeil(ox + px * z, oy + py * z, '214,214,206', 0.62 * fogV, 1.4, 2.7);
+    if (sandV > 0.01 && !cam.over) drawVeil(ox + px * z, oy + py * z, '214,168,92', 0.6 * sandV, 0.6, 1.8, true);
     if (darkV > 0.01 && !cam.over) drawDark(ox + px * z, oy + py * z);
     if (head) drawPen(head);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -678,6 +773,36 @@
       ctx.fillStyle = w; ctx.beginPath(); ctx.arc(sx, sy, r1, 0, 7); ctx.fill();
     }
   }
+  // Neblina (Pântano Sombrio) e tempestade de areia (Deserto): uma camada de
+  // lápis claro por cima do mapa, menos um círculo em volta do herói (raios
+  // r0 e r1 em quadrados). A tempestade ainda tem riscos de areia voando.
+  const veilCv = document.createElement('canvas'), vctx = veilCv.getContext('2d');
+  let fogV = 0, sandV = 0;
+  function drawVeil(sx, sy, rgb, a, r0q, r1q, streaks) {
+    if (veilCv.width !== cv.width || veilCv.height !== cv.height) { veilCv.width = cv.width; veilCv.height = cv.height; }
+    const d = vctx, z = cam.z, r1 = r1q * T * z, r0 = r0q * T * z;
+    d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    d.globalCompositeOperation = 'source-over';
+    d.clearRect(0, 0, vw, vh);
+    d.fillStyle = `rgba(${rgb},${a})`; d.fillRect(0, 0, vw, vh);
+    if (streaks) {
+      d.strokeStyle = `rgba(150,105,40,${0.5 * a})`; d.lineWidth = 2;
+      d.beginPath();
+      for (let k = 0; k < 40; k++) {
+        const x = ((k * 197 + now * 0.9) % (vw + 200)) - 100, y = (k * 89) % vh + Math.sin(now / 300 + k) * 8;
+        d.moveTo(x, y); d.lineTo(x + 30, y + 6);
+      }
+      d.stroke();
+    }
+    const g = d.createRadialGradient(sx, sy, 0, sx, sy, r1);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(r0 / r1, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    d.globalCompositeOperation = 'destination-out';
+    d.fillStyle = g; d.beginPath(); d.arc(sx, sy, r1, 0, 7); d.fill();
+    d.globalCompositeOperation = 'source-over';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(veilCv, 0, 0);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
   // A caneta do mestre, com a cor do traço que está desenhando.
   function drawPen(h) {
     ctx.save();
@@ -708,19 +833,22 @@
     last = ts; now = ts;
     if (W) {
       if (walker) {
-        walker.t += dt / 0.16;
+        walker.t += dt / (walker.fast ? 0.1 : 0.16);
         if (walker.t >= 1) { const w = walker; walker = null; P.x = w.tx; P.y = w.ty; arrive(w.fx, w.fy); }
       } else if (!panelOpen) {
         // `tap` guarda um toque rápido de tecla que começou e acabou entre dois quadros.
         const dir = tap || held;
         tap = null;
-        if (path.length) { const [x, y] = path.shift(); stepTo(x, y); }
+        if (slide) { const [dx, dy] = slide; slide = null; stepTo(P.x + dx, P.y + dy); if (walker) walker.fast = true; }
+        else if (path.length) { const [x, y] = path.shift(); stepTo(x, y); }
         else if (dir) stepTo(P.x + dir[0], P.y + dir[1]);
       }
       const [hx, hy] = heroPos();
       const tx = cam.over ? M.W * T / 2 : hx * T + T / 2, ty = cam.over ? M.H * T / 2 : hy * T + T / 2 + 20;
       const dTarget = inDungeon() ? 0.9 : darkness() * 0.85;
       darkV += (dTarget - darkV) * Math.min(1, dt * 2);
+      fogV += ((foggy() ? 1 : 0) - fogV) * Math.min(1, dt * 2);
+      sandV += ((stormy() ? 1 : 0) - sandV) * Math.min(1, dt * 2);
       const tz = cam.over ? overZoom() : baseZoom(), k = Math.min(1, dt * 5);
       cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; cam.z += (tz - cam.z) * k;
       if (anims.some(a => now >= a.t0) && now - lastScrib > 110) { lastScrib = now; SFX.scribble(); }
@@ -730,10 +858,13 @@
   }
 
   // ---------- movimento e eventos do mapa ----------
+  // O lendário da página está neste quadrado (e ainda não caiu)?
+  const legendAt = i => !inDungeon() && !here().lenda.dead && here().lenda.i === i;
   function blocking(i) {
     const o = M.obj.get(i);
-    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i)) || o.type === 'npc' || (o.type === 'covil' && !L.won)
-      || (o.type === 'passagem' && !L.guarda));
+    if (legendAt(i)) return true;
+    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i) && (!o.noite || L.noite)) || o.type === 'npc' || (o.type === 'covil' && !L.won)
+      || (o.type === 'passagem' && !L.guarda) || o.type === 'enigma' || (o.type === 'porta' && !L.opened.has('chave')));
   }
   function stepTo(nx, ny) {
     if (nx < 0 || ny < 0 || nx >= M.W || ny >= M.H) return;
@@ -741,10 +872,13 @@
     const i = idx(nx, ny), o = M.obj.get(i);
     if (blocking(i)) {
       path = []; held = null;
-      if (o.type === 'monstro') meetMonster(i, o);
+      if (legendAt(i)) meetLegend();
+      else if (o.type === 'monstro') meetMonster(i, o);
       else if (o.type === 'chefe') meetBoss(i, o);
       else if (o.type === 'npc') talk(i, o);
       else if (o.type === 'passagem') guardian(i, o);
+      else if (o.type === 'enigma') riddle(i, o);
+      else if (o.type === 'porta') narrate('Porta trancada, com um cadeado amarelo. A chave deve estar em alguma sala desta masmorra.');
       else lair(i);
       return;
     }
@@ -793,28 +927,320 @@
     const wasNight = isNight();
     if (++G.clock >= CICLO) { G.clock = 0; G.day++; }
     burnTorch(true);
+    coolLava();
+    // Regras das páginas, antes de desenhar em volta (a tempestade e a lava
+    // mudam o que o mestre desenha).
+    const event = !inDungeon() && pageRules();
     addTrail(fx, fy, P.x, P.y);
     reveal(P.x, P.y);
     const i = idx(P.x, P.y), t = M.t[i], tier = M.tier[i], o = M.obj.get(i);
     if (!inDungeon()) {
       const tt = TERRAIN_TEXT[W.biome][t], tk = 't' + W.biome + t;
-      if (tt && !G.seen.has(tk)) { G.seen.add(tk); narrate(tt); }
+      if (event) { /* a regra da página já falou */ }
+      else if (tt && !G.seen.has(tk)) { G.seen.add(tk); narrate(tt); }
       else if (REGION_TEXT[tier] && !G.seen.has('r' + tier)) { G.seen.add('r' + tier); narrate(REGION_TEXT[tier]); }
       if (!wasNight && isNight()) narrate(P.tocha > 0 ? 'Anoiteceu. O mestre pinta a folha de azul-escuro; sua tocha ilumina em volta. Os monstros ficam mais fortes.'
         : 'Anoiteceu! O mestre pinta a folha de azul-escuro. Sem tocha, você mal enxerga, e os monstros ficam mais fortes.');
       else if (wasNight && !isNight()) narrate(`Amanheceu! Dia ${G.day + (G.clock > 90 ? 1 : 0)}. O mestre apaga o azul com a borracha.`);
+      // No Pântano Sombrio, os monstros da noite aparecem e somem com ela.
+      if (wasNight !== isNight() && W.biome === 'pantano') {
+        rebakeAll();
+        if (isNight()) setTimeout(() => narrate('Os mortos se levantam! O mestre desenha mais monstros no brejo.'), 2500);
+      }
+      mirages();
+      moveLegend();
     }
-    if (o && o.type === 'fogueira') { path = []; held = null; camp(i, o); }
-    else if (o && o.type === 'masmorra') { path = []; held = null; enterDungeon(i, o); }
-    else if (o && o.type === 'saida') { path = []; held = null; leaveDungeon(); }
-    else if (o && o.type === 'atalho') { path = []; held = null; shortcut(o); }
-    else if (o && (o.type === 'passagem' || o.type === 'volta')) { path = []; held = null; turnPage(o); }
-    else if (o && o.type === 'bau' && !L.opened.has(i)) { path = []; held = null; chest(i, o); }
+    const stop = () => { path = []; held = null; slide = null; };
+    if (o && o.type === 'fogueira') { stop(); camp(i, o); }
+    else if (o && o.type === 'masmorra') { stop(); enterDungeon(i, o); }
+    else if (o && o.type === 'saida') { stop(); leaveDungeon(); }
+    else if (o && o.type === 'atalho') { stop(); shortcut(o); }
+    else if (o && o.type === 'descer') { stop(); stairs(true); }
+    else if (o && o.type === 'subir') { stop(); stairs(false); }
+    else if (o && o.type === 'chave' && !L.opened.has('chave')) {
+      stop();
+      L.opened.add('chave');
+      rebakeAll(); SFX.coin();
+      narrate('Você pegou a chave! As portas da sala do chefe estão abertas.');
+    }
+    else if (o && o.type === 'armadilha' && !L.opened.has(i)) { stop(); trap(i); }
+    else if (o && (o.type === 'passagem' || o.type === 'volta')) { stop(); turnPage(o); }
+    else if (o && o.type === 'bau' && !L.opened.has(i)) { stop(); chest(i, o); }
     else if (!o && !inDungeon() && G.steps > 6 && G.steps >= G.calma && !nearCamp(P.x, P.y)) {
       // Depois de uma surpresa, 8 passos de calma para explorar em paz.
       const chance = ({ [Wd.AREIA]: 0.03, [Wd.CAMPO]: 0.035, [Wd.MATA]: 0.05, [Wd.PANTANO]: 0.06 }[t] || 0) * (isNight() ? 1.5 : 1);
-      if (Math.random() < chance) { path = []; held = null; G.calma = G.steps + 8; ambush(tier); }
+      if (Math.random() < chance) { stop(); G.calma = G.steps + 8; ambush(tier); }
     }
+    // Gelo das Montanhas Geladas: o herói continua escorregando na mesma
+    // direção até sair do gelo ou o próximo quadrado ter alguma coisa.
+    if (!panelOpen && !inDungeon() && W.biome === 'neve' && t === Wd.AREIA && !o) {
+      const dx = P.x - fx, dy = P.y - fy, nx = P.x + dx, ny = P.y + dy, j = idx(nx, ny);
+      if ((dx || dy) && nx >= 0 && ny >= 0 && nx < M.W && ny < M.H && Wd.passable(M.t[j]) && !M.obj.has(j) && !blocking(j)) {
+        slide = [dx, dy]; path = [];
+        if (!G.seen.has('escorregou')) { G.seen.add('escorregou'); narrate('Você escorrega no gelo! Só para quando sair dele ou bater em alguma coisa.'); }
+      }
+    }
+    hud(); save();
+  }
+
+  // ---------- regras das páginas ----------
+  // Conta os passos lá fora e dispara a tempestade de areia (Deserto) ou a
+  // erupção (Vulcão). Devolve true se o mestre narrou alguma coisa.
+  function pageRules() {
+    if (W.biome === 'deserto') {
+      if (G.tempestade > 0) {
+        if (--G.tempestade === 0) { narrate('A tempestade passou. O mestre sopra a areia do papel.'); return true; }
+        return false;
+      }
+      if (++G.areia >= TEMPESTADE_A) { G.areia = 0; sandstorm(); return true; }
+      if (G.areia === TEMPESTADE_A - 4) { narrate('O vento começa a levantar areia...'); return true; }
+    } else if (W.biome === 'vulcao') {
+      if (++G.vulcao >= ERUPCAO_A) { G.vulcao = 0; return erupt(); }
+      if (G.vulcao === ERUPCAO_A - 4) { narrate('O chão treme. O mestre pega a caneta laranja...'); return true; }
+    }
+    return false;
+  }
+  // Tempestade de areia: por TEMPESTADE_N passos o mestre só desenha os
+  // vizinhos, e a borracha apaga um pedaço do mapa já desenhado (longe do
+  // herói). O que tem nome escrito (fogueiras, masmorras, personagens com
+  // missão, a passagem) a borracha não apaga.
+  function sandstorm() {
+    G.tempestade = TEMPESTADE_N;
+    const ring = [];
+    for (let i = 0; i < L.rev.length; i++) {
+      const d = Math.max(Math.abs(i % M.W - P.x), Math.abs(((i / M.W) | 0) - P.y));
+      if (L.rev[i] && d >= 6 && d <= 12) ring.push(i);
+    }
+    let erased = 0;
+    if (ring.length) {
+      const c = pick(ring), cx = c % M.W, cy = (c / M.W) | 0;
+      for (let i = 0; i < L.rev.length; i++) {
+        const x = i % M.W, y = (i / M.W) | 0, o = M.obj.get(i);
+        if (!L.rev[i] || (x - cx) ** 2 + (y - cy) ** 2 > 12) continue;
+        if (o && (o.type === 'fogueira' || o.type === 'masmorra' || o.type === 'passagem' || o.type === 'volta' || (o.type === 'npc' && o.quest))) continue;
+        L.rev[i] = 0; erased++;
+      }
+      // O rastro que passava pelo pedaço apagado também some.
+      for (const key of [...L.trail]) if (key.split('-').some(k => !L.rev[+k])) L.trail.delete(key);
+      rebakeAll();
+    }
+    path = [];
+    narrate(`Tempestade de areia! Você mal enxerga um palmo${erased ? ', e o vento leva um pedaço do mapa: o mestre passa a borracha' : ''}.`);
+  }
+  // Erupção: 3 rios de lava saem dos vulcões perto do herói e cobrem uns
+  // quadrados por LAVA_N passos. Um rio que fecharia o caminho até uma
+  // fogueira, masmorra, personagem, a seta de volta ou o covil não sai.
+  function erupt() {
+    const near = [];
+    for (let i = 0; i < W.t.length; i++) {
+      const x = i % W.W, y = (i / W.W) | 0;
+      if (W.t[i] === Wd.MONTANHA && Math.max(Math.abs(x - P.x), Math.abs(y - P.y)) <= 10) near.push(i);
+    }
+    const ok = j => j >= 0 && j < W.t.length && Wd.passable(W.t[j]) && !W.obj.has(j) && !G.lava[j] && here().lenda.i !== j
+      && Math.abs(j % W.W - P.x) + Math.abs(((j / W.W) | 0) - P.y) >= 3 && !nearCamp(j % W.W, (j / W.W) | 0);
+    const nb = i => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => { const x = i % W.W + dx, y = ((i / W.W) | 0) + dy; return x >= 0 && y >= 0 && x < W.W && y < W.H; })
+      .map(([dx, dy]) => i + dy * W.W + dx);
+    const until = G.steps + LAVA_N;
+    let flows = 0;
+    for (let k = 0; k < 12 && flows < 3 && near.length; k++) {
+      const v = pick(near), first = nb(v).filter(ok);
+      if (!first.length) continue;
+      const flow = [pick(first)], len = 4 + rnd(4);
+      while (flow.length < len) {
+        const nx = nb(flow[flow.length - 1]).filter(j => ok(j) && !flow.includes(j));
+        if (!nx.length) break;
+        flow.push(pick(nx));
+      }
+      for (const j of flow) G.lava[j] = [W.t[j], until];
+      for (const j of flow) W.t[j] = Wd.AGUA;
+      if (cutsOff()) { for (const j of flow) { W.t[j] = G.lava[j][0]; delete G.lava[j]; } continue; }
+      flows++;
+    }
+    if (!flows) return false;
+    rebakeAll();
+    narrate('Erupção! O vulcão cospe lava e o mestre pinta rios laranja pelo caminho. Daqui a pouco ela esfria.');
+    return true;
+  }
+  // A lava fecha o caminho do herói até algum lugar importante da página?
+  function cutsOff() {
+    const seen = new Uint8Array(W.W * W.H), q = [idx(P.x, P.y)];
+    seen[q[0]] = 1;
+    for (let h = 0; h < q.length; h++) {
+      const i = q[h], x = i % W.W, y = (i / W.W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, j = ny * W.W + nx;
+        if (nx >= 0 && ny >= 0 && nx < W.W && ny < W.H && !seen[j] && Wd.passable(W.t[j])) { seen[j] = 1; q.push(j); }
+      }
+    }
+    for (const [i, o] of W.obj) {
+      if (!['fogueira', 'masmorra', 'npc', 'volta', 'covil', 'passagem'].includes(o.type)) continue;
+      // Personagem e covil bloqueiam o quadrado: basta chegar num vizinho.
+      const x = i % W.W, y = (i / W.W) | 0;
+      if (!seen[i] && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen[(y + dy) * W.W + x + dx] && x + dx >= 0 && x + dx < W.W)) return true;
+    }
+    return false;
+  }
+  // A lava de cada erupção esfria depois de LAVA_N passos (em qualquer mapa).
+  function coolLava() {
+    const v = WORLD.pages[Wd.PAGINAS - 1];
+    let cooled = false;
+    for (const k in G.lava) if (G.steps >= G.lava[k][1]) { v.t[+k] = G.lava[k][0]; delete G.lava[k]; cooled = true; }
+    if (cooled && M === v) { rebakeAll(); narrate('A lava esfriou e virou pedra de novo.'); }
+  }
+  // Miragens (Deserto): um baú ou monstro que some quando o herói chega do
+  // lado. Voltam com o descanso, como os monstros.
+  function mirages() {
+    let gone = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = P.x + dx, y = P.y + dy;
+      if (x < 0 || y < 0 || x >= M.W || y >= M.H) continue;
+      const i = idx(x, y), o = M.obj.get(i);
+      if (o && o.type === 'miragem' && !L.dead.has(i)) { L.dead.add(i); gone++; }
+    }
+    if (!gone) return;
+    rebakeAll();
+    narrate(pick(['Era miragem! O mestre ri e apaga com a borracha.', 'Você esfrega os olhos... não tinha nada ali. Miragem!', 'O calor engana: era só miragem.']));
+  }
+
+  // ---------- monstro lendário ----------
+  // O herói consegue ver o lendário? Ele precisa estar num quadrado já
+  // desenhado e perto o bastante no escuro, na neblina ou na tempestade.
+  function legendSeen() {
+    if (!W || inDungeon() || !G) return false;
+    const lg = here().lenda;
+    if (lg.dead || !L.rev[lg.i]) return false;
+    const d = Math.hypot(lg.i % W.W - P.x, ((lg.i / W.W) | 0) - P.y);
+    const view = stormy() ? 1.5 : isDark() ? (lit() ? 3 : 1.5) : foggy() ? 2.5 : Infinity;
+    return d <= view;
+  }
+  // A cada passo do herói na página, o lendário anda: perto do herói (até 5
+  // quadrados) ele foge na maioria das vezes; longe, passeia. Não pisa em
+  // nada desenhado nem perto das fogueiras.
+  function moveLegend() {
+    const lg = here().lenda;
+    if (lg.dead) return;
+    const x = lg.i % W.W, y = (lg.i / W.W) | 0, far = (a, b) => Math.abs(a - P.x) + Math.abs(b - P.y);
+    const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => [x + dx, y + dy])
+      .filter(([a, b]) => a >= 0 && b >= 0 && a < W.W && b < W.H && Wd.passable(W.t[b * W.W + a]) && !W.obj.has(b * W.W + a)
+        && !(a === P.x && b === P.y) && !nearCamp(a, b));
+    if (!opts.length) return;
+    const d = far(x, y);
+    let next = null;
+    if (d <= 5) {
+      if (Math.random() < 0.75) {
+        const best = Math.max(...opts.map(([a, b]) => far(a, b)));
+        if (best > d) next = pick(opts.filter(([a, b]) => far(a, b) === best));
+      }
+    } else if (Math.random() < 0.5) next = pick(opts);
+    if (next) lg.i = next[1] * W.W + next[0];
+    if (legendSeen() && !G.seen.has('l' + P.pg)) {
+      G.seen.add('l' + P.pg);
+      const m = MONSTERS['lenda_' + P.pg];
+      // Se o mestre acabou de falar outra coisa, espera ele terminar.
+      setTimeout(() => narrate(`Olha ali: ${oa(m)} <b>${m.nome}</b>, com uma estrela na cabeça! O mestre desenha rapidinho e ${m.art === 'a' ? 'ela' : 'ele'} sai correndo. Encurrale para lutar.`),
+        performance.now() - narrAt < 1500 ? 4500 : 600);
+    }
+  }
+  // Depois de fugir de uma luta, o lendário reaparece longe do herói, na
+  // região do meio ou na última da página.
+  function legendAway() {
+    const lg = here().lenda, base = P.pg * 3 + 1, c = [];
+    for (let i = 0; i < W.t.length; i++) {
+      const x = i % W.W, y = (i / W.W) | 0;
+      if (W.tier[i] > base && Wd.passable(W.t[i]) && !W.obj.has(i) && !nearCamp(x, y) && Math.abs(x - P.x) + Math.abs(y - P.y) >= 15) c.push(i);
+    }
+    if (c.length) lg.i = pick(c);
+  }
+  async function meetLegend() {
+    const id = 'lenda_' + P.pg, m = MONSTERS[id], lg = here().lenda, ele = m.art === 'a' ? 'ela' : 'ele';
+    const v = await dialog(`${m.nome}!`,
+      `<p>Você encurralou ${oa(m)} <b>${m.nome}</b>, o monstro lendário desta página!</p>
+       <p>${ic('heart')} ${lg.hp}/${m.hp} de vida · ${ic('sword')} ataque ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       ${espTxt(m)}
+       <p class="small">Cuidado: na vez ${m.art === 'a' ? 'dela' : 'dele'}, ${ele} pode fugir no meio da luta (e volta com a vida que perdeu). Vencer dá um tesouro.</p>`,
+      [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Deixar pra lá', v: 'nao' }], A.monsterURL(id, 160));
+    if (v !== 'luta') return;
+    const opt = { hp: lg.hp, foge: true, text: `${m.nome} rosna, sem saída. O mestre pinta a estrela de amarelo.` };
+    const r = await combat(id, opt);
+    if (r === 'vitoria') {
+      lg.dead = true;
+      const it = loot(P.pg * 3 + 3);
+      P.bolsa.push(it);
+      save();
+      await dialog('Lenda vencida!', `<p>Ninguém nunca tinha pegado ${oa(m)} ${m.nome}! O mestre escreve seu nome do lado do desenho. ${cap(ele)} deixou ${itemIc(it)} <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)})! Está na mochila.</p>`,
+        [{ html: 'Oba!', v: 1, cls: 'green' }], A.iconURL('star', C.YELLOW, 160));
+    } else if (r !== 'derrota') {
+      lg.hp = Math.max(1, opt.left);
+      legendAway();
+      narrate(`${m.nome} sumiu no mapa, com ${lg.hp} de vida. Vai ter que achar de novo!`);
+    }
+    hud(); save();
+  }
+
+  // ---------- masmorras: armadilha, enigma e andar de baixo ----------
+  // Armadilha escondida: d20 ≥ 11 pula a tempo; senão, toma (região/2)d8,
+  // mas nunca desmaia por ela (fica com 1 de vida, no mínimo).
+  async function trap(i) {
+    L.opened.add(i);
+    rebakeAll();
+    const tr = M.tier[i], dano = [Math.ceil(tr / 2), 8];
+    openPanel(`<h2>Armadilha!</h2><p>Clique! Espetos saem do chão. Role 1d20: 11 ou mais, você pula a tempo.</p>
+      <canvas id="tray" class="tray mini"></canvas><p id="clog"></p><div class="actions" id="acts"></div>`, 'dialog');
+    const tray = new Tray($('tray'));
+    const [d] = await tray.roll([{ label: 'Pular', dice: [20], color: C.INK }]);
+    if (d >= 11) {
+      tray.result(`${d}`, 'pulou!', C.GREEN);
+      $('clog').textContent = 'Você pula para trás bem na hora.';
+    } else {
+      await wait(500);
+      const [v] = await tray.roll([{ label: 'Espetos', dice: expand([dano]), color: C.PURPLE }]);
+      const lost = Math.min(v, P.hp - 1);
+      P.hp -= lost; SFX.hit();
+      tray.result(`−${lost}`, 'de vida', C.PURPLE);
+      $('clog').textContent = lost < v ? 'Ai! Você escapa por um triz, quase sem vida.' : 'Ai! Os espetos pegam seu pé.';
+    }
+    await ask($('acts'), [{ html: 'Continuar', v: 1, cls: 'green' }]);
+    closePanel(); hud(); save();
+  }
+  // Cara de pedra: uma adivinha com 3 respostas. Acertar dá um equipamento da
+  // loja da página seguinte; errar chama um monstro da masmorra. Uma tentativa só.
+  async function riddle(i, o) {
+    if (L.opened.has(i)) { narrate('A cara de pedra dorme. Ela só pergunta uma vez.'); return; }
+    const [q, ...ans] = ENIGMAS[o.q % ENIGMAS.length], right = ans[0];
+    const order = ans.slice().sort((a, b) => S.hash(o.q, a.length, a.charCodeAt(0)) - S.hash(o.q, b.length, b.charCodeAt(0)));
+    const v = await dialog('A cara de pedra', `<p>Na parede, uma cara de pedra abre a boca. O mestre escreve embaixo, com letra caprichada:</p>
+      <p><b>"O que é, o que é? ${q}"</b></p><p class="small">Acertou, ganha um tesouro. Errou... alguma coisa acorda. Ela só pergunta uma vez.</p>`,
+      order.map(a => ({ html: a, v: a, cls: 'purple' })).concat([{ html: 'Pensar depois', v: 'nao' }]));
+    if (v === 'nao') return;
+    L.opened.add(i);
+    animate(A.cross(i % M.W, (i / M.W) | 0, T, i));
+    if (v === right) {
+      const it = loot(M.tier[i]);
+      P.bolsa.push(it); SFX.lvl();
+      save();
+      await dialog('Acertou!', `<p>"${cap(right)}!" A cara de pedra sorri e cospe ${itemIc(it)} <b>${ITEMS[it].nome}</b> (${fmtD(ITEMS[it].dado)}). Está na mochila.</p>`,
+        [{ html: 'Oba!', v: 1, cls: 'green' }], A.iconURL('chest', '', 160));
+    } else {
+      save();
+      await dialog('Errou!', `<p>A resposta era <b>${right}</b>. A cara de pedra ri tão alto que acorda ${um(MONSTERS[M.kind])} ${MONSTERS[M.kind].nome}!</p>`,
+        [{ html: 'Lutar', v: 1, cls: 'red' }], A.monsterURL(M.kind, 160));
+      await combat(M.kind);
+    }
+    hud(); save();
+  }
+  // Escada entre os dois andares de uma masmorra com a variação "andar".
+  async function stairs(down) {
+    const v = await dialog(down ? 'Andar de baixo' : 'Escada', `<p>${down ? `Uma escada escura desce mais fundo. Lá embaixo está ${oa(MONSTERS['chefe_' + M.kind])} <b>${MONSTERS['chefe_' + M.kind].nome}</b>.` : 'Subir de volta para o primeiro andar?'}</p>`,
+      [{ html: down ? 'Descer' : 'Subir', v: 'sim', cls: down ? 'red' : 'green' }, { html: 'Ficar aqui', v: 'nao' }], A.iconURL('map', '', 160));
+    if (v !== 'sim') return;
+    const n = M.masmorra;
+    setMap(n, down ? 1 : 0);
+    let to = M.start;
+    if (!down) for (const [i, o] of M.obj) if (o.type === 'descer') to = i;
+    P.x = to % M.W; P.y = (to / M.W) | 0;
+    snapCam();
+    reveal(P.x, P.y);
+    narrate(down ? 'O mestre vira mais uma página e desenha um andar ainda mais fundo.' : 'O mestre volta para o primeiro andar.');
     hud(); save();
   }
 
@@ -844,8 +1270,9 @@
     return ask($('acts'), buttons).then(v => { closePanel(); return v; });
   }
 
-  let narrT = 0;
+  let narrT = 0, narrAt = -1e9;
   function narrate(text) {
+    narrAt = performance.now();
     const el = $('narr');
     el.innerHTML = `<b>Mestre:</b> ${text}`;
     el.hidden = false;
@@ -858,7 +1285,8 @@
     if (!P || !G) return;
     const night = isNight() || inDungeon();
     $('time-img').src = A.iconURL(night ? 'moon' : 'sun');
-    $('s-time').querySelector('b').textContent = inDungeon() ? 'Masmorra' : `Dia ${G.day}${isNight() ? ' · noite' : ''}`;
+    $('s-time').querySelector('b').textContent = inDungeon() ? (P.andar ? 'Andar de baixo' : 'Masmorra')
+      : `Dia ${G.day}${isNight() ? ' · noite' : ''}${stormy() ? ' · tempestade' : ''}`;
     // No celular só o número da página (o nome do bioma fica escondido no CSS).
     $('s-page').querySelector('b').innerHTML = `${P.pg + 1}<span class="bio">. ${Wd.BIOMAS[P.pg].nome}</span>`;
     $('s-torch').querySelector('b').innerHTML = `${P.tochas}${P.tocha > 0 ? ` <small>acesa: ${P.tocha}</small>` : ''}`;
@@ -982,9 +1410,15 @@
   // Luta contra `opt.n` monstros iguais (1 a 3; no mapa, os grupos têm "×2"
   // ou "×3" em cima). Com mais de um, você toca no monstro para escolher o
   // alvo; na vez deles, cada monstro vivo age, um depois do outro.
+  // opt.treino = duelo na fogueira (sem noite, sem prêmio aqui, ninguém
+  //   desmaia: chegar a 0 dá 'perdeu' e você fica com 1 de vida; "Desistir"
+  //   sai sem rolar).
+  // opt.hp = vida com que o monstro começa (o lendário machucado); opt.foge =
+  //   ele pode fugir na vez dele ('escapou'). A vida que sobrou volta em opt.left.
   async function combat(kind, opt = {}) {
-    const md = MONSTERS[kind], night = nightBonus(), n = opt.n || 1;
-    const foes = Array.from({ length: n }, (_, k) => ({ ...md, max: md.hp, atk: atkOf(md), k, nome: n > 1 ? `${md.nome} ${k + 1}` : md.nome }));
+    const md = MONSTERS[kind], night = !opt.treino && nightBonus(), n = opt.n || 1;
+    const foes = Array.from({ length: n }, (_, k) => ({ ...md, max: md.hp, atk: opt.treino ? md.atk : atkOf(md), k, nome: n > 1 ? `${md.nome} ${k + 1}` : md.nome }));
+    if (opt.hp) foes[0].hp = opt.hp;
     openPanel(`
       <div class="combat">
         <div class="foes${n > 1 ? ' multi' : ''}">
@@ -1184,7 +1618,7 @@
 
     if (opt.ambush) { log(n > 1 ? `Os ${md.pl} atacam primeiro!` : `${md.nome} ataca primeiro!`); await monstersTurn(); }
     // Fugir de um grupo é mais difícil: +1 no d20 por monstro a mais vivo.
-    let first = !opt.ambush, result = null;
+    let first = !opt.ambush, result = null, rodada = 0;
     while (!result && P.hp > 0 && alive().length) {
       const dc = (kind === 'dragao' ? 15 : md.chefe ? 13 : first ? 8 : 11) + alive().length - 1;
       const hasPot = POTS.some(id => P.pocoes[id] > 0);
@@ -1192,7 +1626,7 @@
         { html: `${ic('sword', ITEMS[P.equip.arma]?.cor)} Atacar <small>${fmtD(atkDie())}</small>`, v: 'atk', cls: 'red' },
         { html: `${ic('scroll', C.PURPLE)} Feitiço`, v: 'spell', cls: 'purple', off: !P.magias.length },
         { html: `${ic('potion', C.RED)} Poção`, v: 'pot', cls: 'green', off: !hasPot },
-        { html: `Fugir <small>d20 ≥ ${dc}</small>`, v: 'flee' },
+        opt.treino ? { html: 'Desistir', v: 'flee' } : { html: `Fugir <small>d20 ≥ ${dc}</small>`, v: 'flee' },
       ]);
       let act = choice;
       if (choice === 'spell') {
@@ -1219,6 +1653,8 @@
         if (it.efeito === 'hp') tray.result(`+${heal(v)}`, 'de vida', C.RED);
         else { const g = Math.min(P.pmMax - P.pm, v); P.pm += g; tray.result(`+${g}`, 'de magia', C.BLUE); }
         log('Glub glub glub.');
+      } else if (act === 'flee' && opt.treino) {
+        tray.show('desistiu', '', C.GRAY); result = 'fuga'; await wait(600); break;
       } else if (act === 'flee') {
         const [v] = await tray.roll([{ label: 'Fugir', dice: [20], color: C.INK }]);
         if (v >= dc) { tray.result(`${v}`, 'você fugiu!', C.GREEN); result = 'fuga'; await wait(600); break; }
@@ -1229,12 +1665,25 @@
       first = false;
       if (!alive().length) break;
       await wait(700);
+      // O lendário, na vez dele, às vezes foge da luta em vez de atacar.
+      if (opt.foge && rodada++ > 0 && Math.random() < LENDA_FOGE) {
+        tray.show('fugiu!', `com ${foes[0].hp} de vida`, C.OCHRE);
+        log(`${md.nome} dá um pulo e foge correndo! O mestre apaga ${md.art === 'a' ? 'ela' : 'ele'} da folha.`);
+        result = 'escapou';
+        await wait(1200);
+        break;
+      }
       await monstersTurn();
     }
     // Os monstros também podem cair na vez deles (Revide, Espelho, Contra-ataque).
     if (!result) result = P.hp > 0 && !alive().length ? 'vitoria' : 'derrota';
+    opt.left = foes[0].hp;
+    // Duelo: ninguém desmaia, o herói fica com 1 de vida.
+    if (opt.treino && result === 'derrota') { P.hp = 1; result = 'perdeu'; log(`${md.nome} encosta a espada no seu peito: "Treino é treino!" Você perdeu o duelo.`); bars(); }
 
-    if (result === 'vitoria') {
+    if (result === 'vitoria' && opt.treino) {
+      log(`Você venceu o duelo! ${md.nome} ri e aperta a sua mão.`);
+    } else if (result === 'vitoria') {
       G.kills += n;
       P.abates[kind] = (P.abates[kind] || 0) + n;
       log(n > 1 ? `Você venceu ${md.art === 'a' ? 'as' : 'os'} ${n === 2 ? (md.art === 'a' ? 'duas' : 'dois') : 'três'}! O mestre faz um X em cima.` : `Você venceu ${md.nome}! O mestre faz um X em cima.`);
@@ -1496,7 +1945,11 @@
     here().talked.add(i);
     const key = dunKey(P.pg, i), n = G.conversa[key] || 0;
     G.conversa[key] = n + 1;
-    await dialog('Alguém no caminho', `<p>"${NPC_LINES[(o.fala + n * DICAS) % NPC_LINES.length]}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
+    // A 4ª pessoa de dica da página fala do lendário na primeira conversa; da
+    // segunda em diante, as dicas de sempre.
+    const lenda = !n && o.fala % 4 === 3 && !here().lenda.dead;
+    const line = lenda ? LENDA_DICA[P.pg] : NPC_LINES[(o.fala + n * DICAS) % NPC_LINES.length];
+    await dialog('Alguém no caminho', `<p>"${line}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
     save();
   }
 
@@ -1601,10 +2054,25 @@
   function respawnMonsters() {
     for (const l of G.pg) l.dead.clear();
     for (const k in G.dun) {
-      const [pg, n] = k.split(':').map(Number), m = dunMap(n, pg);
+      const [pg, n, andar = 0] = k.split(':').map(Number), m = dunMap(n, pg, andar);
       for (const i of [...G.dun[k].dead]) if (m.obj.get(i).type !== 'chefe') G.dun[k].dead.delete(i);
     }
     if (M) rebakeAll();
+  }
+  // Duelo de treino com o guerreiro da fogueira n. A primeira vitória paga
+  // moedas e experiência como a primeira missão da região; as revanches, um
+  // quarto das moedas.
+  const duelPrize = n => [QUEST_OURO[duelTier(n) - 1], QUEST_XP[duelTier(n) - 1]];
+  async function duel(n) {
+    const dm = MONSTERS['duelo_' + n], wins = G.duelos[n] || 0;
+    const r = await combat('duelo_' + n, { treino: true, text: `${dm.nome} levanta da fogueira e pega ${dm.art === 'a' ? 'a espada dela' : 'a espada dele'}: "Vamos ver do que você é capaz!"` });
+    if (r !== 'vitoria') return;
+    G.duelos[n] = wins + 1;
+    const [ouro, xp] = duelPrize(n), g = wins ? Math.floor(ouro / 4) : ouro, x = wins ? 0 : xp;
+    P.ouro += g; SFX.coin();
+    const ups = x ? gainXp(x) : 0;
+    narrate(`Duelo vencido! +${g} moedas${x ? `, +${x} de experiência` : ''}.${ups ? ` Subiu para o nível ${P.lvl}!` : ''}`);
+    hud(); save();
   }
   function owned(id) { return P.bolsa.includes(id) || Object.values(P.equip).includes(id); }
   function renderCamp(i, n) {
@@ -1627,6 +2095,13 @@
       <p class="small">Cada fogueira ensina uma habilidade só, e cada nível que você sobe dá um ponto para aprender. Você guarda todas, mas só ${HABS_MAX} ficam equipadas (troque na mochila). Você tem ${pts} ponto${pts === 1 ? '' : 's'}.</p>
       <div class="row">${ic('star', C.YELLOW)}<span class="nm">${hb.nome} <small>${MAOS[hb.mao].nome} nos dados ${GRUPO[hb.grupo]}: ${hb.txt}</small><em>${learned ? 'você já sabe' : `${MAOS[hb.mao].nome} = ${MAOS[hb.mao].txt}`}</em></span>
         <button data-act="learn" ${learned || !pts ? 'disabled' : ''}>${learned ? 'Aprendida' : 'Aprender'}</button></div>
+      <h3>Duelo</h3>
+      ${(() => {
+        const dm = MONSTERS['duelo_' + n], wins = G.duelos[n] || 0, [ouro, xp] = duelPrize(n);
+        return `<div class="row"><img class="ic" src="${A.monsterURL('duelo_' + n, 64)}" alt=""><span class="nm">${dm.nome} desafia você <small>${ic('heart')}${dm.hp} ${ic('sword')}${fmtD(dm.atk)} ${ic('shield')}${fmtD(dm.def)}</small>
+          <em>${wins ? `Revanche: ${Math.floor(ouro / 4)} moedas (você já venceu ${wins}×)` : `Prêmio: ${ouro} moedas e ${xp} de experiência`}. Ninguém desmaia: quem chega a 0 perde e fica com 1 de vida.</em></span>
+          <button data-act="duel" class="red" ${P.hp <= 1 ? 'disabled' : ''}>Duelar</button></div>`;
+      })()}
       <h3>Ferreiro andarilho</h3>
       ${gear.map(id => {
         const it = ITEMS[id], cur = P.equip[it.slot];
@@ -1652,6 +2127,7 @@
       if (!b || b.disabled) return;
       const [act, arg] = b.dataset.act.split(':');
       if (act === 'out') { closePanel(); return; }
+      if (act === 'duel') { closePanel(); duel(n).then(() => renderCamp(i, n)); return; }
       if (act === 'rest') rest();
       else if (act === 'learn') {
         // Aprendida entra equipada se ainda houver vaga.
@@ -1752,8 +2228,9 @@
       for (const k in G.dun) dun[k] = saveLevel(G.dun[k]);
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         v: 3, seed: WORLD.seed, P, dun,
-        pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda })),
+        pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
+        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
@@ -1780,15 +2257,23 @@
         loadLevel(l, d);
         d.talked.forEach(i => l.talked.add(i)); d.cleared.forEach(n => l.cleared.add(n));
         l.won = d.won; l.guarda = !!d.guarda;
+        // Save de antes da 0.5.0: o lendário começa no lugar dele, com a vida cheia.
+        if (d.lenda) l.lenda = d.lenda;
       });
       for (const k in data.dun) {
-        const [pg, n] = k.split(':').map(Number);
-        G.dun[k] = newLevel(dunMap(n, pg)); loadLevel(G.dun[k], data.dun[k]);
+        const [pg, n, andar = 0] = k.split(':').map(Number);
+        G.dun[k] = newLevel(dunMap(n, pg, andar)); loadLevel(G.dun[k], data.dun[k]);
       }
       data.seen.forEach(k => G.seen.add(k));
-      Object.assign(G, { steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {} });
+      Object.assign(G, {
+        steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {},
+        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {},
+      });
+      // A lava que ainda não esfriou volta para o mapa do Vulcão.
+      const v = WORLD.pages[Wd.PAGINAS - 1];
+      for (const k in G.lava) v.t[+k] = Wd.AGUA;
       setPage(P.pg);
-      setMap(P.onde);
+      setMap(P.onde, P.andar);
       narrate(`De volta à aventura de ${esc(P.nome)}. O mestre abre o caderno na mesma página.`);
     } else {
       P = newPlayer(data.nome);
@@ -1826,11 +2311,21 @@
       reveal(P.x, P.y, true);
       if (BIOME_TEXT[pg].chegada) narrate(BIOME_TEXT[pg].chegada);
     }
-    if (qs.has('noite')) { G.clock = 80; burnTorch(false); }
+    if (qs.has('noite')) { G.clock = 80; burnTorch(false); rebakeAll(); }
+    // ?tempestade e ?erupcao: a próxima tempestade (Deserto) ou erupção
+    // (Vulcão) vem no próximo passo lá fora.
+    if (qs.has('tempestade')) G.areia = TEMPESTADE_A - 1;
+    if (qs.has('erupcao')) G.vulcao = ERUPCAO_A - 1;
+    // ?lenda: o lendário da página aparece 3 quadrados à direita do herói (se der).
+    if (qs.has('lenda')) {
+      const lg = here().lenda;
+      for (let dx = 3; dx >= 2; dx--) { const j = idx(P.x + dx, P.y); if (Wd.passable(W.t[j]) && !W.obj.has(j)) { lg.i = j; break; } }
+    }
     if (qs.has('masmorra')) {
       const n = Math.min(W.dungeons.length - 1, +qs.get('masmorra') || 0), d = W.dungeons[n];
       P.ox = d % W.W; P.oy = (d / W.W) | 0;
-      setMap(n);
+      // ?andar = já no andar de baixo (só nas masmorras com a variação "andar").
+      setMap(n, qs.has('andar') && dunMap(n).varia === 'andar' ? 1 : 0);
       P.x = M.start % M.W; P.y = (M.start / M.W) | 0;
       burnTorch(false);
       reveal(P.x, P.y, true);
@@ -1962,7 +2457,8 @@
   sndIcon();
 
   window.Caderno = {
-    get state() { return { P, G, W, M, L, WORLD }; }, combat, title, rest,
+    get state() { return { P, G, W, M, L, WORLD }; }, combat, title, rest, duel, meetLegend, sandstorm, erupt,
+    riddle: i => riddle(i, M.obj.get(i)), stairs,
     talk: i => talk(i, M.obj.get(i)), camp: i => camp(i, M.obj.get(i)), guardian: i => guardian(i, M.obj.get(i)), shortcut: i => shortcut(M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), turnPage: i => turnPage(M.obj.get(i)),
   };
 

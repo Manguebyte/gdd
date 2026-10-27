@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.4.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.5.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -19,6 +19,7 @@ Caderno de Aventuras recria o RPG que a gente jogava no caderno da escola. Um co
 - **Sempre tem um rei no fundo.** Cada monstro tem uma versão chefe (Rei Rato, Rainha Aranha...) esperando no fundo da sua masmorra.
 - **Fogueiras, não cidades.** Como num souls-like, não há vilas: há acampamentos com fogueira espalhados pelas páginas. Descansar cura, mas todo monstro vencido volta; os guerreiros que descansam ali vendem o que o herói precisa.
 - **Cada bioma é uma página do caderno.** Campos, Deserto, Montanhas Geladas, Pântano Sombrio e Vulcão: cada um ocupa uma folha inteira, do tamanho de uma ilha, para ter muito o que explorar antes de virar a página.
+- **Cada página traz uma novidade.** Da segunda página em diante, cada uma tem uma regra própria (tempestade de areia, gelo escorregadio, neblina, erupções), e toda página tem um monstro lendário que foge do herói. Assim a página nova tem algo novo para aprender, não só monstros mais fortes.
 
 **Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular, em pé ou deitado. No celular ele **se instala como app** (PWA): pelo botão "Instalar no celular" da capa (Android) ou por Compartilhar → "Adicionar à Tela de Início" (iPhone), ganha ícone, abre em tela cheia, gira junto com o celular e joga sem internet (os arquivos ficam guardados no aparelho; o save continua no armazenamento do navegador). O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Visitas:** o protótipo no site conta quantas pessoas o abrem com o Google Analytics, e só isso (nenhum evento do jogo, nada pessoal); a capa avisa. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
 
@@ -68,7 +69,7 @@ O mestre não aparece, mas está em todo lugar:
 | montanha (bloqueia) | montanha | rochedos | picos nevados | rochas | vulcões |
 
 - **Como cada bioma muda o terreno (proposta):** o Deserto é seco (quase só dunas, poucos cactos, pouca areia movediça), o Pântano Sombrio é úmido (muita árvore morta e brejo), as Montanhas Geladas e o Vulcão têm mais montanha. No gerador, isso são os limites de elevação (água e montanha) e um ajuste de umidade por bioma.
-- **Os biomas mudam o visual e os monstros, não as regras.** Terreno, desenho, monstros, chefes e lojas mudam de uma página para outra; andar, lutar, dia e noite, tochas e fogueiras funcionam igual em todas.
+- **Os biomas mudam o visual, os monstros e uma regra.** Terreno, desenho, monstros, chefes e lojas mudam de uma página para outra; andar, lutar, dia e noite, tochas e fogueiras funcionam igual em todas. Fora isso, cada página da segunda em diante tem **uma regra só dela** (ver Regras de cada página). Os Campos, a primeira, não têm: é onde o jogador aprende o básico.
 - **Revelação:** ao chegar num quadrado, o mestre desenha todos os quadrados num raio de ~2,6 ao redor que ainda estavam em branco, do mais perto para o mais longe, um após o outro.
 - **Regiões de perigo 1 a 15**, 3 por página, pela distância a pé desde a primeira fogueira da página: os Campos são as regiões 1–3, o Deserto 4–6, as Montanhas Geladas 7–9, o Pântano Sombrio 10–12 e o Vulcão 13–15. Cada região tem seu par de monstros.
 - **5 acampamentos com fogueira por página**, com nome de material escolar: o primeiro no início da página e os outros a ~1/5, ~2/5, ~3/5 e ~4/5 do caminho até o fim, sempre num campo ou areia. Os nomes seguem a ordem do caderno: Apontador, Borracha, Régua, Clipe e Grampo nos Campos; Compasso, Estojo, Transferidor, Lancheira e Lápis de cor no Deserto; Caneta, Mochila, Tesoura, Cola e Fichário nas Montanhas Geladas; Esquadro, Giz, Marca-texto, Corretivo e Lapiseira no Pântano Sombrio; Pincel, Guache, Carimbo, Calculadora e Globo no Vulcão.
@@ -78,7 +79,7 @@ O mestre não aparece, mas está em todo lugar:
 - Por página: monstros desenhados (~7,5% dos quadrados livres), baús (~2%), **6 entradas de masmorra** (uma por monstro, na região dele) e **7 personagens**: 3 que dão missões (um por região) e 4 que dão dicas.
 - **Personagens espaçados:** nenhum personagem fica a menos de 5 quadrados de outro (contando na horizontal ou na vertical, a maior das duas distâncias), nem colado numa masmorra.
 - Masmorras ficam a 4+ quadrados das fogueiras e do fim da página e a 6+ umas das outras. Se uma não couber na região dela, aquela página fica sem ela (a missão do chefe passa a pedir o outro rei da região).
-- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0.
+- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0. O que entrou na 0.5.0 (miragens, monstros da noite, onde o lendário começa, a variação de cada masmorra) também vem depois de todos os sorteios, só com hash ou com um gerador separado, então as páginas e masmorras de antes continuam iguais.
 
 **Em aberto**
 
@@ -112,9 +113,49 @@ O mestre não aparece, mas está em todo lugar:
 
 **Em aberto**
 
-- Monstros que só aparecem à noite.
+- Monstros que só aparecem à noite em outras páginas (hoje só no Pântano Sombrio, ver Regras de cada página).
 - Fogueiras com outros guerreiros (e outra loja) à noite.
 - Fogueira acesa iluminando em volta dela à noite.
+
+## Regras de cada página
+
+**Definido** (os números são proposta)
+
+Da segunda página em diante, cada página tem uma regra só dela, para a página nova trazer algo novo além de monstros mais fortes. O mestre conta a regra na chegada ("Cuidado com as tempestades de areia...") e, quando ela acontece, narra. As regras valem só lá fora, na página; dentro das masmorras, não.
+
+- **Campos:** nenhuma. É a página onde o jogador aprende o básico.
+- **Deserto: tempestade de areia e miragens.**
+  - A cada **70 passos** no Deserto vem uma tempestade de areia de **15 passos**. Quatro passos antes, o mestre avisa ("O vento começa a levantar areia..."). Durante ela, o mestre só desenha os 8 vizinhos do herói, a folha fica coberta de lápis cor de areia com riscos voando, e o HUD mostra "tempestade".
+  - No começo da tempestade, **a borracha apaga um pedaço do mapa** já desenhado: um círculo de raio ~3,5 quadrados, a 6 a 12 quadrados do herói, com o rastro que passava por ali. O que tem nome escrito (fogueiras, masmorras, quem dá missão, a passagem e a seta de volta) a borracha não apaga.
+  - **Miragens:** ~4% dos quadrados livres do Deserto têm um baú ou um monstro desenhado que não existe. Quando o herói chega do lado (nos 8 vizinhos), some ("Era miragem!"). Elas voltam com o descanso na fogueira, como os monstros. Ficam longe de personagens, masmorras e da passagem.
+- **Montanhas Geladas: gelo escorregadio.** No gelo (o terreno de areia desta página, ~1/5 do que se anda), o herói continua escorregando na mesma direção, mais rápido, até sair do gelo ou o próximo quadrado ser água, montanha ou ter alguma coisa desenhada. Escorregando, o toque no mapa perde o caminho planejado. Isso faz o gelo virar um pequeno quebra-cabeça de caminho.
+- **Pântano Sombrio: neblina e os mortos da noite.**
+  - **Neblina:** mesmo de dia, o mestre só desenha num raio de ~2,1 quadrados (com tocha à noite, também), e uma camada de lápis cinza-claro cobre a folha, menos um círculo em volta do herói.
+  - **Monstros da noite:** ~3% dos quadrados livres têm um monstro da região que só existe à noite. De dia o mestre não desenha nada ali e dá para passar; quando anoitece, ele aparece no mapa ("Os mortos se levantam!") e bloqueia o quadrado como qualquer monstro desenhado. Vencido, fica com X até o descanso.
+- **Vulcão: erupções.** A cada **60 passos** no Vulcão (com aviso 4 passos antes: "O chão treme..."), o vulcão cospe **3 rios de lava** de 4 a 7 quadrados, saindo dos vulcões a até 10 quadrados do herói. Os quadrados viram lava (não se anda neles) por **30 passos** e depois esfriam (a contagem continua mesmo dentro das masmorras). A lava nunca cai a menos de 3 passos do herói, perto de uma fogueira, em cima de algo desenhado ou do lendário, e um rio que fecharia o caminho do herói até uma fogueira, masmorra, personagem, a seta de volta, a passagem ou o covil não sai.
+
+**Em aberto**
+
+- Uma regra para os Campos também (hoje ficam sem, de propósito).
+- A tempestade apagar parte do mapa pode irritar quem usa o toque no mapa para andar longe; se incomodar, ela pode só esconder a visão.
+
+## Monstro lendário
+
+**Definido** (os números são proposta)
+
+- Cada página tem **um monstro lendário**: um monstro da região do meio com nome, aura dourada tracejada e uma estrela na cabeça. Ele não fica desenhado parado: **anda pela página** a cada passo do herói.
+- **Foge:** até 5 quadrados do herói, em 75% dos passos ele vai para o vizinho mais longe do herói; mais longe, passeia (anda em metade dos passos). Não pisa em nada desenhado nem perto das fogueiras. Para lutar, é preciso **encurralar** e esbarrar nele.
+- Aparece na tela só onde o mestre já desenhou e se o herói consegue ver (no escuro, na neblina e na tempestade, só de perto). Na primeira vez que o herói o vê, o mestre avisa. A 4ª pessoa de dica de cada página, na primeira conversa, fala dele.
+- **Na luta**, depois da primeira rodada, cada vez dele tem **20%** de chance de ele fugir em vez de atacar. Ele reaparece longe (a 15+ quadrados do herói, fora da primeira região) **com a vida que perdeu**: dá para cansar ele aos poucos. Se o herói fugir da luta, acontece o mesmo.
+- **Números:** vida = a do chefe do monstro + 20%; ataque, defesa e golpe especial do chefe (defesa 1d4 se o chefe não tiver); o dobro dos dados de moeda e o triplo da experiência do chefe. Vencido, não volta e deixa um **equipamento da loja da página seguinte**.
+
+| Página | Lendário | Monstro | Vida | Ataque | Defesa |
+| --- | --- | --- | --- | --- | --- |
+| Campos | Dentuço, o Lobo Sem Dono | Lobo | 50 | 2d10 | 1d4 |
+| Deserto | Rainha das Dunas | Naja | 65 | 3d8 | 1d4 |
+| Montanhas Geladas | Pé-Grande | Yeti | 233 | 5d8 | 2d6 |
+| Pântano Sombrio | Lençol Errante | Fantasma | 312 | 6d10 | 3d6 |
+| Vulcão | Faísca, o Diabrete Ladrão | Diabrete | 420 | 6d12 | 3d8 |
 
 ## Masmorras e chefes
 
@@ -130,6 +171,11 @@ O mestre não aparece, mas está em todo lugar:
 - **Vencer o chefe** deixa X nele e risca a entrada da masmorra na página. Atrás do trono há um baú com um **equipamento** da loja da página seguinte (a mesma regra dos baús raros). Baús abertos e o que foi desenhado de cada masmorra ficam salvos; dá para voltar depois. Os monstros dela voltam quando o herói descansa numa fogueira, mas o chefe vencido não volta.
 - **Fugir de um chefe:** d20 ≥ 13.
 - **Escada escondida:** em uma masmorra por página (menos a última), uma segunda escada sobe por trás do guardião da passagem e vira a página (ver Guardiões das passagens).
+- **Variações:** cada masmorra tem uma de 4 variações, para nenhuma ser igual à outra. As 6 masmorras de uma página passam pelas 4 em ordem, começando de uma tirada da semente, então toda página tem todas.
+  - **Porta trancada:** os corredores que chegam na sala do chefe têm portas de madeira com cadeado. A chave fica na sala mais longe da escada que dá para alcançar sem passar por elas; pisar nela abre todas as portas. Se não houver sala assim, a masmorra fica com armadilhas.
+  - **Armadilhas:** 4 quadrados de corredor (fora das salas) têm uma armadilha escondida, que o mestre só desenha (espetos) depois que alguém pisa. Pisar rola **1d20: 11 ou mais pula a tempo**; senão, toma **(região/2, arredondado para cima)d8** de dano. Armadilha nunca faz desmaiar: o herói fica com pelo menos 1 de vida. Cada uma dispara uma vez só.
+  - **Enigma do mestre:** numa sala há uma cara de pedra que bloqueia o quadrado e faz uma adivinha "O que é, o que é?" com 3 respostas (12 adivinhas, como "Tem dentes, mas não morde" → pente). Ela só pergunta uma vez. **Acertar** dá um equipamento da loja da página seguinte; **errar** acorda um monstro da masmorra, e começa a luta.
+  - **Andar a mais:** no lugar do chefe, uma escada desce para o **andar de baixo**, outro labirinto do mesmo tamanho (com monstros e baús) com o chefe no fundo. Uma escada "Subir" leva de volta para onde ficava a do primeiro andar.
 
 **Chefes (proposta):** vida = 2 × a do monstro + 10; ataque com um dado a mais; mesma defesa; o dobro de dados de moeda; 4 × a experiência; deixam 2d6 despojos.
 
@@ -168,7 +214,8 @@ O mestre não aparece, mas está em todo lugar:
 
 **Em aberto**
 
-- Masmorras com mais de um andar, armadilhas ou portas trancadas.
+- Armadilhas que dá para achar antes de pisar (uma tocha melhor, uma habilidade).
+- Mais de uma variação na mesma masmorra nas páginas do fim.
 - Monstros da masmorra voltarem depois de um tempo.
 - Masmorra do dragão (hoje o covil é um quadrado só).
 
@@ -457,6 +504,9 @@ Não há vilas nem cidades. Como num souls-like, cada página tem 5 acampamentos
 - **Chegar** numa fogueira marca ali o lugar onde o herói acorda se desmaiar e abre a folha do acampamento. Na primeira vez, o mestre narra a chegada.
 - **Descansar** é de graça: enche vida e Magia e, a partir do passo 60 do dia, vira "Dormir" e passa a noite. Mas **todo monstro vencido volta**, em todas as páginas e masmorras: o mestre apaga os X com a borracha. Chefes vencidos, o dragão e baús abertos não voltam.
 - **A veterana da fogueira ensina** a habilidade daquela fogueira, por 1 ponto de habilidade (ver Habilidades passivas). Cada fogueira mostra só a sua; para aprender todas, é preciso passar por todas.
+- **Duelo:** em cada fogueira, um guerreiro com nome (Zeca Machado, Tina Escudo... um por fogueira, 25 no caderno) aceita um duelo de treino, desenhado como um boneco-palito de capa azul, elmo e escudo redondo. É uma luta normal de dados, mas **ninguém desmaia**: quem chega a 0 perde e fica com 1 de vida, sem perder ouro. Não tem noite (+1 dado), e "Fugir" vira "Desistir", que sai sem rolar.
+  - **Números (proposta):** a região da fogueira (as 5 de uma página ficam nas regiões 1, 1, 2, 2 e 3 dela); vida = a média dos dois monstros da região × 1,4; ataque e defesa do monstro de ataque mais forte (defesa 1d4 se ele não tiver).
+  - **Prêmio:** a primeira vitória em cada fogueira paga as moedas e a experiência da primeira missão daquela região (ver Missões); cada revanche vencida paga um quarto das moedas e nenhuma experiência.
 - **Os guerreiros vendem**, até o nível de loja da fogueira, que é a página dela (ver Itens):
   - **Ferreiro andarilho:** armas, escudos e armaduras.
   - **Maga:** feitiços.
@@ -482,6 +532,8 @@ Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
 Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`): semente do mundo, personagem (com tochas, despojos, missões, a página e o mapa em que ele está e a página da fogueira onde acorda), relógio e dia, e, para cada página e cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para cada página, também os personagens visitados, as masmorras limpas e (na última) se o dragão foi vencido. Ao continuar, as 5 páginas são geradas de novo da semente e o mapa atual é redesenhado de uma vez.
 
+Da 0.5.0 em diante também ficam salvos: onde está o lendário de cada página, a vida dele e se caiu; os quadrados de lava que ainda não esfriaram (voltam para o mapa do Vulcão ao carregar); os passos até a próxima tempestade e erupção; as vitórias nos duelos de cada fogueira; o andar da masmorra em que o herói está (o andar de baixo de uma masmorra é salvo como "página:masmorra:1"); a chave pega, as armadilhas disparadas e o enigma respondido, junto com os baús abertos de cada masmorra. Um save da 0.4 carrega normalmente, com os lendários no lugar de começo e de vida cheia.
+
 Para cada página também fica salvo se o guardião da passagem foi vencido (um save antigo carrega com os guardiões vivos; quem já esteve na página seguinte pode passar por trás deles). As habilidades aprendidas e as 2 equipadas ficam no personagem; os pontos não são guardados, são o nível − 1 − as habilidades aprendidas. Um save da 0.2.0 (sem habilidades) carrega normalmente e já chega com um ponto por nível subido; um da 0.3 (todas valiam) equipa as 2 primeiras que aprendeu.
 
 Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma semente agora gera outro mundo, então o jogo começa uma aventura nova.
@@ -496,6 +548,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.5.0** (2026-10-27): para o jogo ficar menos repetitivo (crítica de um jogador: "me pareceu repetitivo em certo momento"), cada página da segunda em diante ganha uma regra própria: tempestade de areia que apaga um pedaço do mapa e miragens no Deserto, gelo escorregadio nas Montanhas Geladas, neblina e monstros que só aparecem à noite no Pântano Sombrio, erupções de lava que fecham caminhos por um tempo no Vulcão. Um monstro lendário por página, com nome, que anda pelo mapa, foge do herói e pode fugir da luta guardando a vida que perdeu. Duelos de treino com um guerreiro em cada fogueira (ninguém desmaia). Cada masmorra ganha uma variação: porta trancada com chave, armadilhas escondidas (d20), enigma "O que é, o que é?" ou um andar de baixo com o chefe. A mesma semente gera as mesmas páginas e masmorras de antes, e saves da 0.4 carregam.
 - **0.4.0** (2026-10-27): lutas em grupo (alguns monstros do mapa vêm em dupla ou trio, com "×2"/"×3" no desenho; você escolhe o alvo e cada um ataca na vez deles); guardião de chefe em cima de cada canto dobrado (4: Senhor da Guerra Orc, Verme Colossal, Troll da Montanha, Cavaleiro da Morte), com uma escada escondida numa masmorra de cada página que sai atrás dele, para quem prefere explorar a lutar; o protótipo conta quantas pessoas o abrem (Google Analytics, só a visita, com aviso na capa); folha de luta em três colunas (monstro, dados, herói; no celular em pé, um embaixo do outro); só 2 habilidades passivas equipadas de cada vez (o herói guarda todas as aprendidas e troca na mochila). Saves da 0.3 carregam (equipam as 2 primeiras habilidades).
 - **0.3.1** (2026-10-27): correção: a mochila não se atualizava depois de equipar um item, beber uma poção ou usar Cura (a ação acontecia, mas a folha só mudava ao fechar e abrir de novo).
 - **0.3.0** (2026-10-27): habilidades passivas com combinações de pôquer nos dados (25, uma por fogueira, um ponto por nível); golpes especiais dos monstros (maldição que tira 1 ou 2 de cada dado por algumas rodadas, e brutos que quebram um dado da defesa até o fim da luta); teto de 5 dados na arma e na defesa (escudo até 2, armadura até 3, com dados maiores); menos encontros surpresa (mata 8,5% → 5%, pântano 9,5% → 6%, campo e areia um pouco menos) e 8 passos de calma depois de cada um. Saves da 0.2.0 continuam valendo.
@@ -508,7 +561,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
 
-> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0 e da 0.4.0 já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0 e da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

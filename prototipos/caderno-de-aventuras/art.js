@@ -465,9 +465,43 @@
     helm(r, o, hx * sc + ox, hy * sc + oy + 2, 1.05);
     return o;
   }
+  // Monstro lendário ("lenda_2" = Pé-Grande): o monstro de tamanho normal, com
+  // uma aura dourada tracejada em volta e uma estrela em cima da cabeça.
+  function legend(pg) {
+    const kind = World.LENDAS[pg][0], r = S.rng(S.hash(pg, 23, 9)), sc = 0.84, ox = 8, oy = 14;
+    const o = [];
+    for (let k = 0; k < 14; k++) {
+      const a0 = k / 14 * Math.PI * 2, a1 = a0 + 0.24;
+      o.push(S.line(r, 50 + Math.cos(a0) * 46, 56 + Math.sin(a0) * 42, 50 + Math.cos(a1) * 46, 56 + Math.sin(a1) * 42, { color: C.YELLOW, w: 3.4, kind: 'pen' }));
+    }
+    for (const s of S.xform(M[kind](r), sc, ox, oy)) o.push(s);
+    const [hx, hy] = HEAD[kind], cx = hx * sc + ox, by = hy * sc + oy - 2, p = [];
+    for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? 4 : 10; p.push([cx + Math.cos(a) * rr, by - 6 + Math.sin(a) * rr]); }
+    shape(r, o, p, C.OCHRE, C.YELLOW, 2.2, 2.4);
+    return o;
+  }
+  // Guerreiro da fogueira (os duelos): boneco-palito de capa azul, elmo,
+  // espada e escudo redondo, virado para o herói.
+  M.guerreiro = r => {
+    const o = [];
+    shape(r, o, [[53, 32], [68, 70], [36, 70], [46, 32]], C.BLUE, C.BLUE, 3.2, 3.2);
+    ov(r, o, 50, 21, 10, 10, C.INK, 3.4);
+    fillE(r, o, 50, 21, 10, 10, C.SKIN, 3, 0.8, 0.6);
+    shape(r, o, [[39, 19], [42, 9], [50, 6], [58, 9], [61, 19]], C.INK, C.GRAY, 2.6, 2.8);
+    ln(r, o, 50, 31, 50, 60, C.INK, 3.6);
+    ln(r, o, 50, 40, 64, 54, C.INK, 3.2);
+    ln(r, o, 50, 40, 34, 48, C.INK, 3.2);
+    ln(r, o, 34, 48, 18, 22, C.GRAY, 3.8); ln(r, o, 40, 42, 28, 52, C.BROWN, 3.4);
+    blob(r, o, 68, 56, 12, 13, C.INK, C.OCHRE, 2.8, 3);
+    dot(r, o, 68, 56, 2.6, C.INK);
+    ln(r, o, 50, 60, 38, 86, C.INK, 3.6); ln(r, o, 50, 60, 62, 86, C.INK, 3.6);
+    return o;
+  };
   const monsterCache = {};
   A.monster = kind => monsterCache[kind] || (monsterCache[kind] = kind.startsWith('chefe_') ? boss(kind.slice(6))
     : kind.startsWith('guarda_') ? guardian(+kind.slice(7))
+    : kind.startsWith('lenda_') ? legend(+kind.slice(6))
+    : kind.startsWith('duelo_') ? M.guerreiro(S.rng(S.hash(+kind.slice(6), 29)))
     : M[kind](S.rng(S.hash(kind.length, kind.charCodeAt(0), kind.charCodeAt(1)))));
   A.monsterFresh = (kind, seed) => M[kind](S.rng(seed));
 
@@ -903,6 +937,55 @@
         for (const s of S.xform(A.monster('guarda_' + (obj.to - 1)), 0.62, x0 + 1, y0 + 4)) o.push(s);
         o.push(S.text(World.GUARDIOES[obj.to - 1][1], cx, y0 + T + 12, 15, C.RED));
       }
+    } else if (obj.type === 'monstro' && obj.noite && !state.noite) {
+      // Monstro da noite (Pântano Sombrio): de dia o mestre não desenha nada.
+    } else if (obj.type === 'miragem') {
+      // Miragem (Deserto): igual a um baú ou um monstro de verdade, até sumir.
+      if (!state.dead.has(i)) {
+        if (obj.look === 'bau') for (const s of S.xform(A.icon('chest'), 0.38, x0 + 13, y0 + 16)) o.push(s);
+        else for (const s of S.xform(A.monster(obj.kind), 0.5, x0 + 7, y0 + 8)) o.push(s);
+      }
+    } else if (obj.type === 'porta') {
+      // Porta trancada: tábuas marrons com um cadeado amarelo; aberta, some.
+      if (!state.opened.has('chave')) {
+        shape(r, o, [[x0 + 8, y0 + 8], [x0 + T - 8, y0 + 8], [x0 + T - 8, y0 + T - 6], [x0 + 8, y0 + T - 6]], C.INK, C.BROWN, 2.6, 4);
+        for (const y of [24, 40]) ln(r, o, x0 + 10, y0 + y, x0 + T - 10, y0 + y, C.INK, 1.8);
+        ov(r, o, cx, y0 + 30, 6, 7, C.INK, 2.2);
+        blob(r, o, cx, y0 + 38, 9, 7, C.INK, C.YELLOW, 2.2, 2.4);
+      }
+    } else if (obj.type === 'chave') {
+      if (!state.opened.has('chave')) {
+        blob(r, o, cx - 12, y0 + 32, 8, 8, C.INK, C.YELLOW, 2.6, 2.4);
+        ln(r, o, cx - 4, y0 + 32, cx + 18, y0 + 32, C.OCHRE, 3.6);
+        ln(r, o, cx + 12, y0 + 32, cx + 12, y0 + 40, C.OCHRE, 3.2); ln(r, o, cx + 18, y0 + 32, cx + 18, y0 + 40, C.OCHRE, 3.2);
+        o.push(S.text('Chave', cx, y0 + 4, 16, C.OCHRE));
+      }
+    } else if (obj.type === 'armadilha') {
+      // Escondida: só aparece (espetos de caneta) depois que alguém pisa.
+      if (state.opened.has(i)) for (let k = 0; k < 4; k++) {
+        const x = x0 + 14 + k * 12;
+        shape(r, o, [[x - 5, y0 + T - 14], [x, y0 + 24], [x + 5, y0 + T - 14]], C.INK, C.GRAY, 2, 2.4);
+      }
+    } else if (obj.type === 'enigma') {
+      // Cara de pedra na parede, com a boca aberta; resolvida, ganha um X.
+      shape(r, o, [[x0 + 12, y0 + T - 6], [x0 + 10, y0 + 18], [cx, y0 + 8], [x0 + T - 10, y0 + 18], [x0 + T - 12, y0 + T - 6]], C.INK, C.GRAY, 2.6, 4);
+      eyes(r, o, cx - 9, cx + 9, y0 + 28, 3.4);
+      ov(r, o, cx, y0 + 44, 8, 6, C.INK, 2.4);
+      o.push(S.text('?', cx + 20, y0 + 12, 22, C.PURPLE, { font: S.HAND }));
+      if (state.opened.has(i)) cross(r, o, x0, y0, T);
+    } else if (obj.type === 'descer') {
+      // Escada para baixo: degraus pintados de escuro, cada vez mais fundos.
+      for (let k = 0; k < 4; k++) {
+        const w = 10 + k * 4, y = y0 + 22 + k * 9;
+        shape(r, o, [[cx - w, y], [cx + w, y], [cx + w, y + 8], [cx - w, y + 8]], C.INK, C.INK, 2.2, 3);
+      }
+      o.push(S.text('Andar de baixo', cx, y0 + 4, 15, C.RED));
+    } else if (obj.type === 'subir') {
+      for (let k = 0; k < 4; k++) {
+        const w = 22 - k * 4, y = y0 + T - 10 - k * 9;
+        shape(r, o, [[cx - w, y], [cx + w, y], [cx + w, y - 8], [cx - w, y - 8]], C.INK, C.OCHRE, 2.2, 3);
+      }
+      o.push(S.text('Subir', cx, y0 + 2, 17, C.GREEN));
     } else if (obj.type === 'monstro') {
       for (const s of S.xform(A.monster(obj.kind), 0.5, x0 + 7, y0 + 8)) o.push(s);
       // Grupo: o mestre escreve quantos são em cima do monstro.
