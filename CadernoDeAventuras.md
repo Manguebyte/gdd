@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.5.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.6.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -21,7 +21,7 @@ Caderno de Aventuras recria o RPG que a gente jogava no caderno da escola. Um co
 - **Cada bioma é uma página do caderno.** Campos, Deserto, Montanhas Geladas, Pântano Sombrio e Vulcão: cada um ocupa uma folha inteira, do tamanho de uma ilha, para ter muito o que explorar antes de virar a página.
 - **Cada página traz uma novidade.** Da segunda página em diante, cada uma tem uma regra própria (tempestade de areia, gelo escorregadio, neblina, erupções), e toda página tem um monstro lendário que foge do herói. Assim a página nova tem algo novo para aprender, não só monstros mais fortes.
 
-**Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular, em pé ou deitado. No celular ele **se instala como app** (PWA): pelo botão "Instalar no celular" da capa (Android) ou por Compartilhar → "Adicionar à Tela de Início" (iPhone), ganha ícone, abre em tela cheia, gira junto com o celular e joga sem internet (os arquivos ficam guardados no aparelho; o save continua no armazenamento do navegador). O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Visitas:** o protótipo no site conta quantas pessoas o abrem com o Google Analytics, e só isso (nenhum evento do jogo, nada pessoal); a capa avisa. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
+**Plataforma:** o protótipo é web (HTML/JS, sem build) e funciona em desktop e celular, em pé ou deitado. No celular ele **se instala como app** (PWA): pelo botão "Instalar no celular" da capa (Android) ou por Compartilhar → "Adicionar à Tela de Início" (iPhone), ganha ícone, abre em tela cheia, gira junto com o celular e joga sem internet (os arquivos ficam guardados no aparelho; o save continua no armazenamento do navegador e, com conta, também na nuvem: ver Conta e save na nuvem). O guia de implementação (Parte 2 em diante) é em **Unity 6**. **Visitas:** o protótipo no site conta quantas pessoas o abrem com o Google Analytics, e só isso (nenhum evento do jogo, nada pessoal); a capa avisa. **Em aberto:** em quais plataformas a versão final sai (web, PC, celular).
 
 **Protótipo:** [`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/). Os números deste documento são os do protótipo e valem como **proposta** de balanceamento.
 
@@ -528,6 +528,23 @@ Ao abrir, rola-se 1d20 de sorte:
 
 Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
+## Conta e save na nuvem
+
+**Definido** (0.6.0)
+
+- Na capa, **"Entrar / Criar conta"**: o jogador cria uma conta com **usuário e senha, sem e-mail** (usuário de 3 a 20 letras minúsculas, números, ponto, hífen ou sublinhado; senha de 6 ou mais). Com a conta, ele continua a mesma aventura em qualquer aparelho. Sem conta, o jogo funciona igual a antes.
+- **Senha esquecida não tem como recuperar**, porque não há e-mail. A folha de criar conta avisa para anotar a senha.
+- O backend é o **Firebase**: o login é do Firebase Authentication (provedor E-mail/senha, com o usuário virando um e-mail interno `usuario@caderno-de-aventuras.manguebyte.github.io`, que nunca recebe nada), e o save fica no Firestore, um documento por jogador em `caderno-saves/{uid}` (o save inteiro como texto, mais nome, nível, página e hora). A senha fica só no Firebase Auth. As regras do Firestore deixam cada jogador ler e gravar só o próprio documento.
+- **O save do aparelho continua sendo o principal** (o jogo joga sem internet). A nuvem é uma cópia que sobe ao chegar numa fogueira, descansar, virar a página, a cada 50 passos, ao voltar para a capa e quando o jogo vai para segundo plano, e só quando mudou. Nada sobe antes de o jogo comparar o save do aparelho com o da nuvem naquela sessão, para um save velho nunca apagar um mais novo.
+- **Comparar os saves**, na capa, logo depois de entrar (ou ao abrir o jogo já com a conta entrada): se só um existe, fica esse; se são a mesma aventura (mesma semente), fica o salvo por último; se são aventuras diferentes, a folha "Duas aventuras" mostra as duas (nome, nível, página, data) e o jogador escolhe. A outra é apagada.
+- Enquanto o `firebaseConfig` não está no protótipo (`nuvem.js`), a conta não aparece e nada do Firebase é carregado.
+
+**Em aberto**
+
+- Recuperar a senha (um e-mail opcional, ou uma pergunta secreta).
+- Mais de uma aventura por conta.
+- Ranking entre os jogadores (passos até o dragão, nível), usando as contas.
+
 ## Salvamento
 
 Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`): semente do mundo, personagem (com tochas, despojos, missões, a página e o mapa em que ele está e a página da fogueira onde acorda), relógio e dia, e, para cada página e cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para cada página, também os personagens visitados, as masmorras limpas e (na última) se o dragão foi vencido. Ao continuar, as 5 páginas são geradas de novo da semente e o mapa atual é redesenhado de uma vez.
@@ -548,6 +565,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.6.0** (2026-10-27): conta com usuário e senha (sem e-mail) para salvar a aventura na nuvem (Firebase Auth + Firestore) e continuar em qualquer aparelho. O save do aparelho continua sendo o principal; ao entrar, o jogo junta os dois (o mais novo ganha; aventuras diferentes, o jogador escolhe). Desligado até o `firebaseConfig` ser colado em `nuvem.js`. Saves da 0.5 continuam valendo.
 - **0.5.0** (2026-10-27): para o jogo ficar menos repetitivo (crítica de um jogador: "me pareceu repetitivo em certo momento"), cada página da segunda em diante ganha uma regra própria: tempestade de areia que apaga um pedaço do mapa e miragens no Deserto, gelo escorregadio nas Montanhas Geladas, neblina e monstros que só aparecem à noite no Pântano Sombrio, erupções de lava que fecham caminhos por um tempo no Vulcão. Um monstro lendário por página, com nome, que anda pelo mapa, foge do herói e pode fugir da luta guardando a vida que perdeu. Duelos de treino com um guerreiro em cada fogueira (ninguém desmaia). Cada masmorra ganha uma variação: porta trancada com chave, armadilhas escondidas (d20), enigma "O que é, o que é?" ou um andar de baixo com o chefe. A mesma semente gera as mesmas páginas e masmorras de antes, e saves da 0.4 carregam.
 - **0.4.0** (2026-10-27): lutas em grupo (alguns monstros do mapa vêm em dupla ou trio, com "×2"/"×3" no desenho; você escolhe o alvo e cada um ataca na vez deles); guardião de chefe em cima de cada canto dobrado (4: Senhor da Guerra Orc, Verme Colossal, Troll da Montanha, Cavaleiro da Morte), com uma escada escondida numa masmorra de cada página que sai atrás dele, para quem prefere explorar a lutar; o protótipo conta quantas pessoas o abrem (Google Analytics, só a visita, com aviso na capa); folha de luta em três colunas (monstro, dados, herói; no celular em pé, um embaixo do outro); só 2 habilidades passivas equipadas de cada vez (o herói guarda todas as aprendidas e troca na mochila). Saves da 0.3 carregam (equipam as 2 primeiras habilidades).
 - **0.3.1** (2026-10-27): correção: a mochila não se atualizava depois de equipar um item, beber uma poção ou usar Cura (a ação acontecia, mas a folha só mudava ao fechar e abrir de novo).

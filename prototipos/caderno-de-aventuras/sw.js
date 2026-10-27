@@ -15,7 +15,7 @@
 importScripts('../versao.js');
 const CACHE = 'caderno-v' + self.VERSOES.doPrototipo('caderno-de-aventuras').versao;
 const FILES = [
-  './', './index.html', './style.css', './sketch.js', './world.js', './art.js', './game.js',
+  './', './index.html', './style.css', './sketch.js', './world.js', './art.js', './nuvem.js', './game.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png',
   '../versao.js',
 ];

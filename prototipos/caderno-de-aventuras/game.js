@@ -971,6 +971,7 @@
       const chance = ({ [Wd.AREIA]: 0.03, [Wd.CAMPO]: 0.035, [Wd.MATA]: 0.05, [Wd.PANTANO]: 0.06 }[t] || 0) * (isNight() ? 1.5 : 1);
       if (Math.random() < chance) { stop(); G.calma = G.steps + 8; ambush(tier); }
     }
+    if (G.steps % 50 === 0) setTimeout(cloudSave, 0);
     // Gelo das Montanhas Geladas: o herói continua escorregando na mesma
     // direção até sair do gelo ou o próximo quadrado ter alguma coisa.
     if (!panelOpen && !inDungeon() && W.biome === 'neve' && t === Wd.AREIA && !o) {
@@ -1846,7 +1847,7 @@
     narrate(txt + (first && BIOME_TEXT[o.to].chegada ? BIOME_TEXT[o.to].chegada
       : fwd ? `O mestre vira a página: ${B.nome}. Você chega no ${Wd.FOGUEIRAS[W.obj.get(W.start).n]}.`
       : `O mestre volta uma página: ${B.nome}.`));
-    hud(); save();
+    hud(); save(); cloudSave();
   }
 
   // O guardião em cima do canto dobrado: para virar a página, é preciso
@@ -2036,6 +2037,7 @@
     G.seen.add('v' + o.n);
     P.respawn = i; P.rpg = P.pg;
     if (first) narrate(`Você chega no ${Wd.FOGUEIRAS[o.n]} e se aquece na fogueira. Se desmaiar, acorda aqui.`);
+    save(); cloudSave();
     renderCamp(i, o.n);
   }
   // Descansar: vida e magia cheias, passa a noite se for tarde, e todo monstro
@@ -2045,6 +2047,7 @@
     const late = G.clock >= 60;
     if (late) { G.day++; G.clock = 5; }
     respawnMonsters();
+    save(); cloudSave();
     SFX.lvl();
     narrate(late ? `Você dorme perto do fogo e acorda de manhã. Dia ${G.day}. O mestre apaga os X dos monstros com a borracha: eles voltaram.`
       : 'Você descansa perto do fogo. O mestre apaga os X dos monstros com a borracha: eles voltaram.');
@@ -2191,7 +2194,7 @@
       const [act, arg] = b.dataset.act.split(':');
       let msg = '';
       if (act === 'close') { closePanel(); return; }
-      if (act === 'title') { closePanel(); save(); title(); return; }
+      if (act === 'title') { closePanel(); save(); cloudSave(); title(); return; }
       if (act === 'eq') {
         const id = P.bolsa.splice(+arg, 1)[0], s = ITEMS[id].slot;
         if (P.equip[s]) P.bolsa.push(P.equip[s]);
@@ -2226,8 +2229,9 @@
     try {
       const dun = {};
       for (const k in G.dun) dun[k] = saveLevel(G.dun[k]);
+      // `em` = quando foi salvo: com conta, o save mais novo ganha (ver syncDown).
       localStorage.setItem(SAVE_KEY, JSON.stringify({
-        v: 3, seed: WORLD.seed, P, dun,
+        v: 3, em: Date.now(), seed: WORLD.seed, P, dun,
         pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
         lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos,
@@ -2244,7 +2248,98 @@
     } catch (e) { return null; }
   }
 
+  // ---------- conta e save na nuvem (nuvem.js) ----------
+  // Com conta, o save do navegador sobe para a nuvem nos momentos que
+  // importam: ao chegar numa fogueira, descansar, virar a página, a cada 50
+  // passos, ao voltar para a capa e quando o jogo vai para segundo plano.
+  // Nada sobe antes de juntar o save do aparelho com o da nuvem nesta
+  // sessão (`synced`): senão um save velho deste aparelho apagaria um mais
+  // novo, feito em outro.
+  const nuvem = () => window.Nuvem && Nuvem.ativa;
+  let synced = false, syncing = false;
+  function cloudSave() {
+    if (!nuvem() || !Nuvem.usuario || !synced) return;
+    try { Nuvem.subir(localStorage.getItem(SAVE_KEY)).catch(() => { }); } catch (e) { }
+  }
+  addEventListener('visibilitychange', () => { if (document.hidden) { save(); cloudSave(); } });
+  // Junta o save do aparelho com o da nuvem, na capa: só um dos dois existe →
+  // fica esse; a mesma aventura (mesma semente) → fica o mais novo; aventuras
+  // diferentes → o jogador escolhe. Devolve true se mudou o save do aparelho.
+  async function syncDown() {
+    if (!nuvem() || !Nuvem.usuario || syncing) return false;
+    syncing = true;
+    try { return await merge(); } finally { syncing = false; }
+  }
+  async function merge() {
+    let cloud;
+    try { cloud = await Nuvem.baixar(); } catch (e) { return false; }
+    synced = true;
+    const local = loadSave();
+    const take = s => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { } return true; };
+    if (!cloud || cloud.v !== 3) { cloudSave(); return false; }
+    if (!local) return take(cloud);
+    if (cloud.seed === local.seed) {
+      if ((cloud.em || 0) > (local.em || 0)) return take(cloud);
+      cloudSave();
+      return false;
+    }
+    const resumo = s => `<b>${esc(s.P.nome)}</b>, nível ${s.P.lvl}, página ${s.P.pg + 1} (${Wd.BIOMAS[s.P.pg].nome})${s.em ? `, salvo em ${new Date(s.em).toLocaleDateString('pt-BR')}` : ''}`;
+    const v = await dialog('Duas aventuras', `<p>Este aparelho tem uma aventura e a sua conta tem outra. Qual você quer continuar?</p>
+      <p>${ic('map')} Na conta: ${resumo(cloud)}</p><p>${ic('bag')} Neste aparelho: ${resumo(local)}</p>
+      <p class="small">A outra é apagada.</p>`,
+      [{ html: 'A da conta', v: 'nuvem', cls: 'green' }, { html: 'A deste aparelho', v: 'local' }]);
+    if (v === 'nuvem') return take(cloud);
+    Nuvem.subir(JSON.stringify(local)).catch(() => { });
+    return false;
+  }
+  // A área da conta na capa: "Entrar / Criar conta" ou "Conta: fulano · Sair".
+  function renderConta() {
+    const el = $('conta');
+    if (!el) return;
+    if (!nuvem()) { el.innerHTML = ''; return; }
+    el.innerHTML = Nuvem.usuario
+      ? `<p class="small">${ic('star', C.YELLOW)} Conta: <b>${esc(Nuvem.usuario)}</b>. Sua aventura fica salva na nuvem. <button id="b-sair">Sair</button></p>`
+      : `<button id="b-conta" class="purple">${ic('scroll', C.PURPLE)} Entrar / Criar conta</button>
+         <p class="small">Com uma conta, você continua a aventura em qualquer aparelho.</p>`;
+    if ($('b-conta')) $('b-conta').onclick = contaPanel;
+    if ($('b-sair')) $('b-sair').onclick = async () => { await Nuvem.sair(); synced = false; renderConta(); };
+  }
+  // Folha de entrar ou criar conta: usuário e senha, sem e-mail.
+  function contaPanel() {
+    openPanel(`<h2>Sua conta</h2>
+      <p class="small">Sem e-mail: só um usuário e uma senha. <b>Anote a senha</b>: se esquecer, não tem como recuperar.</p>
+      <form id="f-conta" class="conta-form" autocomplete="on">
+        <label>Usuário <input id="c-user" name="username" autocomplete="username" maxlength="20" autocapitalize="none" spellcheck="false"></label>
+        <label>Senha <input id="c-pass" name="password" type="password" autocomplete="current-password" maxlength="64"></label>
+        <p id="c-msg" class="small"></p>
+        <div class="actions">
+          <button type="submit" class="green">Entrar</button>
+          <button type="button" id="c-criar" class="purple">Criar conta</button>
+          <button type="button" id="c-voltar">Voltar</button>
+        </div>
+      </form>`, 'dialog');
+    const go = async criar => {
+      const msg = $('c-msg'), btns = [...$('f-conta').querySelectorAll('button')];
+      btns.forEach(b => { b.disabled = true; });
+      msg.textContent = criar ? 'Criando a conta...' : 'Entrando...';
+      try {
+        await Nuvem.entrar($('c-user').value, $('c-pass').value, criar);
+        synced = false;
+        title();
+        narrate(criar ? `Conta criada! O mestre escreve "${esc(Nuvem.usuario)}" na capa do caderno.` : `Bem-vindo de volta, ${esc(Nuvem.usuario)}!`);
+      } catch (e) {
+        msg.textContent = e.message;
+        btns.forEach(b => { b.disabled = false; });
+      }
+    };
+    $('f-conta').onsubmit = e => { e.preventDefault(); go(false); };
+    $('c-criar').onclick = () => go(true);
+    $('c-voltar').onclick = () => title();
+    $('c-user').focus();
+  }
+
   function startGame(data) {
+    onTitle = false;
     WORLD = Wd.world(data.seed); dunCache = {};
     G = newState();
     walker = null; path = []; held = null; cam.over = false;
@@ -2336,7 +2431,10 @@
   }
 
   // ---------- tela inicial ----------
+  // `onTitle`: a capa está aberta (falso depois de começar a jogar).
+  let onTitle = false;
   function title() {
+    onTitle = true;
     const sv = loadSave();
     openPanel(`
       <div class="cover">
@@ -2350,11 +2448,17 @@
         </div>
         <p class="small how">Ande com as setas, WASD ou tocando no mapa. O mestre desenha o mundo enquanto você anda.
         Cada item dá dados: a soma é o dano, e escudo e armadura rolam a sua defesa.</p>
+        <div id="conta" class="conta"></div>
         ${window.CADERNO_GA ? '<p class="small how">Este jogo conta quantas pessoas o abrem com o Google Analytics (sem nenhum dado pessoal).</p>' : ''}
         <div id="install" class="install"></div>
       </div>`, 'title');
     coverArt($('cover-cv'));
     installOffer();
+    renderConta();
+    // Com conta e ainda sem juntar os saves nesta sessão, junta agora e
+    // redesenha a capa (o "Continuar" pode mudar; a escolha entre duas
+    // aventuras fecha a capa).
+    if (nuvem() && Nuvem.usuario && !synced && !syncing) syncDown().then(() => { if (synced && onTitle) title(); });
     const go = data => { SFX.init(); closePanel(); startGame(data); };
     if (sv) $('b-cont').onclick = () => go(sv);
     $('b-new').onclick = () => {
@@ -2473,5 +2577,10 @@
       if (qs.has('seed') || qs.has('luta') || qs.has('revelar') || qs.has('masmorra') || qs.has('pagina')) startGame({ nome: 'Herói', seed: +qs.get('seed') || 1 });
       else title();
     } else title();
+    // Com conta já entrada neste aparelho, a capa busca o save da nuvem.
+    if (nuvem()) {
+      Nuvem.aoMudar(renderConta);
+      Nuvem.iniciar().then(ok => { if (ok && Nuvem.usuario && $('panel').classList.contains('title')) title(); });
+    }
   });
 })();

@@ -220,3 +220,12 @@ button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.2
 .cstat:empty { display: none; }
 .combo { color: var(--red); }
 .esp { color: var(--purple); }
+
+/* Conta (usuário e senha) na capa e na folha de entrar. */
+.cover .conta { display: flex; flex-direction: column; align-items: center; margin-top: 6px; }
+.cover .conta button { margin-top: 6px; }
+.cover .conta p button { margin: 0 0 0 6px; padding: 2px 10px; }
+.conta-form { display: flex; flex-direction: column; gap: 10px; }
+.conta-form label { display: flex; gap: 10px; align-items: center; font-size: 20px; }
+.conta-form input { font: inherit; color: var(--blue); background: transparent; border: 0; border-bottom: 2px solid var(--ink); flex: 1; min-width: 0; max-width: 260px; padding: 0 4px; outline: none; }
+#c-msg { color: var(--red); min-height: 1em; }
