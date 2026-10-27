@@ -35,6 +35,8 @@
 
   // ---------- dados do jogo (números são proposta) ----------
   // loja = nível da fogueira que vende: a página (1 nos Campos ... 5 no Vulcão).
+  // Teto de 5 dados: a arma dá até 5; o escudo até 2 e a armadura até 3, então
+  // os dois juntos também defendem com no máximo 5 (os dados ficam maiores).
   const ITEMS = {
     espada_madeira: { nome: 'Espada de madeira', slot: 'arma', dado: [1, 6], preco: 10, icon: 'sword', cor: C.BROWN, loja: 1 },
     espada_curta: { nome: 'Espada curta', slot: 'arma', dado: [1, 8], preco: 30, icon: 'sword', cor: C.GRAY, loja: 1 },
@@ -47,16 +49,16 @@
     lamina_dragao: { nome: 'Lâmina do Dragão', slot: 'arma', dado: [5, 20], preco: 6000, icon: 'sword', cor: C.RED, loja: 5 },
     tampa_panela: { nome: 'Tampa de panela', slot: 'escudo', dado: [1, 4], preco: 12, icon: 'shield', cor: C.GRAY, loja: 1 },
     escudo_madeira: { nome: 'Escudo de madeira', slot: 'escudo', dado: [1, 6], preco: 40, icon: 'shield', cor: C.BROWN, loja: 1 },
-    escudo_ferro: { nome: 'Escudo de ferro', slot: 'escudo', dado: [2, 6], preco: 160, icon: 'shield', cor: C.INK, loja: 2 },
-    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [3, 6], preco: 500, icon: 'shield', cor: C.BLUE, loja: 3 },
-    escudo_runico: { nome: 'Escudo rúnico', slot: 'escudo', dado: [4, 6], preco: 1900, icon: 'shield', cor: C.PURPLE, loja: 4 },
-    escudo_dragao: { nome: 'Escudo de dragão', slot: 'escudo', dado: [5, 6], preco: 4200, icon: 'shield', cor: C.RED, loja: 5 },
+    escudo_ferro: { nome: 'Escudo de ferro', slot: 'escudo', dado: [1, 10], preco: 160, icon: 'shield', cor: C.INK, loja: 2 },
+    escudo_torre: { nome: 'Escudo de torre', slot: 'escudo', dado: [2, 8], preco: 500, icon: 'shield', cor: C.BLUE, loja: 3 },
+    escudo_runico: { nome: 'Escudo rúnico', slot: 'escudo', dado: [2, 10], preco: 1900, icon: 'shield', cor: C.PURPLE, loja: 4 },
+    escudo_dragao: { nome: 'Escudo de dragão', slot: 'escudo', dado: [2, 12], preco: 4200, icon: 'shield', cor: C.RED, loja: 5 },
     roupa_couro: { nome: 'Roupa de couro', slot: 'armadura', dado: [1, 4], preco: 25, icon: 'armor', cor: C.BROWN, loja: 1 },
     cota_malha: { nome: 'Cota de malha', slot: 'armadura', dado: [2, 4], preco: 110, icon: 'armor', cor: C.GRAY, loja: 2 },
     placas: { nome: 'Armadura de placas', slot: 'armadura', dado: [2, 8], preco: 380, icon: 'armor', cor: C.INK, loja: 2 },
-    armadura_gelo: { nome: 'Armadura de gelo', slot: 'armadura', dado: [3, 8], preco: 950, icon: 'armor', cor: C.LBLUE, loja: 3 },
-    armadura_runica: { nome: 'Armadura rúnica', slot: 'armadura', dado: [4, 8], preco: 2400, icon: 'armor', cor: C.PURPLE, loja: 4 },
-    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [5, 8], preco: 5000, icon: 'armor', cor: C.RED, loja: 5 },
+    armadura_gelo: { nome: 'Armadura de gelo', slot: 'armadura', dado: [2, 12], preco: 950, icon: 'armor', cor: C.LBLUE, loja: 3 },
+    armadura_runica: { nome: 'Armadura rúnica', slot: 'armadura', dado: [3, 12], preco: 2400, icon: 'armor', cor: C.PURPLE, loja: 4 },
+    armadura_dragao: { nome: 'Armadura de dragão', slot: 'armadura', dado: [3, 20], preco: 5000, icon: 'armor', cor: C.RED, loja: 5 },
     pocao_vida: { nome: 'Poção de vida', slot: 'pocao', dado: [3, 6], preco: 12, icon: 'potion', cor: C.RED, loja: 1, efeito: 'hp' },
     pocao_mana: { nome: 'Poção de magia', slot: 'pocao', dado: [2, 4], preco: 15, icon: 'potion', cor: C.BLUE, loja: 1, efeito: 'pm' },
     pocao_grande: { nome: 'Poção grande', slot: 'pocao', dado: [8, 8], preco: 70, icon: 'potion', cor: C.PINK, loja: 3, efeito: 'hp' },
@@ -126,6 +128,116 @@
   }
   const TIER_OF = {};
   for (const t in Wd.POOLS) for (const k of Wd.POOLS[t]) TIER_OF[k] = +t;
+  // Golpes especiais. Maldição: em vez de atacar, o monstro lança um feitiço
+  // que tira `pen` de cada dado de ataque e de defesa do herói (nenhum dado
+  // fica abaixo de 1) por algumas rodadas: 1 + região/3, arredondado para
+  // cima (2 nos Campos ... 6 no Vulcão; o chefe, uma a mais). Quebrar: os
+  // brutos, ao atacar, às vezes quebram o maior dado da defesa do herói até
+  // o fim da luta (2d6 vira 1d6). Os chefes têm o mesmo golpe.
+  const MALDICAO_CHANCE = 0.3, QUEBRA_CHANCE = 0.25;
+  const ESPECIAL = {
+    aranha: { tipo: 'maldicao', nome: 'Teia', pen: 1 },
+    cobra: { tipo: 'maldicao', nome: 'Veneno', pen: 1 },
+    mumia: { tipo: 'maldicao', nome: 'Maldição da múmia', pen: 1 },
+    golem: { tipo: 'quebra', nome: 'Soco de pedra' },
+    ogro: { tipo: 'quebra', nome: 'Clavada' },
+    espirito_gelo: { tipo: 'maldicao', nome: 'Sopro gelado', pen: 1 },
+    troll: { tipo: 'quebra', nome: 'Pancada de troll' },
+    fantasma: { tipo: 'maldicao', nome: 'Assombração', pen: 1 },
+    bruxa: { tipo: 'maldicao', nome: 'Feitiço da bruxa', pen: 2 },
+    ceifador: { tipo: 'maldicao', nome: 'Toque da morte', pen: 2 },
+    diabrete: { tipo: 'maldicao', nome: 'Truque do diabrete', pen: 1 },
+    golem_magma: { tipo: 'quebra', nome: 'Punho de magma' },
+    fenix: { tipo: 'maldicao', nome: 'Chama sagrada', pen: 2 },
+    dragao: { tipo: 'quebra', nome: 'Garra do dragão' },
+  };
+  for (const kind in ESPECIAL) {
+    const n = 1 + Math.ceil((TIER_OF[kind] || 15) / 3);
+    MONSTERS[kind].esp = { ...ESPECIAL[kind], rodadas: n };
+    if (MONSTERS['chefe_' + kind]) MONSTERS['chefe_' + kind].esp = { ...ESPECIAL[kind], rodadas: n + 1 };
+  }
+
+  // Habilidades passivas: combinações de pôquer nos dados. Cada nível ganho dá
+  // um ponto; cada fogueira ensina uma só habilidade (a do índice dela, então
+  // a página 1 ensina as 5 primeiras). Valem sozinhas, sem botão: quando a
+  // rolagem tem a combinação, o efeito acontece. Se mais de uma serve na mesma
+  // rolagem, vale só a de combinação mais alta. A combinação olha os números
+  // que caíram nos dados, antes de qualquer maldição.
+  const MAOS = {
+    maximo: { nome: 'Dado cheio', txt: 'algum dado tira o número mais alto dele' },
+    par: { nome: 'Par', txt: '2 dados iguais' },
+    dois_pares: { nome: 'Dois pares', txt: '2 pares de dados iguais' },
+    trinca: { nome: 'Trinca', txt: '3 dados iguais' },
+    sequencia: { nome: 'Sequência', txt: '3 números seguidos, como 4-5-6' },
+    full: { nome: 'Full house', txt: 'uma trinca e um par' },
+    sequencia_grande: { nome: 'Sequência grande', txt: '5 números seguidos' },
+    quadra: { nome: 'Quadra', txt: '4 dados iguais' },
+    quina: { nome: 'Quina', txt: '5 dados iguais' },
+  };
+  const RANK = Object.keys(MAOS);
+  const GRUPO = { ataque: 'de ataque', defesa: 'de defesa', magia: 'de feitiço' };
+  const hab = (nome, grupo, mao, efeito, txt) => ({ nome, grupo, mao, efeito, txt });
+  const HABILIDADES = [
+    // Campos
+    hab('Golpe caprichado', 'ataque', 'maximo', 'dado', 'rola mais um dado da arma e soma'),
+    hab('Escudo firme', 'defesa', 'maximo', 'dado', 'rola mais um dado de defesa e soma'),
+    hab('Golpe certeiro', 'ataque', 'par', 'perfura', 'ignora a defesa do monstro'),
+    hab('Mente leve', 'magia', 'par', 'pm', 'o feitiço não gasta Magia'),
+    hab('Revide', 'defesa', 'par', 'espinhos', 'o monstro toma metade da sua defesa'),
+    // Deserto
+    hab('Pancada tonta', 'ataque', 'trinca', 'atordoa', 'o monstro fica tonto e perde a vez'),
+    hab('Faísca extra', 'magia', 'maximo', 'dado', 'rola mais um dado do feitiço e soma'),
+    hab('Muralha', 'defesa', 'trinca', 'bloqueio', 'bloqueia o golpe inteiro'),
+    hab('Golpe sedento', 'ataque', 'sequencia', 'vampiro', 'cura metade do dano que você causar'),
+    hab('Eco', 'magia', 'trinca', 'eco', 'o feitiço acontece de novo, de graça'),
+    // Montanhas Geladas
+    hab('Golpe crítico', 'ataque', 'dois_pares', 'x2', 'dano em dobro'),
+    hab('Fé', 'defesa', 'dois_pares', 'purifica', 'acaba com a maldição e conserta os dados quebrados'),
+    hab('Fôlego', 'defesa', 'sequencia', 'cura', 'cura metade da sua defesa'),
+    hab('Magia sedenta', 'magia', 'dois_pares', 'vampiro', 'cura metade do dano do feitiço'),
+    hab('Magia dupla', 'magia', 'sequencia', 'x2', 'feitiço em dobro (dano ou cura)'),
+    // Pântano Sombrio
+    hab('Golpe duplo', 'ataque', 'full', 'duplo', 'ataca duas vezes'),
+    hab('Contra-ataque', 'defesa', 'full', 'contra', 'você ataca de volta na hora'),
+    hab('Feitiço tonto', 'magia', 'full', 'atordoa', 'o monstro fica tonto e perde a vez'),
+    hab('Golpe esmagador', 'ataque', 'quadra', 'x3', 'dano em triplo'),
+    hab('Espelho', 'defesa', 'quadra', 'reflete', 'o golpe volta inteiro para o monstro'),
+    // Vulcão
+    hab('Dança das lâminas', 'ataque', 'sequencia_grande', 'danca', 'ataca duas vezes, ignorando a defesa'),
+    hab('Tempestade', 'magia', 'quadra', 'x3', 'feitiço em triplo (dano ou cura)'),
+    hab('Cometa', 'magia', 'quina', 'x5', 'feitiço cinco vezes mais forte'),
+    hab('Golpe lendário', 'ataque', 'quina', 'x5', 'dano cinco vezes maior'),
+    hab('Bênção do mestre', 'defesa', 'quina', 'bencao', 'bloqueia tudo e cura toda a sua vida'),
+  ];
+  // Que combinações uma rolagem tem (faces = números que caíram, sides = faces de cada dado).
+  function maos(faces, sides) {
+    const n = {};
+    for (const f of faces) n[f] = (n[f] || 0) + 1;
+    const c = Object.values(n).sort((a, b) => b - a).concat([0, 0]);
+    let run = 0, cur = 0;
+    for (let v = 1; v <= 20; v++) { cur = n[v] ? cur + 1 : 0; run = Math.max(run, cur); }
+    return {
+      maximo: faces.some((f, k) => f === sides[k]),
+      par: c[0] >= 2, dois_pares: c[0] >= 4 || c[1] >= 2, trinca: c[0] >= 3, sequencia: run >= 3,
+      full: c[0] >= 5 || (c[0] >= 3 && c[1] >= 2), sequencia_grande: run >= 5, quadra: c[0] >= 4, quina: c[0] >= 5,
+    };
+  }
+  // A habilidade aprendida que vale nesta rolagem (a de combinação mais alta), ou null.
+  function passiva(grupo, faces, sides) {
+    const tem = maos(faces, sides);
+    let best = null;
+    for (const k of P.habs) {
+      const h = HABILIDADES[k];
+      if (h.grupo === grupo && tem[h.mao] && (!best || RANK.indexOf(h.mao) > RANK.indexOf(best.mao))) best = h;
+    }
+    return best;
+  }
+  const pontos = () => Math.max(0, P.lvl - 1 - P.habs.length);
+  const comboTxt = h => `<b class="combo">${MAOS[h.mao].nome}!</b> ${h.nome}: ${h.txt}.`;
+  // O golpe especial de um monstro, para as folhas de antes da luta.
+  const espTxt = m => !m.esp ? '' : m.esp.tipo === 'maldicao'
+    ? `<p class="small esp">${ic('scroll', C.PURPLE)} Lança <b>${m.esp.nome}</b>: −${m.esp.pen} em cada dado seu por ${m.esp.rodadas} rodadas.</p>`
+    : `<p class="small esp">${ic('shield', C.PURPLE)} <b>${m.esp.nome}</b>: pode quebrar um dado da sua defesa até o fim da luta.</p>`;
   // Despojos: o que cai de cada monstro vencido (1d3; do chefe, 2d6). Servem
   // para missões e valem (região) moedas cada nas fogueiras.
   const PARTS = {
@@ -167,12 +279,12 @@
   // do Deserto, e assim por diante, então cada página fala dela mesma.
   const NPC_LINES = [
     'O mapa não acaba nesta folha. No ponto mais longe daqui tem um canto de página dobrado: é por ali que o mestre vira a página.',
-    'Cada arma dá dados. A espada de madeira é 1d6... já ouvi falar de uma lâmina que rola 5d20!',
+    'Cada arma dá dados. A espada de madeira é 1d6... já ouvi falar de uma lâmina que rola 5d20! E tirar dois dados iguais tem truque: os veteranos das fogueiras ensinam.',
     'De noite os monstros ficam mais fortes: rolam um dado de ataque a mais. Em compensação, dão mais experiência.',
     'Sem tocha, de noite você não enxerga um palmo na frente do nariz. Em toda fogueira tem alguém vendendo tocha.',
     'No deserto até o rei é escorpião. Cada tipo de monstro tem um rei escondido numa masmorra: procure as portas de pedra com uma coroa em cima.',
     'Gente com "!" no balão tem serviço pra você. E paga bem!',
-    'Escudo e armadura também rolam dados. A soma deles sai do dano que você toma.',
+    'Escudo e armadura também rolam dados, no máximo 5 os dois juntos. A soma deles sai do dano que você toma.',
     'Cada página nova tem guerreiros novos nas fogueiras, e eles vendem coisa melhor que os da página de antes.',
     'Nas Montanhas Geladas até o boneco de neve é malvado. Poção grande, só daqui pra frente.',
     'Quer voltar uma página? A seta verde fica do lado da primeira fogueira.',
@@ -258,7 +370,7 @@
   // G.dun é por "página:masmorra" ("2:4" = masmorra 4 da 3ª página).
   const newState = () => ({
     pg: WORLD.pages.map(newPage), dun: {},
-    seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {},
+    seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {}, calma: 0,
   });
   const here = () => G.pg[P.pg];
   const dunKey = (pg, n) => pg + ':' + n;
@@ -270,7 +382,7 @@
       bolsa: [], pocoes: { pocao_vida: 2, pocao_mana: 0, pocao_grande: 0 }, magias: [],
       pg: 0, x: w.start % w.W, y: (w.start / w.W) | 0, respawn: w.start, rpg: 0,
       onde: null, ox: 0, oy: 0, tochas: 2, tocha: 0,
-      abates: {}, partes: {}, missoes: [], etapa: {},
+      abates: {}, partes: {}, missoes: [], etapa: {}, habs: [],
     };
   }
   const fmtD = d => d ? `${d[0]}d${d[1]}` : '—';
@@ -278,6 +390,8 @@
   const avg = d => d ? d[0] * (d[1] + 1) / 2 : 0;
   const atkDie = () => P.equip.arma ? ITEMS[P.equip.arma].dado : [1, 2];
   const defDice = () => [P.equip.escudo, P.equip.armadura].filter(Boolean).map(id => ITEMS[id].dado);
+  // Os dados de defesa um a um, do maior para o menor, com o teto de 5.
+  const defList = () => expand(defDice()).sort((a, b) => b - a).slice(0, 5);
   const idx = (x, y) => y * M.W + x;
 
   // ---------- dia, noite e tocha ----------
@@ -672,9 +786,10 @@
     else if (o && o.type === 'saida') { path = []; held = null; leaveDungeon(); }
     else if (o && (o.type === 'passagem' || o.type === 'volta')) { path = []; held = null; turnPage(o); }
     else if (o && o.type === 'bau' && !L.opened.has(i)) { path = []; held = null; chest(i, o); }
-    else if (!o && !inDungeon() && G.steps > 6 && !nearCamp(P.x, P.y)) {
-      const chance = ({ [Wd.AREIA]: 0.04, [Wd.CAMPO]: 0.05, [Wd.MATA]: 0.085, [Wd.PANTANO]: 0.095 }[t] || 0) * (isNight() ? 1.5 : 1);
-      if (Math.random() < chance) { path = []; held = null; ambush(tier); }
+    else if (!o && !inDungeon() && G.steps > 6 && G.steps >= G.calma && !nearCamp(P.x, P.y)) {
+      // Depois de uma surpresa, 8 passos de calma para explorar em paz.
+      const chance = ({ [Wd.AREIA]: 0.03, [Wd.CAMPO]: 0.035, [Wd.MATA]: 0.05, [Wd.PANTANO]: 0.06 }[t] || 0) * (isNight() ? 1.5 : 1);
+      if (Math.random() < chance) { path = []; held = null; G.calma = G.steps + 8; ambush(tier); }
     }
     hud(); save();
   }
@@ -741,6 +856,8 @@
 
   // ---------- bandeja de dados ----------
   // Os dados rolam (números trocando, dado tremendo) e param um de cada vez.
+  // Um grupo com `pen` (maldição) tira pen de cada dado na soma, sem deixar
+  // nenhum abaixo de 1; o dado mostra o número que caiu.
   class Tray {
     constructor(canvas) {
       this.cv = canvas; this.ctx = canvas.getContext('2d'); this.groups = []; this.res = null;
@@ -762,10 +879,14 @@
       }));
       const end = Math.max(t0, ...this.groups.flatMap(g => g.dice.map(d => d.stop)));
       return new Promise(res => setTimeout(() => {
-        for (const g of this.groups) g.total = g.dice.reduce((a, d) => a + d.final, 0);
+        for (const g of this.groups) g.total = g.dice.reduce((a, d) => a + Math.max(1, d.final - (g.pen || 0)), 0);
         res(this.groups.map(g => g.total));
       }, end - t0 + 150));
     }
+    faces(gi) { return this.groups[gi].dice.map(d => d.final); }
+    sides(gi) { return this.groups[gi].dice.map(d => d.s); }
+    // Sem dados na bandeja, só o letreiro (um feitiço do monstro, por exemplo).
+    show(big, small, color) { this.groups = []; this.result(big, small, color); }
     result(big, small, color) { this.res = { big, small, color }; }
     loop(t) {
       if (!this.cv.isConnected) return;
@@ -793,8 +914,12 @@
         }
       });
       if (this.res) {
-        c.font = `34px ${S.TITLE}`; c.fillStyle = this.res.color || C.INK; c.textAlign = 'center';
-        c.fillText(this.res.big + (this.res.small ? '  ' + this.res.small : ''), this.w / 2, this.h - 10);
+        // Encolhe a letra para caber na bandeja estreita do celular em pé.
+        const txt = this.res.big + (this.res.small ? '  ' + this.res.small : '');
+        c.font = `34px ${S.TITLE}`;
+        const px = Math.max(16, Math.min(34, Math.floor(34 * (this.w - 12) / c.measureText(txt).width)));
+        c.font = `${px}px ${S.TITLE}`; c.fillStyle = this.res.color || C.INK; c.textAlign = 'center';
+        c.fillText(txt, this.w / 2, this.h - 10);
       }
     }
   }
@@ -843,6 +968,7 @@
         <div class="side">
           <p class="me"><b>${esc(P.nome)}</b> ${ic('heart')}<span id="me-hp"></span> ${ic('star')}<span id="me-pm"></span></p>
           <div class="bar me-bar"><i></i></div>
+          <p id="cstat" class="small cstat"></p>
           <canvas id="tray" class="tray"></canvas>
           <p id="clog" class="clog"></p>
           <div class="actions" id="acts"></div>
@@ -862,22 +988,128 @@
     log(opt.text || `${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome} aparece! O mestre desenha rapidinho.`);
     await wait(500);
 
-    const monsterTurn = async () => {
-      const defs = defDice();
-      const groups = [{ label: `${m.nome} ataca`, dice: expand([m.atk]), color: C.PURPLE }];
-      if (defs.length) groups.push({ label: 'Sua defesa', dice: expand(defs), color: C.BLUE });
-      const [a, d = 0] = await tray.roll(groups);
-      const dmg = Math.max(0, a - d);
-      P.hp -= dmg;
-      tray.result(defs.length ? `${a} − ${d} = ${dmg}` : `${dmg}`, dmg ? 'de dano em você' : 'bloqueou tudo!', dmg ? C.PURPLE : C.BLUE);
-      if (dmg) { SFX.hit(); const p = $('panel'); p.classList.remove('hurt'); void p.offsetWidth; p.classList.add('hurt'); }
+    // Maldição em você (null ou { nome, pen, n rodadas }) e dados de defesa
+    // quebrados: só valem nesta luta.
+    let curse = null, broken = 0;
+    const status = () => {
+      const parts = [];
+      if (curse) parts.push(`${ic('scroll', C.PURPLE)} ${curse.nome}: −${curse.pen} em cada dado (${curse.n} rodada${curse.n > 1 ? 's' : ''})`);
+      if (broken) parts.push(`${ic('shield', C.PURPLE)} ${broken} dado${broken > 1 ? 's' : ''} de defesa quebrado${broken > 1 ? 's' : ''}`);
+      $('cstat').innerHTML = parts.join(' · ');
+    };
+    // A maldição perde uma rodada a cada vez do monstro (menos a vez em que foi lançada).
+    const tickCurse = () => {
+      if (!curse) return '';
+      if (curse.novo) { curse.novo = false; return ''; }
+      if (--curse.n > 0) return '';
+      curse = null;
+      return ' A maldição passou.';
+    };
+    const pen = () => curse ? curse.pen : 0;
+    const penTxt = () => curse ? ` · −${curse.pen} por dado` : '';
+    const heal = v => { const g = Math.min(P.hpMax - P.hp, v); P.hp += g; return g; };
+
+    // Seu ataque com a arma. `extra` = o segundo golpe (Golpe duplo, Dança
+    // das lâminas) ou o Contra-ataque: esses não atacam de novo.
+    const heroAttack = async (extra = '', fura = false) => {
+      const it = ITEMS[P.equip.arma], die = atkDie();
+      const groups = [{ label: `${extra || 'Seu ataque'}${it ? ' · ' + it.nome : ''}${penTxt()}`, dice: expand([die]), color: C.RED, pen: pen() }];
+      if (m.def) groups.push({ label: `Defesa: ${m.nome}`, dice: expand([m.def]), color: C.GRAY });
+      let [a, d = 0] = await tray.roll(groups);
+      const h = passiva('ataque', tray.faces(0), tray.sides(0)), ef = h ? h.efeito : '';
+      if (ef === 'dado') a += 1 + rnd(die[1]);
+      if (ef === 'perfura' || ef === 'danca' || fura) d = 0;
+      const k = { x2: 2, x3: 3, x5: 5 }[ef] || 1, dmg = Math.max(0, a - d) * k;
+      m.hp -= dmg;
+      const conta = (d ? `${a} − ${d}` : `${a}`) + (k > 1 ? ` ×${k}` : '');
+      tray.result(conta !== `${dmg}` ? `${conta} = ${dmg}` : `${dmg}`, h ? MAOS[h.mao].nome + '!' : dmg ? 'de dano!' : 'ele bloqueou!', dmg ? C.RED : C.GRAY);
+      if (dmg) { foe.hit(C.RED); SFX.hit(); }
+      let txt = dmg ? `Você acerta ${m.nome}: ${dmg} de dano.` : `${m.nome} defendeu tudo.`;
+      if (ef === 'vampiro') txt += ` Você recupera ${heal(Math.floor(dmg / 2))} de vida.`;
+      if (ef === 'atordoa' && m.hp > 0) m.tonto = true;
+      log((h ? comboTxt(h) + ' ' : '') + txt);
       bars();
+      if ((ef === 'duplo' || ef === 'danca') && !extra && m.hp > 0) {
+        await wait(1100);
+        await heroAttack('Segundo golpe', ef === 'danca');
+      }
+    };
+
+    // Feitiço: ignora a defesa. As habilidades de feitiço olham os dados dele.
+    const castSpell = async (sp, eco = false) => {
+      let [v] = await tray.roll([{ label: `${sp.nome}${eco ? ' de novo' : ''} (ignora defesa)`, dice: expand([sp.dado]), color: sp.cor }]);
+      const h = passiva('magia', tray.faces(0), tray.sides(0)), ef = h ? h.efeito : '';
+      if (ef === 'dado') v += 1 + rnd(sp.dado[1]);
+      v *= { x2: 2, x3: 3, x5: 5 }[ef] || 1;
+      let txt;
+      if (sp.tipo === 'cura') {
+        const g = heal(v);
+        tray.result(`+${g}`, h ? MAOS[h.mao].nome + '!' : 'de vida', C.GREEN);
+        txt = 'Uma luz verde fecha seus machucados.';
+      } else {
+        m.hp -= v;
+        foe.hit(sp.cor); SFX.hit();
+        tray.result(`${v}`, h ? MAOS[h.mao].nome + '!' : 'de dano mágico!', sp.cor);
+        txt = `${sp.nome} acerta em cheio!`;
+        if (ef === 'vampiro') txt += ` Você recupera ${heal(Math.floor(v / 2))} de vida.`;
+      }
+      if (ef === 'pm') P.pm = Math.min(P.pmMax, P.pm + sp.pm);
+      if (ef === 'atordoa' && m.hp > 0) m.tonto = true;
+      log((h ? comboTxt(h) + ' ' : '') + txt);
+      bars();
+      if (ef === 'eco' && !eco && m.hp > 0) { await wait(1100); await castSpell(sp, true); }
+    };
+
+    const monsterTurn = async () => {
+      if (m.tonto) {
+        m.tonto = false;
+        tray.show('tonto!', `perdeu a vez`, C.GRAY);
+        log(`${m.nome} está tonto e perde a vez!${tickCurse()}`);
+        status();
+        await wait(1100);
+        return;
+      }
+      const esp = md.esp;
+      if (esp && esp.tipo === 'maldicao' && !curse && Math.random() < MALDICAO_CHANCE) {
+        curse = { nome: esp.nome, pen: esp.pen, n: esp.rodadas, novo: true };
+        tray.show(esp.nome, `−${esp.pen} por dado`, C.PURPLE);
+        SFX.tone(220, 0.5, 0.12, 'sawtooth');
+        const p = $('panel'); p.classList.remove('hurt'); void p.offsetWidth; p.classList.add('hurt');
+        log(`${m.nome} lança <b>${esp.nome}</b>! Por ${esp.rodadas} rodadas, cada dado seu de ataque e de defesa vale ${esp.pen} a menos (feitiços e poções, não).`);
+        status(); tickCurse();
+        await wait(1500);
+        return;
+      }
+      const defs = defList().slice(broken);
+      const groups = [{ label: `${m.nome} ataca`, dice: expand([m.atk]), color: C.PURPLE }];
+      if (defs.length) groups.push({ label: `Sua defesa${broken ? ` · ${broken} quebrado${broken > 1 ? 's' : ''}` : ''}${penTxt()}`, dice: defs, color: C.BLUE, pen: pen() });
+      const [a, d0 = 0] = await tray.roll(groups);
+      const h = defs.length ? passiva('defesa', tray.faces(1), tray.sides(1)) : null, ef = h ? h.efeito : '';
+      const d = d0 + (ef === 'dado' ? 1 + rnd(defs[0]) : 0);
+      let dmg = Math.max(0, a - d), txt = '';
+      if (ef === 'bloqueio' || ef === 'bencao') dmg = 0;
+      if (ef === 'reflete') { m.hp -= a; dmg = 0; foe.hit(C.BLUE); txt = ` O golpe volta: ${m.nome} toma ${a}.`; }
+      if (ef === 'espinhos') { const e = Math.floor(d / 2); m.hp -= e; if (e) foe.hit(C.BLUE); txt = ` ${m.nome} toma ${e} de volta.`; }
+      P.hp -= dmg;
+      if (ef === 'cura' && P.hp > 0) txt = ` Você recupera ${heal(Math.floor(d / 2))} de vida.`;
+      if (ef === 'bencao') { P.hp = P.hpMax; txt = ' Sua vida enche toda.'; }
+      if (ef === 'purifica') { curse = null; broken = 0; txt = ' A maldição some e os dados quebrados voltam.'; }
+      tray.result(defs.length ? `${a} − ${d} = ${dmg}` : `${dmg}`, h ? MAOS[h.mao].nome + '!' : dmg ? 'de dano em você' : 'bloqueou tudo!', dmg ? C.PURPLE : C.BLUE);
+      if (dmg) { SFX.hit(); const p = $('panel'); p.classList.remove('hurt'); void p.offsetWidth; p.classList.add('hurt'); }
+      // O bruto às vezes quebra o maior dado de defesa que ainda sobra.
+      if (esp && esp.tipo === 'quebra' && defs.length && P.hp > 0 && Math.random() < QUEBRA_CHANCE) {
+        broken++;
+        txt += ` <b>${esp.nome}!</b> Um d${defs[0]} da sua defesa quebra até o fim da luta.`;
+      }
+      log((h ? comboTxt(h) : `${m.nome} ataca.`) + txt + tickCurse());
+      bars(); status();
       await wait(650);
+      if (ef === 'contra' && P.hp > 0 && m.hp > 0) { await wait(500); await heroAttack('Contra-ataque'); }
     };
 
     if (opt.ambush) { log(`${m.nome} ataca primeiro!`); await monsterTurn(); }
     let first = !opt.ambush, result = null;
-    while (!result && P.hp > 0) {
+    while (!result && P.hp > 0 && m.hp > 0) {
       const dc = kind === 'dragao' ? 15 : md.chefe ? 13 : first ? 8 : 11;
       const hasPot = POTS.some(id => P.pocoes[id] > 0);
       const choice = await ask(acts, [
@@ -899,36 +1131,16 @@
       }
       if (act === 'back') continue;
 
-      if (act === 'atk') {
-        const it = ITEMS[P.equip.arma];
-        const groups = [{ label: `Seu ataque${it ? ' · ' + it.nome : ''}`, dice: expand([atkDie()]), color: C.RED }];
-        if (m.def) groups.push({ label: `Defesa: ${m.nome}`, dice: expand([m.def]), color: C.GRAY });
-        const [a, d = 0] = await tray.roll(groups);
-        const dmg = Math.max(0, a - d);
-        m.hp -= dmg;
-        tray.result(m.def ? `${a} − ${d} = ${dmg}` : `${dmg}`, dmg ? 'de dano!' : 'ele bloqueou!', dmg ? C.RED : C.GRAY);
-        if (dmg) { foe.hit(C.RED); SFX.hit(); }
-        log(dmg ? `Você acerta ${m.nome}.` : `${m.nome} defendeu tudo.`);
-      } else if (act.startsWith('s:')) {
+      if (act === 'atk') await heroAttack();
+      else if (act.startsWith('s:')) {
         const sp = SPELLS[act.slice(2)];
         P.pm -= sp.pm;
-        const [v] = await tray.roll([{ label: `${sp.nome} (ignora defesa)`, dice: expand([sp.dado]), color: sp.cor }]);
-        if (sp.tipo === 'cura') {
-          const heal = Math.min(P.hpMax - P.hp, v);
-          P.hp += heal;
-          tray.result(`+${heal}`, 'de vida', C.GREEN);
-          log('Uma luz verde fecha seus machucados.');
-        } else {
-          m.hp -= v;
-          foe.hit(sp.cor); SFX.hit();
-          tray.result(`${v}`, 'de dano mágico!', sp.cor);
-          log(`${sp.nome} acerta em cheio!`);
-        }
+        await castSpell(sp);
       } else if (act.startsWith('p:')) {
         const id = act.slice(2), it = ITEMS[id];
         P.pocoes[id]--;
         const [v] = await tray.roll([{ label: it.nome, dice: expand([it.dado]), color: it.cor }]);
-        if (it.efeito === 'hp') { const g = Math.min(P.hpMax - P.hp, v); P.hp += g; tray.result(`+${g}`, 'de vida', C.RED); }
+        if (it.efeito === 'hp') tray.result(`+${heal(v)}`, 'de vida', C.RED);
         else { const g = Math.min(P.pmMax - P.pm, v); P.pm += g; tray.result(`+${g}`, 'de magia', C.BLUE); }
         log('Glub glub glub.');
       } else if (act === 'flee') {
@@ -939,11 +1151,12 @@
       }
       bars();
       first = false;
-      if (m.hp <= 0) { result = 'vitoria'; break; }
+      if (m.hp <= 0) break;
       await wait(700);
       await monsterTurn();
     }
-    if (!result) result = 'derrota';
+    // O monstro também pode cair na vez dele (Revide, Espelho, Contra-ataque).
+    if (!result) result = P.hp > 0 && m.hp <= 0 ? 'vitoria' : 'derrota';
 
     if (result === 'vitoria') {
       foe.defeat();
@@ -961,7 +1174,7 @@
       SFX.coin();
       tray.result(`+${ouro}`, 'moedas', C.OCHRE);
       const xp = Math.round(m.xp * (night ? 1.5 : 1)), ups = gainXp(xp);
-      log(`+${ouro} moedas${np ? `, +${np} ${part[np > 1 ? 1 : 0]}` : ''}${xp ? `, +${xp} de experiência${night ? ' (noite)' : ''}` : ''}.${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b> Vida e magia cheias.` : ''}`);
+      log(`+${ouro} moedas${np ? `, +${np} ${part[np > 1 ? 1 : 0]}` : ''}${xp ? `, +${xp} de experiência${night ? ' (noite)' : ''}` : ''}.${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b> Vida e magia cheias, +${ups} ponto${ups > 1 ? 's' : ''} de habilidade (aprenda numa fogueira).` : ''}`);
       bars();
     } else if (result === 'derrota') {
       log('Você desmaiou... O mestre vira a página.');
@@ -1004,6 +1217,7 @@
     const v = await dialog(`${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome}!`,
       `<p>O mestre desenhou ${um(m)} ${m.nome} bem no caminho.</p>
        <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       ${espTxt(m)}
        <p class="small">Seu ataque: ${fmtD(atkDie())} · sua defesa: ${defDice().map(fmtD).join(' + ') || 'nenhuma'}</p>`,
       [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Deixar pra lá', v: 'nao' }], A.monsterURL(o.kind, 160));
     if (v !== 'luta') return;
@@ -1018,6 +1232,7 @@
     const v = await dialog(`${m.nome}!`,
       `<p>No fundo da masmorra, num trono rabiscado com caneta dourada, está ${oa(m)} <b>${m.nome}</b>.</p>
        <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(m.atk)} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       ${espTxt(m)}
        <p class="small">Seu ataque: ${fmtD(atkDie())} · sua defesa: ${defDice().map(fmtD).join(' + ') || 'nenhuma'} · fugir de um chefe: d20 ≥ 13.</p>`,
       [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Agora não', v: 'nao' }], A.monsterURL(id, 160));
     if (v !== 'luta') return;
@@ -1046,6 +1261,7 @@
       `<p>${done ? `Você já derrotou ${oa(m)} ${m.nome}. Lá embaixo ainda tem o que ficou para trás.`
         : `Uma escada desce para o escuro. Lá no fundo mora ${oa(m)} <b>${m.nome}</b>.`}</p>
        <p>${ic('heart')} ${m.hp} · ${ic('sword')} ${fmtD(m.atk)} · ${ic('shield')} ${fmtD(m.def)}</p>
+       ${espTxt(m)}
        <p class="small">Lá dentro é sempre escuro: leve tochas. Você tem ${P.tochas}${P.tocha > 0 ? ' e uma acesa' : ''}.</p>`,
       [{ html: 'Descer', v: 'sim', cls: 'red' }, { html: 'Agora não', v: 'nao' }], A.monsterURL(id, 160));
     if (v !== 'sim') return;
@@ -1109,6 +1325,7 @@
     const kind = want.length && Math.random() < 0.5 ? pick(want) : pick(pool), m = MONSTERS[kind];
     const v = await dialog('Surpresa!', `<p>${um(m)[0].toUpperCase() + um(m).slice(1)} ${m.nome} pula do meio do mato!</p>
       <p>${ic('heart')} ${m.hp} · ${ic('sword')} ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} ${fmtD(m.def)}</p>
+      ${espTxt(m)}
       <p class="small">Fugir agora: role 1d20 e tire 8 ou mais. Se falhar, ele ataca primeiro.</p>`,
       [{ html: 'Enfrentar', v: 'luta', cls: 'red' }, { html: 'Tentar fugir (d20)', v: 'fuga' }], A.monsterURL(kind, 160));
     if (v === 'luta') { await combat(kind); return; }
@@ -1131,6 +1348,7 @@
     const v = await dialog('Covil do Dragão',
       `<p>Um buraco escuro, ossos na entrada e cheiro de fumaça. Lá dentro, algo enorme respira.</p>
        <p>${ic('heart')} ${MONSTERS.dragao.hp} · ${ic('sword')} ${fmtD(MONSTERS.dragao.atk)} · ${ic('shield')} ${fmtD(MONSTERS.dragao.def)}</p>
+       ${espTxt(MONSTERS.dragao)}
        <p class="small">Daqui não dá pra fugir fácil: d20 ≥ 15.</p>`,
       [{ html: 'Entrar', v: 'luta', cls: 'red' }, { html: 'Agora não', v: 'nao' }], A.monsterURL('dragao', 160));
     if (v !== 'luta') return;
@@ -1180,7 +1398,7 @@
       P.missoes = P.missoes.filter(q => q !== cur);
       P.etapa[key] = stage + 1;
       hud(); save();
-      await dialog(o.nome, `<p>"Você conseguiu! Muito obrigado, ${esc(P.nome)}!"</p><p><b>+${ouro} moedas, +${xp} de experiência.</b>${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b>` : ''}</p>${prize}`,
+      await dialog(o.nome, `<p>"Você conseguiu! Muito obrigado, ${esc(P.nome)}!"</p><p><b>+${ouro} moedas, +${xp} de experiência.</b>${ups ? ` <b class="up">Subiu para o nível ${P.lvl}!</b> +${ups} ponto${ups > 1 ? 's' : ''} de habilidade.` : ''}</p>${prize}`,
         [{ html: 'De nada!', v: 1, cls: 'green' }], A.iconURL('coin', '', 160));
       return;
     }
@@ -1268,6 +1486,7 @@
   function owned(id) { return P.bolsa.includes(id) || Object.values(P.equip).includes(id); }
   function renderCamp(i, n) {
     const coin = ic('coin'), lvl = campLevel(i), late = G.clock >= 60;
+    const hb = HABILIDADES[n], learned = P.habs.includes(n), pts = pontos();
     const gear = Object.keys(ITEMS).filter(id => ITEMS[id].loja <= lvl && ITEMS[id].slot !== 'pocao');
     const pots = POTS.filter(id => ITEMS[id].loja <= lvl);
     const spells = Object.keys(SPELLS).filter(id => SPELLS[id].loja <= lvl);
@@ -1281,6 +1500,10 @@
       <p>${CAMP_TEXT[n % CAMP_TEXT.length]} Você tem ${P.ouro}${coin}</p>
       <div class="row">${ic('fire')}<span class="nm">Descansar na fogueira <small>vida e magia cheias${late ? ', dorme até de manhã' : ''}</small><em>os monstros vencidos voltam (chefes e dragão, não)</em></span>
         <button data-act="rest" class="red">${late ? 'Dormir' : 'Descansar'}</button></div>
+      <h3>Veterana da fogueira</h3>
+      <p class="small">Cada fogueira ensina uma habilidade só, e cada nível que você sobe dá um ponto para aprender. Você tem ${pts} ponto${pts === 1 ? '' : 's'}.</p>
+      <div class="row">${ic('star', C.YELLOW)}<span class="nm">${hb.nome} <small>${MAOS[hb.mao].nome} nos dados ${GRUPO[hb.grupo]}: ${hb.txt}</small><em>${learned ? 'você já sabe' : `${MAOS[hb.mao].nome} = ${MAOS[hb.mao].txt}`}</em></span>
+        <button data-act="learn" ${learned || !pts ? 'disabled' : ''}>${learned ? 'Aprendida' : 'Aprender'}</button></div>
       <h3>Ferreiro andarilho</h3>
       ${gear.map(id => {
         const it = ITEMS[id], cur = P.equip[it.slot];
@@ -1307,6 +1530,7 @@
       const [act, arg] = b.dataset.act.split(':');
       if (act === 'out') { closePanel(); return; }
       if (act === 'rest') rest();
+      else if (act === 'learn') { P.habs.push(n); SFX.lvl(); narrate(`Você aprendeu ${hb.nome}! ${MAOS[hb.mao].nome} nos dados ${GRUPO[hb.grupo]}: ${hb.txt}.`); }
       else if (act === 'torch') { P.ouro -= TOCHA_PRECO; P.tochas++; SFX.coin(); }
       else if (act === 'sellp') { const extra = P.partes[arg] - partsNeeded(arg); P.partes[arg] -= extra; P.ouro += extra * TIER_OF[arg]; SFX.coin(); }
       else if (act === 'buy') {
@@ -1342,6 +1566,9 @@
       ${Object.keys(P.partes).filter(k => P.partes[k] > 0).map(k => `<div class="row"><img class="ic" src="${A.monsterURL(k, 64)}" alt=""><span class="nm">${cap(PARTS[k][P.partes[k] > 1 ? 1 : 0])} ×${P.partes[k]} <small>despojo de ${MONSTERS[k].nome}</small></span></div>`).join('')}
       <h3>Missões</h3>
       ${P.missoes.length ? P.missoes.map(q => { const pr = Math.min(q.n, progress(q)), who = `${npcOf(q).nome} (${Wd.BIOMAS[q.pg].nome})`; return `<div class="row">${ic('scroll', C.OCHRE)}<span class="nm">${questText(q)} <small>${pr}/${q.n}</small><em>${pr >= q.n ? `pronta: volte a ${who}` : `para ${who}`}</em></span></div>`; }).join('') : '<p class="small">Nenhuma. Quem tem "!" no balão tem serviço pra você.</p>'}
+      <h3>Habilidades</h3>
+      ${P.habs.length ? P.habs.map(k => HABILIDADES[k]).map(h => `<div class="row">${ic('star', C.YELLOW)}<span class="nm">${h.nome} <small>${MAOS[h.mao].nome} nos dados ${GRUPO[h.grupo]}</small><em>${h.txt}</em></span></div>`).join('') : ''}
+      <p class="small">${pontos() ? `Você tem ${pontos()} ponto${pontos() > 1 ? 's' : ''} de habilidade: cada fogueira ensina uma.` : P.habs.length ? '' : 'Nenhuma ainda. Cada nível dá um ponto; cada fogueira ensina uma habilidade.'}</p>
       <h3>Magias</h3>
       ${P.magias.length ? P.magias.map(id => `<div class="row">${itemIc(id)}<span class="nm">${SPELLS[id].nome} <small>${fmtD(SPELLS[id].dado)} · ${SPELLS[id].pm} PM</small></span>${SPELLS[id].tipo === 'cura' ? `<button data-act="cast:${id}" ${P.pm >= SPELLS[id].pm && P.hp < P.hpMax ? '' : 'disabled'}>Usar</button>` : ''}</div>`).join('') : '<p class="small">Nenhuma ainda. As magas das fogueiras vendem pergaminhos.</p>'}
       <p id="bag-msg" class="small"></p>
@@ -1440,6 +1667,8 @@
     if (qs.has('ouro')) P.ouro = +qs.get('ouro') || 9999;
     if (qs.has('nivel')) { const l = +qs.get('nivel') || 5; while (P.lvl < l) gainXp(xpNext(P.lvl) - P.xp); }
     if (qs.has('tochas')) P.tochas = +qs.get('tochas') || 0;
+    // ?habilidades = todas as 25; ?habilidades=2,10,15 = só essas (índice da fogueira).
+    if (qs.has('habilidades')) P.habs = qs.get('habilidades') ? qs.get('habilidades').split(',').map(Number).filter(k => HABILIDADES[k]) : HABILIDADES.map((_, k) => k);
     if (qs.has('pagina')) {
       // Começa na primeira fogueira da página N (1 a 5).
       const pg = Math.max(0, Math.min(Wd.PAGINAS - 1, (+qs.get('pagina') || 1) - 1));
@@ -1585,7 +1814,7 @@
 
   window.Caderno = {
     get state() { return { P, G, W, M, L, WORLD }; }, combat, title, rest,
-    talk: i => talk(i, M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), turnPage: i => turnPage(M.obj.get(i)),
+    talk: i => talk(i, M.obj.get(i)), camp: i => camp(i, M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), turnPage: i => turnPage(M.obj.get(i)),
   };
 
   // As fontes de mão precisam estar carregadas antes de escrever no canvas.

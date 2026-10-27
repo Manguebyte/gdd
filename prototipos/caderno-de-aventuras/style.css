@@ -177,3 +177,9 @@ button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.2
   .cover .name { font-size: 18px; }
   .cover .how { margin-top: 4px; font-size: 14px; line-height: 20px; }
 }
+
+/* Luta: maldição e dados quebrados; combinações de pôquer e golpes especiais. */
+.cstat { color: var(--purple); min-height: 0; margin: 2px 0; }
+.cstat:empty { display: none; }
+.combo { color: var(--red); }
+.esp { color: var(--purple); }

@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.3.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -93,7 +93,7 @@ O mestre não aparece, mas está em todo lugar:
 - Andar até um monstro, um personagem ou o covil abre o encontro sem entrar no quadrado.
 - Entrar numa fogueira abre a folha do acampamento; entrar num baú abre o baú.
 - **Virar a página:** pisar no canto dobrado pergunta se o herói quer ir para a próxima página. Na primeira vez, o aviso diz que lá os monstros são mais fortes. Indo para a frente, o herói chega na primeira fogueira da página nova, que já vira o lugar onde ele acorda se desmaiar. Pisar na seta de volta leva ao canto dobrado da página anterior. Na primeira vez em cada página, o mestre narra a chegada ("O mestre vira a página e pega a caneta amarela: é o Deserto...").
-- **Encontros surpresa:** a mais de 2 quadrados de uma fogueira e fora de quadrados com algo desenhado, cada passo pode trazer um monstro do mato: 4% na areia, 5% no campo, 8,5% na mata e 9,5% no pântano (com os nomes de cada bioma). Vem um monstro da região (25% de chance de ser da região anterior, mas nunca de outra página).
+- **Encontros surpresa:** a mais de 2 quadrados de uma fogueira e fora de quadrados com algo desenhado, cada passo pode trazer um monstro do mato: 3% na areia, 3,5% no campo, 5% na mata e 6% no pântano (com os nomes de cada bioma). Depois de uma surpresa vêm **8 passos de calma**, sem outra. Vem um monstro da região (25% de chance de ser da região anterior, mas nunca de outra página).
 - O botão de mapa afasta a câmera para ver a página inteira já desenhada (ou a masmorra inteira, dentro dela).
 - O HUD mostra o número e o nome da página ("2. Deserto"); no celular, só o número.
 
@@ -213,7 +213,9 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 - Cada item equipado dá dados. **Arma** dá os dados de ataque; **escudo** e **armadura** dão os dados de defesa.
 - **Atacar:** o herói rola os dados da arma; o monstro rola os dados de defesa dele. Dano = ataque − defesa (mínimo 0, "bloqueou!").
 - **Turno do monstro:** do mesmo jeito, ele rola os dados de ataque e o herói rola escudo + armadura.
+- **Teto de 5 dados:** a arma rola no máximo 5 dados, e escudo + armadura juntos também (o escudo dá até 2, a armadura até 3). O equipamento melhor tem dados maiores, não mais dados.
 - Os dados rolam na tela (números trocando, dado tremendo) e param um de cada vez; depois aparece a conta, por exemplo "12 − 3 = 9 de dano!".
+- **Golpes especiais e habilidades:** alguns monstros amaldiçoam os dados do herói ou quebram um dado da defesa dele, e o herói aprende habilidades que disparam com combinações de pôquer nos dados (ver as duas seções abaixo de Monstros).
 - Cada tipo de dado tem a silhueta que se desenhava no caderno: d4 triângulo, d6 quadrado, d8 losango, d10 pipa, d12 pentágono, d20 hexágono com triângulo dentro.
 - Golpes deixam riscos de caneta por cima do monstro; ao vencer, o mestre faz um X nele.
 
@@ -234,14 +236,12 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 
 **Em aberto**
 
-- Efeitos de status (veneno da aranha, maldição da bruxa).
-- Dados de crítico (tirar o máximo em todos os dados).
 - Grupo de heróis (vários jogadores, como na sala de aula).
 
 ## Personagem e progressão
 
 - Começa com 20 de vida, 3 de Magia, 15 moedas, Espada de madeira (1d6), 2 Poções de vida e 2 Tochas.
-- Experiência para o próximo nível: 10 × nível^1,5 (10, 28, 52, 80...). Cada nível dá +6 de vida máxima, +1 de Magia máxima e enche as duas.
+- Experiência para o próximo nível: 10 × nível^1,5 (10, 28, 52, 80...). Cada nível dá +6 de vida máxima, +1 de Magia máxima, enche as duas e dá **1 ponto de habilidade**, gasto numa fogueira (ver Habilidades passivas).
 - Ouro compra equipamento, magias, poções e tochas dos guerreiros das fogueiras. Descansar é de graça.
 
 ## Itens (proposta)
@@ -259,16 +259,16 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 | Lâmina do Dragão | arma | 5d20 | 6000 | 5 |
 | Tampa de panela | escudo | 1d4 | 12 | 1 |
 | Escudo de madeira | escudo | 1d6 | 40 | 1 |
-| Escudo de ferro | escudo | 2d6 | 160 | 2 |
-| Escudo de torre | escudo | 3d6 | 500 | 3 |
-| Escudo rúnico | escudo | 4d6 | 1900 | 4 |
-| Escudo de dragão | escudo | 5d6 | 4200 | 5 |
+| Escudo de ferro | escudo | 1d10 | 160 | 2 |
+| Escudo de torre | escudo | 2d8 | 500 | 3 |
+| Escudo rúnico | escudo | 2d10 | 1900 | 4 |
+| Escudo de dragão | escudo | 2d12 | 4200 | 5 |
 | Roupa de couro | armadura | 1d4 | 25 | 1 |
 | Cota de malha | armadura | 2d4 | 110 | 2 |
 | Armadura de placas | armadura | 2d8 | 380 | 2 |
-| Armadura de gelo | armadura | 3d8 | 950 | 3 |
-| Armadura rúnica | armadura | 4d8 | 2400 | 4 |
-| Armadura de dragão | armadura | 5d8 | 5000 | 5 |
+| Armadura de gelo | armadura | 2d12 | 950 | 3 |
+| Armadura rúnica | armadura | 3d12 | 2400 | 4 |
+| Armadura de dragão | armadura | 3d20 | 5000 | 5 |
 | Poção de vida | poção | 3d6 de vida | 12 | 1 |
 | Poção de magia | poção | 2d4 de Magia | 15 | 1 |
 | Poção grande | poção | 8d8 de vida | 70 | 3 |
@@ -276,7 +276,8 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 - **Loja** é o nível da fogueira que vende o item, e é a página dela: as fogueiras dos Campos vendem o nível 1, as do Deserto até o 2, as das Montanhas Geladas até o 3, as do Pântano Sombrio até o 4 e as do Vulcão até o 5. Cada página nova traz equipamento melhor, e os preços sobem junto com as moedas que os monstros de lá deixam.
 - Comprar um equipamento já o equipa; o anterior vai para a mochila. Na mochila dá para trocar o equipado e, numa fogueira, vender por metade do preço.
 - Cada item tem ícone desenhado em lápis de cor, com a cor do material (madeira marrom, ferro grafite, prata e gelo azul-claro, cristal rosa, rúnica roxa, dragão vermelha).
-- **A curva (proposta, conferida numa simulação):** um herói que só ataca, compra o melhor que dá na loja da página e descansa com meia vida chega ao fim do Vulcão por volta do nível 39 e vence o dragão em ~75% das vezes. A primeira região de cada página fica fácil logo depois das compras, e a última, difícil. Com feitiços e poções fica mais fácil; falta uma pessoa jogar a curva toda.
+- **Teto de 5 dados (definido):** arma até 5 dados; escudo até 2 e armadura até 3, então os dois juntos defendem com no máximo 5. A média de defesa de cada página ficou perto da de antes do teto (5d6 + 5d8 = 40 virou 2d12 + 3d20 = 44,5 no Vulcão).
+- **A curva (proposta, conferida numa simulação):** um herói que só ataca, compra o melhor que dá na loja da página, aprende toda habilidade de ataque e defesa que os pontos deixam nas fogueiras da página e descansa com meia vida chega ao fim do Vulcão por volta do nível 39 e vence o dragão em ~58% das vezes (sem habilidades, o mesmo herói trava no Vulcão: os golpes especiais e o teto de dados pesam). A primeira região de cada página fica fácil logo depois das compras, e a última, difícil. Com feitiços e poções fica mais fácil; falta uma pessoa jogar a curva toda.
 
 ## Feitiços (proposta)
 
@@ -332,6 +333,86 @@ Moedas e experiência dependem só da região (os dois monstros de uma região d
 
 Os monstros novos de cada bioma também são desenhados à mão por código: escorpião de rabo em gomos, naja de capuz aberto, múmia de faixas soltas, verme saindo da areia; lobo do gelo (o lobo em azul), boneco de neve de cartola e sobrancelha brava, yeti peludo, espírito do gelo com cristais em volta; zumbi de braços esticados, sapo de língua de fora, fantasma de lençol, ceifador de foice; salamandra e cão infernal com labaredas nas costas, diabrete de tridente, elemental de fogo, golem de magma (o golem em marrom com rachaduras de lava) e fênix de asas abertas.
 
+## Golpes especiais dos monstros (proposta)
+
+Alguns monstros fazem mais que bater. Os chefes de cada um têm o mesmo golpe; a folha de antes da luta (monstro desenhado, surpresa, porta da masmorra, chefe e covil) avisa qual é.
+
+- **Maldição:** na vez dele, **30%** de chance de, em vez de atacar, lançar um feitiço que tira **1 ou 2 de cada dado** de ataque e de defesa do herói (nenhum dado fica abaixo de 1). Dura **1 + região/3 rodadas**, arredondado para cima (2 nos Campos, 3 no Deserto, 4 nas Montanhas, 5 no Pântano, 6 no Vulcão; o chefe, uma a mais); a rodada conta a cada vez do monstro, menos a vez em que lançou. Não lança outra enquanto a primeira dura. Feitiços e poções do herói não sofrem a maldição.
+- **Quebrar:** os brutos, quando atacam, têm **25%** de chance de quebrar o maior dado de defesa que ainda sobra ao herói, **até o fim da luta** (escudo 2d6 vira 1d6). Pode quebrar mais de um.
+- A luta mostra, embaixo da vida do herói, a maldição (com as rodadas que faltam) e quantos dados estão quebrados. Tudo some quando a luta acaba. A habilidade Fé (ver Habilidades passivas) acaba com os dois.
+
+| Monstro | Golpe | Tipo | Efeito |
+| --- | --- | --- | --- |
+| Aranha gigante | Teia | maldição | −1 por dado, 2 rodadas |
+| Naja | Veneno | maldição | −1 por dado, 3 rodadas |
+| Múmia | Maldição da múmia | maldição | −1 por dado, 3 rodadas |
+| Golem de pedra | Soco de pedra | quebrar | — |
+| Ogro | Clavada | quebrar | — |
+| Espírito do gelo | Sopro gelado | maldição | −1 por dado, 4 rodadas |
+| Troll | Pancada de troll | quebrar | — |
+| Fantasma | Assombração | maldição | −1 por dado, 5 rodadas |
+| Bruxa do pântano | Feitiço da bruxa | maldição | −2 por dado, 5 rodadas |
+| Ceifador | Toque da morte | maldição | −2 por dado, 5 rodadas |
+| Diabrete | Truque do diabrete | maldição | −1 por dado, 6 rodadas |
+| Golem de magma | Punho de magma | quebrar | — |
+| Fênix | Chama sagrada | maldição | −2 por dado, 6 rodadas |
+| Dragão Vermelho | Garra do dragão | quebrar | — |
+
+## Habilidades passivas (proposta)
+
+Combinações de pôquer nos dados. Cada nível ganho dá **1 ponto de habilidade**, e cada fogueira do caderno ensina **uma habilidade só**, sempre a mesma (a fogueira k ensina a habilidade k da tabela abaixo; a folha do acampamento mostra só a dela). Aprender custa o ponto e é na hora.
+
+- **Passivas:** não têm botão. Quando os números que caíram nos dados formam a combinação, o efeito acontece e a luta mostra o nome da combinação ("Dois pares! Golpe crítico: dano em dobro.").
+- **Ataque** olha os dados da arma, **defesa** os do escudo + armadura no turno do monstro, **feitiço** os do feitiço.
+- **Uma por rolagem:** se mais de uma habilidade aprendida serve na mesma rolagem, vale só a de combinação mais alta (ordem da tabela de combinações).
+- A combinação olha os números que caíram, antes da maldição (ver Golpes especiais). Dados de tamanhos diferentes (escudo d12 e armadura d20) combinam pelo número.
+- Com 1 dado só, apenas o Dado cheio é possível; as combinações maiores pedem armas e armaduras de mais dados, por isso aparecem nas páginas do fim.
+
+| Combinação | Precisa de |
+| --- | --- |
+| Dado cheio | algum dado tirar o número mais alto dele (6 no d6, 20 no d20) |
+| Par | 2 dados iguais |
+| Dois pares | 2 pares de dados iguais (uma quadra também conta) |
+| Trinca | 3 dados iguais |
+| Sequência | 3 números seguidos, como 4-5-6 |
+| Full house | uma trinca e um par |
+| Sequência grande | 5 números seguidos |
+| Quadra | 4 dados iguais |
+| Quina | 5 dados iguais |
+
+| Fogueira | Página | Habilidade | Dados | Combinação | Efeito |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Campos | Golpe caprichado | ataque | Dado cheio | rola mais um dado da arma e soma |
+| 2 | Campos | Escudo firme | defesa | Dado cheio | rola mais um dado de defesa (o maior) e soma |
+| 3 | Campos | Golpe certeiro | ataque | Par | ignora a defesa do monstro |
+| 4 | Campos | Mente leve | feitiço | Par | o feitiço não gasta Magia |
+| 5 | Campos | Revide | defesa | Par | o monstro toma metade da sua defesa |
+| 6 | Deserto | Pancada tonta | ataque | Trinca | o monstro fica tonto e perde a próxima vez |
+| 7 | Deserto | Faísca extra | feitiço | Dado cheio | rola mais um dado do feitiço e soma |
+| 8 | Deserto | Muralha | defesa | Trinca | bloqueia o golpe inteiro |
+| 9 | Deserto | Golpe sedento | ataque | Sequência | cura metade do dano causado |
+| 10 | Deserto | Eco | feitiço | Trinca | o feitiço acontece de novo, de graça |
+| 11 | Montanhas Geladas | Golpe crítico | ataque | Dois pares | dano em dobro |
+| 12 | Montanhas Geladas | Fé | defesa | Dois pares | acaba com a maldição e conserta os dados quebrados |
+| 13 | Montanhas Geladas | Fôlego | defesa | Sequência | cura metade da sua defesa |
+| 14 | Montanhas Geladas | Magia sedenta | feitiço | Dois pares | cura metade do dano do feitiço |
+| 15 | Montanhas Geladas | Magia dupla | feitiço | Sequência | feitiço em dobro (dano ou cura) |
+| 16 | Pântano Sombrio | Golpe duplo | ataque | Full house | ataca duas vezes |
+| 17 | Pântano Sombrio | Contra-ataque | defesa | Full house | você ataca de volta na hora |
+| 18 | Pântano Sombrio | Feitiço tonto | feitiço | Full house | o monstro fica tonto e perde a próxima vez |
+| 19 | Pântano Sombrio | Golpe esmagador | ataque | Quadra | dano em triplo |
+| 20 | Pântano Sombrio | Espelho | defesa | Quadra | o golpe volta inteiro para o monstro, e você não toma nada |
+| 21 | Vulcão | Dança das lâminas | ataque | Sequência grande | ataca duas vezes, ignorando a defesa |
+| 22 | Vulcão | Tempestade | feitiço | Quadra | feitiço em triplo (dano ou cura) |
+| 23 | Vulcão | Cometa | feitiço | Quina | feitiço cinco vezes mais forte |
+| 24 | Vulcão | Golpe lendário | ataque | Quina | dano cinco vezes maior |
+| 25 | Vulcão | Bênção do mestre | defesa | Quina | bloqueia tudo e cura toda a sua vida |
+
+- O segundo golpe do Golpe duplo e da Dança das lâminas e o golpe do Contra-ataque rolam de novo (e podem disparar outra habilidade de ataque), mas não atacam uma terceira vez. O Eco também não ecoa de novo.
+- Os multiplicadores valem sobre o dano depois da defesa do monstro.
+- O herói chega ao fim do Vulcão por volta do nível 39, então dá para aprender as 25; o que limita é passar pelas fogueiras.
+- **Em aberto:** deixar o jogador escolher qual habilidade vale quando duas servem; habilidades que gastam pontos maiores; "esquecer" uma habilidade.
+
 ## Fogueiras (acampamentos)
 
 **Definido**
@@ -340,6 +421,7 @@ Não há vilas nem cidades. Como num souls-like, cada página tem 5 acampamentos
 
 - **Chegar** numa fogueira marca ali o lugar onde o herói acorda se desmaiar e abre a folha do acampamento. Na primeira vez, o mestre narra a chegada.
 - **Descansar** é de graça: enche vida e Magia e, a partir do passo 60 do dia, vira "Dormir" e passa a noite. Mas **todo monstro vencido volta**, em todas as páginas e masmorras: o mestre apaga os X com a borracha. Chefes vencidos, o dragão e baús abertos não voltam.
+- **A veterana da fogueira ensina** a habilidade daquela fogueira, por 1 ponto de habilidade (ver Habilidades passivas). Cada fogueira mostra só a sua; para aprender todas, é preciso passar por todas.
 - **Os guerreiros vendem**, até o nível de loja da fogueira, que é a página dela (ver Itens):
   - **Ferreiro andarilho:** armas, escudos e armaduras.
   - **Maga:** feitiços.
@@ -365,6 +447,8 @@ Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
 Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`): semente do mundo, personagem (com tochas, despojos, missões, a página e o mapa em que ele está e a página da fogueira onde acorda), relógio e dia, e, para cada página e cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para cada página, também os personagens visitados, as masmorras limpas e (na última) se o dragão foi vencido. Ao continuar, as 5 páginas são geradas de novo da semente e o mapa atual é redesenhado de uma vez.
 
+As habilidades aprendidas ficam no personagem; os pontos não são guardados, são o nível − 1 − as habilidades aprendidas. Um save da 0.2.0 (sem habilidades) carrega normalmente e já chega com um ponto por nível subido.
+
 Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma semente agora gera outro mundo, então o jogo começa uma aventura nova.
 
 ## Em aberto (geral)
@@ -377,6 +461,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.3.0** (2026-10-27): habilidades passivas com combinações de pôquer nos dados (25, uma por fogueira, um ponto por nível); golpes especiais dos monstros (maldição que tira 1 ou 2 de cada dado por algumas rodadas, e brutos que quebram um dado da defesa até o fim da luta); teto de 5 dados na arma e na defesa (escudo até 2, armadura até 3, com dados maiores); menos encontros surpresa (mata 8,5% → 5%, pântano 9,5% → 6%, campo e areia um pouco menos) e 8 passos de calma depois de cada um. Saves da 0.2.0 continuam valendo.
 - **0.2.0** (2026-10-26): o protótipo vira app instalável no celular (PWA): ícone na tela inicial, tela cheia, joga sem internet, em pé ou deitado. Nova arrumação da tela para o celular deitado (HUD, narração, direcional, luta e folhas menores).
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia. Já com as 5 páginas de bioma.
 
@@ -386,7 +471,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
 
-> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`). As 5 páginas de bioma da Parte 1 (Mundo) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais nem teto de 5 dados, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0 já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

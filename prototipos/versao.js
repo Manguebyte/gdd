@@ -44,7 +44,7 @@
     'capibaribe-vivo': ['Capibaribe Vivo', 'CapibaribeVivo.md', '0.1.0'],
     'marble-arena': ['Marble Arena', 'MarbleArena.md', '0.1.0'],
     'caca-as-bruxas': ['Caça às Bruxas', 'CacaAsBruxas.md', '0.1.0'],
-    'caderno-de-aventuras': ['Caderno de Aventuras', 'CadernoDeAventuras.md', '0.2.0'],
+    'caderno-de-aventuras': ['Caderno de Aventuras', 'CadernoDeAventuras.md', '0.3.0'],
     'iso-cards': ['Iso Cards', 'IsoCards.md', '0.1.0'],
     'mercador-e-legiao': ['Mercador & Legião', 'tutorial-mvp-completo-unity.md', '0.1.0'],
   };

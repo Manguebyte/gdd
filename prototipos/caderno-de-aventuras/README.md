@@ -43,6 +43,7 @@ O jogo ganha ícone, abre em tela cheia, gira junto com o celular (em pé ou dei
 | `?revelar` | Revela a página inteira. |
 | `?ouro=N` | Começa com N moedas. |
 | `?nivel=N` | Sobe até o nível N. |
+| `?habilidades` | Já sabe as 25 habilidades passivas; `?habilidades=2,10,15` só essas (número da fogueira − 1). |
 | `?luta=orc` | Abre uma luta contra um monstro pelo id (a lista está em `POOLS`, no `world.js`: `slime`, `escorpiao`, `boneco_neve`, `fenix`...; ou `dragao`) ou um chefe (`chefe_rato`, `chefe_fenix`...). |
 | `?noite` | Começa à noite (acende uma tocha se tiver). |
 | `?tochas=N` | Começa com N tochas. |
