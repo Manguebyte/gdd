@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.6.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.7.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -262,9 +262,10 @@ Da segunda página em diante, cada página tem uma regra só dela, para a págin
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Derrotar | 10 | 10 | 8 | 8 | 8 | 6 | 6 | 6 | 5 | 5 | 5 | 4 | 4 | 4 | 3 |
 | Juntar | 20 | 18 | 16 | 15 | 14 | 13 | 12 | 11 | 10 | 10 | 9 | 8 | 8 | 7 | 6 |
-| Moedas | 30 | 45 | 60 | 80 | 100 | 120 | 150 | 180 | 210 | 250 | 290 | 330 | 380 | 430 | 480 |
+| Moedas | 15 | 20 | 30 | 40 | 50 | 60 | 75 | 90 | 105 | 125 | 145 | 165 | 190 | 215 | 240 |
 | Experiência | 15 | 25 | 40 | 55 | 75 | 100 | 130 | 165 | 205 | 250 | 300 | 360 | 430 | 510 | 600 |
 
+- **Moedas (0.7.0):** eram o dobro (30 na região 1 ... 480 na 15). Com o dobro, o herói ficava rico cedo e comprava o melhor da página logo nas primeiras fogueiras ("o personagem fica muito forte rápido, tem muito recurso"). Agora a primeira missão paga mais ou menos o que os monstros pedidos já deixam. A experiência não mudou.
 - Aceitar é opcional ("Agora não"), e podem ficar várias missões ativas ao mesmo tempo (uma por personagem).
 - **No HUD:** uma caixinha "Missões" embaixo dos números mostra cada missão ativa com o progresso (3/10). Quando fica pronta, o mestre avisa e a linha fica verde com "volte a Seu Juca". Para receber, é preciso falar com o personagem de novo. A mochila também lista as missões, com a página de quem deu.
 - Os monstros desenhados voltam a cada descanso na fogueira, e com uma missão ativa de derrotar ou juntar, **metade dos encontros surpresa na região daquele monstro traz o monstro pedido**.
@@ -352,11 +353,11 @@ O coração do jogo. A luta acontece numa folha por cima do mapa: o mestre desen
 | Poção de magia | poção | 2d4 de Magia | 15 | 1 |
 | Poção grande | poção | 8d8 de vida | 70 | 3 |
 
-- **Loja** é o nível da fogueira que vende o item, e é a página dela: as fogueiras dos Campos vendem o nível 1, as do Deserto até o 2, as das Montanhas Geladas até o 3, as do Pântano Sombrio até o 4 e as do Vulcão até o 5. Cada página nova traz equipamento melhor, e os preços sobem junto com as moedas que os monstros de lá deixam.
+- **Loja** é a página do item: Campos 1, Deserto 2, Montanhas Geladas 3, Pântano Sombrio 4, Vulcão 5. Os preços sobem junto com as moedas que os monstros de lá deixam. Desde a 0.7.0, arma, escudo, armadura e feitiço não são vendidos em toda fogueira da página: **cada fogueira tem a sua lista** (ver Fogueiras), e a melhor arma da página só aparece na última fogueira antes do guardião. A coluna Loja ainda vale para as poções e para os prêmios "equipamento da loja da página seguinte" (baús, chefes, guardiões, missões do chefe).
 - Comprar um equipamento já o equipa; o anterior vai para a mochila. Na mochila dá para trocar o equipado e, numa fogueira, vender por metade do preço.
 - Cada item tem ícone desenhado em lápis de cor, com a cor do material (madeira marrom, ferro grafite, prata e gelo azul-claro, cristal rosa, rúnica roxa, dragão vermelha).
 - **Teto de 5 dados (definido):** arma até 5 dados; escudo até 2 e armadura até 3, então os dois juntos defendem com no máximo 5. A média de defesa de cada página ficou perto da de antes do teto (5d6 + 5d8 = 40 virou 2d12 + 3d20 = 44,5 no Vulcão).
-- **A curva (proposta, conferida numa simulação):** um herói que só ataca, compra o melhor que dá na loja da página, equipa Golpe certeiro e Fôlego (a melhor dupla na simulação) e descansa com meia vida chega ao fim do Vulcão por volta do nível 38. Contra o dragão, tudo depende da Lâmina do Dragão: quando junta as 6000 moedas, vence em ~60–70% das vezes; sem ela, quase nunca. Sem habilidades, o mesmo herói trava no Vulcão (os golpes especiais e o teto de dados pesam). A simulação não usa baús, equipamento de missão, poções nem feitiços. **Em aberto:** baixar a vida do dragão (600) ou o preço da Lâmina, se jogando o fim ficar duro demais. A primeira região de cada página fica fácil logo depois das compras, e a última, difícil. Com feitiços e poções fica mais fácil; falta uma pessoa jogar a curva toda.
+- **A curva (proposta, conferida numa simulação de antes da 0.7.0, quando toda fogueira vendia tudo da página e as missões pagavam o dobro; falta simular de novo):** um herói que só ataca, compra o melhor que dá na loja da página, equipa Golpe certeiro e Fôlego (a melhor dupla na simulação) e descansa com meia vida chega ao fim do Vulcão por volta do nível 38. Contra o dragão, tudo depende da Lâmina do Dragão: quando junta as 6000 moedas, vence em ~60–70% das vezes; sem ela, quase nunca. Sem habilidades, o mesmo herói trava no Vulcão (os golpes especiais e o teto de dados pesam). A simulação não usa baús, equipamento de missão, poções nem feitiços. **Em aberto:** baixar a vida do dragão (600) ou o preço da Lâmina, se jogando o fim ficar duro demais. A primeira região de cada página fica fácil logo depois das compras, e a última, difícil. Com feitiços e poções fica mais fácil; falta uma pessoa jogar a curva toda.
 
 ## Feitiços (proposta)
 
@@ -506,17 +507,62 @@ Não há vilas nem cidades. Como num souls-like, cada página tem 5 acampamentos
 - **A veterana da fogueira ensina** a habilidade daquela fogueira, por 1 ponto de habilidade (ver Habilidades passivas). Cada fogueira mostra só a sua; para aprender todas, é preciso passar por todas.
 - **Duelo:** em cada fogueira, um guerreiro com nome (Zeca Machado, Tina Escudo... um por fogueira, 25 no caderno) aceita um duelo de treino, desenhado como um boneco-palito de capa azul, elmo e escudo redondo. É uma luta normal de dados, mas **ninguém desmaia**: quem chega a 0 perde e fica com 1 de vida, sem perder ouro. Não tem noite (+1 dado), e "Fugir" vira "Desistir", que sai sem rolar.
   - **Números (proposta):** a região da fogueira (as 5 de uma página ficam nas regiões 1, 1, 2, 2 e 3 dela); vida = a média dos dois monstros da região × 1,4; ataque e defesa do monstro de ataque mais forte (defesa 1d4 se ele não tiver).
-  - **Prêmio:** a primeira vitória em cada fogueira paga as moedas e a experiência da primeira missão daquela região (ver Missões); cada revanche vencida paga um quarto das moedas e nenhuma experiência.
-- **Os guerreiros vendem**, até o nível de loja da fogueira, que é a página dela (ver Itens):
-  - **Ferreiro andarilho:** armas, escudos e armaduras.
-  - **Maga:** feitiços.
+  - **Prêmio:** a primeira vitória em cada fogueira paga as moedas e a experiência da primeira missão daquela região (ver Missões). **Revanche é só treino**, sem prêmio. Até a 0.6.0 cada revanche pagava um quarto das moedas; como perder não custa nada e descansar é de graça, dava para tirar moeda sem fim e sem risco (crítica de um jogador).
+- **Os guerreiros vendem** (ver Itens). Qualquer um deles pode ser atacado (ver Atacar gente):
+  - **Ferreiro andarilho:** armas, escudos e armaduras, da lista daquela fogueira.
+  - **Maga:** feitiços, da lista daquela fogueira.
   - **Mercador:** poções (a Poção grande só da 3ª página em diante) e tochas (5 moedas); compra despojos (a região do monstro em moedas cada; os guardados para uma missão de juntar não entram na venda) e equipamento da mochila pela metade do preço.
 - Perto de uma fogueira (até 2 quadrados) não há encontro surpresa.
+
+**Estoque de cada fogueira (proposta, 0.7.0).** O que o ferreiro e a maga vendem. As 5 fogueiras de uma página ficam nas regiões 1, 1, 2, 2 e 3 dela, e as do fundo vendem coisa melhor: quem avança na página encontra vendedores melhores. A primeira fogueira de cada página ainda vende o melhor da página anterior.
+
+| Página | Fogueira 1 | Fogueira 2 | Fogueira 3 | Fogueira 4 | Fogueira 5 |
+| --- | --- | --- | --- | --- | --- |
+| Campos | espada de madeira, tampa de panela, roupa de couro, Faísca | espada curta, tampa de panela, roupa de couro, Cura | espada curta, escudo de madeira, Faísca | escudo de madeira, roupa de couro, Cura | **espada de ferro**, escudo de madeira, roupa de couro, Faísca, Cura |
+| Deserto | espada de ferro, escudo de madeira, cota de malha, Bola de fogo | machado, escudo de ferro, cota de malha, Cura | machado, escudo de ferro, cota de malha, Bola de fogo | espada de prata, escudo de ferro, armadura de placas | espada de prata, escudo de ferro, armadura de placas, Bola de fogo, Cura |
+| Montanhas Geladas | espada de prata, escudo de ferro, armadura de placas, Raio | montante, escudo de torre, armadura de placas, Cura maior | montante, escudo de torre, armadura de gelo, Raio | espada rúnica, escudo de torre, armadura de gelo | espada rúnica, escudo de torre, armadura de gelo, Raio, Cura maior |
+| Pântano Sombrio | espada rúnica, escudo de torre, armadura de gelo, Nevasca | espada de cristal, escudo de torre, armadura de gelo, Cura maior | espada de cristal, escudo rúnico, armadura de gelo, Nevasca | espada de cristal, escudo rúnico, armadura rúnica | espada de cristal, escudo rúnico, armadura rúnica, Nevasca, Cura maior |
+| Vulcão | espada de cristal, escudo rúnico, armadura rúnica, Meteoro | espada de cristal, escudo de dragão, armadura rúnica, Cura maior | Lâmina do Dragão, escudo de dragão, armadura rúnica, Meteoro | Lâmina do Dragão, escudo de dragão, armadura de dragão | Lâmina do Dragão, escudo de dragão, armadura de dragão, Meteoro, Cura maior, Nevasca |
+
+O mercador continua igual em toda fogueira (poções pela página, tochas, compra de despojos e equipamento).
 
 **Em aberto**
 
 - Subir de nível só na fogueira, gastando experiência (como as almas de um souls-like), em vez de subir na hora.
-- Guerreiros diferentes em cada fogueira, com estoque próprio.
+- Um mascate com 1–2 itens sorteados por dia em cada fogueira (de vez em quando um da página seguinte, caro), sugerido junto com o estoque próprio.
+
+## Atacar gente
+
+**Definido (0.7.0)**
+
+Qualquer pessoa do caderno pode ser atacada: os personagens do caminho (os de missão, com "!", e os de dica, com "?") e cada um da fogueira (veterana, duelista, ferreiro, maga e mercador). **Quem morre não volta mais**, nem com o descanso: o caminho fica com um X para sempre, e a fogueira mostra o título riscado.
+
+- **Como:** nas conversas com os personagens do caminho há o botão "Atacar"; na folha da fogueira, cada um tem "Atacar" ao lado do título. Antes da luta o mestre avisa o que se perde e mostra os números.
+- **É luta de verdade**, como contra um monstro: tem noite (+1 dado), fugir com d20, e perder é desmaiar (metade do ouro). Diferente do duelo, que é treino.
+- **O que se perde:**
+  - personagem de missão: as missões dele acabam, e a que estiver aceita some da margem do caderno;
+  - personagem de dica: as dicas dele (o presente, se tinha, ele já deu ao conversar, antes do botão "Atacar");
+  - veterana: ninguém mais ensina a habilidade daquela fogueira (cada habilidade só existe numa fogueira);
+  - duelista: os duelos daquela fogueira;
+  - ferreiro, maga, mercador: a parte deles na loja daquela fogueira (o mercador também era quem comprava despojos e equipamento ali).
+  - Descansar continua valendo em qualquer fogueira, mesmo sem ninguém em volta.
+- **O que se ganha:** a bolsa da pessoa, uma vez só, e experiência. Pessoa não deixa despojo.
+- **Números (proposta):** cada um luta como os monstros da região dele (a da fogueira ou a do quadrado): vida = (a média dos dois monstros da região + 10) × o fator do papel; ataque = o do monstro de ataque mais forte com dados a mais; defesa = a desse monstro (1d4 se ele não tiver). Bolsa = (região ÷ 2, arredondado para cima, + 1) dados; experiência = o dobro da de um monstro da região.
+
+| Papel | Vida × | Dados de ataque a mais | Dado da bolsa |
+| --- | --- | --- | --- |
+| Ferreiro | 1,6 | +1 | d10 |
+| Maga | 1 | +2 | d10 |
+| Mercador | 0,9 | 0 | d20 |
+| Veterana | 1,5 | +1 | d8 |
+| Duelista | 1,4 | 0 | d10 |
+| Personagem de missão | 1 | 0 | d10 |
+| Personagem de dica | 0,8 | 0 | d6 |
+
+**Em aberto**
+
+- Consequência além da perda: guardas, preços mais altos nas outras fogueiras, o mestre lembrando do que o herói fez.
+- O ferreiro morto deixar uma peça do estoque dele (hoje só moedas).
 
 ## Baús
 
@@ -551,6 +597,8 @@ Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`
 
 Da 0.5.0 em diante também ficam salvos: onde está o lendário de cada página, a vida dele e se caiu; os quadrados de lava que ainda não esfriaram (voltam para o mapa do Vulcão ao carregar); os passos até a próxima tempestade e erupção; as vitórias nos duelos de cada fogueira; o andar da masmorra em que o herói está (o andar de baixo de uma masmorra é salvo como "página:masmorra:1"); a chave pega, as armadilhas disparadas e o enigma respondido, junto com os baús abertos de cada masmorra. Um save da 0.4 carrega normalmente, com os lendários no lugar de começo e de vida cheia.
 
+Da 0.7.0 em diante também ficam salvos os personagens do caminho mortos (em cada página) e quem morreu em cada fogueira. Um save da 0.6 carrega com todo mundo vivo.
+
 Para cada página também fica salvo se o guardião da passagem foi vencido (um save antigo carrega com os guardiões vivos; quem já esteve na página seguinte pode passar por trás deles). As habilidades aprendidas e as 2 equipadas ficam no personagem; os pontos não são guardados, são o nível − 1 − as habilidades aprendidas. Um save da 0.2.0 (sem habilidades) carrega normalmente e já chega com um ponto por nível subido; um da 0.3 (todas valiam) equipa as 2 primeiras que aprendeu.
 
 Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma semente agora gera outro mundo, então o jogo começa uma aventura nova.
@@ -565,6 +613,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.7.0** (2026-10-28): balanceamento a partir da crítica de um jogador ("o personagem fica muito forte rápido, tem muito recurso", dava para ganhar moeda sem fim nos duelos, os vendedores eram iguais em toda a página). Dá para atacar qualquer pessoa do caderno: os personagens do caminho e cada um da fogueira. É luta de verdade, e quem morre não volta: some a parte dele (missões, dicas, habilidade, duelo ou loja) e o herói fica com a bolsa. Cada fogueira vende a sua lista de arma, defesa e feitiço, e as do fundo da página vendem coisa melhor (a Espada de ferro só na última dos Campos). Missões pagam metade das moedas. Revanche de duelo não paga mais nada. Saves da 0.6 continuam valendo.
 - **0.6.0** (2026-10-27): conta com usuário e senha (sem e-mail) para salvar a aventura na nuvem (Firebase Auth + Firestore) e continuar em qualquer aparelho. O save do aparelho continua sendo o principal; ao entrar, o jogo junta os dois (o mais novo ganha; aventuras diferentes, o jogador escolhe). Desligado até o `firebaseConfig` ser colado em `nuvem.js`. Saves da 0.5 continuam valendo.
 - **0.5.0** (2026-10-27): para o jogo ficar menos repetitivo (crítica de um jogador: "me pareceu repetitivo em certo momento"), cada página da segunda em diante ganha uma regra própria: tempestade de areia que apaga um pedaço do mapa e miragens no Deserto, gelo escorregadio nas Montanhas Geladas, neblina e monstros que só aparecem à noite no Pântano Sombrio, erupções de lava que fecham caminhos por um tempo no Vulcão. Um monstro lendário por página, com nome, que anda pelo mapa, foge do herói e pode fugir da luta guardando a vida que perdeu. Duelos de treino com um guerreiro em cada fogueira (ninguém desmaia). Cada masmorra ganha uma variação: porta trancada com chave, armadilhas escondidas (d20), enigma "O que é, o que é?" ou um andar de baixo com o chefe. A mesma semente gera as mesmas páginas e masmorras de antes, e saves da 0.4 carregam.
 - **0.4.0** (2026-10-27): lutas em grupo (alguns monstros do mapa vêm em dupla ou trio, com "×2"/"×3" no desenho; você escolhe o alvo e cada um ataca na vez deles); guardião de chefe em cima de cada canto dobrado (4: Senhor da Guerra Orc, Verme Colossal, Troll da Montanha, Cavaleiro da Morte), com uma escada escondida numa masmorra de cada página que sai atrás dele, para quem prefere explorar a lutar; o protótipo conta quantas pessoas o abrem (Google Analytics, só a visita, com aviso na capa); folha de luta em três colunas (monstro, dados, herói; no celular em pé, um embaixo do outro); só 2 habilidades passivas equipadas de cada vez (o herói guarda todas as aprendidas e troca na mochila). Saves da 0.3 carregam (equipam as 2 primeiras habilidades).
@@ -579,7 +628,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
 
-> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0 e da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0, da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) e da 0.7.0 (atacar gente, estoque de cada fogueira, missões pagando menos) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

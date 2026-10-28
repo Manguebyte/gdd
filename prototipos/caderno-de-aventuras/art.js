@@ -481,10 +481,11 @@
     return o;
   }
   // Guerreiro da fogueira (os duelos): boneco-palito de capa azul, elmo,
-  // espada e escudo redondo, virado para o herói.
-  M.guerreiro = r => {
+  // espada e escudo redondo, virado para o herói. `capa` muda a cor (o
+  // ferreiro e a veterana, quando o herói ataca eles).
+  M.guerreiro = (r, capa = C.BLUE) => {
     const o = [];
-    shape(r, o, [[53, 32], [68, 70], [36, 70], [46, 32]], C.BLUE, C.BLUE, 3.2, 3.2);
+    shape(r, o, [[53, 32], [68, 70], [36, 70], [46, 32]], capa, capa, 3.2, 3.2);
     ov(r, o, 50, 21, 10, 10, C.INK, 3.4);
     fillE(r, o, 50, 21, 10, 10, C.SKIN, 3, 0.8, 0.6);
     shape(r, o, [[39, 19], [42, 9], [50, 6], [58, 9], [61, 19]], C.INK, C.GRAY, 2.6, 2.8);
@@ -497,8 +498,21 @@
     ln(r, o, 50, 60, 38, 86, C.INK, 3.6); ln(r, o, 50, 60, 62, 86, C.INK, 3.6);
     return o;
   };
+  // Gente que o herói ataca (o jogo registra cada uma com A.defMonster).
+  // Quem luta de espada é um guerreiro; o resto, o boneco do caminho, com o
+  // balão só em quem fica no mapa.
+  A.gente = (papel, seed, color) => {
+    const r = S.rng(seed);
+    if (papel === 'ferreiro') return M.guerreiro(r, C.BROWN);
+    if (papel === 'veterana') return M.guerreiro(r, C.PURPLE);
+    if (papel === 'duelista') return M.guerreiro(r);
+    return A.npc(r, color, papel === 'missao', papel === 'missao' || papel === 'dica');
+  };
+  const EXTRA = {};
+  A.defMonster = (kind, fn) => { EXTRA[kind] = fn; };
   const monsterCache = {};
-  A.monster = kind => monsterCache[kind] || (monsterCache[kind] = kind.startsWith('chefe_') ? boss(kind.slice(6))
+  A.monster = kind => monsterCache[kind] || (monsterCache[kind] = EXTRA[kind] ? EXTRA[kind]()
+    : kind.startsWith('chefe_') ? boss(kind.slice(6))
     : kind.startsWith('guarda_') ? guardian(+kind.slice(7))
     : kind.startsWith('lenda_') ? legend(+kind.slice(6))
     : kind.startsWith('duelo_') ? M.guerreiro(S.rng(S.hash(+kind.slice(6), 29)))
@@ -525,7 +539,8 @@
 
   // Personagem do caminho. Quem dá dica tem "?" azul no balão; quem dá missão
   // tem "!" vermelho num balão pintado de amarelo, para chamar atenção.
-  A.npc = (r, color, quest) => {
+  // Sem `balao`, só o boneco (a maga e o mercador da fogueira, na luta).
+  A.npc = (r, color, quest, balao = true) => {
     const o = [];
     ov(r, o, 50, 34, 9, 9, C.INK, 3);
     shape(r, o, [[38, 28], [50, 12], [62, 28]], C.INK, color, 2.6);
@@ -533,6 +548,7 @@
     ln(r, o, 50, 50, 36, 62, C.INK, 3); ln(r, o, 50, 50, 64, 62, C.INK, 3);
     ln(r, o, 50, 70, 40, 92, C.INK, 3.4); ln(r, o, 50, 70, 60, 92, C.INK, 3.4);
     const bal = [[66, 6], [92, 6], [92, 26], [78, 26], [72, 34], [72, 26], [66, 26]];
+    if (!balao) return o;
     if (quest) shape(r, o, bal, C.INK, C.YELLOW, 2.2, 3);
     else pl(r, o, bal, true, C.INK, 2.2);
     o.push(S.text(quest ? '!' : '?', 79, 23, 18, quest ? C.RED : C.BLUE, { font: S.HAND }));
@@ -998,6 +1014,8 @@
       const cols = [C.BLUE, C.GREEN, C.PURPLE, C.ORANGE, C.PINK];
       for (const s of S.xform(A.npc(r, cols[(obj.quest ? obj.tier : obj.fala) % cols.length], obj.quest), 0.56, x0 + 4, y0 + 6)) o.push(s);
       if (obj.quest) o.push(S.text(obj.nome, cx, y0 - 2, 16, C.INK));
+      // Quem o herói matou fica riscado para sempre.
+      if (state.mortos && state.mortos.has(i)) cross(r, o, x0, y0, T);
     } else if (obj.type === 'masmorra') {
       // Entrada: arco de pedra cinza, porta escura e uma coroa em cima.
       const arch = (w, top) => [[cx - w, y0 + T - 6], [cx - w, y0 + top + 10], [cx - w * 0.6, y0 + top + 2], [cx, y0 + top], [cx + w * 0.6, y0 + top + 2], [cx + w, y0 + top + 10], [cx + w, y0 + T - 6]];

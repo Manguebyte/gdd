@@ -201,11 +201,46 @@
   ];
   // Região da fogueira n: as 5 de uma página ficam nas regiões 1, 1, 2, 2 e 3 dela.
   const duelTier = n => Math.floor(n / 5) * 3 + 1 + [0, 0, 1, 1, 2][n % 5];
-  DUELISTAS.forEach(([nome, art], n) => {
-    const [a, b] = Wd.POOLS[duelTier(n)].map(k => MONSTERS[k]);
+  // Os monstros de uma região: a vida média dos dois e o ataque e a defesa
+  // do que bate mais.
+  function forteDa(tier) {
+    const [a, b] = Wd.POOLS[tier].map(k => MONSTERS[k]);
     const f = a.atk[0] * (a.atk[1] + 1) >= b.atk[0] * (b.atk[1] + 1) ? a : b;
-    MONSTERS['duelo_' + n] = { nome, art, hp: Math.round((a.hp + b.hp) / 2 * 1.4), atk: f.atk, def: f.def || a.def || b.def || [1, 4], ouro: null, xp: 0, duelo: n };
+    return { hp: (a.hp + b.hp) / 2, atk: f.atk, def: f.def || a.def || b.def || [1, 4] };
+  }
+  DUELISTAS.forEach(([nome, art], n) => {
+    const f = forteDa(duelTier(n));
+    MONSTERS['duelo_' + n] = { nome, art, hp: Math.round(f.hp * 1.4), atk: f.atk, def: f.def, ouro: null, xp: 0, duelo: n };
   });
+  // Gente que dá para atacar (proposta): todo personagem do caminho e cada
+  // um da fogueira. É luta de verdade (perder é desmaiar) e quem morre não
+  // volta mais, nem descansando. Cada um luta como os monstros da região
+  // dele: (a vida média + 10) × `vida`, o ataque do mais forte com `atk` dados a
+  // mais e a defesa dele. A bolsa rola (região/2 + 1) dados de `moeda` lados,
+  // uma vez só; a experiência é o dobro da de um monstro da região.
+  const PAPEIS = {
+    ferreiro: { vida: 1.6, atk: 1, moeda: 10 },
+    maga: { vida: 1, atk: 2, moeda: 10 },
+    mercador: { vida: 0.9, atk: 0, moeda: 20 },
+    veterana: { vida: 1.5, atk: 1, moeda: 8 },
+    duelista: { vida: 1.4, atk: 0, moeda: 10 },
+    missao: { vida: 1, atk: 0, moeda: 10 },
+    dica: { vida: 0.8, atk: 0, moeda: 6 },
+  };
+  // Registra a pessoa como "monstro" (uma vez) e devolve o tipo dela.
+  // `key` é única no mundo: "f3_maga" (fogueira 3), "p1_812" (página 2, quadrado 812).
+  function gente(key, papel, tier, nome, art, seed, cor) {
+    const kind = 'gente_' + key;
+    if (!MONSTERS[kind]) {
+      const p = PAPEIS[papel], f = forteDa(tier);
+      MONSTERS[kind] = {
+        nome, art, hp: Math.round((f.hp + 10) * p.vida), atk: [f.atk[0] + p.atk, f.atk[1]], def: f.def,
+        ouro: [Math.ceil(tier / 2) + 1, p.moeda], xp: XP[tier] * 2, gente: papel,
+      };
+      A.defMonster(kind, () => A.gente(papel, seed, cor));
+    }
+    return kind;
+  }
   // Adivinhas da cara de pedra (masmorra com enigma): a certa vem primeiro.
   const ENIGMAS = [
     ['Tem dentes, mas não morde.', 'pente', 'cachorro', 'tesoura'],
@@ -341,7 +376,9 @@
     matar: [10, 10, 8, 8, 8, 6, 6, 6, 5, 5, 5, 4, 4, 4, 3],
     coletar: [20, 18, 16, 15, 14, 13, 12, 11, 10, 10, 9, 8, 8, 7, 6],
   };
-  const QUEST_OURO = [30, 45, 60, 80, 100, 120, 150, 180, 210, 250, 290, 330, 380, 430, 480];
+  // Moedas da primeira missão de cada região: mais ou menos o que os monstros
+  // pedidos já pagam (era o dobro, e o herói ficava rico cedo demais).
+  const QUEST_OURO = [15, 20, 30, 40, 50, 60, 75, 90, 105, 125, 145, 165, 190, 215, 240];
   const QUEST_XP = [15, 25, 40, 55, 75, 100, 130, 165, 205, 250, 300, 360, 430, 510, 600];
   // Dia e noite: o relógio anda um passo por quadrado. Uma tocha dura 40 passos no escuro.
   const CICLO = 100, TOCHA_PASSOS = 40, TOCHA_PRECO = 5;
@@ -450,18 +487,20 @@
   // limpas, se o guardião da passagem foi vencido e (na última) se o dragão foi.
   // `lenda` = onde está o monstro lendário da página, a vida dele e se caiu.
   const newPage = (m, pg) => ({
-    ...newLevel(m), talked: new Set(), cleared: new Set(), won: false, guarda: false,
+    ...newLevel(m), talked: new Set(), cleared: new Set(), won: false, guarda: false, mortos: new Set(),
     lenda: { i: m.lenda, hp: MONSTERS['lenda_' + pg].hp, dead: false },
   });
   // G.dun é por "página:masmorra" ("2:4" = masmorra 4 da 3ª página; "2:4:1" =
   // o andar de baixo dela). G.lava: quadrados do Vulcão cobertos de lava,
   // índice → [terreno de antes, passo em que esfria]. G.areia e G.vulcao contam
   // os passos até a próxima tempestade e erupção; G.tempestade, os que faltam
-  // da tempestade de agora. G.duelos: vitórias em cada fogueira.
+  // da tempestade de agora. G.duelos: vitórias em cada fogueira. G.gente:
+  // quem o herói matou em cada fogueira (n → ['maga', ...]); os mortos do
+  // caminho ficam em `mortos` de cada página.
   const newState = () => ({
     pg: WORLD.pages.map(newPage), dun: {},
     seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {}, calma: 0,
-    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {},
+    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {}, gente: {},
   });
   const here = () => G.pg[P.pg];
   const dunKey = (pg, n, andar = 0) => pg + ':' + n + (andar ? ':1' : '');
@@ -863,7 +902,7 @@
   function blocking(i) {
     const o = M.obj.get(i);
     if (legendAt(i)) return true;
-    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i) && (!o.noite || L.noite)) || o.type === 'npc' || (o.type === 'covil' && !L.won)
+    return o && (((o.type === 'monstro' || o.type === 'chefe') && !L.dead.has(i) && (!o.noite || L.noite)) || (o.type === 'npc' && !(L.mortos && L.mortos.has(i))) || (o.type === 'covil' && !L.won)
       || (o.type === 'passagem' && !L.guarda) || o.type === 'enigma' || (o.type === 'porta' && !L.opened.has('chave')));
   }
   function stepTo(nx, ny) {
@@ -1936,6 +1975,55 @@
     if (e === 'novo') title();
   }
 
+  // ---------- atacar gente ----------
+  const ATACAR = { html: 'Atacar', v: 'atacar' };
+  // Pergunta antes (quem morre não volta) e luta de verdade. Devolve o
+  // resultado da luta, ou 'nao' se o herói desistiu.
+  async function attackPerson(kind, perde) {
+    const m = MONSTERS[kind];
+    const v = await dialog(`Atacar ${m.nome}?`,
+      `<p>Quem morre não volta mais: ${perde}.</p>
+       <p>${ic('heart')} ${m.hp} de vida · ${ic('sword')} ataque ${fmtD(atkOf(m))}${nightBonus() ? ' (noite)' : ''} · ${ic('shield')} defesa ${fmtD(m.def)}</p>
+       <p class="small">Seu ataque: ${fmtD(atkDie())} · sua defesa: ${defDice().map(fmtD).join(' + ') || 'nenhuma'}. É luta de verdade: perder é desmaiar.</p>`,
+      [{ html: 'Atacar', v: 'luta', cls: 'red' }, { html: 'Melhor não', v: 'nao' }], A.monsterURL(kind, 160));
+    if (v !== 'luta') return 'nao';
+    return combat(kind, { text: `${m.nome} dá um pulo para trás: "Que é isso?!" O mestre arregala os olhos e desenha a luta.` });
+  }
+  // Personagem do caminho (missão ou dica). Morto, fica riscado no mapa e
+  // as missões que deu somem da margem do caderno.
+  async function attackNpc(i, o) {
+    const pg = P.pg, art = o.quest && /^(Dona|Vó)/.test(o.nome) ? 'a' : 'o';
+    const cols = [C.BLUE, C.GREEN, C.PURPLE, C.ORANGE, C.PINK], ele = art === 'a' ? 'dela' : 'dele';
+    const kind = gente(`p${pg}_${i}`, o.quest ? 'missao' : 'dica', W.tier[i], o.quest ? o.nome : 'Andarilho', art,
+      S.hash(pg, i, 41), cols[(o.quest ? o.tier : o.fala) % cols.length]);
+    const r = await attackPerson(kind, o.quest ? `as missões ${ele} acabam` : `as dicas ${ele} acabam`);
+    if (r !== 'vitoria') return;
+    here().mortos.add(i);
+    animate(A.cross(i % M.W, (i / M.W) | 0, T, i));
+    const tinha = P.missoes.some(q => q.pg === pg && q.npc === i);
+    P.missoes = P.missoes.filter(q => !(q.pg === pg && q.npc === i));
+    if (tinha) narrate(`O mestre risca da margem a missão de ${o.nome}. Não tem mais para quem entregar.`);
+    hud(); save();
+  }
+  // Alguém da fogueira n. Morto, a parte dele some desta fogueira.
+  const PERDE = {
+    ferreiro: 'ninguém mais vende arma, escudo e armadura nesta fogueira',
+    maga: 'ninguém mais ensina feitiço nesta fogueira',
+    mercador: 'ninguém mais vende poção e tocha nem compra nada nesta fogueira',
+    veterana: n => `ninguém mais ensina ${HABILIDADES[n].nome}`,
+    duelista: 'acabam os duelos nesta fogueira',
+  };
+  const perdeDe = (n, papel) => typeof PERDE[papel] === 'function' ? PERDE[papel](n) : PERDE[papel];
+  const mortoNaFogueira = (n, papel) => (G.gente[n] || []).includes(papel);
+  async function attackCamp(n, papel) {
+    const [nome, art] = papel === 'duelista' ? DUELISTAS[n]
+      : { ferreiro: ['Ferreiro andarilho', 'o'], maga: ['Maga', 'a'], mercador: ['Mercador', 'o'], veterana: ['Veterana da fogueira', 'a'] }[papel];
+    const kind = gente(`f${n}_${papel}`, papel, duelTier(n), nome, art, S.hash(n, 29), papel === 'maga' ? C.PURPLE : C.OCHRE);
+    const r = await attackPerson(kind, perdeDe(n, papel));
+    if (r === 'vitoria') { G.gente[n] = [...(G.gente[n] || []), papel]; save(); }
+    return r;
+  }
+
   async function talk(i, o) {
     if (o.quest) { await questGiver(i, o); return; }
     let extra = '';
@@ -1950,8 +2038,9 @@
     // segunda em diante, as dicas de sempre.
     const lenda = !n && o.fala % 4 === 3 && !here().lenda.dead;
     const line = lenda ? LENDA_DICA[P.pg] : NPC_LINES[(o.fala + n * DICAS) % NPC_LINES.length];
-    await dialog('Alguém no caminho', `<p>"${line}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }]);
+    const v = await dialog('Alguém no caminho', `<p>"${line}"</p>${extra}`, [{ html: 'Valeu!', v: 1 }, ATACAR]);
     save();
+    if (v === 'atacar') await attackNpc(i, o);
   }
 
   // Quem tem "!" no balão: oferece a próxima missão, mostra quanto falta ou
@@ -1962,8 +2051,9 @@
     if (cur) {
       const pr = Math.min(cur.n, progress(cur));
       if (pr < cur.n) {
-        await dialog(o.nome, `<p>"E aí, ${esc(P.nome)}? Ainda faltam ${cur.n - pr}."</p><p><b>Missão:</b> ${questText(cur)} · ${pr}/${cur.n}</p>`,
-          [{ html: 'Já volto', v: 1 }]);
+        const v = await dialog(o.nome, `<p>"E aí, ${esc(P.nome)}? Ainda faltam ${cur.n - pr}."</p><p><b>Missão:</b> ${questText(cur)} · ${pr}/${cur.n}</p>`,
+          [{ html: 'Já volto', v: 1 }, ATACAR]);
+        if (v === 'atacar') await attackNpc(i, o);
         return;
       }
       if (cur.tipo === 'coletar') P.partes[cur.kind] -= cur.n;
@@ -1980,7 +2070,8 @@
       return;
     }
     if (stage >= list.length) {
-      await dialog(o.nome, `<p>"Graças a você a região está mais tranquila. O mestre devia desenhar uma estátua sua aqui!"</p>`, [{ html: 'Tchau!', v: 1 }]);
+      const v = await dialog(o.nome, `<p>"Graças a você a região está mais tranquila. O mestre devia desenhar uma estátua sua aqui!"</p>`, [{ html: 'Tchau!', v: 1 }, ATACAR]);
+      if (v === 'atacar') await attackNpc(i, o);
       return;
     }
     const q = list[stage], [ouro, xp] = questReward(o.tier, stage), mm = MONSTERS[q.kind];
@@ -1990,8 +2081,9 @@
     const v = await dialog(`${o.nome} pede ajuda`,
       `<p>"${ask2}"</p><p><b>Missão:</b> ${questText(q)}</p>
        <p class="small">Recompensa: ${ouro} moedas e ${xp} de experiência${q.tipo === 'chefe' ? ', mais um equipamento' : ''}.${q.tipo === 'coletar' ? ` Cada ${MONSTERS[q.kind].nome} vencido deixa 1d3 ${PARTS[q.kind][1]}.` : ''}</p>`,
-      [{ html: 'Aceitar', v: 'sim', cls: 'green' }, { html: 'Agora não', v: 'nao' }],
+      [{ html: 'Aceitar', v: 'sim', cls: 'green' }, { html: 'Agora não', v: 'nao' }, ATACAR],
       A.monsterURL(q.tipo === 'chefe' ? 'chefe_' + q.kind : q.kind, 160));
+    if (v === 'atacar') await attackNpc(i, o);
     if (v !== 'sim') return;
     P.missoes.push({ pg: P.pg, npc: i, k: stage, ...q, base: P.abates[q.kind] || 0 });
     narrate(`Missão anotada na margem do caderno: ${questText(q)}.`);
@@ -2031,7 +2123,44 @@
 
   // ---------- fogueira: descansar e comprar dos guerreiros ----------
   // Nível da loja de uma fogueira: a página dela (1 nos Campos ... 5 no Vulcão).
+  // Só as poções seguem o nível; arma, defesa e feitiço vêm de LOJAS.
   const campLevel = i => Wd.pageOf(W.tier[i]) + 1;
+  // O que o ferreiro e a maga de cada fogueira vendem (proposta). Cada
+  // fogueira tem a sua lista, e na mesma página as do fundo vendem coisa
+  // melhor (as 5 ficam nas regiões 1, 1, 2, 2 e 3 dela): a melhor arma da
+  // página só aparece na última fogueira antes do guardião.
+  const LOJAS = [
+    // Campos
+    ['espada_madeira', 'tampa_panela', 'roupa_couro', 'faisca'],
+    ['espada_curta', 'tampa_panela', 'roupa_couro', 'cura'],
+    ['espada_curta', 'escudo_madeira', 'faisca'],
+    ['escudo_madeira', 'roupa_couro', 'cura'],
+    ['espada_ferro', 'escudo_madeira', 'roupa_couro', 'faisca', 'cura'],
+    // Deserto
+    ['espada_ferro', 'escudo_madeira', 'cota_malha', 'bola_fogo'],
+    ['machado', 'escudo_ferro', 'cota_malha', 'cura'],
+    ['machado', 'escudo_ferro', 'cota_malha', 'bola_fogo'],
+    ['espada_prata', 'escudo_ferro', 'placas'],
+    ['espada_prata', 'escudo_ferro', 'placas', 'bola_fogo', 'cura'],
+    // Montanhas Geladas
+    ['espada_prata', 'escudo_ferro', 'placas', 'raio'],
+    ['montante', 'escudo_torre', 'placas', 'cura_maior'],
+    ['montante', 'escudo_torre', 'armadura_gelo', 'raio'],
+    ['espada_runica', 'escudo_torre', 'armadura_gelo'],
+    ['espada_runica', 'escudo_torre', 'armadura_gelo', 'raio', 'cura_maior'],
+    // Pântano Sombrio
+    ['espada_runica', 'escudo_torre', 'armadura_gelo', 'nevasca'],
+    ['espada_cristal', 'escudo_torre', 'armadura_gelo', 'cura_maior'],
+    ['espada_cristal', 'escudo_runico', 'armadura_gelo', 'nevasca'],
+    ['espada_cristal', 'escudo_runico', 'armadura_runica'],
+    ['espada_cristal', 'escudo_runico', 'armadura_runica', 'nevasca', 'cura_maior'],
+    // Vulcão
+    ['espada_cristal', 'escudo_runico', 'armadura_runica', 'meteoro'],
+    ['espada_cristal', 'escudo_dragao', 'armadura_runica', 'cura_maior'],
+    ['lamina_dragao', 'escudo_dragao', 'armadura_runica', 'meteoro'],
+    ['lamina_dragao', 'escudo_dragao', 'armadura_dragao'],
+    ['lamina_dragao', 'escudo_dragao', 'armadura_dragao', 'meteoro', 'cura_maior', 'nevasca'],
+  ];
   function camp(i, o) {
     const first = !G.seen.has('v' + o.n);
     G.seen.add('v' + o.n);
@@ -2063,67 +2192,69 @@
     if (M) rebakeAll();
   }
   // Duelo de treino com o guerreiro da fogueira n. A primeira vitória paga
-  // moedas e experiência como a primeira missão da região; as revanches, um
-  // quarto das moedas.
+  // moedas e experiência como a primeira missão da região; as revanches são
+  // só treino (pagavam um quarto, e dava para tirar moeda sem fim, sem risco).
   const duelPrize = n => [QUEST_OURO[duelTier(n) - 1], QUEST_XP[duelTier(n) - 1]];
   async function duel(n) {
     const dm = MONSTERS['duelo_' + n], wins = G.duelos[n] || 0;
     const r = await combat('duelo_' + n, { treino: true, text: `${dm.nome} levanta da fogueira e pega ${dm.art === 'a' ? 'a espada dela' : 'a espada dele'}: "Vamos ver do que você é capaz!"` });
     if (r !== 'vitoria') return;
     G.duelos[n] = wins + 1;
-    const [ouro, xp] = duelPrize(n), g = wins ? Math.floor(ouro / 4) : ouro, x = wins ? 0 : xp;
-    P.ouro += g; SFX.coin();
-    const ups = x ? gainXp(x) : 0;
-    narrate(`Duelo vencido! +${g} moedas${x ? `, +${x} de experiência` : ''}.${ups ? ` Subiu para o nível ${P.lvl}!` : ''}`);
+    if (wins) { narrate('Duelo vencido! Revanche é só treino: sem prêmio.'); hud(); save(); return; }
+    const [ouro, xp] = duelPrize(n);
+    P.ouro += ouro; SFX.coin();
+    const ups = gainXp(xp);
+    narrate(`Duelo vencido! +${ouro} moedas, +${xp} de experiência.${ups ? ` Subiu para o nível ${P.lvl}!` : ''}`);
     hud(); save();
   }
   function owned(id) { return P.bolsa.includes(id) || Object.values(P.equip).includes(id); }
   function renderCamp(i, n) {
     const coin = ic('coin'), lvl = campLevel(i), late = G.clock >= 60;
     const hb = HABILIDADES[n], learned = P.habs.includes(n), pts = pontos();
-    const gear = Object.keys(ITEMS).filter(id => ITEMS[id].loja <= lvl && ITEMS[id].slot !== 'pocao');
+    const gear = LOJAS[n].filter(id => ITEMS[id]);
     const pots = POTS.filter(id => ITEMS[id].loja <= lvl);
-    const spells = Object.keys(SPELLS).filter(id => SPELLS[id].loja <= lvl);
+    const spells = LOJAS[n].filter(id => SPELLS[id]);
     const slotName = { arma: 'arma', escudo: 'escudo', armadura: 'armadura' };
     const row = (icon, name, info, price, act, off, note = '') =>
       `<div class="row">${icon}<span class="nm">${name} <small>${info}</small>${note ? `<em>${note}</em>` : ''}</span>
        <span class="pr">${price != null ? price + coin : ''}</span><button data-act="${act}" ${off ? 'disabled' : ''}>${act.startsWith('sell') ? 'Vender' : 'Comprar'}</button></div>`;
     const partsNeeded = k => P.missoes.filter(q => q.tipo === 'coletar' && q.kind === k).reduce((a, q) => a + q.n, 0);
+    // Cada um da fogueira: o título com o botão de atacar; morto, o título
+    // riscado e o que se perdeu.
+    const quem = (titulo, papel, corpo) => mortoNaFogueira(n, papel)
+      ? `<h3><s>${titulo}</s></h3><p class="small">O mestre riscou do caderno: ${perdeDe(n, papel)}.</p>`
+      : `<h3>${titulo} <button data-act="kill:${papel}" class="atk">Atacar</button></h3>${corpo}`;
     openPanel(`
       <h2>${Wd.FOGUEIRAS[n]}</h2>
       <p>${CAMP_TEXT[n % CAMP_TEXT.length]} Você tem ${P.ouro}${coin}</p>
       <div class="row">${ic('fire')}<span class="nm">Descansar na fogueira <small>vida e magia cheias${late ? ', dorme até de manhã' : ''}</small><em>os monstros vencidos voltam (chefes e dragão, não)</em></span>
         <button data-act="rest" class="red">${late ? 'Dormir' : 'Descansar'}</button></div>
-      <h3>Veterana da fogueira</h3>
+      ${quem('Veterana da fogueira', 'veterana', `
       <p class="small">Cada fogueira ensina uma habilidade só, e cada nível que você sobe dá um ponto para aprender. Você guarda todas, mas só ${HABS_MAX} ficam equipadas (troque na mochila). Você tem ${pts} ponto${pts === 1 ? '' : 's'}.</p>
       <div class="row">${ic('star', C.YELLOW)}<span class="nm">${hb.nome} <small>${MAOS[hb.mao].nome} nos dados ${GRUPO[hb.grupo]}: ${hb.txt}</small><em>${learned ? 'você já sabe' : `${MAOS[hb.mao].nome} = ${MAOS[hb.mao].txt}`}</em></span>
-        <button data-act="learn" ${learned || !pts ? 'disabled' : ''}>${learned ? 'Aprendida' : 'Aprender'}</button></div>
-      <h3>Duelo</h3>
-      ${(() => {
+        <button data-act="learn" ${learned || !pts ? 'disabled' : ''}>${learned ? 'Aprendida' : 'Aprender'}</button></div>`)}
+      ${quem('Duelo', 'duelista', (() => {
         const dm = MONSTERS['duelo_' + n], wins = G.duelos[n] || 0, [ouro, xp] = duelPrize(n);
         return `<div class="row"><img class="ic" src="${A.monsterURL('duelo_' + n, 64)}" alt=""><span class="nm">${dm.nome} desafia você <small>${ic('heart')}${dm.hp} ${ic('sword')}${fmtD(dm.atk)} ${ic('shield')}${fmtD(dm.def)}</small>
-          <em>${wins ? `Revanche: ${Math.floor(ouro / 4)} moedas (você já venceu ${wins}×)` : `Prêmio: ${ouro} moedas e ${xp} de experiência`}. Ninguém desmaia: quem chega a 0 perde e fica com 1 de vida.</em></span>
+          <em>${wins ? `Revanche: só treino, sem prêmio (você já venceu ${wins}×)` : `Prêmio: ${ouro} moedas e ${xp} de experiência`}. Ninguém desmaia: quem chega a 0 perde e fica com 1 de vida.</em></span>
           <button data-act="duel" class="red" ${P.hp <= 1 ? 'disabled' : ''}>Duelar</button></div>`;
-      })()}
-      <h3>Ferreiro andarilho</h3>
-      ${gear.map(id => {
+      })())}
+      ${quem('Ferreiro andarilho', 'ferreiro', gear.map(id => {
         const it = ITEMS[id], cur = P.equip[it.slot];
         const note = owned(id) ? 'você já tem' : cur ? `sua ${slotName[it.slot]}: ${fmtD(ITEMS[cur].dado)}` : `sem ${slotName[it.slot]}`;
         return row(itemIc(id), it.nome, fmtD(it.dado) + (it.slot === 'arma' ? ' de ataque' : ' de defesa'), it.preco, 'buy:' + id, owned(id) || P.ouro < it.preco, note);
-      }).join('')}
-      <h3>Maga</h3>
-      ${spells.map(id => {
+      }).join(''))}
+      ${quem('Maga', 'maga', spells.map(id => {
         const s = SPELLS[id], has = P.magias.includes(id);
         return row(itemIc(id), s.nome, `${fmtD(s.dado)} ${s.tipo === 'cura' ? 'de cura' : 'de dano, ignora defesa'} · ${s.pm} PM`, s.preco, 'spell:' + id, has || P.ouro < s.preco, has ? 'você já sabe' : '');
-      }).join('')}
-      <h3>Mercador</h3>
-      ${pots.map(id => row(itemIc(id), ITEMS[id].nome, `${fmtD(ITEMS[id].dado)} de ${ITEMS[id].efeito === 'hp' ? 'vida' : 'magia'}`, ITEMS[id].preco, 'pot:' + id, P.ouro < ITEMS[id].preco, `você tem ${P.pocoes[id]}`)).join('')}
+      }).join(''))}
+      ${quem('Mercador', 'mercador', `${pots.map(id => row(itemIc(id), ITEMS[id].nome, `${fmtD(ITEMS[id].dado)} de ${ITEMS[id].efeito === 'hp' ? 'vida' : 'magia'}`, ITEMS[id].preco, 'pot:' + id, P.ouro < ITEMS[id].preco, `você tem ${P.pocoes[id]}`)).join('')}
       ${row(ic('torch'), 'Tocha', `acende sozinha no escuro, dura ${TOCHA_PASSOS} passos`, TOCHA_PRECO, 'torch', P.ouro < TOCHA_PRECO, `você tem ${P.tochas}`)}
       ${Object.keys(P.partes).some(k => P.partes[k] > 0) ? `<h3>Vender despojos</h3>${Object.keys(P.partes).filter(k => P.partes[k] > 0).map(k => {
         const need = partsNeeded(k), extra = P.partes[k] - need;
         return row(`<img class="ic" src="${A.monsterURL(k, 64)}" alt="">`, `${P.partes[k]} ${PARTS[k][P.partes[k] > 1 ? 1 : 0]}`, `${TIER_OF[k]} cada`, extra > 0 ? extra * TIER_OF[k] : null, 'sellp:' + k, extra <= 0, need ? `${need} guardados para uma missão` : '');
       }).join('')}` : ''}
-      ${P.bolsa.length ? `<h3>Vender</h3>${P.bolsa.map((id, k) => row(itemIc(id), ITEMS[id].nome, fmtD(ITEMS[id].dado), Math.floor(ITEMS[id].preco / 2), 'sell:' + k, false)).join('')}` : ''}
+      ${P.bolsa.length ? `<h3>Vender</h3>${P.bolsa.map((id, k) => row(itemIc(id), ITEMS[id].nome, fmtD(ITEMS[id].dado), Math.floor(ITEMS[id].preco / 2), 'sell:' + k, false)).join('')}` : ''}`)}
       <div class="actions"><button data-act="out" class="green">Seguir viagem</button></div>`, 'village');
     $('panel').onclick = e => {
       const b = e.target.closest('button[data-act]');
@@ -2131,6 +2262,8 @@
       const [act, arg] = b.dataset.act.split(':');
       if (act === 'out') { closePanel(); return; }
       if (act === 'duel') { closePanel(); duel(n).then(() => renderCamp(i, n)); return; }
+      // Quem perde a luta desmaia e acorda em outro lugar: aí não volta para cá.
+      if (act === 'kill') { closePanel(); attackCamp(n, arg).then(r => { if (r !== 'derrota') renderCamp(i, n); }); return; }
       if (act === 'rest') rest();
       else if (act === 'learn') {
         // Aprendida entra equipada se ainda houver vaga.
@@ -2232,9 +2365,9 @@
       // `em` = quando foi salvo: com conta, o save mais novo ganha (ver syncDown).
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         v: 3, em: Date.now(), seed: WORLD.seed, P, dun,
-        pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda })),
+        pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda, mortos: [...l.mortos] })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
-        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos,
+        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos, gente: G.gente,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
@@ -2354,6 +2487,7 @@
         l.won = d.won; l.guarda = !!d.guarda;
         // Save de antes da 0.5.0: o lendário começa no lugar dele, com a vida cheia.
         if (d.lenda) l.lenda = d.lenda;
+        (d.mortos || []).forEach(i => l.mortos.add(i));
       });
       for (const k in data.dun) {
         const [pg, n, andar = 0] = k.split(':').map(Number);
@@ -2362,7 +2496,7 @@
       data.seen.forEach(k => G.seen.add(k));
       Object.assign(G, {
         steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {},
-        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {},
+        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {}, gente: data.gente || {},
       });
       // A lava que ainda não esfriou volta para o mapa do Vulcão.
       const v = WORLD.pages[Wd.PAGINAS - 1];

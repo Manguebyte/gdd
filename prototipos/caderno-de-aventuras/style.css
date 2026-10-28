@@ -229,3 +229,5 @@ button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.2
 .conta-form label { display: flex; gap: 10px; align-items: center; font-size: 20px; }
 .conta-form input { font: inherit; color: var(--blue); background: transparent; border: 0; border-bottom: 2px solid var(--ink); flex: 1; min-width: 0; max-width: 260px; padding: 0 4px; outline: none; }
 #c-msg { color: var(--red); min-height: 1em; }
+.sheet h3 .atk { font-family: 'Patrick Hand', 'Comic Sans MS', cursive; font-size: 16px; padding: 0 10px; margin-left: 8px; vertical-align: middle; color: var(--red); }
+.sheet h3 s { color: var(--gray); }
