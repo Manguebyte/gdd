@@ -496,11 +496,11 @@
   // os passos até a próxima tempestade e erupção; G.tempestade, os que faltam
   // da tempestade de agora. G.duelos: vitórias em cada fogueira. G.gente:
   // quem o herói matou em cada fogueira (n → ['maga', ...]); os mortos do
-  // caminho ficam em `mortos` de cada página.
+  // caminho ficam em `mortos` de cada página. G.tempo: segundos jogados.
   const newState = () => ({
     pg: WORLD.pages.map(newPage), dun: {},
     seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {}, calma: 0,
-    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {}, gente: {},
+    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {}, gente: {}, tempo: 0,
   });
   const here = () => G.pg[P.pg];
   const dunKey = (pg, n, andar = 0) => pg + ':' + n + (andar ? ':1' : '');
@@ -896,6 +896,15 @@
     requestAnimationFrame(tick);
   }
 
+  // ---------- placas ----------
+  // Placa do caminho: não para o herói, só o mestre lê o que está escrito.
+  const RUMOS = ['leste', 'sudeste', 'sul', 'sudoeste', 'oeste', 'noroeste', 'norte', 'nordeste'];
+  function signpost(o) {
+    const para = o.to < 0 ? 'Covil do Dragão' : `${Wd.BIOMAS[o.to].nome} (próxima página)`;
+    narrate(pick([`Uma placa de madeira: "${para}", com a seta para o ${RUMOS[o.dir]}.`,
+      `O mestre desenha uma placa: "${para} →". A seta aponta para o ${RUMOS[o.dir]}.`]));
+  }
+
   // ---------- movimento e eventos do mapa ----------
   // O lendário da página está neste quadrado (e ainda não caiu)?
   const legendAt = i => !inDungeon() && !here().lenda.dead && here().lenda.i === i;
@@ -1005,6 +1014,7 @@
     else if (o && o.type === 'armadilha' && !L.opened.has(i)) { stop(); trap(i); }
     else if (o && (o.type === 'passagem' || o.type === 'volta')) { stop(); turnPage(o); }
     else if (o && o.type === 'bau' && !L.opened.has(i)) { stop(); chest(i, o); }
+    else if (o && o.type === 'placa') signpost(o);
     else if (!o && !inDungeon() && G.steps > 6 && G.steps >= G.calma && !nearCamp(P.x, P.y)) {
       // Depois de uma surpresa, 8 passos de calma para explorar em paz.
       const chance = ({ [Wd.AREIA]: 0.03, [Wd.CAMPO]: 0.035, [Wd.MATA]: 0.05, [Wd.PANTANO]: 0.06 }[t] || 0) * (isNight() ? 1.5 : 1);
@@ -2367,7 +2377,7 @@
         v: 3, em: Date.now(), seed: WORLD.seed, P, dun,
         pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda, mortos: [...l.mortos] })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
-        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos, gente: G.gente,
+        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos, gente: G.gente, tempo: G.tempo,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
@@ -2380,6 +2390,22 @@
       return s && s.v === 3 ? s : null;
     } catch (e) { return null; }
   }
+
+  // ---------- tempo de jogo ----------
+  // POR QUE: o save (e a conta na nuvem) guarda quanto tempo a aventura já
+  // foi jogada. ESTRATÉGIA: conta 1 segundo por vez, só com a aventura aberta
+  // (fora da capa), a aba visível e alguém mexendo: depois de 2 minutos sem
+  // tecla nem toque, o jogo deixado aberto para de contar.
+  const PARADO = 120000;
+  let mexeu = Date.now();
+  for (const ev of ['keydown', 'pointerdown']) addEventListener(ev, () => { mexeu = Date.now(); }, true);
+  setInterval(() => {
+    if (G && P && !onTitle && !document.hidden && Date.now() - mexeu < PARADO) G.tempo = (G.tempo || 0) + 1;
+  }, 1000);
+  const fmtTempo = seg => {
+    const h = Math.floor(seg / 3600), m = Math.floor(seg / 60) % 60;
+    return h ? `${h}h ${String(m).padStart(2, '0')}min` : `${m}min`;
+  };
 
   // ---------- conta e save na nuvem (nuvem.js) ----------
   // Com conta, o save do navegador sobe para a nuvem nos momentos que
@@ -2416,7 +2442,7 @@
       cloudSave();
       return false;
     }
-    const resumo = s => `<b>${esc(s.P.nome)}</b>, nível ${s.P.lvl}, página ${s.P.pg + 1} (${Wd.BIOMAS[s.P.pg].nome})${s.em ? `, salvo em ${new Date(s.em).toLocaleDateString('pt-BR')}` : ''}`;
+    const resumo = s => `<b>${esc(s.P.nome)}</b>, nível ${s.P.lvl}, página ${s.P.pg + 1} (${Wd.BIOMAS[s.P.pg].nome}), ${fmtTempo(s.tempo || 0)} de jogo${s.em ? `, salvo em ${new Date(s.em).toLocaleDateString('pt-BR')}` : ''}`;
     const v = await dialog('Duas aventuras', `<p>Este aparelho tem uma aventura e a sua conta tem outra. Qual você quer continuar?</p>
       <p>${ic('map')} Na conta: ${resumo(cloud)}</p><p>${ic('bag')} Neste aparelho: ${resumo(local)}</p>
       <p class="small">A outra é apagada.</p>`,
@@ -2496,7 +2522,7 @@
       data.seen.forEach(k => G.seen.add(k));
       Object.assign(G, {
         steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {},
-        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {}, gente: data.gente || {},
+        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {}, gente: data.gente || {}, tempo: data.tempo || 0,
       });
       // A lava que ainda não esfriou volta para o mapa do Vulcão.
       const v = WORLD.pages[Wd.PAGINAS - 1];
@@ -2577,7 +2603,7 @@
         <canvas id="cover-cv"></canvas>
         <label class="name">Nome do herói: <input id="nome" maxlength="16" value="${esc(sv ? sv.P.nome : 'Herói')}"></label>
         <div class="actions">
-          ${sv ? `<button id="b-cont" class="green">Continuar <small>${esc(sv.P.nome)}, nível ${sv.P.lvl}</small></button>` : ''}
+          ${sv ? `<button id="b-cont" class="green">Continuar <small>${esc(sv.P.nome)}, nível ${sv.P.lvl} · ${fmtTempo(sv.tempo || 0)}</small></button>` : ''}
           <button id="b-new" class="red">Nova aventura</button>
         </div>
         <p class="small how">Ande com as setas, WASD ou tocando no mapa. O mestre desenha o mundo enquanto você anda.

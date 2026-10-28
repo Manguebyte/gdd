@@ -89,7 +89,8 @@
   async function sair() { if (auth) await auth.signOut(); user = null; avisar(); }
 
   // O save vai como texto (o Firestore não aceita lista dentro de lista) e,
-  // ao lado, o resumo que a capa mostra sem precisar abrir o save.
+  // ao lado, o resumo que a capa mostra sem precisar abrir o save (tempo =
+  // segundos jogados).
   async function baixar() {
     if (!user) return null;
     const d = await db.collection(COLECAO).doc(user.uid).get();
@@ -101,7 +102,7 @@
     if (!user || !texto || texto === ultimo) return false;
     const s = JSON.parse(texto);
     await db.collection(COLECAO).doc(user.uid).set({
-      save: texto, nome: s.P.nome, nivel: s.P.lvl, pagina: s.P.pg + 1, em: s.em || Date.now(),
+      save: texto, nome: s.P.nome, nivel: s.P.lvl, pagina: s.P.pg + 1, tempo: s.tempo || 0, em: s.em || Date.now(),
       atualizado: firebase.firestore.FieldValue.serverTimestamp(),
     });
     ultimo = texto;

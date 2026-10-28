@@ -44,7 +44,7 @@ service cloud.firestore {
 }
 ```
 
-O save fica em `caderno-saves/{uid}` (o save inteiro como texto, mais `nome`, `nivel`, `pagina`, `em` e `atualizado`). O SDK do Firebase (10.14.1, versão "compat") vem do CDN `www.gstatic.com` só quando a configuração está preenchida; sem internet, a conta não entra e o jogo segue com o save do aparelho.
+O save fica em `caderno-saves/{uid}` (o save inteiro como texto, mais `nome`, `nivel`, `pagina`, `tempo` (segundos jogados), `em` e `atualizado`). O SDK do Firebase (10.14.1, versão "compat") vem do CDN `www.gstatic.com` só quando a configuração está preenchida; sem internet, a conta não entra e o jogo segue com o save do aparelho.
 
 ## Instalar no celular
 

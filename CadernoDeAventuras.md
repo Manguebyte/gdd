@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.7.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.8.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -75,11 +75,12 @@ O mestre não aparece, mas está em todo lugar:
 - **5 acampamentos com fogueira por página**, com nome de material escolar: o primeiro no início da página e os outros a ~1/5, ~2/5, ~3/5 e ~4/5 do caminho até o fim, sempre num campo ou areia. Os nomes seguem a ordem do caderno: Apontador, Borracha, Régua, Clipe e Grampo nos Campos; Compasso, Estojo, Transferidor, Lancheira e Lápis de cor no Deserto; Caneta, Mochila, Tesoura, Cola e Fichário nas Montanhas Geladas; Esquadro, Giz, Marca-texto, Corretivo e Lapiseira no Pântano Sombrio; Pincel, Guache, Carimbo, Calculadora e Globo no Vulcão.
 - No mapa, o acampamento é uma barraca listrada, a fogueira e um guerreiro sentado, com o nome escrito em cima.
 - **Passagem:** no ponto alcançável mais distante da primeira fogueira fica o **canto dobrado da página**, com uma seta vermelha e o nome da próxima página ("Deserto →"), guardado por um **guardião** (ver Guardiões das passagens). Na última página, ali fica o **Covil do Dragão**. Em volta dos dois, a 2 quadrados, há mais monstros (40% dos quadrados), da região mais forte da página.
+- **Placas** (0.8.0): pelo caminho mais curto da primeira fogueira até a passagem (na última página, até o Covil do Dragão), a cada 9 passos, uma placa de madeira **ao lado do caminho** (num vizinho que não é o próprio caminho, para não ficar no meio dele), com o nome do destino ("Deserto", "Covil") e uma seta vermelha em 8 direções, apontando para onde o caminho está 6 passos adiante. Não fica a 1 quadrado de uma fogueira nem nos últimos 4 passos antes da passagem. Dá 3 a 8 placas por página. A placa não bloqueia: ao pisar nela, o mestre lê o que está escrito ("Uma placa de madeira: "Deserto (próxima página)", com a seta para o nordeste.") e o herói segue andando. Ela não aponta a escada escondida do atalho.
 - **Volta:** da 2ª página em diante, ao lado da primeira fogueira há uma folha com uma seta verde e o nome da página anterior ("← Campos").
 - Por página: monstros desenhados (~7,5% dos quadrados livres), baús (~2%), **6 entradas de masmorra** (uma por monstro, na região dele) e **7 personagens**: 3 que dão missões (um por região) e 4 que dão dicas.
 - **Personagens espaçados:** nenhum personagem fica a menos de 5 quadrados de outro (contando na horizontal ou na vertical, a maior das duas distâncias), nem colado numa masmorra.
 - Masmorras ficam a 4+ quadrados das fogueiras e do fim da página e a 6+ umas das outras. Se uma não couber na região dela, aquela página fica sem ela (a missão do chefe passa a pedir o outro rei da região).
-- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0. O que entrou na 0.5.0 (miragens, monstros da noite, onde o lendário começa, a variação de cada masmorra) também vem depois de todos os sorteios, só com hash ou com um gerador separado, então as páginas e masmorras de antes continuam iguais.
+- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0. O que entrou na 0.5.0 (miragens, monstros da noite, onde o lendário começa, a variação de cada masmorra) também vem depois de todos os sorteios, só com hash ou com um gerador separado, então as páginas e masmorras de antes continuam iguais. As placas da 0.8.0 também (no empate entre dois caminhos, o hash escolhe): um save antigo carrega com as placas no mapa e todo o resto no mesmo lugar.
 
 **Em aberto**
 
@@ -580,9 +581,9 @@ Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
 - Na capa, **"Entrar / Criar conta"**: o jogador cria uma conta com **usuário e senha, sem e-mail** (usuário de 3 a 20 letras minúsculas, números, ponto, hífen ou sublinhado; senha de 6 ou mais). Com a conta, ele continua a mesma aventura em qualquer aparelho. Sem conta, o jogo funciona igual a antes.
 - **Senha esquecida não tem como recuperar**, porque não há e-mail. A folha de criar conta avisa para anotar a senha.
-- O backend é o **Firebase**: o login é do Firebase Authentication (provedor E-mail/senha, com o usuário virando um e-mail interno `usuario@caderno-de-aventuras.manguebyte.github.io`, que nunca recebe nada), e o save fica no Firestore, um documento por jogador em `caderno-saves/{uid}` (o save inteiro como texto, mais nome, nível, página e hora). A senha fica só no Firebase Auth. As regras do Firestore deixam cada jogador ler e gravar só o próprio documento.
+- O backend é o **Firebase**: o login é do Firebase Authentication (provedor E-mail/senha, com o usuário virando um e-mail interno `usuario@caderno-de-aventuras.manguebyte.github.io`, que nunca recebe nada), e o save fica no Firestore, um documento por jogador em `caderno-saves/{uid}` (o save inteiro como texto, mais nome, nível, página, tempo de jogo em segundos e hora). A senha fica só no Firebase Auth. As regras do Firestore deixam cada jogador ler e gravar só o próprio documento.
 - **O save do aparelho continua sendo o principal** (o jogo joga sem internet). A nuvem é uma cópia que sobe ao chegar numa fogueira, descansar, virar a página, a cada 50 passos, ao voltar para a capa e quando o jogo vai para segundo plano, e só quando mudou. Nada sobe antes de o jogo comparar o save do aparelho com o da nuvem naquela sessão, para um save velho nunca apagar um mais novo.
-- **Comparar os saves**, na capa, logo depois de entrar (ou ao abrir o jogo já com a conta entrada): se só um existe, fica esse; se são a mesma aventura (mesma semente), fica o salvo por último; se são aventuras diferentes, a folha "Duas aventuras" mostra as duas (nome, nível, página, data) e o jogador escolhe. A outra é apagada.
+- **Comparar os saves**, na capa, logo depois de entrar (ou ao abrir o jogo já com a conta entrada): se só um existe, fica esse; se são a mesma aventura (mesma semente), fica o salvo por último; se são aventuras diferentes, a folha "Duas aventuras" mostra as duas (nome, nível, página, tempo de jogo, data) e o jogador escolhe. A outra é apagada.
 - Enquanto o `firebaseConfig` não está no protótipo (`nuvem.js`), a conta não aparece e nada do Firebase é carregado.
 
 **Em aberto**
@@ -591,6 +592,30 @@ Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 - Mais de uma aventura por conta.
 - Ranking entre os jogadores (passos até o dragão, nível), usando as contas.
 
+## Arena PvP
+
+**Definido** (0.7.2, ainda só no GDD; o protótipo não tem)
+
+- **Uma arena em cada página** (5 no caderno), desenhada no mapa como um quadrado próprio (um ringue de corda em caneta). Ao entrar nela, o herói fica **na arena daquela página** e pode enfrentar **outros jogadores que estão na mesma arena naquele momento**. Como cada arena só junta quem chegou àquela página, os heróis se enfrentam com força parecida, sem precisar de sorteio por nível.
+- **Só ao vivo:** o adversário é outro jogador de verdade, online e dentro da arena. Não há fantasma nem herói controlado pelo computador. Se a arena estiver vazia, o herói espera ali (ou sai quando quiser).
+- **Precisa de conta e de internet** (ver Conta e save na nuvem). Sem conta, ou sem sinal, a arena aparece no mapa, mas o portão está fechado e o mestre explica o motivo.
+- **Dentro da arena**, uma folha lista quem está lá (nome, nível e vitórias naquela arena). O jogador escolhe alguém e **desafia**; o outro aceita ou recusa. Quem não responde a tempo recusa.
+- **A luta** é a mesma folha de luta em três colunas, com os itens, feitiços e habilidades de cada herói, um turno de cada um. Cada um vê a luta do seu lado da folha. Não tem noite (+1 dado) nem "Fugir" com d20: há só **"Desistir"**, que conta como derrota.
+- **Ninguém desmaia nem morre:** ao fim da luta, os dois voltam com a vida e a magia de antes de entrar.
+- **Quem perde paga moedas a quem vence:** o vencedor leva uma parte das moedas do perdedor. As moedas são o prêmio da vitória; a arena não cria moedas do nada, só passa de um para o outro. Sair do jogo ou cair a conexão no meio da luta conta como derrota.
+- **Ranking de cada página:** cada arena tem a sua tabela de vitórias, com o campeão da página no topo.
+
+**Em aberto**
+
+- Quanto das moedas o perdedor paga (proposta: 20%, com um limite por luta) e se um herói sem moedas pode lutar (proposta: não, para a arena não virar luta sem risco).
+- Como impedir dois amigos (ou duas contas da mesma pessoa) de passar moedas um para o outro perdendo de propósito (proposta: o mesmo par só paga moedas na primeira luta do dia).
+- Tempo de cada turno e de resposta ao desafio (proposta: 30 s por turno; quem perde 3 turnos seguidos perde a luta; 20 s para aceitar o desafio).
+- **Trapaça:** hoje os dados rolam no aparelho, e com moedas em jogo alguém poderia mudar o código para rolar sempre o máximo. Proposta: na arena, quem rola os dados é o servidor (uma Cloud Function do Firebase, que exige o plano Blaze, pago por uso com cota grátis).
+- Como "estar na arena" funciona por dentro (proposta: o Realtime Database do Firebase, que marca o jogador como fora da arena sozinho quando ele fecha o jogo, por `onDisconnect`; as lutas como salas no Firestore, que os dois escutam em tempo real).
+- Onde fica a arena em cada página. A geração do mapa tem que pôr a arena depois de todos os sorteios que já existem, para a mesma semente continuar gerando as mesmas páginas.
+- Poções durante a luta, e se o ranking zera de tempos em tempos (temporadas).
+- Com poucos jogadores, a arena tende a ficar vazia quase sempre. É o risco de ser só ao vivo; vale medir quanto tempo as pessoas esperam.
+
 ## Salvamento
 
 Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`): semente do mundo, personagem (com tochas, despojos, missões, a página e o mapa em que ele está e a página da fogueira onde acorda), relógio e dia, e, para cada página e cada masmorra visitada, os quadrados revelados, monstros vencidos, baús abertos e o rastro. Para cada página, também os personagens visitados, as masmorras limpas e (na última) se o dragão foi vencido. Ao continuar, as 5 páginas são geradas de novo da semente e o mapa atual é redesenhado de uma vez.
@@ -598,6 +623,8 @@ Salvo no navegador a cada passo e após cada painel (`caderno-aventuras-save-v3`
 Da 0.5.0 em diante também ficam salvos: onde está o lendário de cada página, a vida dele e se caiu; os quadrados de lava que ainda não esfriaram (voltam para o mapa do Vulcão ao carregar); os passos até a próxima tempestade e erupção; as vitórias nos duelos de cada fogueira; o andar da masmorra em que o herói está (o andar de baixo de uma masmorra é salvo como "página:masmorra:1"); a chave pega, as armadilhas disparadas e o enigma respondido, junto com os baús abertos de cada masmorra. Um save da 0.4 carrega normalmente, com os lendários no lugar de começo e de vida cheia.
 
 Da 0.7.0 em diante também ficam salvos os personagens do caminho mortos (em cada página) e quem morreu em cada fogueira. Um save da 0.6 carrega com todo mundo vivo.
+
+Da 0.7.1 em diante também fica salvo o tempo de jogo, em segundos (conta só com a aventura aberta, a aba visível e alguma tecla ou toque nos últimos 2 minutos). Um save da 0.7.0 começa em zero.
 
 Para cada página também fica salvo se o guardião da passagem foi vencido (um save antigo carrega com os guardiões vivos; quem já esteve na página seguinte pode passar por trás deles). As habilidades aprendidas e as 2 equipadas ficam no personagem; os pontos não são guardados, são o nível − 1 − as habilidades aprendidas. Um save da 0.2.0 (sem habilidades) carrega normalmente e já chega com um ponto por nível subido; um da 0.3 (todas valiam) equipa as 2 primeiras que aprendeu.
 
@@ -613,6 +640,9 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.8.0** (2026-10-28): placas pelo caminho de cada página, apontando para a passagem da próxima folha (na última, para o Covil do Dragão). A mesma semente gera as mesmas páginas, agora com as placas, e saves da 0.7 continuam valendo.
+- **0.7.2** (2026-10-28): proposta da arena PvP no GDD (ainda não está no protótipo): uma arena em cada página, onde o herói enfrenta ao vivo outros jogadores que estão nela; quem perde paga moedas a quem vence, ninguém desmaia, e cada arena tem o seu ranking.
+- **0.7.1** (2026-10-28): o save guarda o tempo de jogo da aventura (só conta com a aventura aberta, a aba visível e alguém mexendo; 2 minutos parado, para de contar). Aparece no "Continuar" da capa e na folha "Duas aventuras", e sobe para a nuvem junto do resumo (`tempo`, em segundos). Saves antigos começam em zero.
 - **0.7.0** (2026-10-28): balanceamento a partir da crítica de um jogador ("o personagem fica muito forte rápido, tem muito recurso", dava para ganhar moeda sem fim nos duelos, os vendedores eram iguais em toda a página). Dá para atacar qualquer pessoa do caderno: os personagens do caminho e cada um da fogueira. É luta de verdade, e quem morre não volta: some a parte dele (missões, dicas, habilidade, duelo ou loja) e o herói fica com a bolsa. Cada fogueira vende a sua lista de arma, defesa e feitiço, e as do fundo da página vendem coisa melhor (a Espada de ferro só na última dos Campos). Missões pagam metade das moedas. Revanche de duelo não paga mais nada. Saves da 0.6 continuam valendo.
 - **0.6.0** (2026-10-27): conta com usuário e senha (sem e-mail) para salvar a aventura na nuvem (Firebase Auth + Firestore) e continuar em qualquer aparelho. O save do aparelho continua sendo o principal; ao entrar, o jogo junta os dois (o mais novo ganha; aventuras diferentes, o jogador escolhe). Desligado até o `firebaseConfig` ser colado em `nuvem.js`. Saves da 0.5 continuam valendo.
 - **0.5.0** (2026-10-27): para o jogo ficar menos repetitivo (crítica de um jogador: "me pareceu repetitivo em certo momento"), cada página da segunda em diante ganha uma regra própria: tempestade de areia que apaga um pedaço do mapa e miragens no Deserto, gelo escorregadio nas Montanhas Geladas, neblina e monstros que só aparecem à noite no Pântano Sombrio, erupções de lava que fecham caminhos por um tempo no Vulcão. Um monstro lendário por página, com nome, que anda pelo mapa, foge do herói e pode fugir da luta guardando a vida que perdeu. Duelos de treino com um guerreiro em cada fogueira (ninguém desmaia). Cada masmorra ganha uma variação: porta trancada com chave, armadilhas escondidas (d20), enigma "O que é, o que é?" ou um andar de baixo com o chefe. A mesma semente gera as mesmas páginas e masmorras de antes, e saves da 0.4 carregam.
@@ -628,7 +658,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
 
-> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0, da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) e da 0.7.0 (atacar gente, estoque de cada fogueira, missões pagando menos) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0, da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) da 0.7.0 (atacar gente, estoque de cada fogueira, missões pagando menos) e da 0.8.0 (placas pelo caminho) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

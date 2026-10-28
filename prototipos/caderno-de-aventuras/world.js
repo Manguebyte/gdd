@@ -64,6 +64,8 @@
     'Pincel', 'Guache', 'Carimbo', 'Calculadora', 'Globo',
   ].map(n => 'Acampamento ' + n);
   const FOG_POR_PAGINA = 5;
+  // Distância (em passos) entre uma placa e a próxima no caminho da página.
+  const PLACA_A = 9;
   // Masmorra de cada monstro: o lugar e o chefe lá no fundo.
   const MASMORRAS = {
     slime: ['Poço', 'Rei Slime'], rato: ['Esgoto', 'Rei Rato'],
@@ -269,6 +271,36 @@
     // Onde o monstro lendário começa: um quadrado livre da região do meio.
     const meio = free.filter(i => tier[i] === base + 1 && clear(i));
     const lenda = meio.length ? meio[S.hash(seed, 71) % meio.length] : start;
+    // Placas (0.8.0): ao longo do caminho mais curto da fogueira inicial até
+    // a passagem (ou o covil), uma a cada PLACA_A passos, ao lado do caminho,
+    // com uma seta para onde o caminho segue. Também só com hash e depois de
+    // tudo, para a página continuar a mesma de antes.
+    const rota = [far];
+    for (let i = far; dist[i] > 0;) {
+      const x = i % W, y = (i / W) | 0, c = [];
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const nx = x + dx, ny = y + dy, j = ny * W + nx;
+        if (nx >= 0 && ny >= 0 && nx < W && ny < H && dist[j] === dist[i] - 1) c.push(j);
+      }
+      i = c[S.hash(seed, i, 73) % c.length];
+      rota.push(i);
+    }
+    rota.reverse(); // rota[d] = o quadrado a d passos da fogueira inicial
+    for (let d = PLACA_A; d < rota.length - 4; d += PLACA_A) {
+      const p = rota[d], px = p % W, py = (p / W) | 0;
+      if (camps.some(v => near(p, v, 1))) continue;
+      // Um vizinho fora do caminho, para a placa não ficar no meio dele.
+      const viz = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]
+        .map(([dx, dy]) => [px + dx, py + dy]).filter(([x, y]) => x >= 0 && y >= 0 && x < W && y < H)
+        .map(([x, y]) => y * W + x).filter(j => dist[j] > 0 && !obj.has(j) && j !== lenda && !rota.includes(j));
+      const i = viz.length ? viz[S.hash(seed, p, 74) % viz.length] : (!obj.has(p) && p !== lenda ? p : -1);
+      if (i < 0) continue;
+      // A seta aponta para o caminho uns passos mais adiante, em 8 direções
+      // (0 = leste, 2 = sul, 4 = oeste, 6 = norte).
+      const alvo = rota[Math.min(rota.length - 1, d + 6)];
+      const ang = Math.atan2(((alvo / W) | 0) - ((i / W) | 0), alvo % W - i % W);
+      obj.set(i, { type: 'placa', dir: (Math.round(ang / (Math.PI / 4)) + 8) % 8, to: pg < PAGINAS - 1 ? pg + 1 : -1 });
+    }
     return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho, lenda };
   }
 

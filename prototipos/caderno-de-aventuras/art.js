@@ -953,6 +953,18 @@
         for (const s of S.xform(A.monster('guarda_' + (obj.to - 1)), 0.62, x0 + 1, y0 + 4)) o.push(s);
         o.push(S.text(World.GUARDIOES[obj.to - 1][1], cx, y0 + T + 12, 15, C.RED));
       }
+    } else if (obj.type === 'placa') {
+      // Placa do caminho: um poste com uma tábua e a seta em vermelho para
+      // onde o caminho até a próxima página (ou o covil) segue.
+      ln(r, o, cx, y0 + 30, cx + 1, y0 + T - 6, C.BROWN, 3.4);
+      const tabua = [[cx - 20, y0 + 14], [cx + 20, y0 + 14], [cx + 20, y0 + 34], [cx - 20, y0 + 34]];
+      shape(r, o, tabua, C.BROWN, C.OCHRE, 2.4, 3.4);
+      const a = obj.dir * Math.PI / 4, ux = Math.cos(a), uy = Math.sin(a), my = y0 + 24;
+      const bx = cx + ux * 13, by = my + uy * 8;
+      ln(r, o, cx - ux * 13, my - uy * 8, bx, by, C.RED, 3);
+      const h = (ang, k) => [bx - Math.cos(a + ang) * k, by - Math.sin(a + ang) * k * 0.7];
+      pl(r, o, [h(0.6, 8), [bx, by], h(-0.6, 8)], false, C.RED, 3);
+      o.push(S.text(obj.to < 0 ? 'Covil' : World.BIOMAS[obj.to].nome, cx, y0 + 6, 13, C.BROWN));
     } else if (obj.type === 'monstro' && obj.noite && !state.noite) {
       // Monstro da noite (Pântano Sombrio): de dia o mestre não desenha nada.
     } else if (obj.type === 'miragem') {
