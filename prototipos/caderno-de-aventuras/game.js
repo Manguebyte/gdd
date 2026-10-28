@@ -332,10 +332,11 @@
     };
   }
   // A habilidade equipada que vale nesta rolagem (a de combinação mais alta), ou null.
-  function passiva(grupo, faces, sides) {
+  // `ativas`: as equipadas de outro herói (o adversário na arena PvP).
+  function passiva(grupo, faces, sides, ativas = P.ativas) {
     const tem = maos(faces, sides);
     let best = null;
-    for (const k of P.ativas) {
+    for (const k of ativas) {
       const h = HABILIDADES[k];
       if (h.grupo === grupo && tem[h.mao] && (!best || RANK.indexOf(h.mao) > RANK.indexOf(best.mao))) best = h;
     }
@@ -497,10 +498,12 @@
   // da tempestade de agora. G.duelos: vitórias em cada fogueira. G.gente:
   // quem o herói matou em cada fogueira (n → ['maga', ...]); os mortos do
   // caminho ficam em `mortos` de cada página. G.tempo: segundos jogados.
+  // G.pares: com quem o herói lutou na arena e em que dia (uid → 'AAAA-MM-DD');
+  // G.arenaLuta: a luta da arena que ainda não foi acertada (ver arenaPendente).
   const newState = () => ({
     pg: WORLD.pages.map(newPage), dun: {},
     seen: new Set(), steps: 0, kills: 0, clock: 10, day: 1, conversa: {}, calma: 0,
-    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {}, gente: {}, tempo: 0,
+    lava: {}, areia: 0, vulcao: 0, tempestade: 0, duelos: {}, gente: {}, tempo: 0, pares: {}, arenaLuta: null,
   });
   const here = () => G.pg[P.pg];
   const dunKey = (pg, n, andar = 0) => pg + ':' + n + (andar ? ':1' : '');
@@ -1015,6 +1018,7 @@
     else if (o && (o.type === 'passagem' || o.type === 'volta')) { stop(); turnPage(o); }
     else if (o && o.type === 'bau' && !L.opened.has(i)) { stop(); chest(i, o); }
     else if (o && o.type === 'placa') signpost(o);
+    else if (o && o.type === 'arena') { stop(); openArena(); }
     else if (!o && !inDungeon() && G.steps > 6 && G.steps >= G.calma && !nearCamp(P.x, P.y)) {
       // Depois de uma surpresa, 8 passos de calma para explorar em paz.
       const chance = ({ [Wd.AREIA]: 0.03, [Wd.CAMPO]: 0.035, [Wd.MATA]: 0.05, [Wd.PANTANO]: 0.06 }[t] || 0) * (isNight() ? 1.5 : 1);
@@ -1067,7 +1071,7 @@
       for (let i = 0; i < L.rev.length; i++) {
         const x = i % M.W, y = (i / M.W) | 0, o = M.obj.get(i);
         if (!L.rev[i] || (x - cx) ** 2 + (y - cy) ** 2 > 12) continue;
-        if (o && (o.type === 'fogueira' || o.type === 'masmorra' || o.type === 'passagem' || o.type === 'volta' || (o.type === 'npc' && o.quest))) continue;
+        if (o && (o.type === 'fogueira' || o.type === 'masmorra' || o.type === 'passagem' || o.type === 'volta' || o.type === 'arena' || (o.type === 'npc' && o.quest))) continue;
         L.rev[i] = 0; erased++;
       }
       // O rastro que passava pelo pedaço apagado também some.
@@ -1123,7 +1127,7 @@
       }
     }
     for (const [i, o] of W.obj) {
-      if (!['fogueira', 'masmorra', 'npc', 'volta', 'covil', 'passagem'].includes(o.type)) continue;
+      if (!['fogueira', 'masmorra', 'npc', 'volta', 'covil', 'passagem', 'arena'].includes(o.type)) continue;
       // Personagem e covil bloqueiam o quadrado: basta chegar num vizinho.
       const x = i % W.W, y = (i / W.W) | 0;
       if (!seen[i] && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => seen[(y + dy) * W.W + x + dx] && x + dx >= 0 && x + dx < W.W)) return true;
@@ -1359,7 +1363,8 @@
   // ---------- bandeja de dados ----------
   // Os dados rolam (números trocando, dado tremendo) e param um de cada vez.
   // Um grupo com `pen` (maldição) tira pen de cada dado na soma, sem deixar
-  // nenhum abaixo de 1; o dado mostra o número que caiu.
+  // nenhum abaixo de 1; o dado mostra o número que caiu. Um grupo com `faces`
+  // já vem com os números que caíram (a arena PvP sorteia antes, no motor).
   class Tray {
     constructor(canvas) {
       this.cv = canvas; this.ctx = canvas.getContext('2d'); this.groups = []; this.res = null;
@@ -1377,7 +1382,7 @@
       this.res = null;
       this.groups = defs.map((g, gi) => ({
         ...g, total: null,
-        dice: g.dice.map((s, k) => ({ s, v: 1 + rnd(s), final: 1 + rnd(s), stop: t0 + 600 + k * 90 + gi * 140, rot: 0, lt: 0 })),
+        dice: g.dice.map((s, k) => ({ s, v: 1 + rnd(s), final: g.faces ? g.faces[k] : 1 + rnd(s), stop: t0 + 600 + k * 90 + gi * 140, rot: 0, lt: 0 })),
       }));
       const end = Math.max(t0, ...this.groups.flatMap(g => g.dice.map(d => d.stop)));
       return new Promise(res => setTimeout(() => {
@@ -2361,6 +2366,404 @@
     };
   }
 
+  // ---------- arena PvP ----------
+  // POR QUE: em cada página há uma arena onde o herói enfrenta, ao vivo,
+  // outro jogador que está nela (GDD, Arena PvP). Quem perde paga uma parte
+  // das moedas a quem vence; ninguém desmaia.
+  // ESTRATÉGIA: não há servidor de jogo. A luta é um documento no Firestore
+  // (nuvem.js) com as fichas dos dois heróis, uma semente e a lista de
+  // jogadas. Cada aparelho refaz a luta inteira com o mesmo motor
+  // (arenaMotor), então os dois chegam no mesmo resultado. A semente junta
+  // duas metades: quem desafia manda só o hash da dele, quem aceita manda a
+  // dele às claras e só então a primeira é revelada; assim nenhum dos dois
+  // escolhe os dados. A aposta sai das moedas quando a luta começa (quem
+  // fecha o jogo no meio já pagou) e volta, com a do outro, para quem vence.
+  const ARENA_VEZ = 30000, ARENA_CONVITE = 20000, ARENA_PULSO = 10000, ARENA_CAIU = 35000, ARENA_TEMPOS = 3, ARENA_MIN = 10;
+  // Aposta: 20% das moedas, até 100 × o número da página.
+  const aposta = () => Math.min(Math.floor(P.ouro * 0.2), 100 * (P.pg + 1));
+  const hoje = () => new Date().toISOString().slice(0, 10);
+  // O que o outro aparelho precisa saber do herói para refazer a luta.
+  const ficha = () => ({ nome: P.nome, lvl: P.lvl, hpMax: P.hpMax, pmMax: P.pmMax, atk: atkDie(), def: defList(), magias: P.magias.slice(), ativas: P.ativas.slice() });
+  const sha = async txt => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  const sorteio = () => [...crypto.getRandomValues(new Uint32Array(4))].map(n => n.toString(16)).join('');
+  const sementeDe = async l => parseInt((await sha(l.sa + l.sb)).slice(0, 8), 16);
+  const outro = q => q === 'a' ? 'b' : 'a';
+  const dosDas = B => B.art === 'as' || B.art === 'a' ? 'das' : 'dos';
+
+  // O motor: refaz a luta da semente e das jogadas. st.cenas[n] = o que a
+  // jogada n mostrou (rolagens com os números que caíram, texto, vida dos
+  // dois depois), para animar. Toda sorte vem de `r`, na mesma ordem nos dois
+  // aparelhos. As habilidades valem como contra monstro; não tem noite,
+  // poção, maldição nem fuga.
+  function arenaMotor(luta, semente) {
+    const rng = S.rng(semente), r = n => Math.floor(rng() * n);
+    const lado = f => ({ ...f, hp: f.hpMax, pm: f.pmMax, tonto: false, tempos: 0 });
+    const st = { a: lado(luta.fa), b: lado(luta.fb), vez: r(2) ? 'b' : 'a', fim: null, cenas: [] };
+    const rola = sides => sides.map(s => 1 + r(s));
+    const soma = l => l.reduce((x, y) => x + y, 0);
+    const curar = (X, v) => { const g = Math.min(X.hpMax - X.hp, Math.max(0, v)); X.hp += g; return g; };
+    let cenas = [];
+    const cena = c => cenas.push({ ...c, hp: { a: st.a.hp, b: st.b.hp }, pm: { a: st.a.pm, b: st.b.pm } });
+    // Golpe de q no outro: o ataque de um contra a defesa do outro, e as
+    // habilidades dos dois olhando os próprios dados.
+    const golpe = (q, extra = '', fura = false) => {
+      const X = st[q], Y = st[outro(q)], as = expand([X.atk]), aF = rola(as), dF = rola(Y.def);
+      let a = soma(aF), d = soma(dF), txt = '';
+      const h = passiva('ataque', aF, as, X.ativas), ef = h ? h.efeito : '';
+      if (ef === 'dado') a += 1 + r(X.atk[1]);
+      const hd = Y.def.length ? passiva('defesa', dF, Y.def, Y.ativas) : null, efd = hd ? hd.efeito : '';
+      if (efd === 'dado') d += 1 + r(Y.def[0]);
+      if (ef === 'perfura' || ef === 'danca' || fura) d = 0;
+      const k = { x2: 2, x3: 3, x5: 5 }[ef] || 1;
+      let dmg = Math.max(0, a - d) * k;
+      const conta = (d ? `${a} − ${d}` : `${a}`) + (k > 1 ? ` ×${k}` : '');
+      const segura = efd === 'bloqueio' || efd === 'bencao' || efd === 'reflete';
+      if (segura) dmg = 0;
+      if (efd === 'reflete') { X.hp -= a; txt += ` O golpe volta: ${X.nome} toma ${a}.`; }
+      if (efd === 'espinhos') { const e = Math.floor(d / 2); X.hp -= e; txt += ` ${X.nome} toma ${e} de volta.`; }
+      Y.hp -= dmg;
+      if (efd === 'cura' && Y.hp > 0) txt += ` ${Y.nome} recupera ${curar(Y, Math.floor(d / 2))} de vida.`;
+      if (efd === 'bencao') { Y.hp = Y.hpMax; txt += ` A vida de ${Y.nome} enche toda.`; }
+      if (efd === 'purifica') txt += ' (Na arena não tem maldição para tirar.)';
+      if (ef === 'vampiro') txt += ` ${X.nome} recupera ${curar(X, Math.floor(dmg / 2))} de vida.`;
+      if (ef === 'atordoa' && Y.hp > 0) Y.tonto = true;
+      const combos = [h, hd].filter(Boolean).map(comboTxt).join(' ');
+      cena({
+        q, hit: dmg ? outro(q) : efd === 'reflete' || efd === 'espinhos' ? q : null,
+        groups: [{ label: `${extra || 'Ataque'} · ${X.nome}`, dice: as, faces: aF, color: C.RED }]
+          .concat(Y.def.length ? [{ label: `Defesa · ${Y.nome}`, dice: Y.def, faces: dF, color: C.BLUE }] : []),
+        big: !segura && conta !== `${dmg}` ? `${conta} = ${dmg}` : `${dmg}`,
+        small: h ? MAOS[h.mao].nome + '!' : hd ? MAOS[hd.mao].nome + '!' : dmg ? 'de dano!' : 'bloqueou!', color: dmg ? C.RED : C.GRAY,
+        log: (combos ? combos + ' ' : '') + (dmg ? `${X.nome} acerta ${Y.nome}: ${dmg} de dano.` : `${Y.nome} defendeu tudo.`) + txt,
+      });
+      if ((ef === 'duplo' || ef === 'danca') && !extra && X.hp > 0 && Y.hp > 0) golpe(q, 'Segundo golpe', ef === 'danca');
+      if (efd === 'contra' && !extra && X.hp > 0 && Y.hp > 0) golpe(outro(q), 'Contra-ataque');
+    };
+    // Feitiço de q: ignora a defesa; a cura cura quem lançou.
+    const feitico = (q, id, eco = false) => {
+      const X = st[q], Y = st[outro(q)], sp = SPELLS[id], ss = expand([sp.dado]), F = rola(ss);
+      let v = soma(F), txt, big, small, color = sp.cor, hit = null;
+      const h = passiva('magia', F, ss, X.ativas), ef = h ? h.efeito : '';
+      if (ef === 'dado') v += 1 + r(sp.dado[1]);
+      v *= { x2: 2, x3: 3, x5: 5 }[ef] || 1;
+      if (sp.tipo === 'cura') { big = `+${curar(X, v)}`; small = 'de vida'; color = C.GREEN; txt = `Uma luz verde fecha os machucados de ${X.nome}.`; }
+      else {
+        Y.hp -= v; hit = outro(q); big = `${v}`; small = 'de dano mágico!';
+        txt = `${sp.nome} acerta ${Y.nome} em cheio!`;
+        if (ef === 'vampiro') txt += ` ${X.nome} recupera ${curar(X, Math.floor(v / 2))} de vida.`;
+      }
+      if (ef === 'pm') X.pm = Math.min(X.pmMax, X.pm + sp.pm);
+      if (ef === 'atordoa' && Y.hp > 0) Y.tonto = true;
+      cena({ q, hit, groups: [{ label: `${sp.nome}${eco ? ' de novo' : ''} · ${X.nome}`, dice: ss, faces: F, color: sp.cor }], big, small: h ? MAOS[h.mao].nome + '!' : small, color, log: (h ? comboTxt(h) + ' ' : '') + txt });
+      if (ef === 'eco' && !eco && Y.hp > 0) feitico(q, id, true);
+    };
+    const fim = (vence, motivo) => { st.fim = { vence, motivo }; };
+    (luta.jogadas || []).forEach((j, n) => {
+      if (st.fim) return;
+      cenas = st.cenas[n] = [];
+      const X = st[j.q], o = outro(j.q);
+      if (j.act === 'desiste') { cena({ q: j.q, big: 'desistiu', color: C.GRAY, log: `${X.nome} desiste da luta.` }); return fim(o, 'desistiu'); }
+      if (j.act === 'caiu') { cena({ q: j.q, big: 'sumiu!', color: C.GRAY, log: `${X.nome} saiu da arena no meio da luta.` }); return fim(o, 'caiu'); }
+      // Jogada fora da vez (não devia acontecer): não vale nada.
+      if (j.q !== st.vez) return;
+      const id = j.act.startsWith('s:') ? j.act.slice(2) : null, sp = id && SPELLS[id];
+      if (j.act === 'tempo' || (id && (!sp || X.pm < sp.pm || !X.magias.includes(id)))) {
+        X.tempos++;
+        cena({ q: j.q, big: 'passou a vez', color: C.GRAY, log: `${X.nome} demorou demais e perdeu a vez.` });
+        if (X.tempos >= ARENA_TEMPOS) return fim(o, 'tempo');
+      } else {
+        X.tempos = 0;
+        if (sp) { X.pm -= sp.pm; feitico(j.q, id); } else golpe(j.q);
+      }
+      // Os dois caídos (o Espelho derruba quem bateu): vence quem jogou.
+      if (st.a.hp <= 0 || st.b.hp <= 0) return fim(st[o].hp <= 0 ? j.q : o, 'vida');
+      // A vez passa para o outro; tonto, ele perde essa vez.
+      st.vez = o;
+      if (st[o].tonto) {
+        st[o].tonto = false; st.vez = j.q;
+        cena({ q: o, big: 'tonto!', small: 'perdeu a vez', color: C.GRAY, log: `${st[o].nome} está tonto e perde a vez!` });
+      }
+    });
+    return st;
+  }
+
+  // Escuta da arena (lista, convites): para ao sair ou ao começar uma luta.
+  // O pulso da presença só para ao sair da arena.
+  let arenaParar = [], arenaPulso = 0;
+  const pararArena = () => { arenaParar.forEach(f => f()); arenaParar = []; };
+  function sairArena() {
+    pararArena(); clearInterval(arenaPulso); arenaPulso = 0;
+    Nuvem.arena.presenca(null, ficha()).catch(() => { });
+  }
+  // A luta que ficou sem acertar (o jogo fechou no meio ou antes de pagar):
+  // quem venceu recebe agora; quem não terminou já tinha pago a aposta.
+  async function arenaPendente() {
+    const p = G.arenaLuta;
+    if (!p) return;
+    let l = null;
+    try { l = await Nuvem.arena.lerLuta(p.id); } catch (e) { return; }
+    G.arenaLuta = null;
+    if (l && l.sa && l.sb) {
+      const st = arenaMotor(l, await sementeDe(l));
+      if (st.fim && st.fim.vence === p.eu) {
+        P.ouro += p.ap + p.apOp;
+        Nuvem.arena.vitoria(l.pg).catch(() => { });
+        narrate(`O mestre lembra: você venceu ${esc(l['n' + outro(p.eu)])} na arena. +${p.apOp} moedas.`);
+      } else if (p.ap) narrate(`O mestre lembra: você saiu da arena no meio de uma luta. A aposta (${p.ap} moedas) ficou lá.`);
+    }
+    save(); cloudSave(); hud();
+  }
+
+  // A arena: quem está nela agora, o ranking da página e os desafios.
+  async function openArena() {
+    const B = Wd.BIOMAS[P.pg], titulo = `Arena ${dosDas(B)} ${B.nome}`;
+    const fechado = txt => dialog(titulo, `<p>${txt}</p>`, [{ html: 'Voltar', v: 1 }]);
+    if (!nuvem() || !Nuvem.usuario) return fechado('O portão está fechado. Aqui só entra quem tem conta: entre na sua pela capa do caderno.');
+    if (!navigator.onLine) return fechado('O portão está fechado: a arena só funciona com internet.');
+    await arenaPendente();
+    if (P.ouro < ARENA_MIN) return fechado(`O porteiro cruza os braços: "Sem moedas para apostar, sem luta." Precisa de pelo menos ${ARENA_MIN} moedas.`);
+    const pg = P.pg;
+    openPanel(`<h2>${ic('sword', C.RED)} ${titulo}</h2>
+      <p class="small">Desafie outro jogador que está nesta arena agora. Ninguém desmaia, mas quem perde paga a aposta a quem vence:
+      20% das moedas, até ${100 * (pg + 1)} (hoje você aposta <b>${aposta()}</b>). Contra quem você já enfrentou hoje, a luta não vale moedas.</p>
+      <div id="arena-convite"></div>
+      <h3>Na arena agora</h3><div id="arena-lista" class="arena-lista"><p class="small">O mestre olha em volta...</p></div>
+      <h3>Campeões desta página</h3><div id="arena-rank" class="arena-lista"><p class="small">...</p></div>
+      <div class="actions"><button id="arena-sair">Sair da arena</button></div>`, 'dialog');
+    $('arena-sair').onclick = () => { sairArena(); closePanel(); };
+    const pulso = () => Nuvem.arena.presenca(pg, ficha()).catch(() => { });
+    pulso();
+    clearInterval(arenaPulso); arenaPulso = setInterval(pulso, ARENA_PULSO);
+    Nuvem.arena.ranking(pg).then(rk => {
+      if ($('arena-rank')) $('arena-rank').innerHTML = rk.filter(x => x.v).map((x, k) => `<p>${k + 1}. <b>${esc(x.nome)}</b> · ${x.v} vitória${x.v > 1 ? 's' : ''}</p>`).join('') || '<p class="small">Ninguém venceu aqui ainda.</p>';
+    }).catch(() => { if ($('arena-rank')) $('arena-rank').innerHTML = '<p class="small">O ranking não carregou.</p>'; });
+    let gente = [];
+    const lista = () => {
+      const el = $('arena-lista');
+      if (!el) return;
+      const vivos = gente.filter(g => g.uid !== Nuvem.arena.uid && g.visto > Nuvem.arena.agora() - ARENA_CAIU);
+      const vit = g => g['v' + pg] || 0;
+      el.innerHTML = vivos.length ? vivos.map(g => `<p><b>${esc(g.nome)}</b>, nível ${g.nivel} · ${vit(g)} vitória${vit(g) === 1 ? '' : 's'} aqui
+        <button class="red" data-uid="${g.uid}">Desafiar</button></p>`).join('')
+        : '<p class="small">A arena está vazia. Espere aqui: quem entrar aparece nesta lista.</p>';
+      el.onclick = e => { const b = e.target.closest('button'); if (b) desafiar(vivos.find(g => g.uid === b.dataset.uid)); };
+    };
+    arenaParar.push(Nuvem.arena.ouvirArena(pg, g => { gente = g; lista(); }));
+    // A lista também envelhece sozinha (quem fechou o jogo some).
+    const t = setInterval(lista, ARENA_PULSO);
+    arenaParar.push(() => clearInterval(t));
+    arenaParar.push(Nuvem.arena.ouvirConvites(cs => {
+      const c = cs.filter(c => c.pg === pg && c.criado > Nuvem.arena.agora() - ARENA_CONVITE).sort((x, y) => y.criado - x.criado)[0];
+      if (c) convite(c);
+    }));
+  }
+
+  // Desafiar: cria a luta com o hash da minha metade da semente e espera a resposta.
+  async function desafiar(op) {
+    const box = $('arena-convite');
+    if (!op || !box) return;
+    const sa = sorteio(), va = G.pares[op.uid] !== hoje();
+    box.innerHTML = `<p class="arena-aviso">Esperando <b>${esc(op.nome)}</b> responder... <button id="arena-cancela">Cancelar</button></p>`;
+    let id, parar = null, prazo = 0;
+    const fim = txt => { clearTimeout(prazo); if (parar) parar(); if ($('arena-convite')) $('arena-convite').innerHTML = txt ? `<p class="arena-aviso">${txt}</p>` : ''; };
+    try {
+      id = await Nuvem.arena.desafiar({ b: op.uid, na: P.nome, nb: op.nome, pg: P.pg, ha: await sha(sa), fa: ficha(), va, apa: va ? aposta() : 0 });
+    } catch (e) { fim('O desafio não saiu. Tente de novo.'); return; }
+    const cancela = async txt => { if (await Nuvem.arena.trocarEstado(id, 'convite', { estado: 'cancelada' })) fim(txt); };
+    prazo = setTimeout(() => cancela(`${esc(op.nome)} não respondeu.`), ARENA_CONVITE + 1500);
+    if ($('arena-cancela')) $('arena-cancela').onclick = () => cancela('');
+    parar = Nuvem.arena.ouvirLuta(id, async l => {
+      if (!l) return;
+      if (l.estado === 'recusada') fim(`${esc(op.nome)} recusou o desafio.`);
+      else if (l.estado === 'aceita') {
+        fim('');
+        await Nuvem.arena.mudarLuta(id, { sa }).catch(() => { });
+        arenaLuta(id, 'a');
+      }
+    });
+  }
+
+  // Um desafio chegou: aceitar ou recusar (sem resposta, recusa sozinho).
+  const convitesVistos = new Set();
+  function convite(c) {
+    const box = $('arena-convite');
+    if (!box || convitesVistos.has(c.id)) return;
+    convitesVistos.add(c.id);
+    SFX.tone(660, 0.2, 0.1);
+    const vale = c.va && G.pares[c.a] !== hoje();
+    box.innerHTML = `<p class="arena-aviso"><b>${esc(c.na)}</b> (nível ${c.fa.lvl}) desafia você!
+      ${vale ? `Aposta: ${c.apa} moedas dele e ${aposta()} suas.` : 'Vocês já lutaram hoje: esta não vale moedas.'}
+      <button id="arena-sim" class="green">Aceitar</button> <button id="arena-nao">Recusar</button></p>`;
+    const nao = () => { clearTimeout(t); if ($('arena-convite')) $('arena-convite').innerHTML = ''; Nuvem.arena.trocarEstado(c.id, 'convite', { estado: 'recusada' }); };
+    const t = setTimeout(nao, Math.max(1000, c.criado + ARENA_CONVITE - Nuvem.arena.agora()));
+    $('arena-nao').onclick = nao;
+    $('arena-sim').onclick = async () => {
+      clearTimeout(t);
+      const vb = G.pares[c.a] !== hoje();
+      const ok = await Nuvem.arena.trocarEstado(c.id, 'convite', { estado: 'aceita', sb: sorteio(), fb: ficha(), vb, apb: vb ? aposta() : 0 });
+      if (ok) arenaLuta(c.id, 'b');
+      else if ($('arena-convite')) $('arena-convite').innerHTML = '<p class="arena-aviso">O desafio já tinha acabado.</p>';
+    };
+  }
+
+  // A luta, nos dois aparelhos: escuta o documento, anima as jogadas novas e
+  // mostra os botões na sua vez. `eu` = 'a' (desafiou) ou 'b' (aceitou).
+  function arenaLuta(id, eu) {
+    pararArena();
+    const op = outro(eu), inicio = Date.now();
+    let l = null, st = null, semente = null, mostradas = 0, ocupado = false, acabou = false, comecando = false;
+    let vezDesde = Date.now(), vistoOp = Date.now(), vistoUlt = 0, opUid = null, pararLuta = null, pararOp = null;
+    openPanel(`
+      <div class="combat">
+        <div class="foes"><div class="foe">
+          <canvas id="foe-cv-0"></canvas><h2 id="op-nome">...</h2>
+          <div class="bar foe-bar"><i id="op-bar"></i></div>
+          <p class="small"><span class="st">${ic('heart')}<span id="op-hp"></span></span> <span class="st">${ic('star')}<span id="op-pm"></span></span></p>
+          <p class="small"><span class="st">${ic('sword')}<span id="op-atk"></span></span> <span class="st">${ic('shield')}<span id="op-def"></span></span></p>
+        </div></div>
+        <div class="mid">
+          <canvas id="tray" class="tray"></canvas>
+          <p id="clog" class="clog">O mestre prepara a arena...</p>
+          <div class="actions" id="acts"></div>
+        </div>
+        <div class="me">
+          <div class="flip"><canvas id="me-cv"></canvas></div>
+          <h2>${esc(P.nome)}</h2>
+          <div class="bar me-bar"><i></i></div>
+          <p class="small"><span class="st">${ic('heart')}<span id="me-hp"></span></span> <span class="st">${ic('star')}<span id="me-pm"></span></span></p>
+          <p class="small"><span class="st">${ic('sword')}<span id="me-atk"></span></span> <span class="st">${ic('shield')}<span id="me-def"></span></span></p>
+        </div>
+      </div>`, 'fight');
+    const views = { [op]: new FoeView($('foe-cv-0'), A.hero(0, C.BLUE)), [eu]: new FoeView($('me-cv'), A.hero(0)) };
+    const tray = new Tray($('tray')), acts = $('acts'), log = txt => { $('clog').innerHTML = txt; };
+    const barras = (hp, pm) => {
+      for (const [q, pre] of [[eu, 'me'], [op, 'op']]) {
+        const f = l['f' + q];
+        $(pre + '-hp').textContent = `${Math.max(0, hp[q])}/${f.hpMax}`;
+        $(pre + '-pm').textContent = `${pm[q]}/${f.pmMax}`;
+        $(pre + '-atk').textContent = fmtD(f.atk);
+        $(pre + '-def').textContent = fmtDice(f.def) || '—';
+        document.querySelector(pre === 'me' ? '.me-bar i' : '#op-bar').style.width = Math.max(0, hp[q] / f.hpMax * 100) + '%';
+      }
+    };
+    const valem = () => !!(l.va && l.vb);
+    const ap = q => valem() ? l['ap' + q] || 0 : 0;
+    const nomeOp = () => esc(l['n' + op]);
+    const mostrar = async c => {
+      if (c.groups) { await tray.roll(c.groups); tray.result(c.big, c.small, c.color); }
+      else tray.show(c.big, c.small || '', c.color);
+      if (c.hit) { views[c.hit].hit(c.hit === eu ? C.PURPLE : C.RED); SFX.hit(); }
+      log(c.log); barras(c.hp, c.pm);
+      await wait(c.groups ? 1300 : 900);
+    };
+    const jogar = act => { acts.innerHTML = ''; Nuvem.arena.jogar(id, l.jogadas.length, { q: eu, act }); };
+    const controles = () => {
+      if (st.fim) return acabar();
+      acts.onclick = null;
+      if (st.vez !== eu) { acts.innerHTML = `<p class="small">Vez de <b>${nomeOp()}</b>... <span id="arena-relogio"></span></p>`; return; }
+      const me = st[eu];
+      acts.innerHTML = `<p class="small">Sua vez! <span id="arena-relogio"></span></p>
+        <button class="red" data-a="atk">${ic('sword', C.RED)} Atacar <small>${fmtD(me.atk)}</small></button>
+        <button class="purple" data-a="spell" ${me.magias.length ? '' : 'disabled'}>${ic('scroll', C.PURPLE)} Feitiço</button>
+        <button data-a="desiste">Desistir</button>`;
+      acts.onclick = e => {
+        const b = e.target.closest('button');
+        if (!b || b.disabled) return;
+        const a = b.dataset.a;
+        if (a === 'spell') {
+          acts.innerHTML = me.magias.map(s => `<button class="purple" data-a="s:${s}" ${me.pm < SPELLS[s].pm ? 'disabled' : ''}>${ic('scroll', SPELLS[s].cor)} ${SPELLS[s].nome} <small>${fmtD(SPELLS[s].dado)} · ${SPELLS[s].pm} PM</small></button>`).join('')
+            + '<button data-a="voltar">Voltar</button>';
+        } else if (a === 'voltar') controles();
+        else { acts.onclick = null; jogar(a); }
+      };
+    };
+    // Anima as jogadas que chegaram (uma de cada vez) e depois mostra os botões.
+    const andar = async () => {
+      if (ocupado || !semente || acabou) return;
+      ocupado = true;
+      for (;;) {
+        st = arenaMotor(l, semente);
+        const n = (l.jogadas || []).length;
+        if (mostradas >= n) break;
+        acts.innerHTML = ''; acts.onclick = null;
+        for (let k = mostradas; k < n; k++) for (const c of st.cenas[k] || []) await mostrar(c);
+        mostradas = n; vezDesde = Date.now();
+      }
+      ocupado = false;
+      controles();
+    };
+    const parar = () => { clearInterval(vigia); if (pararLuta) pararLuta(); if (pararOp) pararOp(); };
+    const sair = () => {
+      parar();
+      ask(acts, [{ html: 'Voltar para a arena', v: 1, cls: 'green' }]).then(() => openArena());
+    };
+    // A primeira vez com as duas metades: confere o hash, monta a semente e
+    // tira a aposta das moedas (ela volta, com a do outro, se você vencer).
+    const comecar = async () => {
+      comecando = true;
+      if (await sha(l.sa) !== l.ha) { acabou = true; log('O mestre desconfia dos dados do outro lado e cancela a luta.'); return sair(); }
+      $('op-nome').textContent = l['n' + op];
+      if (!G.arenaLuta || G.arenaLuta.id !== id) {
+        G.arenaLuta = { id, eu, ap: ap(eu), apOp: ap(op) };
+        P.ouro -= ap(eu); save(); cloudSave(); hud();
+      }
+      const s = await sementeDe(l), st0 = arenaMotor({ ...l, jogadas: [] }, s);
+      barras({ a: st0.a.hp, b: st0.b.hp }, { a: st0.a.pm, b: st0.b.pm });
+      log(`Arena! ${esc(P.nome)} contra <b>${nomeOp()}</b>. ${valem() ? `Na mesa: ${ap(eu)} moedas suas e ${ap(op)} do outro lado.` : 'Esta luta não vale moedas.'} Começa: <b>${st0.vez === eu ? 'você' : nomeOp()}</b>.`);
+      await wait(1800);
+      semente = s; vezDesde = Date.now();
+      andar();
+    };
+    pararLuta = Nuvem.arena.ouvirLuta(id, d => {
+      if (!d || acabou) return;
+      l = d;
+      if (!opUid) {
+        opUid = l[op];
+        pararOp = Nuvem.arena.ouvirJogador(opUid, j => { if (j && j.visto !== vistoUlt) { vistoUlt = j.visto; vistoOp = Date.now(); } });
+      }
+      if (!comecando && l.sa && l.sb) comecar();
+      else andar();
+    });
+    // Relógio da vez, e o outro que sumiu: qualquer um dos dois aparelhos
+    // grava "tempo" ou "caiu" (a transação deixa entrar só uma).
+    const vigia = setInterval(() => {
+      if (acabou) return;
+      if (!semente) {
+        if (!comecando && Date.now() - inicio > ARENA_CONVITE) { acabou = true; log('O outro jogador sumiu antes da luta começar.'); sair(); }
+        return;
+      }
+      if (!st || ocupado || st.fim) return;
+      const resta = Math.max(0, Math.ceil((ARENA_VEZ - (Date.now() - vezDesde)) / 1000));
+      if ($('arena-relogio')) $('arena-relogio').textContent = `(${resta} s)`;
+      const n = l.jogadas.length;
+      if (Date.now() - vistoOp > ARENA_CAIU) Nuvem.arena.jogar(id, n, { q: op, act: 'caiu' });
+      else if (Date.now() - vezDesde > ARENA_VEZ + (st.vez === eu ? 0 : 2000)) Nuvem.arena.jogar(id, n, { q: st.vez, act: 'tempo' });
+    }, 1000);
+    // Fim: quem venceu recebe as duas apostas; o par fica marcado no dia.
+    const acabar = () => {
+      if (acabou) return;
+      acabou = true;
+      const ganhei = st.fim.vence === eu;
+      if (G.arenaLuta && G.arenaLuta.id === id) {
+        if (ganhei) { P.ouro += ap(eu) + ap(op); Nuvem.arena.vitoria(l.pg).catch(() => { }); }
+        G.arenaLuta = null;
+      }
+      G.pares[opUid] = hoje();
+      save(); cloudSave(); hud();
+      if (ganhei) SFX.lvl(); else SFX.hit();
+      const moedas = valem() ? (ganhei ? ` +${ap(op)} moedas.` : ` A aposta (${ap(eu)} moedas) fica com ${nomeOp()}.`) : ' (Sem aposta: vocês já lutaram hoje.)';
+      const porque = {
+        desistiu: ganhei ? `${nomeOp()} desistiu.` : 'Você desistiu.',
+        caiu: ganhei ? `${nomeOp()} saiu da arena.` : 'Você saiu da arena.',
+        tempo: ganhei ? `${nomeOp()} perdeu a vez ${ARENA_TEMPOS} vezes seguidas.` : `Você perdeu a vez ${ARENA_TEMPOS} vezes seguidas.`,
+      }[st.fim.motivo];
+      views[ganhei ? op : eu].defeat();
+      tray.show(ganhei ? 'vitória!' : 'derrota', '', ganhei ? C.GREEN : C.RED);
+      log(`${porque ? porque + ' ' : ''}${ganhei ? `<b>Você venceu ${nomeOp()}!</b>` : `<b>${nomeOp()} venceu.</b> Ninguém desmaia na arena.`}${moedas}`);
+      sair();
+    };
+  }
+
   // ---------- salvar / carregar ----------
   const saveLevel = l => ({ rev: Array.from(l.rev).join(''), dead: [...l.dead], opened: [...l.opened], trail: [...l.trail] });
   function loadLevel(l, d) {
@@ -2377,7 +2780,7 @@
         v: 3, em: Date.now(), seed: WORLD.seed, P, dun,
         pg: G.pg.map(l => ({ ...saveLevel(l), talked: [...l.talked], cleared: [...l.cleared], won: l.won, guarda: l.guarda, lenda: l.lenda, mortos: [...l.mortos] })),
         seen: [...G.seen], steps: G.steps, kills: G.kills, clock: G.clock, day: G.day, conversa: G.conversa,
-        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos, gente: G.gente, tempo: G.tempo,
+        lava: G.lava, areia: G.areia, vulcao: G.vulcao, tempestade: G.tempestade, duelos: G.duelos, gente: G.gente, tempo: G.tempo, pares: G.pares, arenaLuta: G.arenaLuta,
       }));
     } catch (e) { /* sem armazenamento: o jogo segue sem salvar */ }
   }
@@ -2522,7 +2925,7 @@
       data.seen.forEach(k => G.seen.add(k));
       Object.assign(G, {
         steps: data.steps, kills: data.kills, clock: data.clock, day: data.day, conversa: data.conversa || {},
-        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {}, gente: data.gente || {}, tempo: data.tempo || 0,
+        lava: data.lava || {}, areia: data.areia || 0, vulcao: data.vulcao || 0, tempestade: data.tempestade || 0, duelos: data.duelos || {}, gente: data.gente || {}, tempo: data.tempo || 0, pares: data.pares || {}, arenaLuta: data.arenaLuta || null,
       });
       // A lava que ainda não esfriou volta para o mapa do Vulcão.
       const v = WORLD.pages[Wd.PAGINAS - 1];
@@ -2721,7 +3124,7 @@
   sndIcon();
 
   window.Caderno = {
-    get state() { return { P, G, W, M, L, WORLD }; }, combat, title, rest, duel, meetLegend, sandstorm, erupt,
+    get state() { return { P, G, W, M, L, WORLD }; }, combat, arenaMotor, title, rest, duel, meetLegend, sandstorm, erupt,
     riddle: i => riddle(i, M.obj.get(i)), stairs,
     talk: i => talk(i, M.obj.get(i)), camp: i => camp(i, M.obj.get(i)), guardian: i => guardian(i, M.obj.get(i)), shortcut: i => shortcut(M.obj.get(i)), meetBoss: i => meetBoss(i, M.obj.get(i)), turnPage: i => turnPage(M.obj.get(i)),
   };

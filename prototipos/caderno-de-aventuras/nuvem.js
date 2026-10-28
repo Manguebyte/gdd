@@ -109,7 +109,87 @@
     return true;
   }
 
+  // ---------- arena PvP (game.js, "arena PvP") ----------
+  // POR QUE: na arena de cada página o herói enfrenta, ao vivo, outro jogador
+  // que está nela. ESTRATÉGIA: só Firestore, sem servidor nosso.
+  // - caderno-arena/{uid}: a presença do jogador (em qual arena está, `dentro`,
+  //   batendo `visto` a cada ARENA_PULSO) e as vitórias de cada página (v0..v4,
+  //   que viram o ranking). Só o dono grava.
+  // - caderno-lutas/{id}: um desafio e a luta. Os dois escutam o documento e
+  //   gravam ali as jogadas, numa transação que só aceita a jogada número n
+  //   (assim duas jogadas nunca entram na mesma vez).
+  // Os dados vêm de uma semente que nenhum dos dois escolhe sozinho: quem
+  // desafia manda só o hash da sua metade, quem aceita manda a dele às claras
+  // e só então a primeira é revelada (ver game.js).
+  const ARENA = 'caderno-arena', LUTAS = 'caderno-lutas';
+  const fv = () => firebase.firestore.FieldValue;
+  // Hora do servidor menos a do aparelho, medida no próprio pulso.
+  let desvio = 0;
+  const agora = () => Date.now() + desvio;
+  const ms = t => t && t.toMillis ? t.toMillis() : 0;
+  const arena = {
+    agora,
+    get uid() { return user ? user.uid : null; },
+    // Entra (pg) ou sai (null) da arena; o pulso mantém o jogador na lista.
+    async presenca(pg, ficha) {
+      if (!user) return;
+      const ref = db.collection(ARENA).doc(user.uid);
+      const t0 = Date.now();
+      await ref.set({ dentro: pg, nome: ficha.nome, nivel: ficha.lvl, visto: fv().serverTimestamp() }, { merge: true });
+      if (pg == null) return;
+      const d = await ref.get();
+      if (d.exists && ms(d.data().visto)) desvio = ms(d.data().visto) - (t0 + Date.now()) / 2;
+    },
+    // Quem está na arena da página pg (lista viva). Devolve a função de parar.
+    ouvirArena(pg, f) {
+      return db.collection(ARENA).where('dentro', '==', pg)
+        .onSnapshot(q => f(q.docs.map(d => ({ uid: d.id, ...d.data(), visto: ms(d.data().visto) }))), () => { });
+    },
+    ouvirJogador(uid, f) { return db.collection(ARENA).doc(uid).onSnapshot(d => f(d.exists ? { ...d.data(), visto: ms(d.data().visto) } : null), () => { }); },
+    async ranking(pg) {
+      const q = await db.collection(ARENA).orderBy('v' + pg, 'desc').limit(5).get();
+      return q.docs.map(d => ({ nome: d.data().nome, v: d.data()['v' + pg] || 0 }));
+    },
+    async vitoria(pg) { if (user) await db.collection(ARENA).doc(user.uid).set({ ['v' + pg]: fv().increment(1) }, { merge: true }); },
+    // Desafio: cria a luta e devolve o id.
+    async desafiar(dados) {
+      const ref = await db.collection(LUTAS).add({ ...dados, a: user.uid, estado: 'convite', jogadas: [], criado: agora() });
+      return ref.id;
+    },
+    // Desafios para mim que ainda esperam resposta.
+    ouvirConvites(f) {
+      return db.collection(LUTAS).where('b', '==', user.uid).where('estado', '==', 'convite')
+        .onSnapshot(q => f(q.docs.map(d => ({ id: d.id, ...d.data() }))), () => { });
+    },
+    ouvirLuta(id, f) { return db.collection(LUTAS).doc(id).onSnapshot(d => f(d.exists ? { id: d.id, ...d.data() } : null), () => { }); },
+    async lerLuta(id) { const d = await db.collection(LUTAS).doc(id).get(); return d.exists ? { id: d.id, ...d.data() } : null; },
+    mudarLuta(id, campos) { return db.collection(LUTAS).doc(id).update(campos); },
+    // Muda o estado só se ele ainda for `de` (aceitar e cancelar ao mesmo
+    // tempo: vale o que chegar primeiro). Devolve se mudou.
+    trocarEstado(id, de, campos) {
+      const ref = db.collection(LUTAS).doc(id);
+      return db.runTransaction(async tx => {
+        const d = await tx.get(ref);
+        if (!d.exists || d.data().estado !== de) return false;
+        tx.update(ref, campos);
+        return true;
+      }).catch(() => false);
+    },
+    // Grava a jogada número n; se outra jogada já entrou nessa vez, não grava.
+    jogar(id, n, jogada) {
+      const ref = db.collection(LUTAS).doc(id);
+      return db.runTransaction(async tx => {
+        const d = await tx.get(ref);
+        const j = d.data().jogadas || [];
+        if (j.length !== n) return false;
+        tx.update(ref, { jogadas: j.concat([jogada]) });
+        return true;
+      }).catch(() => false);
+    },
+  };
+
   window.Nuvem = {
+    arena,
     get ativa() { return !!FIREBASE_CONFIG; },
     get usuario() { return nomeDe(user); },
     iniciar, entrar, sair, baixar, subir, valido: n => valido(limpar(n)),

@@ -40,11 +40,37 @@ service cloud.firestore {
         && request.resource.data.save is string
         && request.resource.data.save.size() < 900000;
     }
+    // Arena PvP: a presença e as vitórias de cada jogador. Todo mundo
+    // logado lê (a lista da arena e o ranking); só o dono grava.
+    match /caderno-arena/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+    // Arena PvP: cada luta. Só os dois lutadores leem e mudam; quem cria é
+    // quem desafia, e ninguém troca os lutadores depois.
+    match /caderno-lutas/{id} {
+      allow read: if request.auth != null
+        && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.a == request.auth.uid
+        && request.resource.data.estado == 'convite' && request.resource.data.jogadas.size() == 0;
+      allow update: if request.auth != null
+        && (resource.data.a == request.auth.uid || resource.data.b == request.auth.uid)
+        && request.resource.data.a == resource.data.a && request.resource.data.b == resource.data.b;
+    }
   }
 }
 ```
 
 O save fica em `caderno-saves/{uid}` (o save inteiro como texto, mais `nome`, `nivel`, `pagina`, `tempo` (segundos jogados), `em` e `atualizado`). O SDK do Firebase (10.14.1, versão "compat") vem do CDN `www.gstatic.com` só quando a configuração está preenchida; sem internet, a conta não entra e o jogo segue com o save do aparelho.
+
+### Arena PvP
+
+A arena de cada página usa o mesmo Firestore, sem servidor nosso (as regras acima já cobrem as duas coleções; o plano gratuito Spark basta):
+
+- `caderno-arena/{uid}`: em qual arena o jogador está (`dentro`, o número da página, ou `null`), `nome`, `nivel`, `visto` (o pulso, a cada 10 s) e as vitórias de cada página (`v0` a `v4`, que viram o ranking).
+- `caderno-lutas/{id}`: o desafio e a luta: os dois lutadores (`a` desafiou, `b` aceitou), as fichas dos heróis (`fa`, `fb`), as apostas, as duas metades da semente (`ha` é o hash da metade de `a`, revelada em `sa` só depois de `b` mandar `sb`) e a lista de `jogadas`. Os dois aparelhos refazem a luta com o mesmo motor (`arenaMotor` em `game.js`).
+
+Os documentos de luta ficam guardados (dá para apagar os antigos no console de vez em quando).
 
 ## Instalar no celular
 

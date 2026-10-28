@@ -522,9 +522,10 @@
   // ---------- herói, gente e lugares ----------
   // Herói boneco-palito de capa vermelha (2 poses de andar). Traço grosso porque
   // no mapa ele é desenhado a menos da metade do tamanho.
-  A.hero = frame => {
+  // `capa`: outra cor de capa (o adversário na arena PvP vem de azul).
+  A.hero = (frame, capa = C.RED) => {
     const r = S.rng(1234 + frame), o = [];
-    shape(r, o, [[47, 32], [32, 70], [64, 70], [54, 32]], C.RED, C.RED, 3.4, 3.2);
+    shape(r, o, [[47, 32], [32, 70], [64, 70], [54, 32]], capa, capa, 3.4, 3.2);
     ov(r, o, 50, 21, 10, 10, C.INK, 4);
     fillE(r, o, 50, 21, 10, 10, C.SKIN, 3, 0.8, 0.6);
     pl(r, o, [[40, 17], [46, 9], [54, 9], [61, 16]], false, C.BROWN, 4);
@@ -965,6 +966,16 @@
       const h = (ang, k) => [bx - Math.cos(a + ang) * k, by - Math.sin(a + ang) * k * 0.7];
       pl(r, o, [h(0.6, 8), [bx, by], h(-0.6, 8)], false, C.RED, 3);
       o.push(S.text(obj.to < 0 ? 'Covil' : World.BIOMAS[obj.to].nome, cx, y0 + 6, 13, C.BROWN));
+    } else if (obj.type === 'arena') {
+      // Arena PvP: um ringue de corda visto de cima, com 4 postes e duas
+      // espadas cruzadas no meio.
+      const q = [[x0 + 8, y0 + 18], [x0 + T - 8, y0 + 18], [x0 + T - 8, y0 + T - 6], [x0 + 8, y0 + T - 6]];
+      fill(r, o, q, C.OCHRE, 4.4, 0.8, 0.45);
+      for (const k of [0, 1]) pl(r, o, q.map(([x, y]) => [x + (k ? 3 : 0) * Math.sign(cx - x), y + (k ? 3 : 0) * Math.sign(y0 + 40 - y)]), true, C.RED, 2);
+      for (const [x, y] of q) ln(r, o, x, y + 2, x, y - 10, C.BROWN, 3.4);
+      ln(r, o, cx - 12, y0 + 26, cx + 12, y0 + 50, C.GRAY, 3); ln(r, o, cx + 12, y0 + 26, cx - 12, y0 + 50, C.GRAY, 3);
+      ln(r, o, cx - 9, y0 + 44, cx - 15, y0 + 50, C.BROWN, 3); ln(r, o, cx + 9, y0 + 44, cx + 15, y0 + 50, C.BROWN, 3);
+      o.push(S.text('Arena', cx, y0 + 2, 17, C.RED));
     } else if (obj.type === 'monstro' && obj.noite && !state.noite) {
       // Monstro da noite (Pântano Sombrio): de dia o mestre não desenha nada.
     } else if (obj.type === 'miragem') {

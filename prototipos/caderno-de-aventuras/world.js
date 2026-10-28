@@ -301,7 +301,17 @@
       const ang = Math.atan2(((alvo / W) | 0) - ((i / W) | 0), alvo % W - i % W);
       obj.set(i, { type: 'placa', dir: (Math.round(ang / (Math.PI / 4)) + 8) % 8, to: pg < PAGINAS - 1 ? pg + 1 : -1 });
     }
-    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho, lenda };
+    // Arena PvP (0.9.0): perto da primeira fogueira (2 ou 3 quadrados), onde
+    // todo jogador da página passa. Também só com hash e depois de tudo.
+    const sx0 = start % W, sy0 = (start / W) | 0, perto = [];
+    for (let y = sy0 - 3; y <= sy0 + 3; y++) for (let x = sx0 - 3; x <= sx0 + 3; x++) {
+      const j = y * W + x;
+      if (x < 0 || y < 0 || x >= W || y >= H || Math.max(Math.abs(x - sx0), Math.abs(y - sy0)) < 2) continue;
+      if (dist[j] > 0 && !obj.has(j) && j !== lenda) perto.push(j);
+    }
+    let arena = -1;
+    if (perto.length) { arena = perto[S.hash(seed, 75) % perto.length]; obj.set(arena, { type: 'arena' }); }
+    return { seed, W, H, t, dist, tier, maxD, start, camps, lair: far, obj, dungeons, fora: AGUA, pg, biome: B.id, atalho, lenda, arena };
   }
 
   // Uma página: tenta a semente, depois a semente + 7919, + 2 × 7919... até

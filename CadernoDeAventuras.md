@@ -1,6 +1,6 @@
 # Caderno de Aventuras — GDD inicial
 
-**Versão:** 0.8.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.9.0 · [histórico](#histórico-de-versões)
 
 Oct 26, 2026 · @Abraão Alves Vila NOVA
 
@@ -80,7 +80,7 @@ O mestre não aparece, mas está em todo lugar:
 - Por página: monstros desenhados (~7,5% dos quadrados livres), baús (~2%), **6 entradas de masmorra** (uma por monstro, na região dele) e **7 personagens**: 3 que dão missões (um por região) e 4 que dão dicas.
 - **Personagens espaçados:** nenhum personagem fica a menos de 5 quadrados de outro (contando na horizontal ou na vertical, a maior das duas distâncias), nem colado numa masmorra.
 - Masmorras ficam a 4+ quadrados das fogueiras e do fim da página e a 6+ umas das outras. Se uma não couber na região dela, aquela página fica sem ela (a missão do chefe passa a pedir o outro rei da região).
-- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0. O que entrou na 0.5.0 (miragens, monstros da noite, onde o lendário começa, a variação de cada masmorra) também vem depois de todos os sorteios, só com hash ou com um gerador separado, então as páginas e masmorras de antes continuam iguais. As placas da 0.8.0 também (no empate entre dois caminhos, o hash escolhe): um save antigo carrega com as placas no mapa e todo o resto no mesmo lugar.
+- **Ordem dos sorteios** de cada página: terreno, fogueiras, passagem (ou covil), volta, monstros e baús, masmorras e por último os personagens. A masmorra do atalho é escolhida depois, sem sorteio (ver Guardiões das passagens), e a escada escondida entra no interior dela depois de todos os sorteios da masmorra, então as páginas e masmorras são as mesmas de antes da 0.4.0. O que entrou na 0.5.0 (miragens, monstros da noite, onde o lendário começa, a variação de cada masmorra) também vem depois de todos os sorteios, só com hash ou com um gerador separado, então as páginas e masmorras de antes continuam iguais. As placas da 0.8.0 (no empate entre dois caminhos, o hash escolhe) e a arena da 0.9.0 também: um save antigo carrega com as placas e a arena no mapa e todo o resto no mesmo lugar.
 
 **Em aberto**
 
@@ -594,26 +594,27 @@ Os baús das masmorras seguem a mesma regra, com a região da masmorra.
 
 ## Arena PvP
 
-**Definido** (0.7.2, ainda só no GDD; o protótipo não tem)
+**Definido** (proposta na 0.7.2, no protótipo desde a 0.9.0; os números de aposta e de tempo são as propostas da 0.7.2, que o usuário mandou implementar sem mudar)
 
-- **Uma arena em cada página** (5 no caderno), desenhada no mapa como um quadrado próprio (um ringue de corda em caneta). Ao entrar nela, o herói fica **na arena daquela página** e pode enfrentar **outros jogadores que estão na mesma arena naquele momento**. Como cada arena só junta quem chegou àquela página, os heróis se enfrentam com força parecida, sem precisar de sorteio por nível.
-- **Só ao vivo:** o adversário é outro jogador de verdade, online e dentro da arena. Não há fantasma nem herói controlado pelo computador. Se a arena estiver vazia, o herói espera ali (ou sai quando quiser).
-- **Precisa de conta e de internet** (ver Conta e save na nuvem). Sem conta, ou sem sinal, a arena aparece no mapa, mas o portão está fechado e o mestre explica o motivo.
-- **Dentro da arena**, uma folha lista quem está lá (nome, nível e vitórias naquela arena). O jogador escolhe alguém e **desafia**; o outro aceita ou recusa. Quem não responde a tempo recusa.
-- **A luta** é a mesma folha de luta em três colunas, com os itens, feitiços e habilidades de cada herói, um turno de cada um. Cada um vê a luta do seu lado da folha. Não tem noite (+1 dado) nem "Fugir" com d20: há só **"Desistir"**, que conta como derrota.
-- **Ninguém desmaia nem morre:** ao fim da luta, os dois voltam com a vida e a magia de antes de entrar.
-- **Quem perde paga moedas a quem vence:** o vencedor leva uma parte das moedas do perdedor. As moedas são o prêmio da vitória; a arena não cria moedas do nada, só passa de um para o outro. Sair do jogo ou cair a conexão no meio da luta conta como derrota.
-- **Ranking de cada página:** cada arena tem a sua tabela de vitórias, com o campeão da página no topo.
+- **Uma arena em cada página** (5 no caderno), a 2 ou 3 quadrados da primeira fogueira da página, onde todo jogador passa. No mapa, é um ringue de corda vermelha visto de cima, com 4 postes, duas espadas cruzadas e "Arena" escrito em cima. Ao pisar nela, abre a folha da arena daquela página: ali o herói pode enfrentar **outros jogadores que estão na mesma arena naquele momento**. Como cada arena só junta quem chegou àquela página, os heróis se enfrentam com força parecida.
+- **Só ao vivo:** o adversário é outro jogador de verdade, online e dentro da arena. Não há fantasma nem herói controlado pelo computador. Se a arena estiver vazia, o herói espera com a folha aberta (quem entrar aparece na lista) ou sai quando quiser.
+- **Precisa de conta, de internet e de pelo menos 10 moedas.** Sem conta, sem sinal ou sem moedas, o mestre explica por que o portão está fechado.
+- **A folha da arena** mostra a regra da aposta, quem está lá agora (nome, nível e vitórias naquela arena, com o botão "Desafiar") e os 5 campeões da página. Quem fecha o jogo some da lista em até 35 s.
+- **Desafio:** quem desafia espera a resposta; o outro vê o desafio (nome, nível e as duas apostas) com "Aceitar" e "Recusar". Sem resposta em **20 s**, o desafio cai.
+- **A luta** é a mesma folha de luta em três colunas: o adversário à esquerda (o mesmo boneco do herói, de capa azul), os dados no meio e o seu herói à direita. Cada herói luta com a arma, a defesa, os feitiços e as 2 habilidades equipadas que tinha ao entrar, começando com vida e magia cheias. Um sorteio decide quem começa; depois é **um turno de cada um**. Na sua vez: **Atacar** (a sua arma contra os dados de defesa do outro, como contra monstro), **Feitiço** (ignora a defesa; a cura cura você) ou **Desistir** (conta como derrota). As habilidades valem dos dois lados: as de ataque e de feitiço olham os dados de quem bate, e as de defesa olham os dados de quem defende (Contra-ataque, Espelho, Revide etc. funcionam). Não tem noite (+1 dado), poção, maldição nem "Fugir".
+- **Tempo:** **30 s** por vez. Quem não joga a tempo perde a vez; **3 vezes seguidas** perde a luta. Quem fecha o jogo ou perde a conexão no meio da luta (35 s sem sinal) perde a luta.
+- **Ninguém desmaia nem morre:** a luta não mexe na vida nem na magia de verdade do herói; ao fim, os dois saem como entraram.
+- **Aposta:** cada um aposta **20% das próprias moedas, até 100 × o número da página** (Campos 100, Vulcão 500), calculado na hora do desafio. A aposta sai das moedas quando a luta começa e **quem vence leva as duas** (a sua de volta e a do outro). A arena não cria moedas: só passa de um para o outro. Quem fecha o jogo no meio já pagou.
+- **Uma luta por dia que vale moedas com o mesmo adversário:** contra quem o herói já enfrentou hoje, a luta acontece, mas sem aposta (as duas folhas avisam). Isso dificulta dois amigos, ou duas contas da mesma pessoa, passarem moedas de um para o outro perdendo de propósito.
+- **Ranking de cada página:** cada vitória na arena conta para a página; a folha mostra os 5 que mais venceram ali.
+- **Sem servidor de jogo:** a luta é um documento no Firestore com as fichas dos dois heróis, uma semente e a lista de jogadas, e os dois aparelhos refazem a luta inteira com o mesmo motor, chegando ao mesmo resultado. A semente junta duas metades: quem desafia manda só o hash da dele, quem aceita manda a dele às claras, e só então a primeira é revelada; assim nenhum dos dois escolhe os dados. Tudo roda no plano gratuito do Firebase (sem Cloud Function, sem Realtime Database).
+- **Luta sem acerto:** se o jogo fechou antes de acertar a luta, o acerto acontece na próxima vez que o herói entra numa arena: quem tinha vencido recebe as moedas; quem não terminou fica sem a aposta.
 
 **Em aberto**
 
-- Quanto das moedas o perdedor paga (proposta: 20%, com um limite por luta) e se um herói sem moedas pode lutar (proposta: não, para a arena não virar luta sem risco).
-- Como impedir dois amigos (ou duas contas da mesma pessoa) de passar moedas um para o outro perdendo de propósito (proposta: o mesmo par só paga moedas na primeira luta do dia).
-- Tempo de cada turno e de resposta ao desafio (proposta: 30 s por turno; quem perde 3 turnos seguidos perde a luta; 20 s para aceitar o desafio).
-- **Trapaça:** hoje os dados rolam no aparelho, e com moedas em jogo alguém poderia mudar o código para rolar sempre o máximo. Proposta: na arena, quem rola os dados é o servidor (uma Cloud Function do Firebase, que exige o plano Blaze, pago por uso com cota grátis).
-- Como "estar na arena" funciona por dentro (proposta: o Realtime Database do Firebase, que marca o jogador como fora da arena sozinho quando ele fecha o jogo, por `onDisconnect`; as lutas como salas no Firestore, que os dois escutam em tempo real).
-- Onde fica a arena em cada página. A geração do mapa tem que pôr a arena depois de todos os sorteios que já existem, para a mesma semente continuar gerando as mesmas páginas.
+- **Trapaça:** o save (e as moedas) continua no aparelho, então quem mexe no código ainda pode trapacear (mudar a própria ficha, não pagar a aposta). A semente dividida só impede escolher os dados de uma luta honesta dos dois lados. Para fechar de vez, o servidor teria que guardar as fichas e as moedas (Cloud Functions, plano Blaze).
 - Poções durante a luta, e se o ranking zera de tempos em tempos (temporadas).
+- Se os números (20%, teto por página, 30 s, 3 vezes, 20 s) ficam bons jogando.
 - Com poucos jogadores, a arena tende a ficar vazia quase sempre. É o risco de ser só ao vivo; vale medir quanto tempo as pessoas esperam.
 
 ## Salvamento
@@ -625,6 +626,8 @@ Da 0.5.0 em diante também ficam salvos: onde está o lendário de cada página,
 Da 0.7.0 em diante também ficam salvos os personagens do caminho mortos (em cada página) e quem morreu em cada fogueira. Um save da 0.6 carrega com todo mundo vivo.
 
 Da 0.7.1 em diante também fica salvo o tempo de jogo, em segundos (conta só com a aventura aberta, a aba visível e alguma tecla ou toque nos últimos 2 minutos). Um save da 0.7.0 começa em zero.
+
+Da 0.9.0 em diante também ficam salvos com quem o herói lutou na arena e em que dia (para a regra de uma luta por dia que vale moedas) e a luta da arena que ainda não foi acertada. Um save da 0.8 carrega sem nenhuma luta.
 
 Para cada página também fica salvo se o guardião da passagem foi vencido (um save antigo carrega com os guardiões vivos; quem já esteve na página seguinte pode passar por trás deles). As habilidades aprendidas e as 2 equipadas ficam no personagem; os pontos não são guardados, são o nível − 1 − as habilidades aprendidas. Um save da 0.2.0 (sem habilidades) carrega normalmente e já chega com um ponto por nível subido; um da 0.3 (todas valiam) equipa as 2 primeiras que aprendeu.
 
@@ -640,6 +643,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 ## Histórico de versões
 
+- **0.9.0** (2026-10-28): arena PvP ao vivo, uma em cada página, perto da primeira fogueira: com conta e internet, o herói desafia outro jogador que está na mesma arena e os dois lutam turno a turno (30 s por vez). Quem perde paga a aposta (20% das moedas, até 100 × a página) a quem vence, ninguém desmaia, a luta com o mesmo adversário só vale moedas uma vez por dia, e cada arena tem o seu ranking. Sem servidor: os dois aparelhos refazem a luta da mesma semente. Precisa das regras novas do Firestore (README do protótipo). Saves da 0.8 continuam valendo.
 - **0.8.0** (2026-10-28): placas pelo caminho de cada página, apontando para a passagem da próxima folha (na última, para o Covil do Dragão). A mesma semente gera as mesmas páginas, agora com as placas, e saves da 0.7 continuam valendo.
 - **0.7.2** (2026-10-28): proposta da arena PvP no GDD (ainda não está no protótipo): uma arena em cada página, onde o herói enfrenta ao vivo outros jogadores que estão nela; quem perde paga moedas a quem vence, ninguém desmaia, e cada arena tem o seu ranking.
 - **0.7.1** (2026-10-28): o save guarda o tempo de jogo da aventura (só conta com a aventura aberta, a aba visível e alguém mexendo; 2 minutos parado, para de contar). Aparece no "Continuar" da capa e na folha "Duas aventuras", e sobe para a nuvem junto do resumo (`tempo`, em segundos). Saves antigos começam em zero.
@@ -658,7 +662,7 @@ Saves de antes das páginas (`-v1` e `-v2`) não são carregados: a mesma sement
 
 > Guia fase a fase para fazer o Caderno de Aventuras em **Unity 6**. O protótipo web ([`prototipos/caderno-de-aventuras/`](prototipos/caderno-de-aventuras/)) é a referência de comportamento: cada script daqui aponta o arquivo do protótipo que ele traduz. Os números são os da Parte 1 e ficam num asset (`GameDatabase`), editáveis no Inspector.
 
-> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0, da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) da 0.7.0 (atacar gente, estoque de cada fogueira, missões pagando menos) e da 0.8.0 (placas pelo caminho) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
+> **Atenção: este guia ainda descreve a versão de uma ilha só** (6 regiões, 12 monstros, o dragão no fim da ilha, save `v2`), de antes da 0.3.0 (sem habilidades passivas, golpes especiais, teto de 5 dados, guardiões das passagens nem a folha de luta em três colunas, e com as chances antigas de encontro surpresa). As 5 páginas de bioma da Parte 1 (Mundo) e as regras da 0.3.0, da 0.4.0, da 0.5.0 (regras de cada página, monstro lendário, duelos, variações das masmorras) da 0.7.0 (atacar gente, estoque de cada fogueira, missões pagando menos) da 0.8.0 (placas pelo caminho) e da 0.9.0 (arena PvP) já estão no protótipo, mas entram aqui depois que forem aprovadas jogando. Até lá, a mesma semente gera mundos diferentes no protótipo e no Unity.
 
 ## Decisão técnica: tudo desenhado com UI Toolkit
 

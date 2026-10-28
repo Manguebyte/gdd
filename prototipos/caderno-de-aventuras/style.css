@@ -231,3 +231,10 @@ button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.2
 #c-msg { color: var(--red); min-height: 1em; }
 .sheet h3 .atk { font-family: 'Patrick Hand', 'Comic Sans MS', cursive; font-size: 16px; padding: 0 10px; margin-left: 8px; vertical-align: middle; color: var(--red); }
 .sheet h3 s { color: var(--gray); }
+
+/* Arena PvP: a lista de quem está lá, o ranking e o aviso de desafio. */
+.arena-lista p { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.arena-lista p button { margin-left: auto; padding: 2px 12px; }
+.arena-aviso { border: 2px dashed var(--red); padding: 6px 10px; }
+.arena-aviso button { padding: 2px 12px; margin-left: 4px; }
+#acts > p.small { flex-basis: 100%; margin: 0 0 4px; }
