@@ -209,6 +209,15 @@ export const GAMES = [
     gddOnly: true,
   },
   {
+    // O guia começa pela versão web (TypeScript, Canvas 2D) e termina com o porte para Unity.
+    source: 'ProjetoGatilho.md',
+    slug: 'projeto-gatilho',
+    label: 'Projeto Gatilho',
+    description: 'Hack-and-slash topdown 2D no navegador, feito para controle: segure R1 ou R2 e os botões de face viram 8 especiais.',
+    guideStart: /^# Parte 2\b/,
+    guideLabel: 'Guias (Web e Unity)',
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',

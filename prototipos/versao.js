@@ -46,6 +46,7 @@
     'caca-as-bruxas': ['Caça às Bruxas', 'CacaAsBruxas.md', '0.1.0'],
     'caderno-de-aventuras': ['Caderno de Aventuras', 'CadernoDeAventuras.md', '0.9.0'],
     'iso-cards': ['Iso Cards', 'IsoCards.md', '0.1.0'],
+    'projeto-gatilho': ['Projeto Gatilho', 'ProjetoGatilho.md', '0.1.0'],
     'mercador-e-legiao': ['Mercador & Legião', 'tutorial-mvp-completo-unity.md', '0.1.0'],
   };
   // Pastas de protótipo que não têm o nome de um jogo: mostram a versão do
