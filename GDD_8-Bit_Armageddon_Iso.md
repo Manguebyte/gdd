@@ -1,6 +1,6 @@
 # GDD — Orbitfall Iso
 
-**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
@@ -567,6 +567,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.2.0** (2026-11-03): protótipo de teste em 3D low-poly (`prototipos/8-bit-armageddon-iso-3d/`): mesmas regras e mesma câmera, com planeta, naves, sombras e laser modelados em Three.js. As regras deste GDD não mudaram.
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
 ---
