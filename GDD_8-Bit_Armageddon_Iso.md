@@ -1,6 +1,6 @@
 # GDD — Orbitfall Iso
 
-**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.2.1 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
@@ -222,7 +222,7 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
 - **Barra de HP** no topo da tela enquanto ela estiver viva.
 - Se o timer de 60 s acabar com a Mothership viva, ela **continua em campo** junto com as Waves seguintes até ser destruída.
 
-**Definido (valor inicial):** HP base 1.200, dano do laser base 25, Shards 50.
+**Definido (valor inicial):** HP base 1.200, dano do laser base 14,875, Shards 50. (O laser começou em 25 e caiu 30% e depois mais 15% nos playtests, porque o da Wave 10 estava forte demais.)
 
 ### 4.6 Fim de run
 
@@ -567,6 +567,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.2.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e nos protótipos (iso e teste 3D).
 - **0.2.0** (2026-11-03): protótipo de teste em 3D low-poly (`prototipos/8-bit-armageddon-iso-3d/`): mesmas regras e mesma câmera, com planeta, naves, sombras e laser modelados em Three.js. As regras deste GDD não mudaram.
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
@@ -6041,7 +6042,7 @@ namespace Armageddon.Enemies
     {
         [Header("Valores base, antes da escalada por Wave (Seção 4.5)")]
         [SerializeField] private float _baseHitpoints = 1200f;
-        [SerializeField] private float _baseLaserDamage = 25f;
+        [SerializeField] private float _baseLaserDamage = 14.875f;
         [SerializeField] private float _shards = 50f;
 
         [Header("Movimento")]

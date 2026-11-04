@@ -78,8 +78,8 @@ const ENEMIES = {
   swarmer: { hp: 3,  dmg: 2,  speed: 0.96, shards: 0.5, r: 0.25, wave: 6, weight: 15 },
   brute:   { hp: 80, dmg: 20, speed: 0.4,  shards: 4,   r: 0.75, wave: 8, weight: 10 },
 };
-// laser: 30% abaixo do GDD (25), pedido do playtest: o laser da Wave 10 estava forte demais.
-const MOTHERSHIP = { hp: 1200, laser: 17.5, shards: 50, r: 1.5 };
+// laser: 25 do GDD original, -30% (17.5) e depois mais -15% (14.875), pedidos do playtest: o laser da Wave 10 estava forte demais.
+const MOTHERSHIP = { hp: 1200, laser: 14.875, shards: 50, r: 1.5 };
 
 // ---------- modo Invasion (Seção 4.7): valores iniciais do GDD, ajustar jogando
 const SIEGE_TIME = 120;       // s para derrubar cada Target Planet
