@@ -209,6 +209,13 @@ export const GAMES = [
     gddOnly: true,
   },
   {
+    source: 'BolsaDeHerois.md',
+    slug: 'bolsa-de-herois',
+    label: 'Bolsa de Heróis',
+    description: 'RPG tático isométrico com bag building no estilo Orléans: guerreiro, mago e arqueiro tiram fichas da bag e montam ataques no livro.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // O guia começa pela versão web (TypeScript, Canvas 2D) e termina com o porte para Unity.
     source: 'ProjetoGatilho.md',
     slug: 'projeto-gatilho',
