@@ -80,6 +80,9 @@ const ENEMIES = {
 };
 // laser: 25 do GDD original, -30% (17.5) e depois mais -15% (14.875), pedidos do playtest: o laser da Wave 10 estava forte demais.
 const MOTHERSHIP = { hp: 1200, laser: 14.875, shards: 50, r: 1.5 };
+// Intervalo entre lasers: 8 s; a primeira Mothership do Last Stand (Boss Wave 10) espera 30% a mais
+// (10,4 s), pedido do playtest para a estreia do chefe ser mais legível.
+const motherLaserGap = w => w === 10 && run.mode !== 'invasion' ? 8 * 1.3 : 8;
 
 // ---------- modo Invasion (Seção 4.7): valores iniciais do GDD, ajustar jogando
 const SIEGE_TIME = 120;       // s para derrubar cada Target Planet
@@ -498,7 +501,7 @@ function spawnMothership(w, sector, rad = SPAWN_R) {
   run.enemies.push({
     type: 'mothership', w, ang: a, rad, x: Math.cos(a) * rad, y: Math.sin(a) * rad,
     hp, maxHp: hp, laserDmg: MOTHERSHIP.laser * Math.pow(1.06, w - 1), r: MOTHERSHIP.r, shards: MOTHERSHIP.shards,
-    state: 'enter', laserT: 8, swarmT: 15, launches: 0, warnT: 0, beamT: 0, t: 0, flash: 0,
+    state: 'enter', laserGap: motherLaserGap(w), laserT: motherLaserGap(w), swarmT: 15, launches: 0, warnT: 0, beamT: 0, t: 0, flash: 0,
   });
 }
 
@@ -666,7 +669,7 @@ function updateMothership(m, dt) {
     m.ang += 10 * DEG * dt;
     m.rad = Math.max(3.5, m.rad - 1.5 / 36 * dt);   // perde 1,5 u de raio por volta (36 s)
     m.laserT -= dt;
-    if (m.laserT <= 0 && m.warnT <= 0 && m.beamT <= 0) { m.warnT = 1.5; m.laserT = 8; }
+    if (m.laserT <= 0 && m.warnT <= 0 && m.beamT <= 0) { m.warnT = 1.5; m.laserT = m.laserGap; }
     if (m.warnT > 0) {
       m.warnT -= dt;
       if (m.warnT <= 0) {

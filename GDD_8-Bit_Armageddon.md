@@ -1,6 +1,6 @@
 # GDD — Orbitfall
 
-**Versão:** 0.1.1 · [histórico](#histórico-de-versões)
+**Versão:** 0.1.2 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
@@ -214,7 +214,7 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
 - Toda Wave múltipla de 10 (10, 20, 30…) é uma **Boss Wave**: nasce uma única **Mothership**, sem inimigos comuns. HP e dano escalam com a mesma fórmula da Seção 4.3.
 - A Mothership **não é kamikaze**. Ela nasce na borda (12 u), no Spawn Sector indicado pelo aviso da Boss Wave, e desce em linha reta a **1,5 u/s** até **7 u** do centro. Durante a entrada ela já pode ser atingida (se estiver no alcance), mas só começa a atacar quando chega aos 7 u.
 - **Espiral:** dali em diante ela gira devagar (10°/s, uma volta a cada 36 s) e **se aproxima em espiral**, perdendo **1,5 u de raio por volta**, de forma contínua, até uma **órbita mínima de 3,5 u**, onde continua girando e atacando. Com a regra de alcance pela borda (Seção 4.1), o Attack Range base (4 u) a alcança depois de cerca de 1 volta; quem comprou Range a alcança antes.
-- **Laser:** a cada 8 s, telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta. O laser conta como 1 hit para o Energy Shield e pode ser bloqueado pelo Reflector (Seção 4.2).
+- **Laser:** a cada 8 s (10,4 s, 30% a mais, na primeira Mothership do Last Stand, a da Wave 10), telegrafa uma linha vermelha piscando por 1,5 s e dispara um laser no planeta. O laser conta como 1 hit para o Energy Shield e pode ser bloqueado pelo Reflector (Seção 4.2).
 - **Lançamentos:** a cada 15 s, solta naves. Os 4 primeiros lançamentos são de naves simples, que dão Shards ao jogador para ele se fortalecer durante a luta: 4 Grunts, 4 Grunts, 4 Scouts, 4 Scouts. Do 5º em diante (depois de 1 minuto em órbita), cada lançamento é um cacho de 8 Swarmers. As naves lançadas escalam com a Wave da Mothership (Seção 4.3).
 - **Em aberto:** a ordem e o tamanho dos lançamentos de abertura são valores iniciais, a ajustar jogando.
 - **Barra de HP** no topo da tela enquanto ela estiver viva.
@@ -572,6 +572,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.1.2** (2026-11-13): a primeira Mothership do Last Stand (Wave 10) espera 30% a mais entre lasers (10,4 s em vez de 8 s), pedido do playtest, no GDD e no protótipo.
 - **0.1.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e no protótipo.
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
 
