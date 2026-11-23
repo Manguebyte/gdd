@@ -225,6 +225,13 @@ export const GAMES = [
     guideLabel: 'Guias (Web e Unity)',
   },
   {
+    source: 'ReinosHex.md',
+    slug: 'reinos-hex',
+    label: 'Reinos Hex',
+    description: 'Estratégia por turnos em hexágonos: compre hexágonos livres, vença monstros e saqueadores para engrossar o exército e tome a cidade rival.',
+    guideStart: /^# Parte 2\b/,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',
