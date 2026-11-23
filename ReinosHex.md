@@ -1,8 +1,10 @@
 # GDD — Reinos Hex (nome de trabalho)
 
-**Versão:** 0.1.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.1.1 · [histórico](#histórico-de-versões)
 
 > Documento vivo. Rascunho inicial: este GDD separa o que já foi **Definido** pelo time do que está **Em aberto**. Tudo que aparece como **proposta** (principalmente os números da §15 e alguns detalhes de regra) foi escrito para o protótipo/guia funcionar, mas ainda não foi decidido: pode e deve mudar no primeiro playtest.
+>
+> **Protótipo:** [`prototipos/reinos-hex/`](prototipos/reinos-hex/) joga as regras desta Parte 1 no navegador, contra a IA ou a dois no mesmo aparelho (o online existe só no guia Unity). Ele usa o mesmo gerador e a mesma semente do guia, então a mesma semente dá o mesmo mapa nos dois.
 >
 > "Reinos Hex" é nome de trabalho (arquivos, pastas, namespace `ReinosHex.*`). O nome final está **Em aberto**. Apesar do tabuleiro hexagonal, este jogo **não tem relação** com o `ProjetoHex.md`: lá se constrói nos cantos dos hexágonos e tudo é por tempo; aqui cada hexágono inteiro tem dono, o jogo é por turnos e o território se conquista com exército.
 
@@ -222,6 +224,7 @@ Todos os valores abaixo são **proposta** e ficam no asset `GameConfig` (Fase 2)
 
 ## Histórico de versões
 
+- **0.1.1** (2026-11-23): protótipo web em `prototipos/reinos-hex/` (contra IA e dois jogadores no mesmo aparelho; o online fica só no guia Unity).
 - **0.1.0** (2026-11-23): primeira versão do GDD e do guia Unity (tabuleiro hexagonal, conquista paga e por batalha determinística, neutros que entram no exército, IA, hot-seat e online com Firebase).
 
 ---

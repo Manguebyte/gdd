@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reinos Hex — protótipo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="board"></canvas>
+
+<!-- HUD -->
+<header id="hud" hidden>
+  <div id="turn"></div>
+  <div id="res"></div>
+  <button id="menuBtn" class="ghost" title="Voltar ao menu">☰</button>
+</header>
+<div id="log" hidden></div>
+<button id="endTurn" hidden>Encerrar turno</button>
+
+<!-- Painel de ação -->
+<section id="panel" hidden>
+  <button id="pClose" class="ghost" aria-label="Fechar">✕</button>
+  <h3 id="pTitle"></h3>
+  <p id="pBody"></p>
+  <div id="pCountRow"><input id="pRange" type="range" min="1" max="1" step="1"><span id="pCount"></span></div>
+  <button id="pOk"></button>
+</section>
+
+<!-- Passar o aparelho (hot-seat) -->
+<div id="pass" class="overlay" hidden>
+  <div class="box">
+    <p id="passMsg"></p>
+    <button id="passBtn">Começar</button>
+  </div>
+</div>
+
+<!-- Fim de jogo -->
+<div id="over" class="overlay" hidden>
+  <div class="box">
+    <h2 id="overMsg"></h2>
+    <button id="againBtn">Jogar de novo</button>
+    <button id="overMenuBtn" class="ghost">Menu</button>
+  </div>
+</div>
+
+<!-- Menu -->
+<div id="menu" class="overlay">
+  <div class="box menu">
+    <h1>Reinos Hex</h1>
+    <p class="sub">Estratégia por turnos em hexágonos. Tome a cidade do reino rival.</p>
+    <label>Seu nome <input id="name1" maxlength="16" placeholder="Jogador"></label>
+    <button id="vsAi">Contra a IA</button>
+    <label>Jogador 2 <input id="name2" maxlength="16" placeholder="Jogador 2"></label>
+    <button id="hotSeat">Dois jogadores (mesmo aparelho)</button>
+    <button id="online" disabled title="O online existe só no guia Unity (Firebase).">Online (só no Unity)</button>
+    <details>
+      <summary>Como jogar</summary>
+      <ul>
+        <li>Cada hexágono seu produz o recurso dele no início do seu turno; a cidade produz 1 de cada.</li>
+        <li>Hexágono <b>livre</b> vizinho do seu reino: toque nele e pague <b>2 madeira + 1 pedra</b>.</li>
+        <li>Toque na <b>cidade</b> para recrutar soldados (<b>1 ouro + 1 pasto</b> cada).</li>
+        <li>Toque num hexágono seu com tropas e depois num vizinho: <b>mover</b> (se for seu) ou <b>atacar</b>.</li>
+        <li>Batalha sem sorte: quem tem mais vence e perde tantos quanto o outro tinha. Empate zera os dois.</li>
+        <li>Monstros 👹 e saqueadores 🗡️ vencidos entram no seu exército.</li>
+        <li>Cada hexágono dá uma ordem por turno; quem recebe tropas também para.</li>
+        <li>Arraste para mover o mapa; roda do mouse ou pinça para zoom.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="../versao.js"></script>
+</body>
+</html>
