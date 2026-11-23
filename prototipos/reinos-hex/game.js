@@ -613,14 +613,16 @@
         } else if (targetKeys.has(key(c.coord))) {
           hexPath(p.x, p.y, z * 0.8); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(2, z * 0.07); ctx.stroke();
         }
-        // ícone do terreno
-        const n = total(c.army);
+        // ícone do terreno (sobe quando há tropas ou custo embaixo)
+        const n = total(c.army), free = isFree(c);
         ctx.globalAlpha = c.owner < 0 && n > 0 ? 0.55 : 1;
-        ctx.font = `${Math.round(z * (n > 0 ? 0.48 : 0.62))}px system-ui, "Segoe UI Emoji", sans-serif`;
-        ctx.fillText(TERRAIN[c.terrain].icon, p.x, p.y - (n > 0 ? z * 0.3 : 0));
+        ctx.font = `${Math.round(z * (n > 0 || free ? 0.48 : 0.62))}px system-ui, "Segoe UI Emoji", sans-serif`;
+        ctx.fillText(TERRAIN[c.terrain].icon, p.x, p.y - (n > 0 || free ? z * 0.24 : 0));
         ctx.globalAlpha = 1;
         // tropas
         if (n > 0) drawBadge(c, p.x, p.y + z * 0.28, n, z);
+        // custo de compra: forte onde dá para comprar agora, apagado no resto
+        else if (free) drawCost(p.x, p.y + z * 0.3, z, canClaim && touchesTerritory(S, S.current, c.coord));
       }
       // números flutuantes
       for (let i = fx.length - 1; i >= 0; i--) {
@@ -648,6 +650,20 @@
     ctx.fillStyle = neutral ? '#3b2a2a' : PLAYER_COLORS[c.owner];
     roundRect(x - wdt / 2, y - hgt / 2, wdt, hgt, hgt / 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText(label, x, y + 1);
+    ctx.globalAlpha = 1;
+  }
+
+  // POR QUE: o jogador vê no próprio tabuleiro quanto custa cada hexágono livre.
+  // ESTRATÉGIA: "🪵2 🪨1" a partir de CONFIG.claimCost (só recursos > 0), num
+  // fundo claro arredondado; alpha baixo quando a compra não é possível agora.
+  function drawCost(x, y, z, buyable) {
+    const label = RES.filter(k => CONFIG.claimCost[k] > 0).map(k => RES_ICON[k] + CONFIG.claimCost[k]).join(' ');
+    ctx.font = `bold ${Math.round(z * 0.26)}px system-ui, "Segoe UI Emoji", sans-serif`;
+    const wdt = ctx.measureText(label).width + z * 0.18, hgt = z * 0.34;
+    ctx.globalAlpha = buyable ? 1 : 0.45;
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    roundRect(x - wdt / 2, y - hgt / 2, wdt, hgt, hgt / 2); ctx.fill();
+    ctx.fillStyle = buyable ? '#1f5a2c' : '#333'; ctx.fillText(label, x, y + 1);
     ctx.globalAlpha = 1;
   }
 

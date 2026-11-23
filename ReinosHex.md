@@ -1,6 +1,6 @@
 # GDD — Reinos Hex (nome de trabalho)
 
-**Versão:** 0.1.1 · [histórico](#histórico-de-versões)
+**Versão:** 0.1.2 · [histórico](#histórico-de-versões)
 
 > Documento vivo. Rascunho inicial: este GDD separa o que já foi **Definido** pelo time do que está **Em aberto**. Tudo que aparece como **proposta** (principalmente os números da §15 e alguns detalhes de regra) foi escrito para o protótipo/guia funcionar, mas ainda não foi decidido: pode e deve mudar no primeiro playtest.
 >
@@ -148,6 +148,7 @@
 - **Definido:** 2D topdown.
 - **Em aberto:** direção de arte (pixel art, vetor, tabuleiro "de mesa"...), paleta, ícones de terreno, monstros e saqueadores.
 - O guia usa **arte provisória feita em código**: hexágonos coloridos por terreno, borda na cor do dono e um texto com nome do terreno e número de tropas.
+- **Proposta:** cada hexágono livre mostra o custo de compra em ícones de recurso (ex.: 🪵2 🪨1), em destaque onde o jogador da vez pode comprar agora.
 
 ## 12. HUD / UI
 
@@ -224,6 +225,7 @@ Todos os valores abaixo são **proposta** e ficam no asset `GameConfig` (Fase 2)
 
 ## Histórico de versões
 
+- **0.1.2** (2026-11-23): cada hexágono livre mostra o ícone do custo de compra (🪵2 🪨1), forte onde dá para comprar agora e apagado no resto.
 - **0.1.1** (2026-11-23): protótipo web em `prototipos/reinos-hex/` (contra IA e dois jogadores no mesmo aparelho; o online fica só no guia Unity).
 - **0.1.0** (2026-11-23): primeira versão do GDD e do guia Unity (tabuleiro hexagonal, conquista paga e por batalha determinística, neutros que entram no exército, IA, hot-seat e online com Firebase).
 
