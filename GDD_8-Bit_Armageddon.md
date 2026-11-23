@@ -1,6 +1,6 @@
 # GDD — Orbitfall
 
-**Versão:** 0.1.2 · [histórico](#histórico-de-versões)
+**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
@@ -389,7 +389,8 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
   - **Indicador de Spawn Sector:** seta magenta de 16 px na borda da tela, apontando para dentro, piscando (2 frames). Há uma seta desenhada para cada uma das **6 direções** dos centros dos Spawn Sectors (30°, 90°, 150°, 210°, 270°, 330°), então nada é girado.
 - **Definido: efeitos sem sprite** (feitos por código ou shader na Unity): flash de dano (o sprite fica branco por 1–2 frames), onda de choque do Revive (anel que cresce até 4 u), preenchimento dos Quadrants e linhas dos eixos, rastro dos projéteis e números de dano (com a fonte da UI).
 - **Definido: fundo de espaço.** É montado com **tiles de 32×32** que se repetem sem emenda: azul-marinho com estrelinhas, em 3 ou 4 variações sorteadas. Por cima, estrelas maiores piscando, como sprites separados. Assim o fundo segue a grade de 32×32 e cobre qualquer proporção de tela (Seção 6.1).
-- **Em aberto:** quem produz o áudio (artista contratado, packs ou produção própria). O guia Unity especifica a lista de sons, mas não o produtor.
+- **Definido: efeitos sonoros 8-bit no protótipo.** O protótipo web sintetiza os sons na hora (Web Audio API, ondas quadradas/triangulares e ruído), sem arquivos de áudio: tiro do Satellite, crítico, explosões (pequena, grande e da Mothership), dano no planeta, aviso e disparo do laser da Mothership, reflexo do Reflector, Energy Shield absorvendo, aviso de Wave e de Boss Wave, compra, lançamento de nave (Invasion), clique de botão e game over. Sons repetidos têm um intervalo mínimo e variam o tom em ±4% para não cansar. Settings tem **Sons** (liga/desliga) e **Volume** (100/70/40/20%), salvos no save.
+- **Em aberto:** quem produz o áudio da versão Unity (artista contratado, packs, produção própria ou os mesmos sons sintetizados exportados para arquivo). O guia Unity especifica a lista de sons, mas não o produtor.
 
 ### 6.3 Interface
 
@@ -572,6 +573,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.2.0** (2026-11-13): efeitos sonoros 8-bit sintetizados no protótipo (14 sons, mais lançamento de nave no Invasion), com Sons e Volume nas Settings (Seção 6.2).
 - **0.1.2** (2026-11-13): a primeira Mothership do Last Stand (Wave 10) espera 30% a mais entre lasers (10,4 s em vez de 8 s), pedido do playtest, no GDD e no protótipo.
 - **0.1.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e no protótipo.
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.

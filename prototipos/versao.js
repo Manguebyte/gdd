@@ -23,7 +23,7 @@
     'race-legenda': ['RaceLegenda', 'RallySurvive.md', '0.1.0'],
     'street-legends': ['Street Legends', 'RallySurvive.md', '0.1.0'],
     'star-expedition-co': ['Star Expedition Co.', 'StarExpeditionCo.md', '0.1.0'],
-    '8-bit-armageddon': ['Orbitfall', 'GDD_8-Bit_Armageddon.md', '0.1.2'],
+    '8-bit-armageddon': ['Orbitfall', 'GDD_8-Bit_Armageddon.md', '0.2.0'],
     '8-bit-armageddon-iso': ['Orbitfall Iso', 'GDD_8-Bit_Armageddon_Iso.md', '0.2.1'],
     'requiem-of-blessings': ['Requiem of Blessings', 'RequiemOfBlessings.md', '0.1.0'],
     'dice-and-blood': ['DiceAndBlood', 'DiceAndBlood.md', '0.1.0'],
