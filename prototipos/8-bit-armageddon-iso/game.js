@@ -176,7 +176,7 @@ function defaultSave() {
     totals: { motherships: 0 },
     hints: {},
     best: 0, bestPlanet: 0, mode: 'laststand',
-    settings: { shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false, zoom: 1 },
+    settings: { sound: true, volume: 0.7, shake: true, dmgNumbers: true, quadrants: true, reduceFlashes: false, fps30: false, zoom: 1 },
   };
 }
 let save = defaultSave();
@@ -419,6 +419,7 @@ function buyStat(id) {
   if (STAT[id].track === 'offense') run.boughtOffense = true;
   if (id === 'hitpoints') { run.boughtHp = true; run.hp += stat('hitpoints') - oldMax; }
   if (id === 'shield') run.shieldCharges += plan.n;   // a carga do nível comprado já vem cheia
+  SFX.play('buy');
   if (!save.hints.buy) { save.hints.buy = true; writeSave(); }
   refreshDrawer(true);
 }
@@ -432,6 +433,7 @@ function buySatellite() {
   if (cost > run.shards) return;
   run.shards -= cost;
   run.sats.push({ priority: 'closest', cd: 0 });
+  SFX.play('buy');
   if (run.sats.length >= MAX_SATELLITES) unlockAch('fullArsenal');
   buildDrawer();
 }
@@ -447,6 +449,7 @@ function prepareWave(w) {
   run.warnWave = w;
   run.warnSectors = all.slice(0, sectorCount(w));
   run.warn = 2;
+  SFX.play(isBoss(w) ? 'bossWarn' : 'waveWarn');
 }
 
 function startWave(w) {
@@ -682,14 +685,16 @@ function updateMothership(m, dt) {
     m.ang += 10 * DEG * dt;
     m.rad = Math.max(3.5, m.rad - 1.5 / 36 * dt);   // perde 1,5 u de raio por volta (36 s)
     m.laserT -= dt;
-    if (m.laserT <= 0 && m.warnT <= 0 && m.beamT <= 0) { m.warnT = 1.5; m.laserT = 8; }
+    if (m.laserT <= 0 && m.warnT <= 0 && m.beamT <= 0) { m.warnT = 1.5; m.laserT = 8; SFX.play('laserWarn'); }
     if (m.warnT > 0) {
       m.warnT -= dt;
       if (m.warnT <= 0) {
         m.beamT = 0.45;
+        SFX.play('laserFire');
         if (inReflectArc(m.ang / DEG)) {   // bloqueado: o planeta não toma dano, a Mothership toma
           m.blocked = true;
           addRing(Math.cos(m.ang) * REFLECT_R, Math.sin(m.ang) * REFLECT_R, 1);
+          SFX.play('reflect');
           hitEnemy(m, stat('reflect'), false);
         } else { m.blocked = false; damagePlanet(m.laserDmg); addShake(3); }
       }
@@ -724,6 +729,7 @@ function pickTarget(q, range, priority) {
 
 function shoot(sat, target) {
   const crit = Math.random() < stat('critChance');
+  SFX.play(crit ? 'crit' : 'shoot');
   const dist = Math.hypot(target.x, target.y);
   const dmg = stat('damage') * (1 + stat('impetus') * dist) * (crit ? stat('critFactor') : 1);
   run.projectiles.push({ x: sat.x, y: sat.y, px: sat.x, py: sat.y, target, dmg, crit, t: Math.random() });
@@ -762,6 +768,7 @@ function reflectBolt(b) {
     for (const e of run.enemies) { const d = Math.hypot(e.x - b.x, e.y - b.y); if (d < bd) { bd = d; target = e; } }
   }
   addRing(b.x, b.y, 0.5);
+  SFX.play('reflect');
   if (target) run.projectiles.push({ x: b.x, y: b.y, px: b.x, py: b.y, target, dmg: stat('reflect'), crit: false, t: 0, refl: true });
 }
 
@@ -774,6 +781,7 @@ function reflectContact(e) {
   if (!inReflectArc(Math.atan2(e.y, e.x) / DEG)) return false;
   e.refCd = 1;
   addRing(e.x, e.y, 0.6);
+  SFX.play('reflect');
   hitEnemy(e, stat('reflect'), false);
   if (!e.dead) {
     const bd = Math.hypot(e.bx, e.by) || 1;
@@ -793,6 +801,7 @@ function hitEnemy(e, dmg, crit) {
     run.enemies.splice(run.enemies.indexOf(e), 1);
     payKill(e);   // Shards vão para a IA, que gasta segundo o perfil
     addFx(e.type === 'mothership' ? 'expMother' : e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
+    SFX.play(e.type === 'mothership' ? 'expMother' : e.type === 'brute' ? 'expBig' : 'expSmall');
     return;
   }
   if (crit) { run.crits++; if (run.crits === 500) unlockAch('criticalMass'); }
@@ -805,6 +814,7 @@ function hitEnemy(e, dmg, crit) {
   if (e.type === 'mothership') {
     payKill(e, true);
     addFx('expMother', e.x, e.y);
+    SFX.play('expMother');
     addShake(4);
     run.mothershipsKilled++;
     save.totals.motherships++;
@@ -815,6 +825,7 @@ function hitEnemy(e, dmg, crit) {
   } else {
     payKill(e);
     addFx(e.type === 'brute' ? 'expBig' : 'expSmall', e.x, e.y);
+    SFX.play(e.type === 'brute' ? 'expBig' : 'expSmall');
   }
   if (run.core === 'Magma' && run.kills === 1000) unlockAch('eruption');
 }
@@ -823,12 +834,14 @@ function damagePlanet(raw) {
   if (run.shieldCharges > 0) {   // Energy Shield: uma carga anula o golpe inteiro
     run.shieldCharges--;
     run.shieldFlash = 0.25;
+    SFX.play('shield');
     if (!run.shieldCharges) addFx('shieldPop', 0, 0);
     return;
   }
   const dmg = Math.max(1, (raw - stat('defAbs')) * (1 - stat('defRel')));
   run.hp -= dmg;
   run.planetFlash = 0.08;
+  SFX.play('planetHit');
   addShake(1.5);
   if (run.mode === 'invasion') {
     run.plasma += 1;   // cada acerto devolve 1 Plasma
@@ -852,6 +865,7 @@ function addShake(v) { if (save.settings.shake) shake = Math.min(5, shake + v); 
 
 function endRun() {
   run.over = true;
+  SFX.play('gameOver');
   if (run.mode === 'invasion') {
     run.newBest = run.planetsDown > save.bestPlanet;
     save.bestPlanet = Math.max(save.bestPlanet, run.planetsDown);
@@ -943,6 +957,7 @@ function deploy(type) {
   if (type === 'mothership' && run.enemies.some(e => e.type === 'mothership')) return;
   run.plasma -= ship.cost;
   run.launched++;
+  SFX.play('launch');
   const sec = run.selSector;
   const hull = 1 + fleetValue('hull'), war = 1 + fleetValue('warheads'), thr = 1 + fleetValue('thrusters');
   const before = run.enemies.length;
@@ -967,6 +982,7 @@ function buyFleet(id) {
   if (c > run.plasma) return;
   run.plasma -= c;
   run.fleet[id]++;
+  SFX.play('buy');
   refreshDrawer(true);
 }
 
@@ -979,6 +995,8 @@ function pickSector(clientX, clientY) {
   const deg = normDeg(Math.atan2((v - u) / 2, (u + v) / 2) / DEG);
   run.selSector = Math.floor(deg / 60) % 6;
 }
+// Clique de interface em qualquer botão do DOM.
+ui.addEventListener('click', e => { if (e.target.closest('button')) SFX.play('click'); });
 ui.addEventListener('pointerdown', e => {
   if (screen !== 'game' || !run || run.mode !== 'invasion' || run.paused) return;
   if (e.target.closest('button, #drawer, .screen')) return;   // botões, gaveta e telas por cima não escolhem setor
@@ -1377,7 +1395,7 @@ const SCREENS = {
     } else s.appendChild(topbar('Settings'));
     const box = el(`<div class="settings"></div>`);
     const opts = [
-      ['shake', 'Screen shake'], ['dmgNumbers', 'Números de dano'], ['quadrants', 'Mostrar Quadrants'],
+      ['sound', 'Sons'], ['shake', 'Screen shake'], ['dmgNumbers', 'Números de dano'], ['quadrants', 'Mostrar Quadrants'],
       ['reduceFlashes', 'Reduzir flashes'], ['fps30', '30 fps (economia)'],
     ];
     for (const [k, label] of opts) {
@@ -1385,6 +1403,15 @@ const SCREENS = {
       b.onclick = () => { save.settings[k] = !save.settings[k]; writeSave(); b.lastElementChild.className = save.settings[k] ? 'badge' : 'subtitle'; b.lastElementChild.textContent = save.settings[k] ? 'On' : 'Off'; };
       box.appendChild(b);
     }
+    // Volume dos sons: cada toque passa para o próximo nível.
+    const VOLS = [[1, '100%'], [0.7, '70%'], [0.4, '40%'], [0.2, '20%']];
+    const vol = el(`<button class="btn"><span>Volume</span><span class="badge"></span></button>`);
+    const showVol = () => { vol.lastElementChild.textContent = (VOLS.find(([v]) => v === save.settings.volume) || VOLS[1])[1]; };
+    vol.onclick = () => {
+      const i = VOLS.findIndex(([v]) => v === save.settings.volume);
+      save.settings.volume = VOLS[(i + 1) % VOLS.length][0]; writeSave(); showVol();
+    };
+    showVol(); box.appendChild(vol);
     if (!fromPause) {
       let confirms = 0;
       const reset = el(`<button class="btn" style="margin-top:6px"><span>Resetar progresso</span></button>`);

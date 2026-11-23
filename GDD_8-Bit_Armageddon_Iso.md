@@ -1,6 +1,6 @@
 # GDD — Orbitfall Iso
 
-**Versão:** 0.2.1 · [histórico](#histórico-de-versões)
+**Versão:** 0.3.0 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
@@ -395,7 +395,8 @@ Observação de design: o Satellite 2 compete com Orbit Speed pelo mesmo problem
   - **Indicador de Spawn Sector:** seta magenta de 16 px na borda da tela, apontando para dentro, piscando (2 frames). A spritesheet tem uma seta para cada uma de **6 direções da tela** (30°, 90°, 150°, 210°, 270°, 330°). Com a câmera isométrica, a direção de um Spawn Sector no chão muda de ângulo na tela (o setor de 30° do chão aparece a ~62° na tela), então o jogo projeta a direção do setor e usa a seta pré-desenhada **mais próxima**. Nada é girado. As 6 direções projetadas caem em 6 setas diferentes.
 - **Definido: efeitos sem sprite** (feitos por código ou shader na Unity): flash de dano (o sprite fica branco por 1–2 frames), sombras no grid, preenchimento dos Quadrants e linhas dos eixos, rastro dos projéteis e números de dano (com a fonte da UI).
 - **Definido: fundo de espaço.** É montado com **tiles de 32×32** que se repetem sem emenda: azul-marinho com estrelinhas, em 3 ou 4 variações sorteadas. Por cima, estrelas maiores piscando, como sprites separados. Assim o fundo segue a grade de 32×32 e cobre qualquer proporção de tela (Seção 6.1). O fundo é da tela, não do chão: ele **não** é projetado em isométrico, e aparece atrás do grid e nos cantos da tela onde o grid já sumiu.
-- **Em aberto:** quem produz o áudio (artista contratado, packs ou produção própria). O guia Unity especifica a lista de sons, mas não o produtor.
+- **Definido: efeitos sonoros 8-bit no protótipo.** O protótipo web sintetiza os sons na hora (Web Audio API, ondas quadradas/triangulares e ruído), sem arquivos de áudio: tiro do Satellite, crítico, explosões (pequena, grande e da Mothership), dano no planeta, aviso e disparo do laser da Mothership, reflexo do Reflector, Energy Shield absorvendo, aviso de Wave e de Boss Wave, compra, lançamento de nave (Invasion), clique de botão e game over. Sons repetidos têm um intervalo mínimo e variam o tom em ±4% para não cansar. Settings tem **Sons** (liga/desliga) e **Volume** (100/70/40/20%), salvos no save. São os mesmos sons do Orbitfall.
+- **Em aberto:** quem produz o áudio da versão Unity (artista contratado, packs, produção própria ou os mesmos sons sintetizados exportados para arquivo). O guia Unity especifica a lista de sons, mas não o produtor.
 
 ### 6.3 Interface
 
@@ -567,6 +568,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.3.0** (2026-11-23): efeitos sonoros 8-bit sintetizados no protótipo, os mesmos do Orbitfall 0.2.0 (14 sons, mais lançamento de nave no Invasion), com Sons e Volume nas Settings (Seção 6.2).
 - **0.2.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e nos protótipos (iso e teste 3D).
 - **0.2.0** (2026-11-03): protótipo de teste em 3D low-poly (`prototipos/8-bit-armageddon-iso-3d/`): mesmas regras e mesma câmera, com planeta, naves, sombras e laser modelados em Three.js. As regras deste GDD não mudaram.
 - **0.1.0** (2026-10-26): início do versionamento; marca o estado do GDD e do protótipo neste dia.
