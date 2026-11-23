@@ -16,7 +16,7 @@
     raiderChance: 0.10, raiderMin: 3, raiderMax: 6,
     startSoldiers: 5, startResources: bag(2, 2, 2, 2),
     yieldPerHex: 1, cityYield: bag(1, 1, 1, 1),
-    claimCost: bag(2, 1, 0, 0), soldierCost: bag(0, 0, 1, 1),
+    claimCost: bag(2, 1, 0, 0), soldierCost: bag(0, 0, 1, 1), towerCost: bag(2, 2, 0, 0),
     neutralJoinPercent: 100,
   };
 
@@ -102,7 +102,7 @@
   }
 
   function randomCell(c, rng, cities) {
-    const cell = { coord: c, terrain: rng.range(0, 3), owner: -1, army: army(), ordered: false };
+    const cell = { coord: c, terrain: rng.range(0, 3), owner: -1, army: army(), tower: false };
     const roll = rng.value();
     const nearest = Math.min(...cities.map(city => dist(c, city)));
     if (nearest <= CONFIG.safeRadius) return cell;
@@ -114,13 +114,16 @@
   // ---------------------------------------------------------------- regras
   const A = {
     claim: to => ({ type: 'conquistar', to }),
-    recruit: count => ({ type: 'recrutar', count }),
+    recruit: (at, count) => ({ type: 'recrutar', to: at, count }),
+    tower: at => ({ type: 'torre', to: at }),
     move: (from, to, count) => ({ type: 'mover', from, to, count }),
     attack: (from, to, count) => ({ type: 'atacar', from, to, count }),
     end: () => ({ type: 'fim' }),
   };
 
   const touchesTerritory = (s, p, h) => neighbors(h).some(n => { const c = get(s, n); return c && c.owner === p; });
+  // Pontos de recrutamento: a cidade e as torres de vigia (GDD §6.2).
+  const isRecruitPoint = (s, p, c) => c.owner === p && (c.tower || same(c.coord, s.players[p].city));
 
   function maxRecruit(s) {
     const have = s.players[s.current].resources, cost = CONFIG.soldierCost;
@@ -143,16 +146,28 @@
         if (!canPay(s.players[me].resources, CONFIG.claimCost)) return `Faltam recursos. Custo: ${bagText(CONFIG.claimCost)}.`;
         return null;
       }
-      case 'recrutar':
+      case 'recrutar': {
+        const at = get(s, a.to);
+        if (!at) return 'Fora do mapa.';
+        if (!isRecruitPoint(s, me, at)) return 'Só se recruta na cidade ou numa torre de vigia sua.';
         if (a.count < 1) return 'Recrute pelo menos 1.';
         if (a.count > maxRecruit(s)) return `Faltam recursos. Cada soldado custa ${bagText(CONFIG.soldierCost)}.`;
         return null;
+      }
+      case 'torre': {
+        const at = get(s, a.to);
+        if (!at) return 'Fora do mapa.';
+        if (at.owner !== me) return 'Só dá para construir em hexágono seu.';
+        if (same(a.to, s.players[me].city)) return 'A cidade já recruta.';
+        if (at.tower) return 'Esse hexágono já tem torre.';
+        if (!canPay(s.players[me].resources, CONFIG.towerCost)) return `Faltam recursos. Custo: ${bagText(CONFIG.towerCost)}.`;
+        return null;
+      }
       case 'mover':
       case 'atacar': {
         const from = get(s, a.from), to = get(s, a.to);
         if (!from || !to) return 'Fora do mapa.';
         if (from.owner !== me) return 'A origem não é sua.';
-        if (from.ordered) return 'Esse hexágono já agiu neste turno.';
         if (!isNeighbor(a.from, a.to)) return 'Só dá para agir em hexágonos vizinhos.';
         if (a.count < 1 || a.count > total(from.army)) return 'Quantidade de tropas inválida.';
         if (a.type === 'mover') return to.owner === me ? null : 'Só dá para mover para hexágono seu.';
@@ -195,9 +210,16 @@
     return t;
   }
 
+  // Uma ação por turno (GDD §6.3): toda ação válida encerra o turno; 'fim' é passar a vez.
   function apply(s, a) {
     const err = validate(s, a);
     if (err) throw new Error(`${a.type}: ${err}`);
+    const r = applyOne(s, a);
+    if (s.winner < 0) endTurn(s);
+    return r;
+  }
+
+  function applyOne(s, a) {
     const me = s.current, player = s.players[me];
     switch (a.type) {
       case 'conquistar':
@@ -206,25 +228,27 @@
         return null;
       case 'recrutar':
         pay(player.resources, times(CONFIG.soldierCost, a.count));
-        get(s, player.city).army.soldados += a.count;
+        get(s, a.to).army.soldados += a.count;
+        return null;
+      case 'torre':
+        pay(player.resources, CONFIG.towerCost);
+        get(s, a.to).tower = true;
         return null;
       case 'mover': {
         const from = get(s, a.from), to = get(s, a.to);
         const moved = take(from.army, a.count);
         to.army.soldados += moved.soldados; to.army.monstros += moved.monstros; to.army.mercenarios += moved.mercenarios;
-        from.ordered = true; to.ordered = true;
         return null;
       }
       case 'atacar': {
         const r = preview(s, a);
         const from = get(s, a.from), to = get(s, a.to);
         const sent = take(from.army, a.count);
-        from.ordered = true;
         take(sent, r.attackerLosses);
         take(to.army, r.defenderLosses);
         if (r.attackerWon) {
           sent.monstros += r.joinedMonsters; sent.mercenarios += r.joinedMercenaries;
-          to.army = sent; to.owner = me; to.ordered = true;
+          to.army = sent; to.owner = me;   // uma torre no hexágono passa para o vencedor
           if (r.cityCaptured) {
             s.players[r.defender].alive = false;
             const alive = s.players.map((p, i) => p.alive ? i : -1).filter(i => i >= 0);
@@ -233,15 +257,15 @@
         }
         return r;
       }
-      case 'fim': {
-        const n = s.players.length;
-        do { s.current = (s.current + 1) % n; if (s.current === 0) s.turn++; } while (!s.players[s.current].alive);
-        s.ply++;
-        startTurn(s);
-        return null;
-      }
     }
-    return null;
+    return null;   // 'fim': passar a vez
+  }
+
+  function endTurn(s) {
+    const n = s.players.length;
+    do { s.current = (s.current + 1) % n; if (s.current === 0) s.turn++; } while (!s.players[s.current].alive);
+    s.ply++;
+    startTurn(s);
   }
 
   function yieldOf(t) {
@@ -251,15 +275,21 @@
 
   function startTurn(s) {
     const me = s.current, res = s.players[me].resources;
-    s.cells.forEach(c => { if (c.owner === me) { c.ordered = false; addBag(res, yieldOf(c.terrain)); } });
+    s.cells.forEach(c => { if (c.owner === me) addBag(res, yieldOf(c.terrain)); });
   }
 
   // ---------------------------------------------------------------- IA (guia, Fase 6)
+  // Uma ação por turno: a IA escolhe a primeira que servir, nesta ordem. Entre comprar
+  // hexágono (madeira + pedra) e recrutar (ouro + pasto), gasta primeiro o estoque mais cheio.
   function aiNext(s) {
-    const me = s.current;
+    const me = s.current, res = s.players[me].resources;
     const target = enemyCity(s, me);
-    return aiAttackCity(s, me, target) || aiClaim(s, me, target) || aiRecruit(s) ||
-      aiBestAttack(s, me, target) || aiAdvance(s, me, target) || A.end();
+    const recruitFirst = res.ouro + res.pasto > res.madeira + res.pedra;
+    const spend = recruitFirst
+      ? () => aiRecruit(s, me, target, 3) || aiClaim(s, me, target)
+      : () => aiClaim(s, me, target) || aiRecruit(s, me, target, 3);
+    return aiAttackCity(s, me, target) || aiBestAttack(s, me, target) || aiTower(s, me, target) ||
+      spend() || aiAdvance(s, me, target) || aiRecruit(s, me, target, 1) || A.end();
   }
   function enemyCity(s, me) {
     let best = s.players[me].city, bd = Infinity;
@@ -280,7 +310,7 @@
   function aiAttackCity(s, me, city) {
     const def = total(get(s, city).army);
     for (const h of owned(s, me)) {
-      if (h.ordered || !isNeighbor(h.coord, city) || total(h.army) <= def) continue;
+      if (!isNeighbor(h.coord, city) || total(h.army) <= def) continue;
       const a = A.attack(h.coord, city, total(h.army));
       if (!validate(s, a)) return a;
     }
@@ -298,11 +328,33 @@
     });
     return best ? A.claim(best.coord) : null;
   }
-  function aiRecruit(s) { const n = maxRecruit(s); return n > 0 ? A.recruit(n) : null; }
+  // Recruta só com pelo menos `min` soldados de uma vez. Na cidade se ela está ameaçada;
+  // senão no ponto de recrutamento mais perto do inimigo.
+  function aiRecruit(s, me, enemy, min) {
+    const n = maxRecruit(s);
+    if (n < min) return null;
+    const city = s.players[me].city;
+    if (total(get(s, city).army) < guard(s, me)) return A.recruit(city, n);
+    let best = city, bd = dist(city, enemy);
+    owned(s, me).forEach(c => { if (c.tower && dist(c.coord, enemy) < bd) { bd = dist(c.coord, enemy); best = c.coord; } });
+    return A.recruit(best, n);
+  }
+  // Torre no hexágono seu mais perto do inimigo, se ele estiver a 3+ de qualquer ponto de recrutamento.
+  function aiTower(s, me, enemy) {
+    if (!canPay(s.players[me].resources, CONFIG.towerCost)) return null;
+    const points = owned(s, me).filter(c => isRecruitPoint(s, me, c)).map(c => c.coord);
+    let best = null, bd = Infinity;
+    owned(s, me).forEach(c => {
+      if (c.tower || same(c.coord, s.players[me].city)) return;
+      if (points.some(p => dist(p, c.coord) < 3)) return;
+      const d = dist(c.coord, enemy);
+      if (d < bd) { bd = d; best = c.coord; }
+    });
+    return best ? A.tower(best) : null;
+  }
   function aiBestAttack(s, me, enemy) {
     let best = null, bestScore = -Infinity;
     owned(s, me).forEach(h => {
-      if (h.ordered) return;
       const av = available(s, me, h);
       if (av <= 0) return;
       neighbors(h.coord).forEach(n => {
@@ -310,7 +362,7 @@
         if (!t || t.owner === me || isFree(t)) return;
         const def = total(t.army);
         if (av <= def) return;
-        const score = (t.owner >= 0 ? 50 : 30) + def * 2 - dist(n, enemy);
+        const score = (t.owner >= 0 ? 50 : 30) + def * 2 + (t.tower ? 20 : 0) - dist(n, enemy);
         if (score > bestScore) { bestScore = score; best = A.attack(h.coord, n, av); }
       });
     });
@@ -319,7 +371,6 @@
   function aiAdvance(s, me, enemy) {
     let best = null, bestAmount = 0;
     owned(s, me).forEach(h => {
-      if (h.ordered) return;
       const av = available(s, me, h);
       const touchesEnemy = neighbors(h.coord).some(n => { const t = get(s, n); return t && t.owner >= 0 && t.owner !== me; });
       if (av <= bestAmount || touchesEnemy) return;
@@ -381,8 +432,7 @@
       let a = aiNext(S);
       const err = validate(S, a);
       if (err) { console.error('IA tentou uma ação inválida', a, err); a = A.end(); }
-      applyAction(a);
-      if (tok === token && S.winner < 0 && S.current === me) setTimeout(step, AI_DELAY);
+      applyAction(a);   // a ação encerra o turno; beginTurn chama a IA seguinte, se houver
     };
     setTimeout(step, AI_DELAY);
   }
@@ -394,14 +444,29 @@
   }
 
   function applyAction(a) {
-    const r = apply(S, a);
-    if (r) onBattle(r);
+    const who = S.players[S.current].name;
+    const r = apply(S, a);   // aplica e já passa a vez (GDD §6.3)
+    if (r) onBattle(r); else logAction(who, a);
     if (a.type === 'conquistar') addFx(a.to, '+', '#1f8a3a');
-    if (a.type === 'recrutar') addFx(S.players[S.current].city, `+${a.count}`, '#1f8a3a');
-    refreshSelection();
+    if (a.type === 'recrutar') addFx(a.to, `+${a.count}`, '#1f8a3a');
+    if (a.type === 'torre') addFx(a.to, '🗼', '#1f8a3a');
     refreshHud();
     if (S.winner >= 0) { gameOver(); return; }
-    if (a.type === 'fim') beginTurn();
+    beginTurn();
+  }
+
+  // Como cada turno é uma ação só, o registro conta o que o jogador anterior fez.
+  function logAction(who, a) {
+    const cell = a.to && get(S, a.to);
+    const place = cell ? (same(cell.coord, S.players[cell.owner]?.city ?? hx(99, 99)) ? 'na cidade' : `em ${TERRAIN[cell.terrain].name}`) : '';
+    const text = {
+      conquistar: `comprou ${place.replace(/^em /, '')}`,
+      recrutar: `recrutou ${a.count} soldado(s) ${cell && cell.tower ? 'na torre de vigia' : place}`,
+      torre: `construiu uma torre de vigia ${place}`,
+      mover: `moveu ${a.count} tropa(s)`,
+      fim: 'passou a vez',
+    }[a.type];
+    $('log').textContent = `${who} ${text || a.type}.`;
   }
 
   function onBattle(r) {
@@ -451,19 +516,25 @@
   function select(h) {
     const cell = get(S, h);
     const isCity = same(h, S.players[S.current].city);
-    const canOrder = !cell.ordered && total(cell.army) > 0;
+    const canOrder = total(cell.army) > 0;
     if (canOrder) { selected = h; computeTargets(); } else deselect();
-    const hint = canOrder ? 'Toque num vizinho para mover ou atacar.'
-      : cell.ordered ? 'Este hexágono já agiu neste turno.' : 'Sem tropas aqui.';
+    const hint = canOrder ? 'Ou toque num vizinho para mover ou atacar.' : 'Sem tropas aqui.';
+    const title = `${isCity ? 'Cidade' : TERRAIN[cell.terrain].name}${cell.tower ? ' com torre 🗼' : ''}: ${total(cell.army)} tropas`;
+    const prod = isCity ? 'Produz 1 de cada recurso.' : `Produz ${TERRAIN[cell.terrain].res}.`;
     const max = maxRecruit(S);
-    if (isCity && max > 0) {
-      showCount('Cidade: recrutar soldados',
-        n => `${n} soldado(s) por ${bagText(times(CONFIG.soldierCost, n))}.\n${hint}`,
-        max, 'Recrutar', n => submit(A.recruit(n)));
+    // Cidade e torre de vigia: recrutar aqui.
+    if (isCity || cell.tower) {
+      if (max > 0) {
+        showCount(title, n => `Recrutar ${n} soldado(s) aqui por ${bagText(times(CONFIG.soldierCost, n))}.\n${hint}`,
+          max, 'Recrutar', n => submit(A.recruit(h, n)));
+      } else showInfo(title, `${prod}\nSem recursos para recrutar (${bagText(CONFIG.soldierCost)} cada).\n${hint}`);
       return;
     }
-    const prod = isCity ? 'Produz 1 de cada recurso.' : `Produz ${TERRAIN[cell.terrain].res}.`;
-    showInfo(`${TERRAIN[cell.terrain].name}: ${total(cell.army)} tropas`, `${prod}\n${hint}`);
+    // Outro hexágono seu: construir torre de vigia.
+    const err = validate(S, A.tower(h));
+    const tower = `Torre de vigia (${bagText(CONFIG.towerCost)}): vira ponto de recrutamento.`;
+    if (!err) showConfirm(title, `${prod}\n${tower}\n${hint}`, 'Construir torre', () => submit(A.tower(h)));
+    else showInfo(title, `${prod}\n${tower}\n${err}\n${hint}`);
   }
 
   function tryOrder(from, to) {
@@ -471,7 +542,7 @@
     const max = total(get(S, from).army);
     if (target.owner === S.current) {
       if (validate(S, A.move(from, to, 1))) return false;
-      showCount('Mover tropas', n => `Levar ${n} de ${max} tropas.\nOs dois hexágonos ficam sem ordem neste turno.`,
+      showCount('Mover tropas', n => `Levar ${n} de ${max} tropas.`,
         max, 'Mover', n => submit(A.move(from, to, n)));
       return true;
     }
@@ -501,11 +572,6 @@
       !validate(S, A.move(selected, n, 1)) || !validate(S, A.attack(selected, n, 1))) : [];
   }
   function deselect() { selected = null; targets = []; }
-  function refreshSelection() {
-    if (!selected) return;
-    const c = get(S, selected);
-    if (c.owner !== S.current || c.ordered || total(c.army) === 0) deselect(); else computeTargets();
-  }
 
   // ---------------------------------------------------------------- painel
   let panelOk = null, panelBody = null;
@@ -619,6 +685,11 @@
         ctx.font = `${Math.round(z * (n > 0 || free ? 0.48 : 0.62))}px system-ui, "Segoe UI Emoji", sans-serif`;
         ctx.fillText(TERRAIN[c.terrain].icon, p.x, p.y - (n > 0 || free ? z * 0.24 : 0));
         ctx.globalAlpha = 1;
+        // torre de vigia no canto de cima
+        if (c.tower) {
+          ctx.font = `${Math.round(z * 0.36)}px system-ui, "Segoe UI Emoji", sans-serif`;
+          ctx.fillText('🗼', p.x + z * 0.42, p.y - z * 0.4);
+        }
         // tropas
         if (n > 0) drawBadge(c, p.x, p.y + z * 0.28, n, z);
         // custo de compra: forte onde dá para comprar agora, apagado no resto
@@ -642,15 +713,12 @@
 
   function drawBadge(c, x, y, n, z) {
     const neutral = c.owner < 0;
-    const dim = !neutral && c.ordered;
-    ctx.globalAlpha = dim ? 0.45 : 1;
     const label = neutral ? `${c.army.monstros > 0 ? '👹' : '🗡️'} ${n}` : String(n);
     ctx.font = `bold ${Math.round(z * 0.36)}px system-ui, "Segoe UI Emoji", sans-serif`;
     const wdt = Math.max(z * 0.5, ctx.measureText(label).width + z * 0.24), hgt = z * 0.44;
     ctx.fillStyle = neutral ? '#3b2a2a' : PLAYER_COLORS[c.owner];
     roundRect(x - wdt / 2, y - hgt / 2, wdt, hgt, hgt / 2); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.fillText(label, x, y + 1);
-    ctx.globalAlpha = 1;
   }
 
   // POR QUE: o jogador vê no próprio tabuleiro quanto custa cada hexágono livre.

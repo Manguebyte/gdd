@@ -16,7 +16,7 @@
   <button id="menuBtn" class="ghost" title="Voltar ao menu">☰</button>
 </header>
 <div id="log" hidden></div>
-<button id="endTurn" hidden>Encerrar turno</button>
+<button id="endTurn" hidden>Passar a vez</button>
 
 <!-- Painel de ação -->
 <section id="panel" hidden>
@@ -57,13 +57,14 @@
     <details>
       <summary>Como jogar</summary>
       <ul>
+        <li><b>Uma ação por turno:</b> comprar, recrutar, construir torre, mover ou atacar. Depois a vez passa sozinha.</li>
         <li>Cada hexágono seu produz o recurso dele no início do seu turno; a cidade produz 1 de cada.</li>
         <li>Hexágono <b>livre</b> vizinho do seu reino: toque nele e pague <b>2 madeira + 1 pedra</b>.</li>
-        <li>Toque na <b>cidade</b> para recrutar soldados (<b>1 ouro + 1 pasto</b> cada).</li>
+        <li>Toque na <b>cidade</b> ou numa <b>torre de vigia</b> 🗼 para recrutar soldados ali (<b>1 ouro + 1 pasto</b> cada).</li>
+        <li>Toque noutro hexágono seu para construir uma torre de vigia (<b>2 madeira + 2 pedra</b>). Quem tomar o hexágono fica com a torre.</li>
         <li>Toque num hexágono seu com tropas e depois num vizinho: <b>mover</b> (se for seu) ou <b>atacar</b>.</li>
         <li>Batalha sem sorte: quem tem mais vence e perde tantos quanto o outro tinha. Empate zera os dois.</li>
         <li>Monstros 👹 e saqueadores 🗡️ vencidos entram no seu exército.</li>
-        <li>Cada hexágono dá uma ordem por turno; quem recebe tropas também para.</li>
         <li>Arraste para mover o mapa; roda do mouse ou pinça para zoom.</li>
       </ul>
     </details>

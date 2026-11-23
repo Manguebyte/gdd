@@ -1,6 +1,6 @@
 # GDD — Reinos Hex (nome de trabalho)
 
-**Versão:** 0.1.2 · [histórico](#histórico-de-versões)
+**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
 
 > Documento vivo. Rascunho inicial: este GDD separa o que já foi **Definido** pelo time do que está **Em aberto**. Tudo que aparece como **proposta** (principalmente os números da §15 e alguns detalhes de regra) foi escrito para o protótipo/guia funcionar, mas ainda não foi decidido: pode e deve mudar no primeiro playtest.
 >
@@ -45,11 +45,11 @@
 
 1. Cada jogador começa com **uma cidade** num hexágono.
 2. Os hexágonos ao redor podem ter **recursos** (madeira, pedra, ouro, pasto...), **monstros** ou **saqueadores**.
-3. No seu turno, você expande o reino:
+3. No seu turno, você faz **uma única ação** (§6.3) e a vez passa. Com ela você expande o reino:
    - um hexágono **livre** (sem dono e sem ninguém nele) se conquista **pagando recursos** (§5);
    - um hexágono **inimigo** (do adversário, de monstros ou de saqueadores) se conquista **numa batalha** de soldados contra soldados (§7).
 4. Cada hexágono seu **produz o recurso dele a cada turno** (§4).
-5. Recursos pagam novos hexágonos e **recrutam soldados** na cidade (§6.2).
+5. Recursos pagam novos hexágonos, **torres de vigia** e **recrutam soldados** na cidade ou numa torre (§6.2).
 6. Monstros e saqueadores vencidos **entram para o seu exército** (§8).
 7. Quem tomar a cidade do adversário vence (§9).
 
@@ -95,18 +95,22 @@
 - **Definido:** as tropas ficam **em hexágonos**. Cada hexágono seu tem um número de tropas, e você move e ataca **a partir de um hexágono**.
 - **Proposta:** tipos de tropa no exército: **Soldado** (recrutado), **Monstro** e **Mercenário** (absorvidos, §8). No MVP **todos valem 1** na batalha. **Em aberto:** se monstros e mercenários devem valer mais (ou ter outra vantagem) do que soldados.
 
-### 6.2 Recrutar
+### 6.2 Recrutar e torres de vigia
 
 - **Definido:** a cidade recruta soldados pagando recursos.
-- **Proposta:** soldados recrutados aparecem no hexágono da cidade, sem limite por turno além dos recursos. Custo na §15.
+- **Definido:** o jogador pode construir **torres de vigia**, que viram **novos pontos de recrutamento**. Com elas o exército nasce perto da frente, sem precisar atravessar o reino a partir da cidade.
+- **Definido:** a torre se constrói em qualquer hexágono seu que não seja a cidade, **uma por hexágono**. O hexágono continua produzindo o recurso dele.
+- **Definido:** quem tomar o hexágono de uma torre **fica com a torre**; ela passa a recrutar para o novo dono.
+- **Proposta:** a torre custa 2 madeira + 2 pedra (§15) e não dá vantagem de defesa. **Em aberto:** limite de torres, custo crescente, torre que se destrói, outras funções (ver mais longe com névoa de guerra, defesa +1).
+- **Proposta:** recrutar é escolher um ponto de recrutamento seu (cidade ou torre) e quantos soldados; eles aparecem nesse hexágono, sem limite além dos recursos. Custo na §15.
 - **Proposta:** monstros e mercenários **não** se recrutam; só vêm de batalhas (§8).
 
-### 6.3 Ordens: mover e atacar
+### 6.3 Uma ação por turno
 
-- **Proposta:** cada hexágono seu pode dar **uma ordem por turno**: **mover** parte das tropas para um hexágono vizinho seu, ou **atacar** um hexágono vizinho com parte das tropas.
-- **Proposta:** o hexágono que **recebe** tropas também fica sem ordem neste turno. Isso impede atravessar o mapa inteiro num turno só, passando tropas de mão em mão.
-- **Proposta:** recrutar e conquistar hexágono livre não gastam ordem.
-- **Em aberto:** alcance maior que 1 hexágono, unidades com movimento próprio.
+- **Definido:** cada jogador faz **uma ação por vez**: no seu turno escolhe **uma** ação e, feita ela, a vez passa para o adversário.
+- **Proposta:** as ações são **comprar** um hexágono livre (§5), **recrutar** num ponto de recrutamento (§6.2), **construir** uma torre de vigia (§6.2), **mover** parte das tropas de um hexágono seu para um vizinho seu, ou **atacar** um hexágono vizinho com parte das tropas de um hexágono seu (§7). Também dá para **passar a vez** sem fazer nada.
+- **Proposta:** a produção (§4) continua entrando no início de cada turno, então os recursos tendem a sobrar: a escolha do turno é *o que* fazer, não *se dá para pagar*.
+- **Em aberto:** alcance maior que 1 hexágono, unidades com movimento próprio, ações extras (ex.: 2 ações por turno, ou uma ação de tropa mais uma de economia) se a partida ficar lenta.
 
 ## 7. Batalha
 
@@ -138,9 +142,9 @@
 
 ## 10. Modos de Jogo
 
-- **Contra IA.** **Definido.** Proposta: um rival que segue regras simples (ataca a cidade se puder vencer, compra hexágonos, recruta, ataca o que consegue vencer e empurra tropas para a frente). Níveis de dificuldade **Em aberto**.
+- **Contra IA.** **Definido.** Proposta: um rival que segue regras simples e escolhe uma ação por turno (ataca a cidade se puder vencer, ataca o que consegue vencer, constrói torre de vigia perto da frente, compra hexágonos ou recruta, e empurra tropas para a frente). Níveis de dificuldade **Em aberto**.
 - **Dois jogadores no mesmo aparelho (hot-seat).** **Definido.** Proposta: entre os turnos aparece uma tela "Vez de Fulano" para passar o aparelho.
-- **Online.** **Definido.** Proposta: um jogador cria uma sala e recebe um código de 6 letras; o outro entra com o código. Cada turno é enviado para o servidor como a lista de ações feitas; o outro aparelho repete essas ações nas mesmas regras e chega ao mesmo estado (§13). **Em aberto:** matchmaking aleatório, limite de tempo por turno, o que acontece quando alguém abandona, notificação de "sua vez".
+- **Online.** **Definido.** Proposta: um jogador cria uma sala e recebe um código de 6 letras; o outro entra com o código. Cada turno (uma ação, §6.3) é enviado para o servidor como uma lista de ações; o outro aparelho repete essas ações nas mesmas regras e chega ao mesmo estado (§13). **Em aberto:** matchmaking aleatório, limite de tempo por turno, o que acontece quando alguém abandona, notificação de "sua vez".
 - **Em aberto:** quem começa (hoje é sempre o jogador 1) e se o segundo jogador recebe alguma compensação.
 
 ## 11. Estilo Visual
@@ -156,9 +160,10 @@
 
 - Topo: turno atual e de quem é a vez (na cor do jogador).
 - Recursos do jogador que está olhando (no hot-seat, o da vez), tamanho do território e total de tropas.
-- Botão **Encerrar turno**.
-- Painel de ação que abre ao tocar num hexágono: conquistar (mostra o custo), recrutar (com quantidade), mover e atacar (com quantidade e a **previsão do resultado** da batalha, que dá para calcular porque ela é determinística).
-- Linha de registro com a última batalha.
+- Painel de ação que abre ao tocar num hexágono: conquistar (mostra o custo), recrutar na cidade ou na torre (com quantidade), construir torre de vigia (num hexágono seu sem torre), mover e atacar (com quantidade e a **previsão do resultado** da batalha, que dá para calcular porque ela é determinística).
+- Botão **Passar a vez**, para passar sem agir (qualquer outra ação já passa a vez sozinha).
+- Linha de registro com a última ação do adversário (como cada turno é uma ação só, ela conta o que ele acabou de fazer).
+- Torre de vigia: ícone no canto do hexágono, que troca de cor junto com o dono.
 - Tela de fim de partida.
 
 ## 13. Backend / Serviços
@@ -181,11 +186,11 @@
 
 - Um tabuleiro hexagonal com cidade inicial, terrenos de recurso, monstros e saqueadores.
 - Conquista de hexágono livre pagando recursos; batalha determinística; neutros que entram no exército.
-- Tropas por hexágono, recrutamento, vitória ao tomar a cidade inimiga.
+- Uma ação por turno; tropas por hexágono, recrutamento na cidade e em torres de vigia; vitória ao tomar a cidade inimiga.
 - Os três modos: contra IA, hot-seat e online.
 - PC e mobile.
 
-**Proposta (fica para depois do MVP):** névoa de guerra, mais tipos de unidade e de recurso, construções, vários mapas, 3+ jogadores, ranking, arte final, som.
+**Proposta (fica para depois do MVP):** névoa de guerra, mais tipos de unidade e de recurso, outras construções além da torre, vários mapas, 3+ jogadores, ranking, arte final, som.
 
 ## 15. Placeholders de Balanceamento
 
@@ -204,6 +209,7 @@ Todos os valores abaixo são **proposta** e ficam no asset `GameConfig` (Fase 2)
 | Produção da cidade | 1 de cada por turno |
 | Custo para conquistar hexágono livre | 2 madeira + 1 pedra |
 | Custo de 1 soldado | 1 ouro + 1 pasto |
+| Custo da torre de vigia | 2 madeira + 2 pedra |
 | Neutros que se juntam ao exército | 100% |
 
 ## 16. Riscos / Em aberto (consolidado)
@@ -214,6 +220,7 @@ Todos os valores abaixo são **proposta** e ficam no asset `GameConfig` (Fase 2)
 - Formato do mapa, mapas fixos vs. gerados, névoa de guerra.
 - Custo de hexágono livre (fixo, por terreno, crescente).
 - Valor de monstros/mercenários na batalha; manutenção do exército.
+- Uma ação por turno: se a partida fica lenta ou se sobra recurso demais; limite e custo das torres de vigia.
 - Vantagem de defesa e ataque combinado.
 - Saqueadores e mercenários: mesmo grupo ou dois.
 - Neutros parados ou ativos.
@@ -225,6 +232,7 @@ Todos os valores abaixo são **proposta** e ficam no asset `GameConfig` (Fase 2)
 
 ## Histórico de versões
 
+- **0.2.0** (2026-11-23): **uma ação por turno** (comprar, recrutar, construir torre, mover ou atacar; depois a vez passa) no lugar de uma ordem por hexágono; **torres de vigia** (2 madeira + 2 pedra), novos pontos de recrutamento que passam para quem tomar o hexágono. GDD, guia Unity e protótipo.
 - **0.1.2** (2026-11-23): cada hexágono livre mostra o ícone do custo de compra (🪵2 🪨1), forte onde dá para comprar agora e apagado no resto.
 - **0.1.1** (2026-11-23): protótipo web em `prototipos/reinos-hex/` (contra IA e dois jogadores no mesmo aparelho; o online fica só no guia Unity).
 - **0.1.0** (2026-11-23): primeira versão do GDD e do guia Unity (tabuleiro hexagonal, conquista paga e por batalha determinística, neutros que entram no exército, IA, hot-seat e online com Firebase).
@@ -667,7 +675,8 @@ namespace ReinosHex.Core
     // de um hexágono mora aqui.
     // ESTRATÉGIA: dados puros, sem lógica. "owner = -1" significa sem dono; se não
     // tem dono mas tem tropas, são neutros (monstros ou saqueadores, GDD §8).
-    // "ordered" marca que o hexágono já deu sua ordem no turno (GDD §6.3).
+    // "tower" marca uma torre de vigia: um ponto de recrutamento a mais (GDD §6.2).
+    // Ela pertence a quem é dono do hexágono, então trocar o owner já entrega a torre.
     [Serializable]
     public class HexCell
     {
@@ -675,7 +684,7 @@ namespace ReinosHex.Core
         public Terrain terrain;
         public int owner = -1;
         public Army army = new Army();
-        public bool ordered;
+        public bool tower;
 
         public bool IsNeutralOccupied => owner < 0 && army.Total > 0;
         public bool IsFree => owner < 0 && army.Total == 0;
@@ -683,7 +692,7 @@ namespace ReinosHex.Core
         // Cópia completa, usada para espelhar o mapa na geração.
         public HexCell CloneAt(HexCoord at) => new HexCell
         {
-            coord = at, terrain = terrain, owner = owner, army = army.Clone(), ordered = ordered,
+            coord = at, terrain = terrain, owner = owner, army = army.Clone(), tower = tower,
         };
     }
 }
@@ -745,6 +754,8 @@ namespace ReinosHex.Core
         [Header("Custos")]
         public ResourceBag claimCost = new ResourceBag(2, 1, 0, 0);
         public ResourceBag soldierCost = new ResourceBag(0, 0, 1, 1);
+        [Tooltip("Torre de vigia: novo ponto de recrutamento (GDD §6.2).")]
+        public ResourceBag towerCost = new ResourceBag(2, 2, 0, 0);
 
         [Header("Batalha")]
         [Tooltip("Quantos % dos neutros vencidos entram no exército.")]
@@ -1013,13 +1024,16 @@ using System.Collections.Generic;
 namespace ReinosHex.Core
 {
     // POR QUE: tudo que um jogador pode fazer vira um objeto destes. Humano, IA e
-    // adversário online falam a mesma "língua", e uma lista de ações descreve um
-    // turno inteiro (é isso que vai para o Firestore na Fase 8).
+    // adversário online falam a mesma "língua". Como cada turno é UMA ação (GDD §6.3),
+    // o turno que vai para o Firestore na Fase 8 é uma lista com uma ação só.
     // ESTRATÉGIA: uma classe só com um "type" e os campos que cada tipo usa
-    // (de onde, para onde, quantos). Campos públicos e [Serializable] para o
-    // JsonUtility do Unity converter em texto. As fábricas estáticas (Claim,
-    // Recruit...) evitam montar o objeto à mão e errar um campo.
-    public enum ActionType { Conquistar, Recrutar, Mover, Atacar, FimDoTurno }
+    // (de onde, para onde, quantos). Recrutar e ConstruirTorre usam "to" como o
+    // hexágono onde acontecem. Campos públicos e [Serializable] para o JsonUtility
+    // do Unity converter em texto. As fábricas estáticas (Claim, Recruit...) evitam
+    // montar o objeto à mão e errar um campo. FimDoTurno agora é "passar a vez".
+    // ConstruirTorre fica no FIM do enum: o JsonUtility grava o enum como número,
+    // e mudar a posição dos outros quebraria turnos já gravados.
+    public enum ActionType { Conquistar, Recrutar, Mover, Atacar, FimDoTurno, ConstruirTorre }
 
     [Serializable]
     public class GameAction
@@ -1030,7 +1044,9 @@ namespace ReinosHex.Core
         public int count;
 
         public static GameAction Claim(HexCoord to) => new GameAction { type = ActionType.Conquistar, to = to };
-        public static GameAction Recruit(int count) => new GameAction { type = ActionType.Recrutar, count = count };
+        public static GameAction Recruit(HexCoord at, int count) =>
+            new GameAction { type = ActionType.Recrutar, to = at, count = count };
+        public static GameAction BuildTower(HexCoord at) => new GameAction { type = ActionType.ConstruirTorre, to = at };
         public static GameAction Move(HexCoord from, HexCoord to, int count) =>
             new GameAction { type = ActionType.Mover, from = from, to = to, count = count };
         public static GameAction Attack(HexCoord from, HexCoord to, int count) =>
@@ -1111,7 +1127,8 @@ namespace ReinosHex.Core
     // ESTRATÉGIA: duas portas.
     //  - Validate(estado, ação): devolve null se pode, ou o motivo em texto se não pode.
     //    Não muda nada; a UI usa para habilitar botões e a IA para escolher jogadas.
-    //  - Apply(estado, ação): valida de novo (nunca confia em quem chamou) e aplica.
+    //  - Apply(estado, ação): valida de novo (nunca confia em quem chamou), aplica e
+    //    PASSA A VEZ: cada turno é uma ação só (GDD §6.3).
     // Tudo é determinístico: sem sorteio, sem relógio. Mesmo estado + mesma ação =
     // mesmo resultado em qualquer aparelho.
     public static class Rules
@@ -1138,8 +1155,21 @@ namespace ReinosHex.Core
                 }
                 case ActionType.Recrutar:
                 {
+                    var at = s.Get(a.to);
+                    if (at == null) return "Fora do mapa.";
+                    if (!IsRecruitPoint(s, me, at)) return "Só se recruta na cidade ou numa torre de vigia sua.";
                     if (a.count < 1) return "Recrute pelo menos 1.";
                     if (a.count > MaxRecruit(s)) return $"Faltam recursos. Cada soldado custa {cfg.soldierCost}.";
+                    return null;
+                }
+                case ActionType.ConstruirTorre:
+                {
+                    var at = s.Get(a.to);
+                    if (at == null) return "Fora do mapa.";
+                    if (at.owner != me) return "Só dá para construir em hexágono seu.";
+                    if (a.to == s.players[me].city) return "A cidade já recruta.";
+                    if (at.tower) return "Esse hexágono já tem torre.";
+                    if (!s.players[me].resources.CanPay(cfg.towerCost)) return $"Faltam recursos. Custo: {cfg.towerCost}.";
                     return null;
                 }
                 case ActionType.Mover:
@@ -1149,7 +1179,6 @@ namespace ReinosHex.Core
                     var to = s.Get(a.to);
                     if (from == null || to == null) return "Fora do mapa.";
                     if (from.owner != me) return "A origem não é sua.";
-                    if (from.ordered) return "Esse hexágono já agiu neste turno.";
                     if (!a.from.IsNeighbor(a.to)) return "Só dá para agir em hexágonos vizinhos.";
                     if (a.count < 1 || a.count > from.army.Total) return "Quantidade de tropas inválida.";
                     if (a.type == ActionType.Mover)
@@ -1166,11 +1195,20 @@ namespace ReinosHex.Core
 
         // ---------- Aplicação ----------
 
-        // Aplica a ação. Devolve o relatório se foi uma batalha; senão, null.
+        // Aplica a ação e passa a vez (GDD §6.3). Devolve o relatório se foi uma
+        // batalha; senão, null. Se a ação acabou a partida, a vez não passa.
         public static BattleReport Apply(GameState s, GameAction a)
         {
             string error = Validate(s, a);
             if (error != null) throw new InvalidOperationException($"{a}: {error}");
+            var report = ApplyOne(s, a);
+            if (!s.IsOver) EndTurn(s);
+            return report;
+        }
+
+        // O efeito de cada ação, sem passar a vez.
+        static BattleReport ApplyOne(GameState s, GameAction a)
+        {
             int me = s.current;
             var cfg = s.config;
             var player = s.players[me];
@@ -1186,7 +1224,13 @@ namespace ReinosHex.Core
                 case ActionType.Recrutar:
                 {
                     player.resources.Pay(cfg.soldierCost.Times(a.count));
-                    s.Get(player.city).army.soldados += a.count;
+                    s.Get(a.to).army.soldados += a.count; // na cidade ou na torre escolhida
+                    return null;
+                }
+                case ActionType.ConstruirTorre:
+                {
+                    player.resources.Pay(cfg.towerCost);
+                    s.Get(a.to).tower = true;
                     return null;
                 }
                 case ActionType.Mover:
@@ -1194,17 +1238,12 @@ namespace ReinosHex.Core
                     var from = s.Get(a.from);
                     var to = s.Get(a.to);
                     to.army.Add(from.army.Take(a.count));
-                    from.ordered = true;
-                    to.ordered = true; // quem recebe também não age mais (GDD §6.3)
                     return null;
                 }
                 case ActionType.Atacar:
                     return ApplyAttack(s, a);
-                case ActionType.FimDoTurno:
-                    EndTurn(s);
-                    return null;
             }
-            return null;
+            return null; // FimDoTurno: passar a vez sem fazer nada
         }
 
         // ---------- Batalha ----------
@@ -1243,7 +1282,6 @@ namespace ReinosHex.Core
             var to = s.Get(a.to);
 
             var sent = from.army.Take(a.count);
-            from.ordered = true;
             sent.Take(r.attackerLosses);
             to.army.Take(r.defenderLosses);
 
@@ -1252,8 +1290,7 @@ namespace ReinosHex.Core
                 sent.monstros += r.joinedMonsters;
                 sent.mercenarios += r.joinedMercenaries;
                 to.army = sent;
-                to.owner = s.current;
-                to.ordered = true;
+                to.owner = s.current; // uma torre no hexágono passa junto (GDD §6.2)
                 if (r.cityCaptured)
                 {
                     s.players[r.defender].alive = false;
@@ -1288,17 +1325,13 @@ namespace ReinosHex.Core
             StartTurn(s);
         }
 
-        // Início do turno: libera as ordens e soma a produção (GDD §4 e §6.3).
+        // Início do turno: soma a produção (GDD §4).
         public static void StartTurn(GameState s)
         {
             int me = s.current;
             var resources = s.players[me].resources;
             foreach (var c in s.cells)
-            {
-                if (c.owner != me) continue;
-                c.ordered = false;
-                resources.Add(Yield(s.config, c.terrain));
-            }
+                if (c.owner == me) resources.Add(Yield(s.config, c.terrain));
         }
 
         // ---------- Ajudantes (também usados pela UI e pela IA) ----------
@@ -1331,6 +1364,10 @@ namespace ReinosHex.Core
             return max == int.MaxValue ? 0 : max; // custo zero = recrutamento desligado
         }
 
+        // Dá para recrutar neste hexágono? Só na cidade ou numa torre de vigia do jogador (GDD §6.2).
+        public static bool IsRecruitPoint(GameState s, int player, HexCell c) =>
+            c.owner == player && (c.tower || c.coord == s.players[player].city);
+
         // O hexágono encosta em algum hexágono do jogador?
         public static bool TouchesTerritory(GameState s, int player, HexCoord c)
         {
@@ -1357,7 +1394,8 @@ namespace ReinosHex.Tests
     // POR QUE: as regras são o coração do jogo e do online. Este teste monta
     // situações conhecidas e confere os números dos exemplos do GDD §7.
     // ESTRATÉGIA: gera um mapa, ESCREVE à mão o conteúdo de dois vizinhos da cidade
-    // e aplica ações em sequência, conferindo o estado depois de cada uma.
+    // e aplica ações em sequência, conferindo o estado depois de cada uma. Como cada
+    // ação passa a vez (GDD §6.3), o jogador B passa a vez entre as ações de A.
     public class RulesSelfTest : MonoBehaviour
     {
         [SerializeField] GameConfig config;
@@ -1381,25 +1419,35 @@ namespace ReinosHex.Tests
             var r = Rules.Apply(s, GameAction.Attack(city, alvo.coord, 5));
             Check(r.attackerWon && alvo.owner == 0, "vitória 5x3");
             Check(alvo.army.soldados == 2 && alvo.army.monstros == 3, "2 soldados + 3 monstros no alvo");
-            Check(Rules.Validate(s, GameAction.Attack(city, outro.coord, 1)) != null, "cidade já agiu");
 
-            // Fecha o turno de A e o de B; volta para A na rodada 2.
-            Rules.Apply(s, GameAction.EndTurn());
-            Rules.Apply(s, GameAction.EndTurn());
+            // Uma ação por turno: a vez já passou para B sozinha.
+            Check(s.current == 1 && s.ply == 1, "a ação passou a vez");
+            Rules.Apply(s, GameAction.EndTurn()); // B passa
             Check(s.current == 0 && s.turn == 2 && s.ply == 2, "voltou para A na rodada 2");
 
             // 3 contra 4: derrota, o defensor fica com 1, a origem fica com 2.
             var r2 = Rules.Apply(s, GameAction.Attack(alvo.coord, outro.coord, 3));
             Check(!r2.attackerWon && outro.army.Total == 1 && alvo.army.Total == 2, "derrota 3x4");
+            Rules.Apply(s, GameAction.EndTurn()); // B passa
 
-            // Recrutar: tenta o máximo que dá para pagar.
-            int max = Rules.MaxRecruit(s);
-            if (max > 0)
-            {
-                int antes = s.Get(city).army.soldados;
-                Rules.Apply(s, GameAction.Recruit(max));
-                Check(s.Get(city).army.soldados == antes + max, "recrutou na cidade");
-            }
+            // Torre de vigia no alvo: só recruta lá depois de construir.
+            s.players[0].resources.Add(new ResourceBag(10, 10, 10, 10));
+            Check(Rules.Validate(s, GameAction.Recruit(alvo.coord, 1)) != null, "sem torre não recruta");
+            Check(Rules.Validate(s, GameAction.BuildTower(city)) != null, "não constrói torre na cidade");
+            Rules.Apply(s, GameAction.BuildTower(alvo.coord));
+            Check(alvo.tower, "torre construída");
+            Rules.Apply(s, GameAction.EndTurn()); // B passa
+
+            // Recrutar na torre: os soldados aparecem nela, não na cidade.
+            int naCidade = s.Get(city).army.soldados, naTorre = alvo.army.soldados;
+            Rules.Apply(s, GameAction.Recruit(alvo.coord, 2));
+            Check(alvo.army.soldados == naTorre + 2 && s.Get(city).army.soldados == naCidade, "recrutou na torre");
+
+            // B toma o hexágono da torre e fica com ela.
+            var deB = s.Get(alvo.coord.Neighbor(0));
+            deB.owner = 1; deB.army = new Army { soldados = alvo.army.Total + 1 };
+            Rules.Apply(s, GameAction.Attack(deB.coord, alvo.coord, deB.army.Total));
+            Check(alvo.owner == 1 && alvo.tower && Rules.IsRecruitPoint(s, 1, alvo), "a torre passou para B");
             Debug.Log("RulesSelfTest terminou.");
         }
 
@@ -1421,7 +1469,8 @@ namespace ReinosHex.Tests
 #### Problemas comuns
 
 - **`InvalidOperationException` no Console:** uma ação inválida chegou em `Apply`. A mensagem diz qual ação e por quê; é o comportamento esperado (o `Apply` nunca aplica nada inválido).
-- **"cidade já agiu" falha:** `ApplyAttack` precisa marcar `from.ordered = true` antes de qualquer `return`.
+- **"a ação passou a vez" falha:** `Apply` precisa chamar `EndTurn` depois de `ApplyOne` (menos quando a partida acabou).
+- **"a torre passou para B" falha:** a vizinha `alvo.coord.Neighbor(0)` caiu fora do mapa ou na cidade de A nesta semente; troque o `0` por outra direção (1 a 5).
 
 Próxima fase: **Tabuleiro na Tela e Input** — desenhar o mapa e tocar nos hexágonos.
 
@@ -1550,8 +1599,7 @@ namespace ReinosHex.View
             borderColor = owned ? map.PlayerColor(cell.owner) : map.neutralBorder;
             borderWidth = owned ? 0.07f : 0.02f;
             label.text = LabelFor(cell);
-            // Hexágono que já deu ordem fica com o texto apagado (GDD §6.3).
-            label.color = owned && cell.ordered ? new Color(LabelColor.r, LabelColor.g, LabelColor.b, 0.4f) : LabelColor;
+            label.color = LabelColor;
             ApplyHighlight();
         }
 
@@ -1573,10 +1621,10 @@ namespace ReinosHex.View
             border.startWidth = w; border.endWidth = w;
         }
 
-        // Texto provisório: terreno em cima, tropas embaixo.
+        // Texto provisório: terreno em cima (com "Torre" se tiver uma, GDD §6.2), tropas embaixo.
         static string LabelFor(HexCell c)
         {
-            string top = TerrainInfo.Name(c.terrain);
+            string top = TerrainInfo.Name(c.terrain) + (c.tower ? " · Torre" : "");
             if (c.army.Total == 0) return top;
             if (c.owner < 0)
                 return c.army.monstros > 0 ? $"{top}\nMonstros {c.army.Total}" : $"{top}\nSaqueadores {c.army.Total}";
@@ -1976,11 +2024,12 @@ namespace ReinosHex.Match
     //  - Eventos C# (event Action) em vez de referências diretas: o HUD, o painel de
     //    passar o aparelho e o OnlineSync "se inscrevem" e o MatchController não
     //    precisa conhecer nenhum deles.
-    //  - Ações locais do turno ficam guardadas em turnActions. Quando o turno local
-    //    acaba (ou a partida acaba no meio dele), LocalTurnEnded entrega a lista
-    //    para o online enviar (Fase 8).
+    //  - Cada turno é UMA ação (GDD §6.3): Rules.Apply já passa a vez. A ação local
+    //    fica em turnActions e LocalTurnEnded entrega essa lista (de uma ação) para
+    //    o online enviar (Fase 8). Manter a lista deixa o formato do Firestore pronto
+    //    para o caso de o GDD voltar a ter mais de uma ação por turno.
     //  - Quando é a vez de uma IA, uma Coroutine (função que pode "esperar" entre
-    //    frames) pede uma ação por vez com um pequeno intervalo, para dar para ver.
+    //    frames) espera um pouco e pede a ação dela, para dar para ver.
     public class MatchController : MonoBehaviour
     {
         [SerializeField] GameConfig config;
@@ -1994,6 +2043,7 @@ namespace ReinosHex.Match
         public event Action StateChanged;
         public event Action<int> TurnStarted;
         public event Action<BattleReport> Battle;
+        public event Action<int, GameAction> ActionApplied; // quem agiu e o quê (para o registro)
         public event Action<int> GameOver;
         public event Action<int, int, List<GameAction>> LocalTurnEnded; // ply, jogador, ações
 
@@ -2048,27 +2098,25 @@ namespace ReinosHex.Match
             return null;
         }
 
-        // Aplica, avisa os ouvintes e cuida de troca de turno e fim de jogo.
+        // Aplica, avisa os ouvintes e começa o turno seguinte (ou acaba a partida).
         void ApplyInternal(GameAction action, bool local)
         {
-            var report = Rules.Apply(State, action);
+            int player = State.current;
+            var report = Rules.Apply(State, action); // aplica e já passa a vez
             if (local) turnActions.Add(action);
 
             map.Refresh();
             StateChanged?.Invoke();
+            ActionApplied?.Invoke(player, action);
             if (report != null) Battle?.Invoke(report);
 
+            FlushLocalTurn();
             if (State.IsOver)
             {
-                FlushLocalTurn();
                 GameOver?.Invoke(State.winner);
                 return;
             }
-            if (action.type == ActionType.FimDoTurno)
-            {
-                FlushLocalTurn();
-                BeginTurn();
-            }
+            BeginTurn();
         }
 
         // Entrega as ações do turno local para quem quiser (o online).
@@ -2088,22 +2136,19 @@ namespace ReinosHex.Match
             if (Seats[State.current] == SeatKind.IA) StartCoroutine(RunAi());
         }
 
-        // A IA joga uma ação por vez até encerrar o turno.
+        // A IA faz a ação dela; Apply passa a vez e BeginTurn chama o próximo.
         IEnumerator RunAi()
         {
-            int me = State.current;
-            while (!State.IsOver && State.current == me)
+            yield return new WaitForSeconds(aiDelay);
+            if (State.IsOver) yield break;
+            var action = AiPlayer.NextAction(State);
+            string error = Rules.Validate(State, action);
+            if (error != null)
             {
-                yield return new WaitForSeconds(aiDelay);
-                var action = AiPlayer.NextAction(State);
-                string error = Rules.Validate(State, action);
-                if (error != null)
-                {
-                    Debug.LogError($"IA tentou uma ação inválida ({action}): {error}");
-                    action = GameAction.EndTurn();
-                }
-                ApplyInternal(action, local: true);
+                Debug.LogError($"IA tentou uma ação inválida ({action}): {error}");
+                action = GameAction.EndTurn();
             }
+            ApplyInternal(action, local: true);
         }
     }
 }
@@ -2233,13 +2278,14 @@ namespace ReinosHex.UI
     // POR QUE: transforma toques no tabuleiro em GameActions.
     // ESTRATÉGIA: uma pequena máquina de "selecionado ou não":
     //  - toque num hexágono SEU → seleciona (acende os alvos possíveis); se for a
-    //    cidade, já oferece recrutar;
+    //    cidade ou uma torre, já oferece recrutar ali; se não, oferece construir
+    //    uma torre de vigia (GDD §6.2);
     //  - com algo selecionado, toque num VIZINHO → mover (se for seu) ou atacar
     //    (se for de outro ou de neutros), com quantidade e previsão;
     //  - toque num hexágono LIVRE vizinho do reino → conquistar pagando;
     //  - toque no próprio selecionado → desseleciona.
     // Antes de abrir qualquer painel, pergunta às Rules se a ação é válida, para
-    // nunca oferecer algo que vai falhar.
+    // nunca oferecer algo que vai falhar. Qualquer ação confirmada passa a vez.
     public class HumanInput : MonoBehaviour
     {
         [SerializeField] MatchController match;
@@ -2274,7 +2320,7 @@ namespace ReinosHex.UI
         {
             if (selected is not HexCoord c) return;
             var cell = match.State.Get(c);
-            if (cell.owner != match.State.current || cell.ordered || cell.army.Total == 0) Deselect();
+            if (cell.owner != match.State.current || cell.army.Total == 0) Deselect();
             else ShowTargets(c);
         }
 
@@ -2299,25 +2345,36 @@ namespace ReinosHex.UI
         {
             var s = match.State;
             var cell = s.Get(c);
-            bool isCity = c == s.players[s.current].city;
-            bool canOrder = !cell.ordered && cell.army.Total > 0;
+            bool canOrder = cell.army.Total > 0;
 
             if (canOrder) { selected = c; ShowTargets(c); }
             else Deselect();
 
-            string hint = canOrder ? "Toque num vizinho para mover ou atacar."
-                        : cell.ordered ? "Este hexágono já agiu neste turno."
-                        : "Sem tropas aqui.";
-            int max = Rules.MaxRecruit(s);
-            if (isCity && max > 0)
+            string hint = canOrder ? "Ou toque num vizinho para mover ou atacar." : "Sem tropas aqui.";
+            string title = $"{TerrainInfo.Name(cell.terrain)}{(cell.tower ? " com torre" : "")}: {cell.army.Total} tropas";
+            string produces = $"Produz {TerrainInfo.Produces(cell.terrain)}.";
+
+            // Cidade e torre de vigia: recrutar aqui.
+            if (Rules.IsRecruitPoint(s, s.current, cell))
             {
-                panel.ShowCount("Cidade: recrutar soldados",
-                    n => $"{n} soldado(s) por {s.config.soldierCost.Times(n)}.\n{hint}",
-                    max, "Recrutar", n => Send(GameAction.Recruit(n)));
+                int max = Rules.MaxRecruit(s);
+                if (max > 0)
+                    panel.ShowCount(title,
+                        n => $"Recrutar {n} soldado(s) aqui por {s.config.soldierCost.Times(n)}.\n{hint}",
+                        max, "Recrutar", n => Send(GameAction.Recruit(c, n)));
+                else
+                    panel.ShowInfo(title, $"{produces}\nSem recursos para recrutar ({s.config.soldierCost} cada).\n{hint}");
                 return;
             }
-            panel.ShowInfo($"{TerrainInfo.Name(cell.terrain)}: {cell.army.Total} tropas",
-                $"Produz {TerrainInfo.Produces(cell.terrain)}.\n{hint}");
+
+            // Outro hexágono seu: construir torre de vigia.
+            string tower = $"Torre de vigia ({s.config.towerCost}): vira ponto de recrutamento.";
+            string error = Rules.Validate(s, GameAction.BuildTower(c));
+            if (error == null)
+                panel.ShowConfirm(title, $"{produces}\n{tower}\n{hint}", "Construir torre",
+                    () => Send(GameAction.BuildTower(c)));
+            else
+                panel.ShowInfo(title, $"{produces}\n{tower}\n{error}\n{hint}");
         }
 
         // Com um hexágono selecionado, tenta mover/atacar o vizinho tocado.
@@ -2331,7 +2388,7 @@ namespace ReinosHex.UI
             {
                 if (Rules.Validate(s, GameAction.Move(from, to, 1)) != null) return false;
                 panel.ShowCount("Mover tropas",
-                    n => $"Levar {n} de {max} tropas.\nOs dois hexágonos ficam sem ordem neste turno.",
+                    n => $"Levar {n} de {max} tropas.",
                     max, "Mover", n => Send(GameAction.Move(from, to, n)));
                 return true;
             }
@@ -2406,7 +2463,8 @@ using UnityEngine.UI;
 namespace ReinosHex.UI
 {
     // POR QUE: o que fica sempre na tela (GDD §12): de quem é a vez, recursos,
-    // território, última batalha, botão de encerrar turno e a tela de fim.
+    // território, a última ação (como cada turno é uma ação só, ela conta o que o
+    // adversário acabou de fazer), botão de passar a vez e a tela de fim.
     // ESTRATÉGIA: só escuta eventos do MatchController e reescreve os textos. Não
     // guarda estado próprio, então nunca fica "desatualizado".
     public class Hud : MonoBehaviour
@@ -2430,6 +2488,7 @@ namespace ReinosHex.UI
         void OnEnable()
         {
             match.StateChanged += Refresh;
+            match.ActionApplied += OnAction;
             match.Battle += OnBattle;
             match.GameOver += OnGameOver;
         }
@@ -2437,6 +2496,7 @@ namespace ReinosHex.UI
         void OnDisable()
         {
             match.StateChanged -= Refresh;
+            match.ActionApplied -= OnAction;
             match.Battle -= OnBattle;
             match.GameOver -= OnGameOver;
         }
@@ -2453,6 +2513,26 @@ namespace ReinosHex.UI
             resourcesText.text = $"{s.players[viewer].name}: {s.players[viewer].resources}\n" +
                                  $"Território: {hexes} · Tropas: {troops}";
             endTurnButton.interactable = match.IsLocalHumanTurn;
+        }
+
+        // Registro das ações sem batalha. Num ataque, OnBattle vem logo depois e
+        // escreve o texto da batalha por cima.
+        void OnAction(int player, GameAction a)
+        {
+            var s = match.State;
+            var cell = s.Get(a.to);
+            string place = a.to == s.players[player].city ? "na cidade"
+                         : cell != null ? $"em {TerrainInfo.Name(cell.terrain)}" : "";
+            string what = a.type switch
+            {
+                ActionType.Conquistar => $"comprou {TerrainInfo.Name(cell.terrain)}",
+                ActionType.Recrutar => $"recrutou {a.count} soldado(s) {(cell.tower ? "na torre de vigia" : place)}",
+                ActionType.ConstruirTorre => $"construiu uma torre de vigia {place}",
+                ActionType.Mover => $"moveu {a.count} tropa(s)",
+                ActionType.FimDoTurno => "passou a vez",
+                _ => "",
+            };
+            if (what != "") logText.text = $"{s.players[player].name} {what}.";
         }
 
         void OnBattle(BattleReport r)
@@ -2492,7 +2572,7 @@ namespace ReinosHex.UI
 3. **UI → Canvas.** No **Canvas Scaler**: **Scale With Screen Size**, 1920×1080, **Match** 0,5. Selecione o `EventSystem` criado junto e clique em **Replace with InputSystemUIInputModule**.
 4. Dentro do Canvas, crie (UI → Text - TextMeshPro / Button - TextMeshPro / Slider / Panel):
    - `TurnText` (canto superior esquerdo), `ResourcesText` (logo abaixo) e `LogText` (canto inferior esquerdo). Desligue **Raycast Target** nos três, para não bloquearem toques no mapa.
-   - `EndTurnButton` (canto inferior direito), texto "Encerrar turno".
+   - `EndTurnButton` (canto inferior direito), texto "Passar a vez" (qualquer outra ação já passa a vez sozinha).
    - `ActionPanel`: objeto vazio com o script `ActionPanel`; dentro dele, `Root` (um Panel de ~700×340 ancorado embaixo no centro) com `Title`, `Body`, `Slider`, `CountText`, `ConfirmButton` (com o texto em `ConfirmLabel`) e `CloseButton` ("X"). Ligue todos os campos do script.
    - `GameOver`: um Panel em tela cheia, semitransparente, com `GameOverText` e `GameOverButton` ("Menu").
 5. Adicione `Hud` ao Canvas e ligue os campos (`GameOver` vai em **Game Over Root**).
@@ -2501,9 +2581,10 @@ namespace ReinosHex.UI
 ### ✅ Checkpoint da Fase 5
 
 - Ao dar Play, a HUD mostra "Rodada 1 · vez de Azul" e os recursos de Azul (já com a produção do primeiro turno).
-- Tocar na cidade oferece recrutar; tocar num hexágono livre vizinho oferece conquistar com o custo; pagar muda a borda dele para azul.
+- Tocar na cidade oferece recrutar; tocar num hexágono livre vizinho oferece conquistar com o custo; pagar muda a borda dele para azul e passa a vez para Vermelho.
+- Tocar noutro hexágono seu oferece construir uma torre de vigia; depois de construída, tocar nela oferece recrutar ali, e os soldados aparecem na torre.
 - Selecionar a cidade acende os vizinhos válidos; atacar monstros mostra a previsão, e o resultado bate com ela (inclusive os monstros entrando no exército).
-- "Encerrar turno" passa a vez para Vermelho, que joga do mesmo jeito. Tomar a cidade adversária abre a tela de fim.
+- Toda ação confirmada passa a vez sozinha; "Passar a vez" passa sem fazer nada. O registro embaixo conta a última ação. Tomar a cidade adversária abre a tela de fim.
 
 #### Problemas comuns
 
@@ -2532,29 +2613,36 @@ using ReinosHex.Core;
 namespace ReinosHex.AI
 {
     // POR QUE: o modo "contra IA" do GDD §10.
-    // ESTRATÉGIA: uma lista de prioridades. A cada chamada, devolve a PRIMEIRA
-    // jogada útil desta ordem:
+    // ESTRATÉGIA: uma lista de prioridades. Como cada turno é UMA ação (GDD §6.3),
+    // a IA devolve a PRIMEIRA jogada útil desta ordem e a vez passa:
     //  1. tomar a cidade inimiga, se algum hexágono vizinho dela tem mais tropas;
-    //  2. conquistar hexágono livre (o que produz o recurso mais escasso);
-    //  3. recrutar todo soldado que der para pagar;
-    //  4. atacar o melhor alvo que dá para vencer;
+    //  2. atacar o melhor alvo que dá para vencer;
+    //  3. construir torre de vigia perto da frente (longe dos pontos de recrutamento);
+    //  4. gastar o estoque mais cheio: comprar hexágono livre (madeira + pedra) ou
+    //     recrutar 3+ soldados de uma vez (ouro + pasto). Sem isso, ela gastava
+    //     todo turno no recurso que sobra e nunca no outro;
     //  5. empurrar tropas paradas para mais perto da cidade inimiga;
-    //  6. encerrar o turno.
-    // Toda jogada que mexe tropas gasta a ordem do hexágono e toda compra gasta
-    // recursos, então o turno sempre termina. A IA só gera GameActions: as Rules
-    // validam igual às do humano, então ela não tem como trapacear.
-    // A cidade guarda uma reserva (Guard) para não ficar vazia com inimigos perto.
+    //  6. recrutar o que der; senão, passar a vez.
+    // A IA só gera GameActions: as Rules validam igual às do humano, então ela
+    // não tem como trapacear. A cidade guarda uma reserva (Guard) para não ficar
+    // vazia com inimigos perto.
     public static class AiPlayer
     {
         public static GameAction NextAction(GameState s)
         {
             int me = s.current;
+            var res = s.players[me].resources;
             HexCoord target = EnemyCity(s, me);
+            bool recruitFirst = res.ouro + res.pasto > res.madeira + res.pedra;
+            GameAction spend = recruitFirst
+                ? Recruit(s, me, target, 3) ?? ClaimFree(s, me, target)
+                : ClaimFree(s, me, target) ?? Recruit(s, me, target, 3);
             return AttackCity(s, me, target)
-                ?? ClaimFree(s, me, target)
-                ?? Recruit(s)
                 ?? BestAttack(s, me, target)
+                ?? BuildTower(s, me, target)
+                ?? spend
                 ?? AdvanceTroops(s, me, target)
+                ?? Recruit(s, me, target, 1)
                 ?? GameAction.EndTurn();
         }
 
@@ -2564,45 +2652,22 @@ namespace ReinosHex.AI
             var defenders = s.Get(city).army.Total;
             foreach (var h in s.Owned(me))
             {
-                if (h.ordered || !h.coord.IsNeighbor(city) || h.army.Total <= defenders) continue;
+                if (!h.coord.IsNeighbor(city) || h.army.Total <= defenders) continue;
                 var a = GameAction.Attack(h.coord, city, h.army.Total);
                 if (Rules.Validate(s, a) == null) return a;
             }
             return null;
         }
 
-        // 2. Comprar o hexágono livre que produz o recurso mais escasso;
-        //    empate: o mais perto da cidade inimiga.
-        static GameAction ClaimFree(GameState s, int me, HexCoord enemyCity)
-        {
-            if (!s.players[me].resources.CanPay(s.config.claimCost)) return null;
-            HexCell best = null;
-            int bestScore = int.MinValue;
-            foreach (var c in s.cells)
-            {
-                if (!c.IsFree || !Rules.TouchesTerritory(s, me, c.coord)) continue;
-                int score = -Stock(s.players[me].resources, c.terrain) * 10 - c.coord.DistanceTo(enemyCity);
-                if (score > bestScore) { bestScore = score; best = c; }
-            }
-            return best == null ? null : GameAction.Claim(best.coord);
-        }
-
-        // 3. Recrutar o máximo.
-        static GameAction Recruit(GameState s)
-        {
-            int n = Rules.MaxRecruit(s);
-            return n > 0 ? GameAction.Recruit(n) : null;
-        }
-
-        // 4. O ataque vencível mais valioso: inimigo > neutros; neutros grandes
-        //    valem mais (mais monstros entram); perto da cidade inimiga é melhor.
+        // 2. O ataque vencível mais valioso: inimigo > neutros; neutros grandes
+        //    valem mais (mais monstros entram); torre vale mais; perto da cidade
+        //    inimiga é melhor.
         static GameAction BestAttack(GameState s, int me, HexCoord enemyCity)
         {
             GameAction best = null;
             int bestScore = int.MinValue;
             foreach (var h in s.Owned(me))
             {
-                if (h.ordered) continue;
                 int available = Available(s, me, h);
                 if (available <= 0) continue;
                 foreach (var n in h.coord.Neighbors())
@@ -2611,7 +2676,7 @@ namespace ReinosHex.AI
                     if (t == null || t.owner == me || t.IsFree) continue;
                     int defenders = t.army.Total;
                     if (available <= defenders) continue;
-                    int score = (t.owner >= 0 ? 50 : 30) + defenders * 2 - n.DistanceTo(enemyCity);
+                    int score = (t.owner >= 0 ? 50 : 30) + defenders * 2 + (t.tower ? 20 : 0) - n.DistanceTo(enemyCity);
                     if (score > bestScore)
                     {
                         bestScore = score;
@@ -2622,6 +2687,64 @@ namespace ReinosHex.AI
             return best;
         }
 
+        // 3. Torre no hexágono seu mais perto da cidade inimiga, desde que ele
+        //    fique a 3+ hexágonos de qualquer ponto de recrutamento (cidade ou torre).
+        static GameAction BuildTower(GameState s, int me, HexCoord enemyCity)
+        {
+            if (!s.players[me].resources.CanPay(s.config.towerCost)) return null;
+            var points = new System.Collections.Generic.List<HexCoord>();
+            foreach (var c in s.Owned(me)) if (Rules.IsRecruitPoint(s, me, c)) points.Add(c.coord);
+
+            HexCoord? best = null;
+            int bestDistance = int.MaxValue;
+            foreach (var c in s.Owned(me))
+            {
+                if (c.tower || c.coord == s.players[me].city) continue;
+                bool nearPoint = false;
+                foreach (var p in points) if (p.DistanceTo(c.coord) < 3) { nearPoint = true; break; }
+                if (nearPoint) continue;
+                int d = c.coord.DistanceTo(enemyCity);
+                if (d < bestDistance) { bestDistance = d; best = c.coord; }
+            }
+            return best is HexCoord at ? GameAction.BuildTower(at) : null;
+        }
+
+        // 4a. Comprar o hexágono livre que produz o recurso mais escasso;
+        //     empate: o mais perto da cidade inimiga.
+        static GameAction ClaimFree(GameState s, int me, HexCoord enemyCity)
+        {
+            if (!s.players[me].resources.CanPay(s.config.claimCost)) return null;
+            HexCell best = null;
+            long bestScore = long.MinValue;
+            foreach (var c in s.cells)
+            {
+                if (!c.IsFree || !Rules.TouchesTerritory(s, me, c.coord)) continue;
+                long score = -(long)Stock(s.players[me].resources, c.terrain) * 10 - c.coord.DistanceTo(enemyCity);
+                if (score > bestScore) { bestScore = score; best = c; }
+            }
+            return best == null ? null : GameAction.Claim(best.coord);
+        }
+
+        // 4b/6. Recrutar o máximo, se der pelo menos "min" soldados. Na cidade se
+        //       ela está abaixo da reserva; senão, no ponto de recrutamento mais
+        //       perto do inimigo (as torres da frente).
+        static GameAction Recruit(GameState s, int me, HexCoord enemyCity, int min)
+        {
+            int n = Rules.MaxRecruit(s);
+            if (n < min) return null;
+            var city = s.players[me].city;
+            if (s.Get(city).army.Total < Guard(s, me)) return GameAction.Recruit(city, n);
+            HexCoord best = city;
+            int bestDistance = city.DistanceTo(enemyCity);
+            foreach (var c in s.Owned(me))
+            {
+                if (!c.tower) continue;
+                int d = c.coord.DistanceTo(enemyCity);
+                if (d < bestDistance) { bestDistance = d; best = c.coord; }
+            }
+            return GameAction.Recruit(best, n);
+        }
+
         // 5. Mover tropas do interior para o vizinho próprio mais perto da cidade
         //    inimiga. Hexágonos encostados em inimigos ficam (seguram a frente).
         static GameAction AdvanceTroops(GameState s, int me, HexCoord enemyCity)
@@ -2630,7 +2753,6 @@ namespace ReinosHex.AI
             int bestAmount = 0;
             foreach (var h in s.Owned(me))
             {
-                if (h.ordered) continue;
                 int available = Available(s, me, h);
                 if (available <= bestAmount || TouchesEnemy(s, me, h.coord)) continue;
                 int here = h.coord.DistanceTo(enemyCity);
@@ -2713,14 +2835,15 @@ Volte para `{ SeatKind.Humano, SeatKind.Humano }` no fim da fase.
 
 ### ✅ Checkpoint da Fase 6
 
-- Ao encerrar o turno, Vermelho joga sozinho: compra hexágonos, recruta, ataca neutros e encerra o turno, com meio segundo entre as ações.
+- Depois de cada ação sua, Vermelho faz uma ação sozinho meio segundo depois (comprar, recrutar, construir torre, atacar ou mover) e a vez volta para você.
 - O Console não mostra `IA tentou uma ação inválida`.
 - Numa partida inteira, a IA chega até a sua cidade e a toma se você deixá-la desprotegida.
 
 #### Problemas comuns
 
 - **A IA nunca ataca:** com 100% dos neutros entrando no exército e custos baixos, ela pode passar muitos turnos só comprando hexágonos. É balanceamento (GDD §16), não bug: abaixe `claimCost` ou mude a ordem das prioridades em `NextAction` para testar.
-- **O jogo trava na vez da IA:** alguma jogada nova da IA não gasta ordem nem recurso e se repete para sempre. Toda prioridade precisa terminar numa ação que mude o estado.
+- **A IA só recruta e nunca sai da cidade:** a escolha "gastar o estoque mais cheio" (passo 4) foi trocada por uma ordem fixa. Com uma ação por turno, recrutar sempre que dá 3 soldados ocupa todos os turnos.
+- **A partida não acaba (IA contra IA):** no protótipo web, as sementes 5, 7, 42, 99, 1234 e 2026 terminam entre 27 e 71 rodadas. Se aqui não termina, compare `NextAction` com o `aiNext` do `prototipos/reinos-hex/game.js`.
 
 Próxima fase: **Menu e Dois Jogadores no Mesmo Aparelho** — escolher o modo e passar o aparelho entre os turnos.
 
@@ -3247,8 +3370,8 @@ namespace ReinosHex.Online
 ### ✅ Checkpoint da Fase 8
 
 - No aparelho A, "Criar sala" mostra um código de 6 letras. No aparelho B, digitar o código e "Entrar" abre a partida nos dois, com o **mesmo mapa**.
-- Só o jogador da vez consegue agir; o outro vê o botão "Encerrar turno" apagado.
-- Ao encerrar o turno em A, as jogadas aparecem em B (de uma vez) e a vez passa para B.
+- Só o jogador da vez consegue agir; o outro vê o botão "Passar a vez" apagado.
+- Cada ação feita em A aparece em B logo depois e a vez passa para B (um documento por ação, já que cada turno é uma ação só).
 - Fechar o app de B no meio da partida e entrar de novo com o mesmo código reconstrói o tabuleiro exatamente como estava.
 - No console do Firebase, `jogos/reinos-hex/partidas/{código}/turnos` tem um documento por turno (`00000`, `00001`...).
 
