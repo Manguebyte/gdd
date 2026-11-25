@@ -24,7 +24,7 @@
     'street-legends': ['Street Legends', 'RallySurvive.md', '0.1.0'],
     'star-expedition-co': ['Star Expedition Co.', 'StarExpeditionCo.md', '0.1.0'],
     '8-bit-armageddon': ['Orbitfall', 'GDD_8-Bit_Armageddon.md', '0.3.0'],
-    '8-bit-armageddon-iso': ['Orbitfall Iso', 'GDD_8-Bit_Armageddon_Iso.md', '0.3.1'],
+    '8-bit-armageddon-iso': ['Orbitfall Iso', 'GDD_8-Bit_Armageddon_Iso.md', '0.4.0'],
     'requiem-of-blessings': ['Requiem of Blessings', 'RequiemOfBlessings.md', '0.1.0'],
     'dice-and-blood': ['DiceAndBlood', 'DiceAndBlood.md', '0.1.0'],
     'protocolo-ectoplasma': ['Protocolo Ectoplasma', 'GDD_Protocolo_Ectoplasma.md', '0.1.0'],
@@ -56,6 +56,7 @@
   const PROTOTIPOS = {
     '8-bit-armageddon-iso-3d': '8-bit-armageddon-iso',
     'orbitfall-neon': '8-bit-armageddon',
+    'orbitfall-iso-neon': '8-bit-armageddon-iso',
     'iso-rpg': 'guerreiro-da-masmorra',
     'iso-rpg-3d': 'guerreiro-da-masmorra',
     'iso-rpg-vertical': 'guerreiro-da-masmorra',

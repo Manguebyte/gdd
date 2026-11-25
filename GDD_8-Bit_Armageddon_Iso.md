@@ -1,6 +1,6 @@
 # GDD — Orbitfall Iso
 
-**Versão:** 0.3.1 · [histórico](#histórico-de-versões)
+**Versão:** 0.4.0 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
@@ -568,6 +568,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.4.0** (2026-11-25): protótipo de teste **Orbitfall Iso Neon** (`prototipos/orbitfall-iso-neon/`): as mesmas regras com o visual de fliperama neon 8-bit do Orbitfall 2D Neon, chão em grade isométrica neon, toda a arte do mundo desenhada em código, brilho (bloom) e scanlines CRT opcionais nas Settings. Save próprio; as regras do GDD não mudaram.
 - **0.3.1** (2026-11-23): os mesmos efeitos sonoros, com Sons e Volume nas Settings, também no teste 3D (`prototipos/8-bit-armageddon-iso-3d/`).
 - **0.3.0** (2026-11-23): efeitos sonoros 8-bit sintetizados no protótipo, os mesmos do Orbitfall 0.2.0 (14 sons, mais lançamento de nave no Invasion), com Sons e Volume nas Settings (Seção 6.2).
 - **0.2.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e nos protótipos (iso e teste 3D).

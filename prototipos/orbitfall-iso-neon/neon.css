@@ -1,0 +1,88 @@
+/* neon.css — tema de fliperama neon por cima do style.css (que é o do Orbitfall, sem mudanças).
+   POR QUE: os painéis e botões do Orbitfall são pixel art cinza (border-image de PNG). Aqui eles
+   viram molduras de 1 px em neon com brilho (box-shadow), sobre fundo preto.
+   Toda medida continua em pixel de jogo: o #ui é escalado por inteiro, então 1px = 1 pixel de jogo. */
+
+:root {
+  --offense: #ff8a1f;
+  --defense: #00f0ff;
+  --utility: #39ff6a;
+  --satellites: #b04dff;
+  --text: #e8f6ff;
+  --dim: #5f6c9c;
+  --space: #04020c;
+  --shard: #ffe94a;
+  --neon: #00f0ff;
+  --neon2: #ff2bd6;
+}
+
+html, body { background: #04020c; }
+#rotate { background: #04020c; color: var(--neon); text-shadow: 0 0 6px var(--neon); }
+
+#ui { text-shadow: 0 0 2px rgba(255, 255, 255, .35); }
+
+/* ---------- molduras neon no lugar das PNGs ---------- */
+.panel {
+  border: 1px solid var(--neon2);
+  border-image: none;
+  padding: 7px;
+  background: rgba(4, 2, 12, .92);
+  box-shadow: 0 0 4px var(--neon2), inset 0 0 3px rgba(255, 43, 214, .4);
+}
+
+.btn, .ach, .card, .sat-row.framed {
+  border: 1px solid var(--neon);
+  border-image: none;
+  background: rgba(0, 240, 255, .07);
+  box-shadow: 0 0 3px rgba(0, 240, 255, .8), inset 0 0 2px rgba(0, 240, 255, .35);
+}
+.btn { padding: 2px 5px 3px; }
+.btn:hover:not(.disabled) { background: rgba(0, 240, 255, .16); }
+.btn:active:not(.disabled), .card:active:not(.poor) {
+  border-image: none; background: rgba(0, 240, 255, .3); padding-top: 3px; padding-bottom: 2px;
+}
+.btn.disabled, .ach.locked, .card.poor {
+  border-image: none; border-color: #26305a; box-shadow: none; background: rgba(10, 14, 40, .6);
+}
+.btn.selected { color: var(--shard); border-color: var(--shard); box-shadow: 0 0 4px var(--shard); }
+.card { padding: 1px 5px 2px; }
+.ach { padding: 2px 4px; }
+.sat-row.framed { padding: 1px 3px 2px; }
+@keyframes pulse { 50% { box-shadow: 0 0 6px var(--shard), inset 0 0 3px var(--shard); border-color: var(--shard); } }
+
+.icon { filter: drop-shadow(0 0 1px rgba(255, 255, 255, .5)); }
+
+/* ---------- títulos ---------- */
+.title { color: var(--neon2); text-shadow: 0 0 4px var(--neon2), 0 0 10px var(--neon2); }
+.neon-tag { color: var(--neon); text-shadow: 0 0 4px var(--neon), 0 0 10px var(--neon); }
+.h, .badge { text-shadow: 0 0 3px var(--shard); }
+.screen { background: rgba(4, 2, 12, .8); }
+.core.sel, .skin.sel { outline-color: var(--shard); border-color: var(--shard); box-shadow: 0 0 4px var(--shard); }
+
+/* ---------- HUD ---------- */
+.bar { background: #000; border-color: #000; outline: 1px solid var(--neon); box-shadow: 0 0 3px var(--neon); }
+.bar > i { background: var(--utility); box-shadow: 0 0 4px var(--utility); }
+.boss-bar .bar { outline-color: var(--neon2); box-shadow: 0 0 3px var(--neon2); }
+.boss-bar .bar > i { background: var(--neon2); box-shadow: 0 0 4px var(--neon2); }
+.boss-bar span { color: var(--neon2); text-shadow: 0 0 3px var(--neon2); }
+.foes { background: rgba(4, 2, 12, .85); border: 1px solid #26305a; }
+.foe .hp { color: var(--utility); }
+.tip { background: #070616; border: 1px solid var(--neon); outline: none; box-shadow: 0 0 4px var(--neon); }
+.toast { background: rgba(4, 2, 12, .92); border: 1px solid var(--offense); outline: none; box-shadow: 0 0 4px var(--offense); }
+.hint { background: #070616; border-color: var(--shard); box-shadow: 0 0 4px var(--shard); }
+
+/* ---------- gaveta ---------- */
+.drawer-strip { background: #070616; border-top: 1px solid var(--neon); box-shadow: 0 -1px 4px rgba(0, 240, 255, .6); }
+.drawer-body { background: #05040f; border-top: 1px solid #1a2350; }
+.tab.open { color: #fff; border-color: #fff; box-shadow: 0 0 4px #fff; }
+
+/* ---------- CRT (Settings > Scanlines CRT) ---------- */
+body.crt::after {
+  content: ''; position: fixed; inset: 0; z-index: 5; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, .28) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, .55) 100%);
+}
+
+/* Planeta bloqueado: silhueta escura com contorno, em vez de um disco preto que some no fundo. */
+.planet-spin.locked { filter: grayscale(1) brightness(.3) drop-shadow(0 0 1px #3a4a8a); }
