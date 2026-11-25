@@ -1,6 +1,6 @@
 # GDD — Orbitfall Iso
 
-**Versão:** 0.3.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.3.1 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, **câmera isométrica**, tela em paisagem (resolução de referência 320×180)
@@ -568,6 +568,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.3.1** (2026-11-23): os mesmos efeitos sonoros, com Sons e Volume nas Settings, também no teste 3D (`prototipos/8-bit-armageddon-iso-3d/`).
 - **0.3.0** (2026-11-23): efeitos sonoros 8-bit sintetizados no protótipo, os mesmos do Orbitfall 0.2.0 (14 sons, mais lançamento de nave no Invasion), com Sons e Volume nas Settings (Seção 6.2).
 - **0.2.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e nos protótipos (iso e teste 3D).
 - **0.2.0** (2026-11-03): protótipo de teste em 3D low-poly (`prototipos/8-bit-armageddon-iso-3d/`): mesmas regras e mesma câmera, com planeta, naves, sombras e laser modelados em Three.js. As regras deste GDD não mudaram.
