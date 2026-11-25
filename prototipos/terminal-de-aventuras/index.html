@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terminal de Aventuras</title>
+<meta name="description" content="RPG de dados num terminal de neon: a IA traça o mapa em linhas de luz enquanto o seu robô explorador anda por 5 zonas de máquinas, as lutas são decididas nos dados, e cada bot tem um chefe-alfa no fundo da sua base.">
+<link rel="icon" href="icons/icon-192.png">
+<!-- Instalável no celular (PWA): ícone na tela inicial, tela cheia, em pé ou deitado, sem internet. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#05060f">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Terminal">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
+<link rel="stylesheet" href="style.css">
+<!-- Google Analytics: só para contar quantas pessoas abrem o Terminal de
+     Aventuras (nenhum evento do jogo, nada pessoal). Cole o ID de medição
+     ("G-...") em GA_ID; vazio, nada é carregado. Está vazio de propósito: o
+     ID do Caderno mediria os dois jogos juntos. Só conta no site (https). -->
+<script>
+  (function () {
+    var GA_ID = '';
+    if (!GA_ID || location.protocol !== 'https:') return;
+    window.CADERNO_GA = true;
+    var s = document.createElement('script');
+    s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', GA_ID);
+  })();
+</script>
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<header id="hud" hidden>
+  <div class="left">
+  <div class="stats">
+    <span class="stat" id="s-hp" title="Vida"><img data-icon="heart" alt=""><b></b></span>
+    <span class="stat" id="s-pm" title="Energia"><img data-icon="star" alt=""><b></b></span>
+    <span class="stat" id="s-gold" title="Créditos"><img data-icon="coin" alt=""><b></b></span>
+    <span class="stat" id="s-atk" title="Dados de ataque"><img data-icon="sword" alt=""><b></b></span>
+    <span class="stat" id="s-def" title="Dados de defesa"><img data-icon="shield" alt=""><b></b></span>
+    <span class="stat" id="s-lvl"><b></b><i class="xp"><i></i></i></span>
+    <span class="stat" id="s-page" title="Zona do terminal"><img data-icon="map" alt=""><b></b></span>
+    <span class="stat" id="s-time" title="Hora do dia"><img id="time-img" alt=""><b></b></span>
+    <span class="stat" id="s-torch" title="Lanternas (ligam sozinhas no escuro)"><img id="torch-img" alt=""><b></b></span>
+  </div>
+  <div id="quests" class="quests" hidden></div>
+  </div>
+  <div class="tools">
+    <button id="b-bag" title="Mochila (B)"><img data-icon="bag" alt="Mochila"></button>
+    <button id="b-map" title="Ver o mapa todo (M)"><img data-icon="map" alt="Mapa"></button>
+    <button id="b-snd" title="Som"><img id="snd-img" alt="Som"></button>
+  </div>
+</header>
+
+<div id="narr" class="narr" hidden></div>
+
+<div id="dpad" hidden>
+  <button data-d="0,-1" class="up" aria-label="Cima">▲</button>
+  <button data-d="-1,0" class="left" aria-label="Esquerda">◀</button>
+  <button data-d="1,0" class="right" aria-label="Direita">▶</button>
+  <button data-d="0,1" class="down" aria-label="Baixo">▼</button>
+</div>
+
+<div id="overlay" hidden><div id="panel" class="sheet"></div></div>
+
+<script src="sketch.js"></script>
+<script src="world.js"></script>
+<script src="art.js"></script>
+<script src="nuvem.js"></script>
+<script src="game.js"></script>
+<script src="../versao.js"></script>
+</body>
+</html>

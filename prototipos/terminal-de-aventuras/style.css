@@ -1,0 +1,307 @@
+/* Terminal de Aventuras — janelas de terminal neon.
+   É o style.css do Caderno de Aventuras (mesma estrutura de tela) com outro
+   acabamento: fundo preto, bordas finas acesas com brilho (box-shadow),
+   letra de terminal (VT323) e títulos de fliperama (Press Start 2P). As
+   regras de tema ficam no bloco "Tema neon" no fim do arquivo, por cima. */
+:root {
+  --paper: #05060f; --ink: #bff7ff; --line: #142350; --margin: #ff2bd6;
+  --red: #ff3355; --blue: #00e5ff; --green: #39ff6a; --yellow: #ffe94a; --purple: #b04dff; --gray: #7d88b8;
+  --neon: #00e5ff; --panel: rgba(5, 8, 22, .94);
+  --hand: 2px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--paper); color: var(--ink);
+  font-family: 'VT323', 'Courier New', monospace; font-size: 19px; -webkit-tap-highlight-color: transparent; }
+canvas#map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+small { font-size: .82em; opacity: .8; }
+[hidden] { display: none !important; }
+
+button { font: inherit; color: inherit; cursor: pointer; background: var(--paper); border: 2px solid var(--ink);
+  border-radius: var(--hand); padding: 3px 14px; line-height: 1.3; display: inline-flex; align-items: center; gap: 6px;
+  transition: transform .1s; }
+button:hover:not(:disabled) { transform: rotate(-1.2deg) scale(1.04); }
+button:active:not(:disabled) { transform: scale(.97); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+button.red { background: repeating-linear-gradient(-50deg, rgba(214,56,58,.32) 0 2px, transparent 2px 5px), var(--paper); }
+button.green { background: repeating-linear-gradient(-50deg, rgba(46,148,70,.3) 0 2px, transparent 2px 5px), var(--paper); }
+button.purple { background: repeating-linear-gradient(-50deg, rgba(132,72,196,.28) 0 2px, transparent 2px 5px), var(--paper); }
+.ic { width: 28px; height: 28px; vertical-align: middle; }
+
+/* ---------- HUD ---------- */
+#hud { position: fixed; top: 8px; left: 50px; right: 8px; display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 8px; pointer-events: none; z-index: 5; }
+.stats { display: flex; flex-wrap: wrap; gap: 2px 14px; align-items: center; background: rgba(251,247,236,.92); padding: 4px 14px;
+  border: 2px solid var(--ink); border-radius: var(--hand); pointer-events: auto; font-size: 21px; }
+.stat { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.stat img { width: 28px; height: 28px; }
+.xp { display: inline-block; width: 64px; height: 11px; border: 1.5px solid var(--ink); border-radius: 7px 2px 6px 3px; margin-left: 6px; overflow: hidden; }
+.xp i { display: block; height: 100%; width: 0; background: repeating-linear-gradient(-45deg, var(--purple) 0 2px, transparent 2px 4px); transition: width .4s; }
+.left { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.quests { background: rgba(251,247,236,.92); border: 2px solid var(--ink); border-radius: var(--hand); padding: 2px 12px 4px;
+  font-size: 17px; line-height: 1.3; max-width: 420px; }
+.quests i { font-style: normal; font-family: 'VT323', 'Courier New', monospace; font-weight: 700; font-size: 22px; color: var(--blue); }
+.quests b { font-weight: normal; color: var(--red); }
+.quests .done { color: var(--green); }
+.quests small { display: block; padding-left: 14px; }
+.night { color: var(--blue); }
+.tools { display: flex; gap: 6px; pointer-events: auto; }
+.tools button { padding: 3px 7px; background: rgba(251,247,236,.92); }
+.tools img { width: 32px; height: 32px; }
+
+/* ---------- narração do mestre ---------- */
+.narr { position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; bottom: 18px; max-width: min(620px, calc(100% - 60px));
+  background: var(--paper); border: 2px solid var(--ink); border-radius: var(--hand); padding: 8px 18px; font-size: 21px;
+  box-shadow: 3px 4px 0 rgba(43,47,69,.15); z-index: 6; pointer-events: none; }
+.narr b { color: var(--red); font-weight: normal; }
+.narr.pop { animation: pop .25s ease-out; }
+@keyframes pop { from { transform: scale(.9) rotate(-2deg); opacity: 0; } }
+
+/* ---------- direcional de toque ---------- */
+#dpad { position: fixed; right: 14px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 54px); grid-template-rows: repeat(3, 54px); z-index: 6; }
+#dpad button { justify-content: center; font-size: 22px; padding: 0; background: rgba(251,247,236,.85); touch-action: none; }
+#dpad .up { grid-area: 1 / 2; } #dpad .left { grid-area: 2 / 1; } #dpad .right { grid-area: 2 / 3; } #dpad .down { grid-area: 3 / 2; }
+
+/* ---------- folhas (painéis) ---------- */
+#overlay { position: fixed; inset: 0; background: rgba(43,47,69,.22); display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 10; }
+.sheet { position: relative; width: 100%; max-width: 760px; max-height: 100%; overflow: auto; padding: 14px 22px 18px 58px;
+  background-color: var(--paper);
+  background-image: linear-gradient(90deg, transparent 40px, var(--margin) 40px, var(--margin) 42px, transparent 42px),
+                    repeating-linear-gradient(transparent 0 31px, var(--line) 31px 32px);
+  background-attachment: local; line-height: 32px; border: 2px solid var(--ink); border-radius: 3px 9px 5px 11px;
+  box-shadow: 5px 7px 0 rgba(43,47,69,.18); transform: rotate(-.35deg); }
+.sheet h1, .sheet h2, .sheet h3 { font-family: 'VT323', 'Courier New', monospace; font-weight: 700; margin: 0; }
+.sheet h2 { font-size: 42px; line-height: 64px; }
+.sheet h3 { font-size: 30px; line-height: 32px; margin-top: 32px; color: var(--blue); }
+.sheet p { margin: 0 0 0; }
+.sheet .small { font-size: 17px; opacity: .85; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.actions button { font-size: 21px; }
+.sheet.hurt { animation: hurt .35s; }
+@keyframes hurt { 20% { transform: translate(-6px, 2px) rotate(-1deg); } 50% { transform: translate(5px, -2px) rotate(.6deg); } 80% { transform: translate(-3px, 1px); } }
+
+.dlg { display: flex; gap: 16px; align-items: flex-start; }
+.dlg-art { width: 160px; height: 160px; flex: none; }
+.row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 2px 0; }
+.row .nm { flex: 1; line-height: 1.25; }
+.row .nm em { display: block; font-style: normal; font-size: 15px; color: var(--gray); }
+.row .pr { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.row .pr .ic { width: 22px; height: 22px; }
+
+/* ---------- luta ---------- */
+/* Monstro à esquerda, dados no meio, herói à direita (virado para o monstro). */
+.fight { max-width: 1040px; }
+.combat { display: grid; grid-template-columns: 210px 1fr 190px; grid-template-areas: "foe mid me"; gap: 4px 18px; }
+.foes { grid-area: foe; min-width: 0; }
+.me .st { white-space: nowrap; }
+.foe { text-align: center; }
+/* Grupo (2 ou 3 monstros): cartões compactos; o tracejado vermelho é o alvo. */
+.foes.multi { display: flex; flex-direction: column; gap: 6px; }
+.foes.multi .foe { display: grid; grid-template-columns: 84px 1fr; text-align: left; align-items: center; gap: 0 8px;
+  cursor: pointer; border: 2px dashed transparent; border-radius: 10px 4px 9px 5px; padding: 2px 6px; }
+.foes.multi .foe canvas { width: 84px; height: 84px; grid-row: 1 / span 4; }
+.foes.multi .foe h2 { font-size: 22px; line-height: 26px; }
+.foes.multi .foe .small { margin: 0; line-height: 22px; }
+.foes.multi .foe.alvo { border-color: var(--red); }
+.foes.multi .foe.alvo h2 { color: var(--red); }
+.foes.multi .foe.alvo h2::after { content: ' ← alvo'; font-size: .7em; }
+.foes.multi .foe.dead { opacity: .45; cursor: default; }
+.mid { grid-area: mid; min-width: 0; }
+.me { grid-area: me; text-align: center; }
+.foe canvas { width: 200px; height: 200px; display: block; margin: 0 auto; }
+.me canvas { width: 170px; height: 170px; display: block; margin: 0 auto; }
+.me .flip { transform: scaleX(-1); }
+.foe canvas.shake, .me canvas.shake { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-8px) rotate(-3deg); } 60% { transform: translateX(6px) rotate(2deg); } }
+.foe h2, .me h2 { font-size: 32px; line-height: 38px; overflow-wrap: anywhere; }
+.bar { height: 14px; border: 2px solid var(--ink); border-radius: 9px 3px 8px 4px; overflow: hidden; margin: 6px 0; }
+.bar i { display: block; height: 100%; transition: width .45s; }
+.foe-bar i { background: repeating-linear-gradient(-45deg, var(--purple) 0 3px, transparent 3px 6px); }
+.me-bar i { background: repeating-linear-gradient(-45deg, var(--red) 0 3px, transparent 3px 6px); }
+.tray { width: 100%; height: 240px; display: block; }
+.tray.mini { height: 150px; }
+.clog { min-height: 64px; }
+.clog .up { color: var(--purple); }
+
+/* ---------- capa ---------- */
+.title { max-width: 720px; }
+.cover { text-align: center; }
+.cover h1 { font-size: clamp(44px, 9vw, 72px); line-height: 96px; color: var(--red); transform: rotate(-2deg); }
+.cover .sub { font-size: 22px; }
+.cover canvas { width: 100%; height: 190px; display: block; margin: 8px 0; }
+.cover .name { display: inline-flex; gap: 8px; align-items: center; font-size: 22px; }
+.cover input { font: inherit; color: var(--blue); background: transparent; border: 0; border-bottom: 2px solid var(--ink); width: 180px; padding: 0 4px; outline: none; }
+.cover .actions { justify-content: center; }
+.cover .how { margin-top: 12px; }
+.cover .install { display: flex; flex-direction: column; align-items: center; }
+.cover .install button { margin-top: 8px; }
+
+@media (max-width: 640px) {
+  html, body { font-size: 17px; }
+  #hud { left: 28px; top: 4px; }
+  .stats { font-size: 17px; gap: 0 9px; padding: 2px 10px; }
+  .stat img { width: 22px; height: 22px; }
+  #s-page .bio { display: none; }
+  .quests { font-size: 14px; max-width: 250px; }
+  .quests i { font-size: 18px; }
+  .tools { flex-direction: column; }
+  .tools img { width: 26px; height: 26px; }
+  .sheet { padding: 10px 12px 14px 48px; }
+  .sheet h2 { font-size: 34px; line-height: 48px; }
+  /* Em pé: monstro em cima, dados no meio, herói embaixo e os botões dele por último. */
+  .combat { grid-template-columns: 1fr; grid-template-areas: "foe" "tray" "clog" "me" "acts"; }
+  .mid { display: contents; }
+  .mid .tray { grid-area: tray; } .mid .clog { grid-area: clog; } .mid .actions { grid-area: acts; }
+  .foe, .me { display: grid; grid-template-columns: 110px 1fr; text-align: left; align-items: center; gap: 0 10px; }
+  .foe canvas { width: 110px; height: 110px; grid-row: span 4; }
+  .foes.multi { gap: 2px; }
+  .foes.multi .foe { grid-template-columns: 52px 1fr; }
+  .foes.multi .foe canvas { width: 52px; height: 52px; }
+  .foes.multi .foe h2 { font-size: 19px; line-height: 22px; }
+  .foes.multi .foe .small { font-size: 14px; line-height: 18px; }
+  .foes.multi .foe .bar { height: 9px; margin: 2px 0; }
+  .me { grid-template-columns: 1fr 72px; }
+  .me .flip { grid-column: 2; grid-row: 1 / span 4; }
+  .me canvas { width: 72px; height: 72px; }
+  .me > :not(.flip) { grid-column: 1; }
+  .foe h2, .me h2 { font-size: 26px; line-height: 30px; }
+  .tray { height: 200px; }
+  .dlg { flex-direction: column; align-items: center; }
+  .dlg-art { width: 120px; height: 120px; }
+  .narr { bottom: 190px; font-size: 18px; }
+}
+
+/* Celular deitado: pouca altura. Tudo menor, a narração vai para a
+   esquerda (o direcional fica à direita) e a luta cabe sem rolar. */
+@media (max-height: 500px) and (orientation: landscape) {
+  html, body { font-size: 16px; }
+  #hud { top: 4px; left: calc(30px + env(safe-area-inset-left)); right: calc(6px + env(safe-area-inset-right)); }
+  .stats { font-size: 16px; gap: 0 9px; padding: 1px 10px; }
+  .stat img { width: 20px; height: 20px; }
+  .xp { width: 44px; }
+  .quests { font-size: 13px; max-width: 260px; padding: 1px 10px 2px; }
+  .quests i { font-size: 17px; }
+  .tools img { width: 24px; height: 24px; }
+  .tools button { padding: 2px 5px; }
+  .narr { left: calc(36px + env(safe-area-inset-left)); right: auto; margin: 0; bottom: 8px; font-size: 16px; padding: 4px 12px;
+    max-width: calc(100% - 210px - env(safe-area-inset-left) - env(safe-area-inset-right)); }
+  #dpad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 46px); right: calc(10px + env(safe-area-inset-right)); bottom: 8px; }
+  #overlay { padding: 6px calc(6px + env(safe-area-inset-right)) 6px calc(6px + env(safe-area-inset-left)); }
+  .sheet { padding: 6px 14px 10px 50px; line-height: 28px;
+    background-image: linear-gradient(90deg, transparent 40px, var(--margin) 40px, var(--margin) 42px, transparent 42px),
+                      repeating-linear-gradient(transparent 0 27px, var(--line) 27px 28px); }
+  .sheet h2 { font-size: 30px; line-height: 42px; }
+  .sheet h3 { font-size: 24px; line-height: 28px; margin-top: 14px; }
+  .sheet .small { font-size: 15px; }
+  .actions { margin-top: 6px; gap: 8px; }
+  .actions button { font-size: 18px; }
+  .dlg-art { width: 96px; height: 96px; }
+  .row { min-height: 34px; }
+  .combat { grid-template-columns: 140px 1fr 140px; gap: 0 12px; }
+  .foe canvas { width: 120px; height: 120px; }
+  .combat:has(.foes.multi) { grid-template-columns: 200px 1fr 140px; }
+  .foes.multi { gap: 2px; }
+  .foes.multi .foe { grid-template-columns: 52px 1fr; padding: 0 4px; }
+  .foes.multi .foe canvas { width: 52px; height: 52px; }
+  .foes.multi .foe h2 { font-size: 17px; line-height: 20px; }
+  .foes.multi .foe .small { font-size: 13px; line-height: 17px; }
+  .foes.multi .foe .bar { height: 9px; margin: 2px 0; }
+  .me canvas { width: 96px; height: 96px; }
+  .foe h2, .me h2 { font-size: 22px; line-height: 26px; }
+  .tray { height: 128px; }
+  .tray.mini { height: 110px; }
+  .clog { min-height: 28px; }
+  .cover h1 { font-size: 40px; line-height: 50px; }
+  .cover .sub { font-size: 18px; }
+  .cover canvas { height: 86px; margin: 2px 0; }
+  .cover .name { font-size: 18px; }
+  .cover .how { margin-top: 4px; font-size: 14px; line-height: 20px; }
+}
+
+/* Luta: maldição e dados quebrados; combinações de pôquer e golpes especiais. */
+.cstat { color: var(--purple); min-height: 0; margin: 2px 0; }
+.cstat:empty { display: none; }
+.combo { color: var(--red); }
+.esp { color: var(--purple); }
+
+/* Conta (usuário e senha) na capa e na folha de entrar. */
+.cover .conta { display: flex; flex-direction: column; align-items: center; margin-top: 6px; }
+.cover .conta button { margin-top: 6px; }
+.cover .conta p button { margin: 0 0 0 6px; padding: 2px 10px; }
+.conta-form { display: flex; flex-direction: column; gap: 10px; }
+.conta-form label { display: flex; gap: 10px; align-items: center; font-size: 20px; }
+.conta-form input { font: inherit; color: var(--blue); background: transparent; border: 0; border-bottom: 2px solid var(--ink); flex: 1; min-width: 0; max-width: 260px; padding: 0 4px; outline: none; }
+#c-msg { color: var(--red); min-height: 1em; }
+.sheet h3 .atk { font-family: 'VT323', 'Courier New', monospace; font-size: 16px; padding: 0 10px; margin-left: 8px; vertical-align: middle; color: var(--red); }
+.sheet h3 s { color: var(--gray); }
+
+/* Arena PvP: a lista de quem está lá, o ranking e o aviso de desafio. */
+.arena-lista p { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.arena-lista p button { margin-left: auto; padding: 2px 12px; }
+.arena-aviso { border: 2px dashed var(--red); padding: 6px 10px; }
+.arena-aviso button { padding: 2px 12px; margin-left: 4px; }
+#acts > p.small { flex-basis: 100%; margin: 0 0 4px; }
+
+
+/* ================================================================
+   Tema neon (Terminal de Aventuras): por cima das regras acima.
+   ================================================================ */
+html, body { font-size: 22px; }
+button { background: rgba(0, 229, 255, .06); border: 2px solid var(--neon); border-radius: 2px;
+  box-shadow: 0 0 6px rgba(0, 229, 255, .55), inset 0 0 4px rgba(0, 229, 255, .25); text-shadow: 0 0 4px currentColor; }
+button:hover:not(:disabled) { transform: none; background: rgba(0, 229, 255, .16); }
+button.red { background: rgba(255, 51, 85, .12); border-color: var(--red); color: #ff8fa3; box-shadow: 0 0 6px rgba(255, 51, 85, .6); }
+button.green { background: rgba(57, 255, 106, .1); border-color: var(--green); color: #a6ffbf; box-shadow: 0 0 6px rgba(57, 255, 106, .55); }
+button.purple { background: rgba(176, 77, 255, .12); border-color: var(--purple); color: #d9b3ff; box-shadow: 0 0 6px rgba(176, 77, 255, .6); }
+button:disabled { box-shadow: none; border-color: #26305a; }
+
+.stats, .quests, .narr, .tools button, #dpad button { background: var(--panel); border: 2px solid var(--neon); border-radius: 2px;
+  box-shadow: 0 0 8px rgba(0, 229, 255, .45); }
+.stats { font-size: 24px; }
+.quests i { color: var(--yellow); text-shadow: 0 0 4px var(--yellow); }
+.narr { font-size: 24px; box-shadow: 0 0 10px rgba(0, 229, 255, .5); }
+.narr b { color: var(--margin); text-shadow: 0 0 4px var(--margin); }
+.narr.pop { animation: popn .25s ease-out; }
+@keyframes popn { from { transform: scaleY(.2); opacity: 0; } }
+.xp { border-color: var(--neon); border-radius: 0; }
+.xp i { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+
+#overlay { background: rgba(0, 0, 0, .55); }
+/* A janela: preta com uma grade fraca, barra magenta à esquerda e borda acesa. */
+.sheet { background-color: var(--panel); transform: none; border: 2px solid var(--neon); border-radius: 2px;
+  box-shadow: 0 0 14px rgba(0, 229, 255, .5), inset 0 0 18px rgba(0, 229, 255, .08);
+  background-image: linear-gradient(90deg, transparent 40px, var(--margin) 40px, var(--margin) 42px, transparent 42px),
+                    repeating-linear-gradient(transparent 0 31px, var(--line) 31px 32px); }
+.sheet h1, .sheet h2 { text-shadow: 0 0 6px currentColor; }
+.sheet h2 { color: var(--neon); font-size: 44px; }
+.sheet h3 { color: var(--yellow); text-shadow: 0 0 5px var(--yellow); }
+.row .nm em { color: var(--gray); }
+.bar { border-color: var(--neon); border-radius: 0; box-shadow: 0 0 5px rgba(0, 229, 255, .5); }
+.foe-bar i { background: var(--purple); box-shadow: 0 0 6px var(--purple); }
+.me-bar i { background: var(--red); box-shadow: 0 0 6px var(--red); }
+.foes.multi .foe { border-radius: 2px; }
+.foe h2, .me h2 { font-size: 34px; }
+
+/* Capa: título de fliperama. */
+.cover h1 { font-family: 'Press Start 2P', 'VT323', monospace; font-size: clamp(22px, 4.6vw, 40px); line-height: 1.4; margin: 18px 0 10px;
+  color: var(--margin); transform: none; text-shadow: 0 0 6px var(--margin), 0 0 16px var(--margin); }
+.cover .sub { color: var(--neon); text-shadow: 0 0 4px var(--neon); }
+.cover input, .conta-form input { color: var(--yellow); border-bottom-color: var(--neon); }
+.arena-aviso { border-color: var(--red); }
+
+/* Scanlines e vinheta de monitor CRT por cima de tudo. */
+body::after { content: ''; position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, .22) 0 1px, transparent 1px 3px),
+              radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, .55) 100%); }
+
+@media (max-width: 640px) {
+  html, body { font-size: 19px; }
+  .stats { font-size: 20px; }
+  .narr { font-size: 20px; }
+  .sheet h2 { font-size: 34px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  html, body { font-size: 18px; }
+  .stats { font-size: 19px; }
+  .narr { font-size: 19px; }
+  .cover h1 { font-size: 22px; margin: 6px 0; }
+}

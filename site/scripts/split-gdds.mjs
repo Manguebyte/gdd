@@ -201,6 +201,14 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    // O Caderno de Aventuras com tema de robôs e visual neon 8-bit; só o GDD (as regras apontam para o do Caderno).
+    source: 'TerminalDeAventuras.md',
+    slug: 'terminal-de-aventuras',
+    label: 'Terminal de Aventuras',
+    description: 'O Caderno de Aventuras num mundo de robôs, em neon 8-bit: a IA traça o mapa no terminal enquanto o seu robô anda, e a luta é nos dados.',
+    gddOnly: true,
+  },
+  {
     // Ainda não tem guia Unity, só o GDD inicial.
     source: 'IsoCards.md',
     slug: 'iso-cards',
