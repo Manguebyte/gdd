@@ -201,6 +201,14 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    // O Guerreiro da Masmorra (app) com robôs em neon 8-bit; só o GDD (as regras são as do app).
+    source: 'AndroideDaFabrica.md',
+    slug: 'androide-da-fabrica',
+    label: 'Androide da Fábrica',
+    description: 'O Guerreiro da Masmorra (app) num mundo de robôs, em neon 8-bit: um androide invade fábricas tomadas por bots, com o mesmo combate de reações.',
+    gddOnly: true,
+  },
+  {
     // O Caderno de Aventuras com tema de robôs e visual neon 8-bit; só o GDD (as regras apontam para o do Caderno).
     source: 'TerminalDeAventuras.md',
     slug: 'terminal-de-aventuras',

@@ -1,0 +1,71 @@
+/* neon.css — tema de terminal neon do Androide da Fábrica, por cima do CSS
+   do Guerreiro da Masmorra (app), que continua no index.html sem mudança.
+   As molduras 9-slice dos painéis já chegam em neon pelo filtro do
+   neon-skin.js (elas são montadas em canvas a partir das PNGs); aqui ficam
+   as cores, a letra, o brilho e o fundo do hangar. */
+
+:root {
+  --bg: #05060f;
+  --panel: #0a0c1e;
+  --panel-2: #10133a;
+  --border: #1d2b6a;
+  --ink: #d8f8ff;
+  --ink-dim: #7d88b8;
+  --accent: #00e5ff;
+  --accent-deep: #ff2bd6;
+  --gold: #ffe94a;
+  --hp: #39ff6a;
+  --danger: #ff3355;
+  --sans: 'VT323', 'Courier New', monospace;
+}
+
+/* VT323 é estreita e baixa: o ajuste deixa a letra com a altura da original,
+   e o layout do app (pensado para a letra do sistema) não quebra. */
+html, body, button, input { font-size-adjust: 0.56; letter-spacing: .02em; }
+body { background: var(--bg); text-shadow: 0 0 3px rgba(0, 229, 255, .35); }
+
+/* Títulos e números grandes acesos. */
+h1, h2, h3, .num, b, strong { text-shadow: 0 0 5px currentColor; }
+
+/* Hangar (o acampamento do menu): sem o vídeo da fogueira, um horizonte de
+   grade synthwave com o sol listrado. */
+#campVideo { display: none !important; }
+#menu {
+  background:
+    linear-gradient(to bottom, transparent 0 58%, rgba(255, 43, 214, .0) 58%),
+    repeating-linear-gradient(to bottom, transparent 0 22px, rgba(255, 43, 214, .35) 22px 24px) bottom / 100% 42% no-repeat,
+    repeating-linear-gradient(to right, transparent 0 38px, rgba(0, 229, 255, .28) 38px 40px) bottom / 100% 42% no-repeat,
+    radial-gradient(circle at 50% 58%, rgba(255, 233, 74, .55) 0 9%, rgba(255, 43, 214, .35) 9.5% 13%, transparent 13.5%),
+    linear-gradient(to bottom, #04020c 0%, #1a0630 50%, #05060f 58%, #05060f 100%) !important;
+}
+
+/* Botões e painéis: borda acesa. */
+button { box-shadow: 0 0 6px rgba(0, 229, 255, .35); }
+button:hover { filter: brightness(1.25); }
+
+/* Barras de vida em neon. */
+progress, .bar, .hpbar { box-shadow: 0 0 5px rgba(57, 255, 106, .5); }
+
+/* Scanlines e vinheta de monitor CRT por cima de tudo. */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, .2) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, .55) 100%);
+}
+
+/* Cena ilustrada da vitória/derrota (arte medieval grande): fora do tema. O
+   título e o texto do quadro já contam o resultado. */
+#ovScene { display: none !important; }
+
+/* Comandos de batalha, cartas e "Fugir": no app são pergaminho claro com
+   letra marrom. Em neon a moldura fica escura, então a letra acende. */
+.skinned #cRun, .skinned #cmds button, .skinned #specBar #cBack, .skinned .specPage button,
+.skinned #magoBar button, .skinned #quickAtk, .skinned #hand .card .cd-nome {
+  color: #d8f8ff !important; text-shadow: 0 0 4px rgba(0, 229, 255, .7) !important;
+}
+.skinned #cmds button:not(:disabled):active, .skinned #specBar #cBack:not(:disabled):active,
+.skinned .specPage button:not(:disabled):active, .skinned #magoBar button:not(:disabled):active { color: #ffe94a !important; }
+.skinned #cRun .num, .skinned #cmds .num, .skinned #specBar .num, .skinned #magoBar .num,
+.skinned #hand .card .cd-dano { color: #ffe94a !important; }
+.skinned #cmds button:disabled { color: #4a5584 !important; text-shadow: none !important; }
