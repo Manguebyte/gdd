@@ -1,6 +1,6 @@
 # GDD — Orbitfall
 
-**Versão:** 0.2.0 · [histórico](#histórico-de-versões)
+**Versão:** 0.3.0 · [histórico](#histórico-de-versões)
 
 **Gênero:** Roguelike de defesa automática / tower-defense invertido
 **Estilo visual:** Pixel art colorida, top-down, tela em paisagem (resolução de referência 320×180)
@@ -573,6 +573,7 @@ Candidatos para updates, em ordem aproximada de prioridade (a decidir com base n
 
 ## Histórico de versões
 
+- **0.3.0** (2026-11-25): protótipo de teste **Orbitfall 2D Neon** (`prototipos/orbitfall-neon/`): as mesmas regras com visual de fliperama neon 8-bit, toda a arte do mundo desenhada em código, brilho (bloom) e scanlines CRT opcionais nas Settings. Save próprio; as regras do GDD não mudaram.
 - **0.2.0** (2026-11-13): efeitos sonoros 8-bit sintetizados no protótipo (14 sons, mais lançamento de nave no Invasion), com Sons e Volume nas Settings (Seção 6.2).
 - **0.1.2** (2026-11-13): a primeira Mothership do Last Stand (Wave 10) espera 30% a mais entre lasers (10,4 s em vez de 8 s), pedido do playtest, no GDD e no protótipo.
 - **0.1.1** (2026-11-04): laser da Mothership mais fraco: dano base de 25 para 14,875 (−30% e depois mais −15%, pedidos do playtest), no GDD, no guia e no protótipo.
