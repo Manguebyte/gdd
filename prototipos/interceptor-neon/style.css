@@ -1,0 +1,66 @@
+/* Interceptor Neon: telas e botões em neon. A cena e o HUD são canvas de
+   baixa resolução esticados com image-rendering: pixelated (pixel 8-bit). */
+:root {
+  --fundo: #05030c;
+  --ciano: #22f0ff;
+  --rosa: #ff2bd6;
+  --amarelo: #ffe23a;
+  --verde: #6dff7a;
+  --texto: #d8f8ff;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  background: var(--fundo); color: var(--texto);
+  font-family: 'Press Start 2P', monospace;
+}
+#cena, #hud {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  image-rendering: pixelated; image-rendering: crisp-edges;
+}
+#hud { pointer-events: none; }
+/* Scanlines e vinheta de monitor CRT. */
+#crt {
+  position: fixed; inset: 0; pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.22) 2px 3px),
+    radial-gradient(ellipse at center, rgba(0,0,0,0) 60%, rgba(0,0,0,.55) 100%);
+}
+.tela {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px;
+  padding: 16px; text-align: center;
+  background: rgba(5, 3, 12, .72);
+  overflow-y: auto;
+}
+.oculto { display: none !important; }
+h1 {
+  margin: 0; font-size: clamp(22px, 5vw, 44px); line-height: 1.3;
+  color: var(--ciano); text-shadow: 0 0 6px var(--ciano), 0 0 18px var(--ciano);
+  display: flex; flex-direction: column; align-items: center;
+}
+h1 span { color: var(--rosa); text-shadow: 0 0 6px var(--rosa), 0 0 18px var(--rosa); }
+h2 { margin: 0; color: var(--ciano); text-shadow: 0 0 8px var(--ciano); font-size: clamp(16px, 3vw, 26px); }
+.sub { margin: 0; color: var(--amarelo); font-size: 11px; }
+p { max-width: 640px; line-height: 1.9; font-size: 11px; margin: 0; }
+#lista { display: flex; flex-direction: column; gap: 8px; width: min(560px, 100%); }
+button {
+  font: inherit; font-size: 11px; cursor: pointer;
+  color: var(--ciano); background: rgba(34, 240, 255, .06);
+  border: 2px solid var(--ciano); padding: 10px 14px;
+  box-shadow: 0 0 8px rgba(34, 240, 255, .5), inset 0 0 8px rgba(34, 240, 255, .2);
+  text-align: left;
+}
+button:hover, button:focus-visible { background: rgba(34, 240, 255, .2); outline: none; }
+button:disabled { color: #4a4a66; border-color: #2a2a44; box-shadow: none; cursor: default; }
+#lista button { display: flex; justify-content: space-between; gap: 10px; }
+#lista button small { color: var(--amarelo); }
+.botoes { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.opcoes button { color: var(--rosa); border-color: var(--rosa); box-shadow: 0 0 8px rgba(255, 43, 214, .5); }
+.controles {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 18px; width: min(760px, 100%); font-size: 9px; line-height: 1.7;
+  color: #9fb8d0; text-align: left;
+}
+.controles b { color: var(--verde); }
+#fTexto { white-space: pre-line; }

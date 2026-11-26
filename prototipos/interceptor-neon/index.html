@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Interceptor Neon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<!-- A cena 3D e o HUD são desenhados em resolução baixa e ampliados sem suavizar (pixel 8-bit). -->
+<canvas id="cena"></canvas>
+<canvas id="hud"></canvas>
+<div id="crt"></div>
+
+<div id="menu" class="tela">
+  <h1>INTERCEPTOR<span>NEON</span></h1>
+  <p class="sub">Escolha a missão</p>
+  <div id="lista"></div>
+  <div class="opcoes">
+    <button id="btnInv"></button>
+  </div>
+  <div class="controles">
+    <div><b>W/S</b> ou <b>↑/↓</b> subir / descer</div>
+    <div><b>A/D</b> ou <b>←/→</b> rolar / virar</div>
+    <div><b>Q/E</b> leme</div>
+    <div><b>Shift</b> acelerar · <b>Z</b> frear</div>
+    <div><b>Espaço</b> ou <b>J</b> canhão</div>
+    <div><b>F</b> ou <b>K</b> míssil · <b>C</b> flare</div>
+    <div><b>Tab</b> trocar alvo</div>
+    <div><b>V</b> câmera (<b>1</b> de cima · <b>2</b> perseguição · <b>3</b> cabine)</div>
+    <div><b>T</b> voo assistido liga/desliga</div>
+    <div><b>Esc</b> ou <b>P</b> pausa · controle de videogame também funciona</div>
+  </div>
+</div>
+
+<div id="briefing" class="tela oculto">
+  <h2 id="bTitulo"></h2>
+  <p id="bTexto"></p>
+  <div class="botoes">
+    <button id="bIniciar">Decolar</button>
+    <button id="bVoltar">Voltar</button>
+  </div>
+</div>
+
+<div id="pausa" class="tela oculto">
+  <h2>PAUSA</h2>
+  <div class="botoes">
+    <button id="pContinuar">Continuar</button>
+    <button id="pReiniciar">Recomeçar missão</button>
+    <button id="pMenu">Menu</button>
+  </div>
+</div>
+
+<div id="fim" class="tela oculto">
+  <h2 id="fTitulo"></h2>
+  <p id="fTexto"></p>
+  <div class="botoes" id="fBotoes"></div>
+</div>
+
+<div id="erro" class="tela oculto">
+  <h2>Não carregou</h2>
+  <p>O jogo precisa baixar o Three.js da internet (cdn.jsdelivr.net). Verifique a conexão e recarregue a página.</p>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="game.js"></script>
+<script>
+  // Se o módulo não rodar (sem internet para o Three.js), avisa em vez de ficar na tela preta.
+  setTimeout(function () { if (!window.__IN_OK) document.getElementById('erro').classList.remove('oculto'); }, 12000);
+</script>
+<script src="../versao.js"></script>
+</body>
+</html>

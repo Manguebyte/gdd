@@ -256,6 +256,14 @@ export const GAMES = [
     gddOnly: true,
   },
   {
+    // Ação aérea em neon 8-bit 3D; protótipo em Three.js, ainda sem guia de implementação.
+    source: 'InterceptorNeon.md',
+    slug: 'interceptor-neon',
+    label: 'Interceptor Neon',
+    description: 'Caça a jato em missões de interceptação e combate, com câmera de cima, perseguição e cabine trocáveis a qualquer momento, em neon 8-bit 3D.',
+    gddOnly: true,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',
