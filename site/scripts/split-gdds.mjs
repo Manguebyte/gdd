@@ -248,6 +248,14 @@ export const GAMES = [
     guideStart: /^# Parte 2\b/,
   },
   {
+    // O Reinos Hex com visual neon 8-bit; só o GDD (as regras apontam para o do Reinos Hex).
+    source: 'Reino8bit.md',
+    slug: 'reino-8bit',
+    label: 'Reino 8bit',
+    description: 'O Reinos Hex num fliperama neon 8-bit: hexágonos de linha acesa, ícones de pixel grande e as mesmas regras de conquista por turnos.',
+    gddOnly: true,
+  },
+  {
     // Não tem GDD próprio no repositório, só o tutorial de implementação.
     source: 'tutorial-mvp-completo-unity.md',
     slug: 'mercador-e-legiao',

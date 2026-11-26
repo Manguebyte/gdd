@@ -51,6 +51,7 @@
     'bolsa-de-herois': ['Bolsa de Heróis', 'BolsaDeHerois.md', '0.1.0'],
     'projeto-gatilho': ['Projeto Gatilho', 'ProjetoGatilho.md', '0.1.0'],
     'reinos-hex': ['Reinos Hex', 'ReinosHex.md', '0.2.0'],
+    'reino-8bit': ['Reino 8bit', 'Reino8bit.md', '0.1.0'],
     'mercador-e-legiao': ['Mercador & Legião', 'tutorial-mvp-completo-unity.md', '0.1.0'],
   };
   // Pastas de protótipo que não têm o nome de um jogo: mostram a versão do
